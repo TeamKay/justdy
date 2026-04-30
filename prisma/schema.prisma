@@ -10,28 +10,23 @@ datasource db {
 model User {
   id                    String       @id @default(cuid())
   name                  String
-  role                  UserRole       @default(Student)
+  role                  UserRole       @default(Unassigned)
   email                 String    
-  grantId               String?
-  grantEmail            String?
   emailVerified         Boolean      @default(false)
-  image                 String?
+  imageUrl              String?
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
   stripeCustomerId      String?      @unique
-  banned                Boolean?     @default(false)
-  banReason             String?
-  banExpires            DateTime?
 
-  // Student-specific fields
-  credits               Int          @default(2)
+  // Student-specific firlds
+  credits               Int         @default(2)
 
   // Educator-specific fields
   specialty             String?
   experience            Int?
   credentialUrl         String?   
   description           String? @db.Text
-  verificationStatus    VetificationStatus?  @default(Pending)
+  verificationStatus    VerificationStatus?  @default(Pending)
 
   // Relations
   sessions              Session[]
@@ -40,10 +35,12 @@ model User {
   enrollment            Enrollment[]
   lessonProgress        LessonProgress[]
 
-  studentBooking        Booking[]     @relation("StudentBooking")
-  educatorBooking       Booking[]     @relation("EducatorBooking")
+  studentAppointments    Appointment[]     @relation("StudentAppointments")
+  educatorAppointments   Appointment[]     @relation("EducatorAppointments")
   availabilities        Availability[]
   transactions          CreditTransaction[]
+
+  payout                Payout[]
 
   @@unique([email])
   @@map("user")
@@ -55,21 +52,23 @@ model Availability {
   educator          User      @relation(fields: [educatorId], references: [id], onDelete: Cascade)
   startTime         DateTime
   endTime           DateTime
-  status           SlotStatus  @default(Available)
+  status            SlotStatus  @default(Available)
+  appointments      Appointment[]
 
   @@index([educatorId, startTime])
 }
 
-model Booking {
+model Appointment {
   id             String   @id @default(cuid())
   studentId      String
-  student        User     @relation("StudentBooking", fields: [studentId], references: [id], onDelete: Cascade)
+  student        User     @relation("StudentAppointments", fields: [studentId], references: [id], onDelete: Cascade)
   educatorId     String
-  educator       User     @relation("EducatorBooking", fields: [educatorId], references: [id], onDelete: Cascade)
-  startTime      DateTime
-  endTime        DateTime
-  status         BookingStatus   @default(Scheduled)
-  description    String?   @db.Text
+  educator             User     @relation("EducatorAppointments", fields: [educatorId], references: [id], onDelete: Cascade)
+  startTime             DateTime
+  endTime               DateTime
+  status                AppointmentStatus   @default(Scheduled)
+  notes                 String?   @db.Text
+  studentDescription    String?   @db.Text
 
   // Video Session fields
   videoSessionId      String?
@@ -78,25 +77,27 @@ model Booking {
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
 
+  availabilityId String       
+  availability   Availability @relation(fields: [availabilityId], references: [id])
+
   @@index([status, startTime])
   @@index([educatorId, startTime])
 }
 
 model CreditTransaction {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete:  Cascade)
-  amount          Int
-  type            TransactionType
-  packageId       String?
-  createdAt       DateTime @default(now())
-}
+  id                String        @id @default(cuid())
 
-model RoleIntent {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  role      String
-  createdAt DateTime @default(now())
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  amount            Int           
+  type              TransactionType
+  packageId         String?
+  description       String?
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 }
 
 model Session {
@@ -237,13 +238,34 @@ model LessonProgress {
   @@unique([userId, lessonId])
 }
 
+model Payout {
+  id                    String         @id @default(uuid())
+  educatorId            String
+  educator              User           @relation(fields: [educatorId], references: [id], onDelete: Cascade)
+  amount                Float
+  credits               Int
+  platformFee           Float
+  netAmount             Float
+  paypalEmail           String
+  status                PayoutStatus    @default(Processing)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  processedAt           DateTime?
+  processedBy           String?
+
+  @@index([status, createdAt])
+  @@index([educatorId, status])
+}
+
+
 enum UserRole {
+  Unassigned
   Student
   Educator
   Admin
 }
 
-enum VetificationStatus {
+enum VerificationStatus {
   Pending
   Verified
   Rejected
@@ -255,17 +277,12 @@ enum SlotStatus {
   Blocked
 }
 
-enum BookingStatus {
+enum AppointmentStatus {
   Scheduled
   Completed
   Cancelled
 }
 
-enum TransactionType {
-  Credit_Purchase
-  Appointment_Deduction
-  Admin_Adjustment
-}
 
 enum CourseLevel {
   Beginner
@@ -277,9 +294,28 @@ enum CourseStatus {
   Draft
   Pending
   Published
+  Rejected
 }
 enum EnrollmentStatus {
   Pending
   Active
   Cancelled
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum TransactionType {
+Credit_Purchase
+Appointment_Deduction
+Admin_Adjustment
+}
+
+enum PayoutStatus {
+  Processing
+  Processed
 }

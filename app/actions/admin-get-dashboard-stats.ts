@@ -3,33 +3,36 @@ import "server-only";
 import { requireAdmin } from "./require-admin";
 import prisma from "@/lib/prisma";
 
-export async function adminGetDashboardStats(){
-    await requireAdmin();
+export async function adminGetDashboardStats() {
+  await requireAdmin();
 
-    const [totalSignups, totalCustomers, totalCourses, totalLessons] = await Promise.all([
-        //total signups
-        prisma.user.count(),
+  const [totalStudents, totalEducators, totalCourses, totalLessons] =
+    await Promise.all([
+      //total students
+      prisma.user.count({
+        where: {
+          role: "Student",
+        },
+      }),
 
-        //total customers
-        prisma.user.count({
-            where: {
-                enrollment: {
-                    some: {},
-                },
-            },
-        }),
+      //total educators
+      prisma.user.count({
+        where: {
+          role: "Educator",
+        },
+      }),
 
-        //total courses
-        prisma.course.count(),
+      //total courses
+      prisma.course.count(),
 
-        //total lessos
-        prisma.lesson.count(),
+      //total lessos
+      prisma.lesson.count(),
     ]);
 
-    return {
-        totalSignups,
-        totalCustomers,
-        totalCourses,
-        totalLessons,
-    }
+  return {
+    totalStudents,
+    totalEducators,
+    totalCourses,
+    totalLessons,
+  };
 }

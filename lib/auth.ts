@@ -23,12 +23,17 @@ export const auth = betterAuth({
     additionalFields: {
       role: {
         type: "string",
-        defaultValue: "Student",
+        defaultValue: "Unassigned",
         input: false,
         required: false,
-        role: {
-          type: "string",
-        }
+      },
+      verificationStatus: {
+        type: "string",
+        defaultValue: "Pending", // Adjust default as needed
+      },
+      credits: {
+        type: "number",
+        defaultValue: 0,
       },
     },
   },
@@ -41,15 +46,14 @@ export const auth = betterAuth({
     requireEmailVerification: false, //It does not allow user to login without email verification [!code highlight]
   },
 
-
   plugins: [
     emailOTP({
-  async sendVerificationOTP({ email, otp }) {
-    await resend.emails.send({
-      from: "Justdy <onboarding@resend.dev>",
-      to: email,
-      subject: "Verify your Justdy Account",
-      html: `
+      async sendVerificationOTP({ email, otp }) {
+        await resend.emails.send({
+          from: "Justdy <onboarding@resend.dev>",
+          to: email,
+          subject: "Verify your Justdy Account",
+          html: `
       <div style="font-family: Arial, sans-serif; background-color: #edeff5; padding: 20px;">
         <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
           
@@ -78,13 +82,8 @@ export const auth = betterAuth({
         </div>
       </div>
       `,
-    });
-  },
-}),
-
+        });
+      },
+    }),
   ],
-
-
-
- });
-
+});

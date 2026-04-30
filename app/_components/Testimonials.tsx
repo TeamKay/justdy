@@ -1,78 +1,112 @@
-import { Card, CardContent } from "./ui/card";
 
 
 
-    
-export const testimonials = [
-    {
-        initials: "SP",
-        name: "Samuel Parkings",
-        role: "Parent",
-        quote: "Live sessions are very clear anfmmm"
-    },
-    {
-        initials: "SP",
-        name: "Samuel Parkings",
-        role: "Parent",
-        quote: "Live sessions are very clear anfmmm"
-    },
-    {
-        initials: "SP",
-        name: "Samuel Parkings",
-        role: "Parent",
-        quote: "Live sessions are very clear anfmmm"
-    },
-    {
-        initials: "SP",
-        name: "Samuel Parkings",
-        role: "Parent",
-        quote: "Live sessions are very clear anfmmm"
-    },
-    {
-        initials: "SP",
-        name: "Samuel Parkings",
-        role: "Parent",
-        quote: "Live sessions are very clear anfmmm"
-    },
+"use client"
+
+import { useEffect, useRef } from "react";
+
+const testimonials = [
+  {
+    name: "Sarah Johnson",
+    role: "Product Manager",
+    company: "TechFlow",
+    content:
+      "This platform completely transformed how our team works. Productivity is up and stress is down.",
+  },
+  {
+    name: "Michael Chen",
+    role: "Founder",
+    company: "Startly",
+    content:
+      "The best SaaS tool we've invested in. Clean, powerful, and incredibly easy to use.",
+  },
+  {
+    name: "Amina Yusuf",
+    role: "Operations Lead",
+    company: "CoreOps",
+    content:
+      "Automation features saved us hundreds of hours. Highly recommend to any growing business.",
+  },
+  {
+    name: "David Smith",
+    role: "CTO",
+    company: "DevNest",
+    content:
+      "Beautiful UI, fast performance, and excellent support. Exactly what we needed.",
+  },
 ];
 
+export default function Testimonials() {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
+  useEffect(() => {
+    const container = scrollRef.current as HTMLDivElement | null;
+    let scrollAmount = 0;
 
-export default function Testimonials(){
-    return ( 
-        <section className="py-20">
-            <div className="container mx-auto px-4">
-            <div className="text-center mb-16">
-                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                    What Our Users Say
-                </h2>
-                <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                    Hear from teachers, students and parents who use our system
+    const interval = setInterval(() => {
+      if (container) {
+        scrollAmount += 1;
+        container.scrollLeft = scrollAmount;
+
+        if (scrollAmount >= container.scrollWidth / 2) {
+          scrollAmount = 0;
+        }
+      }
+    }, 20);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <section className="py-20 bg-background">
+      <div className="max-w-7xl mx-auto px-0">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-bold text-white">
+            Testimonies
+          </h2>
+          <p className="mt-4 text-muted-foreground text-base">
+            See what our users are saying about our platform
+          </p>
+        </div>
+
+        <div className="relative overflow-hidden">
+          <div
+            ref={scrollRef}
+            className="flex gap-6 overflow-x-hidden"
+          >
+            {[...testimonials, ...testimonials].map((t, i) => (
+              <div
+                key={i}
+                className="min-w-[320px] bg-background rounded-2xl shadow-md p-6 border border-b hover:shadow-xl transition-all duration-300"
+              >
+                <p className="text-gray-700 leading-relaxed mb-6">
+                  “{t.content}”
                 </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {testimonials.map((testimonial, index) => {
-                    return (
-                        <Card key={index} className="border-emerald-900 hover:border-emerald-800/40 transition-all duration-300">
-                            
-                            <CardContent className="pt-6">
-                                <div className="flex items-center mb-4">
-                                    <div className="size-12 rounded-full bg-emerald-900/20 flex items-center justify-center mr-4">
-                                        <span className="text-emerald-400 font-bold">{testimonial.initials}</span>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-semibold text-white">{testimonial.name}</h4>
-                                    </div>
-                                    <p className="text-sm text-muted-foreground">{testimonial.role}</p>
-                                </div>
-                                <p className="text-sm text-muted-foreground">&quot;{testimonial.quote}&quot;</p>
-                            </CardContent>
-                        </Card>
-                    );
-                })}
-            </div>
-            </div>
-        </section>
-    )
+
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-linear-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold">
+                    {t.name.charAt(0)}
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-gray-900">
+                      {t.name}
+                    </h4>
+                    <p className="text-sm text-gray-500">
+                      {t.role} · {t.company}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Gradient fade edges */}
+          <div className="pointer-events-none absolute top-0 left-0 h-full w-24 bg-linear-to-r from-background to-transparent" />
+          <div className="pointer-events-none absolute top-0 right-0 h-full w-24 bg-linear-to-l from-background to-transparent" />
+        </div>
+      </div>
+    </section>
+  );
 }
 

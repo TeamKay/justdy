@@ -6,11 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default function PublicCourseRoute(){
     return (
-        <div className="mt-5 px-4 md:px-8 max-w-7xl mx-auto">
-            <div className="flex flex-col space-y-2 mb-10">
-                <h1 className="text-3xl md:text-4xl font-bold tracking-tighter">Explore Courses</h1>
-            </div>
-
+        <div className="mt-10 px-4 md:px-8 max-w-7xl mx-auto">
             <Suspense fallback={<LoadingSkeletonLayout/>}>
                 <RenderCourses />
             </Suspense>
@@ -22,7 +18,7 @@ async function RenderCourses(){
     const courses = await getAllCourses();
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {courses.map((course) => (
                 <PublicCourseCard key={course.id} data={course}/>
             ))}
@@ -31,9 +27,11 @@ async function RenderCourses(){
 }
 
 function LoadingSkeletonLayout(){
-    return <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {Array.from({length: 8}).map((_, index) => (
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {Array.from({length: 3}).map((_, index) => (
             <PublicCourseCardSkeleton key={index} />
         ))}
     </div>
+    )
 }

@@ -1,63 +1,72 @@
-
 import { tryCatch } from "@/hooks/try-catch";
 import { Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/app/_components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/app/_components/ui/alert-dialog";
 import { Button } from "@/app/_components/ui/button";
-import { deleteLesson } from "../actions/edit-course";
+import { deleteLesson } from "../actions/educator-edit-course";
 
 export function DeleteLesson({
-    chapterId, 
-    courseId, 
-    lessonId
-} : {
-    chapterId: string; 
-    courseId: string; 
-    lessonId: string
+  chapterId,
+  courseId,
+  lessonId,
+}: {
+  chapterId: string;
+  courseId: string;
+  lessonId: string;
 }) {
-    
-    const [open, setOpen] = useState(false);
-    const [pending, startTransition] = useTransition();
+  const [open, setOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
 
-    async function onSubmit(){
-        startTransition(async () => {
-            const {data: result, error} = await tryCatch(
-                deleteLesson({chapterId, courseId, lessonId})
-        );
+  async function onSubmit() {
+    startTransition(async () => {
+      const { data: result, error } = await tryCatch(
+        deleteLesson({ chapterId, courseId, lessonId }),
+      );
 
-        if(error){
-                toast.error("An unexpected error has occured! Please try again");
-                return;
-            }
+      if (error) {
+        toast.error("An unexpected error has occured! Please try again");
+        return;
+      }
 
-            if (result.status === 'success'){
-                toast.success(result.message)
-                setOpen(false);
-            }else if(result.status === 'error'){
-                toast.error(result.message);
-            }
+      if (result.status === "success") {
+        toast.success(result.message);
+        setOpen(false);
+      } else if (result.status === "error") {
+        toast.error(result.message);
+      }
     });
-}
-    return (
-     <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon">
-                <Trash2 className="size-4" />
-            </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>Delete Confirmation!</AlertDialogTitle>
-                <AlertDialogDescription>This action cannot be undone. Confirm to delete lesson permanently!</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <Button onClick={onSubmit} disabled={pending}>
-                {pending ? 'Deleting...' : 'Delete'}
-            </Button>
-            </AlertDialogFooter>
-        </AlertDialogContent>
+  }
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <Trash2 className="size-4" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Confirmation!</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. Confirm to delete lesson permanently!
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <Button onClick={onSubmit} disabled={pending}>
+            {pending ? "Deleting..." : "Delete"}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
     </AlertDialog>
-    );
+  );
 }
