@@ -7,10 +7,8 @@ interface LayoutProps {
   params: { id: string };
 }
 
-/* ---------------- METADATA ---------------- */
-
 export async function generateMetadata({ params }: { params: { id: string } }) {
-  const { id } = params;
+  const { id } = params; // ✅ NO await
 
   const { educator } = await getEducatorById(id);
 
@@ -22,13 +20,11 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
   };
 }
 
-/* ---------------- LAYOUT ---------------- */
-
 export default async function EducatorProfileLayout({
   children,
   params,
 }: LayoutProps) {
-  const { id } = params;
+  const { id } = params; // ✅ NO await
 
   const { educator } = await getEducatorById(id);
 
