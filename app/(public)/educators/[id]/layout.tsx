@@ -2,16 +2,20 @@ import { getEducatorById } from "@/app/actions/appointments";
 import { redirect } from "next/navigation";
 import { ReactNode } from "react";
 
-type PageProps = {
+// 1. Update the type to wrap params in a Promise
+type LayoutProps = {
   children: ReactNode;
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 export default async function EducatorProfileLayout({
   children,
   params,
-}: PageProps) {
-  const { educator } = await getEducatorById(params.id);
+}: LayoutProps) {
+  // 2. Await the params before using them
+  const { id } = await params;
+
+  const { educator } = await getEducatorById(id);
 
   if (!educator) {
     redirect("/educators");
