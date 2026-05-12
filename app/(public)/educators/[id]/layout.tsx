@@ -2,17 +2,20 @@ import { getEducatorById } from "@/app/actions/appointments";
 import { redirect } from "next/navigation";
 import { ReactNode } from "react";
 
-interface LayoutProps {
+type PageProps = {
   children: ReactNode;
   params: { id: string };
-}
+};
 
+// ✅ Metadata
 export async function generateMetadata({ params }: { params: { id: string } }) {
-  const { id } = params; // ✅ NO await
+  const { educator } = await getEducatorById(params.id);
 
-  const { educator } = await getEducatorById(id);
-
-  if (!educator) return { title: "Educator Not Found" };
+  if (!educator) {
+    return {
+      title: "Educator Not Found",
+    };
+  }
 
   return {
     title: `${educator.name} - Justdy`,
@@ -20,15 +23,16 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
   };
 }
 
+// ✅ Layout
 export default async function EducatorProfileLayout({
   children,
   params,
-}: LayoutProps) {
-  const { id } = params; // ✅ NO await
+}: PageProps) {
+  const { educator } = await getEducatorById(params.id);
 
-  const { educator } = await getEducatorById(id);
-
-  if (!educator) redirect("/educators");
+  if (!educator) {
+    redirect("/educators");
+  }
 
   return <div className="container mx-auto">{children}</div>;
 }
