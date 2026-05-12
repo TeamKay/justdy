@@ -17,19 +17,18 @@ export const checkUser = async () => {
         id: user.user.id,
       },
       include: {
-        transactions: {
-          where: {
-            type: "Credit_Purchase",
-            // Only get transactions from current month
-            createdAt: {
-              gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-            },
-          },
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 1,
-        },
+        // payments: {
+        //   where: {
+        //     // Only get transactions from current month
+        //     createdAt: {
+        //       gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+        //     },
+        //   },
+        //   orderBy: {
+        //     createdAt: "desc",
+        //   },
+        //   take: 1,
+        // },
       },
     });
 

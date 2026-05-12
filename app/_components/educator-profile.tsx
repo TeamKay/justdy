@@ -84,9 +84,9 @@ export default function EducatorProfile({
           className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-900/20 transition-colors"
           asChild
         >
-          <Link href={`/educators/${educator.specialty}`}>
+          <Link href="/educators">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to {educator.specialty}
+            Back to Educators
           </Link>
         </Button>
       </div>

@@ -11,16 +11,13 @@ model User {
   id                    String       @id @default(cuid())
   name                  String
   role                  UserRole       @default(Unassigned)
-  email                 String    
+  email                 String       
   emailVerified         Boolean      @default(false)
   imageUrl              String?
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
   stripeCustomerId      String?      @unique
-
-  // Student-specific firlds
-  credits               Int         @default(2)
-
+  
   // Educator-specific fields
   specialty             String?
   experience            Int?
@@ -29,17 +26,15 @@ model User {
   verificationStatus    VerificationStatus?  @default(Pending)
 
   // Relations
-  sessions              Session[]
+  subscription          Subscription? 
   accounts              Account[]
+  sessions              Session[]
   courses               Course[]
   enrollment            Enrollment[]
   lessonProgress        LessonProgress[]
-
   studentAppointments    Appointment[]     @relation("StudentAppointments")
   educatorAppointments   Appointment[]     @relation("EducatorAppointments")
   availabilities        Availability[]
-  transactions          CreditTransaction[]
-
   payout                Payout[]
 
   @@unique([email])
@@ -82,22 +77,24 @@ model Appointment {
 
   @@index([status, startTime])
   @@index([educatorId, startTime])
+  @@index([studentId, createdAt])
 }
 
-model CreditTransaction {
-  id                String        @id @default(cuid())
+model Subscription {
+  id                      String @id @default(cuid())
+  stripeSubscriptionId    String? @unique
+  interval                String
+  status                  SubscriptionStatus 
+  planId                  PlanType 
+  currentPeriodStart      DateTime
+  currentPeriodEnd        DateTime
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  cancelAtPeriodEnd       Boolean @default(false)
 
-  // Relations
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                  String? @unique
+  user                    User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  amount            Int           
-  type              TransactionType
-  packageId         String?
-  description       String?
-  
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
 }
 
 model Session {
@@ -258,6 +255,21 @@ model Payout {
 }
 
 
+model Chat {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  messages  Message[]
+}
+
+model Message {
+  id      String   @id @default(uuid())
+  role    String
+  content String
+  chatId  String
+  chat    Chat     @relation(fields: [chatId], references: [id])
+}
+
+
 enum UserRole {
   Unassigned
   Student
@@ -303,19 +315,37 @@ enum EnrollmentStatus {
 }
 
 enum PaymentStatus {
-  PENDING
-  COMPLETED
-  FAILED
-  REFUNDED
+  Pending
+  Paid
+  Failed
+  Refunded
 }
 
-enum TransactionType {
-Credit_Purchase
-Appointment_Deduction
-Admin_Adjustment
+enum SubscriptionStatus {
+  active
+  canceled
+  incomplete
+  incomplete_expired
+  past_due
+  trialing
+  unpaid
 }
 
 enum PayoutStatus {
   Processing
   Processed
 }
+
+enum TransactionStatus {
+  Pending
+  Paid
+  Failed
+}
+
+enum PlanType {
+  Free
+  FlexPay
+  Standard
+  Premium
+}
+

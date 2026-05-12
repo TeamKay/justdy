@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import { Toaster } from "./_components/ui/sonner";
 import { ThemeProvider } from "./_components/ui/theme-provider";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import IdleTimer from "./_components/IdleTimer";
+
 import "./globals.css";
 
 const inter = Inter({
@@ -18,10 +16,10 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Justdy | Learning made easy",
-  description: "Learn smarter with Justdy",
+  title: "Online Tutor | Justdy Learning Platform",
+  description: "Where smart learning takes place",
   icons: {
-    icon: "images/favicon.png", // <-- your new icon file
+    icon: "/logo.ico",
   },
 };
 
@@ -30,9 +28,9 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  // const session = await auth.api.getSession({
+  //   headers: await headers(),
+  // });
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${playfair.variable} font-sans`}>
@@ -42,7 +40,6 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {session && <IdleTimer />}
           {children}
           <Toaster closeButton position="bottom-center" />
         </ThemeProvider>

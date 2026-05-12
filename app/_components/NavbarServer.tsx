@@ -1,5 +1,5 @@
 import { checkUser } from "../actions/checkUser";
-import { checkAndAllocateCredits } from "../actions/credits";
+
 import { NavbarClient } from "./NavbarClient";
 
 export default async function NavbarServer() {
@@ -7,9 +7,9 @@ export default async function NavbarServer() {
 
   const safeUser = user ?? null;
 
-  if (safeUser?.role === "Student") {
-    await checkAndAllocateCredits(safeUser);
-  }
+  // if (safeUser?.role === "Student") {
+  //   await checkAndAllocateCredits(safeUser);
+  // }
 
   return <NavbarClient user={safeUser} />;
 }

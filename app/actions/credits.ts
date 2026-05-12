@@ -1,180 +1,183 @@
-"use server";
+// "use server";
 
-import { auth } from "@/lib/auth";
-import { Prisma } from "@/lib/generated/prisma/client";
-import prisma from "@/lib/prisma";
-import { format } from "date-fns";
-import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
+// import { auth } from "@/lib/auth";
+// import { Prisma } from "@/lib/generated/prisma/client";
+// import prisma from "@/lib/prisma";
+// import { format } from "date-fns";
+// import { revalidatePath } from "next/cache";
+// import { headers } from "next/headers";
+// import {
+//   TransactionType,
+//   Plan_Credits,
+//   Plan_Prices,
+//   Appointment_Credit_Cost,
+// } from "@/lib/credit-constants";
 
-const Plan_Credits = {
-  free_user: 0,
-  standard: 10,
-  premium: 24,
-} as const;
+// type UserWithTransactions = Prisma.UserGetPayload<{
+//   include: {
+//     transactions: true;
+//   };
+// }>;
 
-const Appointment_Credit_Cost = 2;
+// export async function checkAndAllocateCredits(
+//   user: UserWithTransactions | null,
+// ) {
+//   try {
+//     if (!user) return null;
 
-type UserWithTransactions = Prisma.UserGetPayload<{
-  include: {
-    transactions: true;
-  };
-}>;
+//     if (user.role !== "Student") return user;
 
-export async function checkAndAllocateCredits(
-  user: UserWithTransactions | null,
-) {
-  try {
-    if (!user) return null;
+//     // Fetch latest session (optional for future auth logic)
+//     await auth.api.getSession({
+//       headers: await headers(),
+//     });
 
-    if (user.role !== "Student") return user;
+//     // 🔥 Get user with properly ordered transactions
+//     const userWithTransactions = await prisma.user.findUnique({
+//       where: { id: user.id },
+//       include: {
+//         transactions: {
+//           orderBy: { createdAt: "desc" },
+//         },
+//       },
+//     });
 
-    // Fetch latest session (optional for future auth logic)
-    await auth.api.getSession({
-      headers: await headers(),
-    });
+//     if (!userWithTransactions) return user;
 
-    // 🔥 Get user with properly ordered transactions
-    const userWithTransactions = await prisma.user.findUnique({
-      where: { id: user.id },
-      include: {
-        transactions: {
-          orderBy: { createdAt: "desc" },
-        },
-      },
-    });
+//     const latestTransaction = userWithTransactions.transactions?.[0];
 
-    if (!userWithTransactions) return user;
+//     const currentPlan = latestTransaction?.packageId ?? "free_user";
 
-    const latestTransaction = userWithTransactions.transactions?.[0];
+//     const creditToAllocate =
+//       Plan_Credits[currentPlan as keyof typeof Plan_Credits] ?? 0;
 
-    const currentPlan = latestTransaction?.packageId ?? "free_user";
+//     // If no valid plan or zero credits, exit
+//     if (!currentPlan || creditToAllocate <= 0) {
+//       return user;
+//     }
 
-    const creditToAllocate =
-      Plan_Credits[currentPlan as keyof typeof Plan_Credits] ?? 0;
+//     const currentMonth = format(new Date(), "yyyy-MM");
 
-    // If no valid plan or zero credits, exit
-    if (!currentPlan || creditToAllocate <= 0) {
-      return user;
-    }
+//     // Prevent duplicate monthly allocation
+//     if (latestTransaction) {
+//       const transactionMonth = format(
+//         new Date(latestTransaction.createdAt),
+//         "yyyy-MM",
+//       );
 
-    const currentMonth = format(new Date(), "yyyy-MM");
+//       if (
+//         transactionMonth === currentMonth &&
+//         latestTransaction.packageId === currentPlan
+//       ) {
+//         return user;
+//       }
+//     }
 
-    // Prevent duplicate monthly allocation
-    if (latestTransaction) {
-      const transactionMonth = format(
-        new Date(latestTransaction.createdAt),
-        "yyyy-MM",
-      );
+//     // 🔥 Transaction: create credit log + update user credits
+//     const updatedUser = await prisma.$transaction(async (tx) => {
+//       await tx.creditTransaction.create({
+//         data: {
+//           userId: user.id,
+//           amount: creditToAllocate,
+//           type: TransactionType.CREDIT_PURCHASE,
+//           packageId: currentPlan,
+//           price: Plan_Prices[currentPlan as keyof typeof Plan_Prices] ?? 0,
+//         },
+//       });
 
-      if (
-        transactionMonth === currentMonth &&
-        latestTransaction.packageId === currentPlan
-      ) {
-        return user;
-      }
-    }
+//       return await tx.user.update({
+//         where: { id: user.id },
+//         data: {
+//           credits: {
+//             increment: creditToAllocate,
+//           },
+//         },
+//       });
+//     });
 
-    // 🔥 Transaction: create credit log + update user credits
-    const updatedUser = await prisma.$transaction(async (tx) => {
-      await tx.creditTransaction.create({
-        data: {
-          userId: user.id,
-          amount: creditToAllocate,
-          type: "Credit_Purchase",
-          packageId: currentPlan,
-        },
-      });
+//     // Refresh UI pages
+//     revalidatePath("/educators");
+//     revalidatePath("/student");
 
-      return await tx.user.update({
-        where: { id: user.id },
-        data: {
-          credits: {
-            increment: creditToAllocate,
-          },
-        },
-      });
-    });
+//     return updatedUser;
+//   } catch (error: unknown) {
+//     console.error(
+//       "Failed to check subscription and allocate credits:",
+//       error || error,
+//     );
+//     return user;
+//   }
+// }
 
-    // Refresh UI pages
-    revalidatePath("/educators");
-    revalidatePath("/student");
+// export async function deductCreditsForAppointment(
+//   studentId: string,
+//   educatorId: string,
+// ) {
+//   try {
+//     const user = await prisma.user.findUnique({
+//       where: { id: studentId },
+//     });
 
-    return updatedUser;
-  } catch (error: unknown) {
-    console.error(
-      "Failed to check subscription and allocate credits:",
-      error || error,
-    );
-    return user;
-  }
-}
+//     const educator = await prisma.user.findUnique({
+//       where: { id: educatorId },
+//     });
 
-export async function deductCreditsForAppointment(
-  studentId: string,
-  educatorId: string,
-) {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: studentId },
-    });
+//     if ((user?.credits ?? 0) < Appointment_Credit_Cost) {
+//       throw new Error("Insufficient credits to book an appointment");
+//     }
 
-    const educator = await prisma.user.findUnique({
-      where: { id: educatorId },
-    });
+//     if (!educator) {
+//       throw new Error("Educator not found");
+//     }
 
-    if (user?.credits ?? 0 < Appointment_Credit_Cost) {
-      throw new Error("Insufficient credits to book an appointment");
-    }
+//     const result = await prisma.$transaction(async (tx) => {
+//       await tx.creditTransaction.create({
+//         data: {
+//           userId: studentId,
+//           amount: -Appointment_Credit_Cost,
+//           type: TransactionType.APPOINTMENT_DEDUCTION,
+//           packageId: "appointment",
+//           price: 0,
+//         },
+//       });
 
-    if (!educator) {
-      throw new Error("Educator not found");
-    }
+//       await tx.creditTransaction.create({
+//         data: {
+//           userId: educatorId,
+//           amount: Appointment_Credit_Cost,
+//           type: TransactionType.APPOINTMENT_DEDUCTION,
+//           packageId: "appointment",
+//           price: 0,
+//         },
+//       });
 
-    const result = await prisma.$transaction(async (tx) => {
-      await tx.creditTransaction.create({
-        data: {
-          userId: studentId,
-          amount: -Appointment_Credit_Cost,
-          type: "Appointment_Deduction",
-        },
-      });
+//       const updateUser = await tx.user.update({
+//         where: {
+//           id: studentId,
+//         },
+//         data: {
+//           credits: {
+//             decrement: Appointment_Credit_Cost,
+//           },
+//         },
+//       });
 
-      await tx.creditTransaction.create({
-        data: {
-          userId: educatorId,
-          amount: Appointment_Credit_Cost,
-          type: "Appointment_Deduction",
-        },
-      });
-
-      const updateUser = await tx.user.update({
-        where: {
-          id: user?.id,
-        },
-        data: {
-          credits: {
-            decrement: Appointment_Credit_Cost,
-          },
-        },
-      });
-
-      await tx.user.update({
-        where: {
-          id: educator.id,
-        },
-        data: {
-          credits: {
-            increment: Appointment_Credit_Cost,
-          },
-        },
-      });
-      return updateUser;
-    });
-    return { success: true, user: result };
-  } catch (error) {
-    throw new Error("Error creating account" + error);
-  }
-
-  return { success: false, error: Error };
-}
+//       await tx.user.update({
+//         where: {
+//           id: educator.id,
+//         },
+//         data: {
+//           credits: {
+//             increment: Appointment_Credit_Cost,
+//           },
+//         },
+//       });
+//       return updateUser;
+//     });
+//     return { success: true, user: result };
+//   } catch (error) {
+//     throw new Error(
+//       error instanceof Error ? error.message : "Credit deduction failed",
+//     );
+//   }
+// }

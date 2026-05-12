@@ -141,7 +141,6 @@ export async function getPendingPayouts() {
             name: true,
             email: true,
             specialty: true,
-            credits: true,
           },
         },
       },

@@ -2,12 +2,12 @@
 
 import * as React from "react";
 import Link from "next/link";
+
 import {
   Menu,
   X,
   BookOpen,
   Video,
-  Bot,
   LayoutDashboard,
   LogInIcon,
   Shield,
@@ -31,13 +31,13 @@ const productItems = [
   },
   {
     title: "Sessions",
-    href: "/educators",
+    href: "/session",
     icon: <Video className="h-5 w-5 text-red-500" />,
   },
   {
-    title: "About us",
-    href: "/about",
-    icon: <Bot className="h-5 w-5 text-purple-500" />,
+    title: "AI Tutor",
+    href: "/aitutor",
+    icon: <Video className="h-5 w-5 text-red-500" />,
   },
 ];
 
@@ -105,7 +105,7 @@ export function NavbarClient({}: { user: UserProps | null }) {
                 className={clsx(
                   "px-4 py-2 rounded-md text-sm font-semibold transition-all duration-300 ease-in-out relative flex flex-col items-center",
                   "active:scale-95",
-                  "hover:bg-accent/40 hover:backdrop-blur-sm hover:border-accent/50 border border-transparent",
+                  "hover:bg-emerald-600/30 hover:backdrop-blur-sm hover:border-accent/50 border border-transparent",
                   "text-muted-foreground",
                 )}
               >

@@ -5,7 +5,7 @@ const cards = [
   {
     title: "Private Learning Studio",
     tag: "Available now",
-    link: "/live-sessions",
+    link: "/session",
     tagColor: "text-blue-400 bg-blue-400/10 border-blue-400/20",
     description:
       "Engage in real-time, one-on-one or group video sessions with expert tutors. Get instant feedback, ask questions freely, and experience personalized learning that adapts to your pace.",
@@ -26,7 +26,7 @@ const cards = [
   {
     title: "Guided Learning Paths",
     tag: "Coming soon",
-    link: "/interactive-lessons",
+    link: "/courses",
     tagColor: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
     description:
       "Explore structured, hands-on courses designed to make learning engaging and effective. Practice with interactive exercises, track your progress, and master concepts step by step.",
@@ -50,7 +50,7 @@ const cards = [
   {
     title: "Intelligent Tutor",
     tag: "Coming soon",
-    link: "/ai-tutoring",
+    link: "/aitutor",
     tagColor: "text-orange-400 bg-orange-400/10 border-orange-400/20",
     description:
       "Learn anytime with your intelligent AI tutor. Get instant explanations, guided problem-solving, and adaptive support tailored to your unique learning style—24/7.",

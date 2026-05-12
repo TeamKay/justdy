@@ -4,16 +4,15 @@ import LandingPage from "../_components/LandingPage";
 import AITutor from "../_components/AITutor";
 import HowItWorks from "../_components/HowItWorks";
 import LatestCourses from "../_components/LatestCourses";
-import PricingPage from "../_components/Pricing";
+import { PricingTable } from "../_components/PricingTable";
 
 export default async function HomePage() {
-  //  const categories = await getCategories();
   return (
     <>
       <LandingPage />
       <HowItWorks />
       <LatestCourses />
-      <PricingPage />
+      <PricingTable />
       <AITutor />
       <Testimonials />
       <CallToAction />

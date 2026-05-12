@@ -33,23 +33,8 @@ export async function getStudentAppointments() {
         studentId: user.id,
       },
       include: {
-        educator: {
-          select: {
-            id: true,
-            name: true,
-            specialty: true,
-            imageUrl: true,
-          },
-        },
-
-        // ✅ FIX: include student to match Appointment type
-        student: {
-          select: {
-            id: true,
-            name: true,
-            imageUrl: true,
-          },
-        },
+        educator: true,
+        student: true,
       },
       orderBy: {
         startTime: "asc",

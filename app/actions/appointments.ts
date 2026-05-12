@@ -7,7 +7,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { Auth } from "@vonage/auth";
 import { Vonage } from "@vonage/server-sdk";
-import { deductCreditsForAppointment } from "./credits";
+
 import { MediaMode } from "@vonage/video";
 
 interface TimeSlot {
@@ -17,6 +17,12 @@ interface TimeSlot {
   day: string;
   availabilityId: string;
 }
+
+const PLAN_LIMITS = {
+  Free: 1,
+  Standard: 8,
+  Premium: Infinity,
+};
 
 const credentials = new Auth({
   applicationId: process.env.NEXT_PUBLIC_VONAGE_APPLICATION_ID,
@@ -47,7 +53,7 @@ export async function getEducatorById(id: string) {
 
 export async function getAvailableTimeSlots(educatorId: string) {
   try {
-    const educator = await prisma.user.findUnique({
+    const educator = await prisma.user.findFirst({
       where: {
         id: educatorId,
         role: "Educator",
@@ -174,12 +180,186 @@ export async function getAvailableTimeSlots(educatorId: string) {
   }
 }
 
+// export async function bookAppointment(formData: FormData) {
+//   const session = await auth.api.getSession({
+//     headers: await headers(),
+//   });
+
+//   if (!session?.user.id) throw new Error("Unauthorized");
+
+//   try {
+//     const studentId = session.user.id;
+//     const availabilityId = formData.get("availabilityId") as string;
+//     const educatorId = formData.get("educatorId") as string;
+//     const studentDescription = formData.get("description") as string;
+//     const startTime = new Date(formData.get("startTime") as string);
+//     const endTime = new Date(formData.get("endTime") as string);
+
+//     if (
+//       !educatorId ||
+//       isNaN(startTime.getTime()) ||
+//       isNaN(endTime.getTime()) ||
+//       !availabilityId
+//     ) {
+//       throw new Error("Missing required booking information.");
+//     }
+
+//     const result = await prisma.$transaction(async (tx) => {
+//       // 1. CHECK FOR DUPLICATE BY SAME STUDENT
+//       const alreadtBookedByMe = await tx.appointment.findFirst({
+//         where: { availabilityId, studentId, status: "Scheduled" },
+//       });
+
+//       if (alreadtBookedByMe) {
+//         throw new Error("You have already booked a seat in this session.");
+//       }
+
+//       // 2. Validate Student
+//       const student = await tx.user.findUnique({
+//         where: {
+//           id: studentId,
+//           role: "Student",
+//         },
+//         include: {
+//           subscriptions: {
+//             where: {
+//               status: "Active",
+//             },
+//             orderBy: {
+//               createdAt: "desc",
+//             },
+//             take: 1,
+//           },
+//         },
+//       });
+
+//       if (!student) {
+//         throw new Error("Student not found");
+//       }
+
+//       // 3. Validate Educator
+//       const educator = await tx.user.findUnique({
+//         where: {
+//           id: educatorId,
+//           role: "Educator",
+//           verificationStatus: "Verified",
+//         },
+//       });
+
+//       if (!educator) {
+//         throw new Error("Educator not found or not verified");
+//       }
+
+//       // 4. Time Overlap Check (Secondary Safety)
+//       const overLappingAppointment = await tx.appointment.findFirst({
+//         where: {
+//           educatorId,
+//           status: "Scheduled",
+//           AND: [
+//             {
+//               startTime: {
+//                 lt: endTime,
+//               },
+//             },
+//             {
+//               endTime: {
+//                 gt: startTime,
+//               },
+//             },
+//           ],
+//         },
+//       });
+
+//       if (overLappingAppointment)
+//         throw new Error("Educator is already booked for this timeframe.");
+
+//       const sessionId = await createVideoSession();
+
+//       // Get active subscription
+//       const subscription = student.subscriptions[0];
+
+//       const currentPlan = subscription?.plan || "Free";
+
+//       // Monthly booking window
+//       const now = new Date();
+
+//       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+//       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+//       // Count student's booked sessions THIS MONTH
+//       const monthlySessions = await tx.appointment.count({
+//         where: {
+//           studentId,
+//           status: {
+//             in: ["Scheduled", "Completed"],
+//           },
+//           createdAt: {
+//             gte: startOfMonth,
+//             lt: endOfMonth,
+//           },
+//         },
+//       });
+
+//       // PLAN VALIDATION
+
+//       // FREE PLAN
+//       if (currentPlan === "Free" && monthlySessions >= PLAN_LIMITS.Free) {
+//         throw new Error(
+//           "You have already used your free live session. Upgrade to Standard or Premium to continue booking sessions.",
+//         );
+//       }
+
+//       // STANDARD PLAN
+//       if (
+//         currentPlan === "Standard" &&
+//         monthlySessions >= PLAN_LIMITS.Standard
+//       ) {
+//         throw new Error(
+//           "You have reached your 8 monthly live sessions limit on the Standard plan. Upgrade to Premium for unlimited sessions.",
+//         );
+//       }
+
+//       // PREMIUM = unlimited
+
+//       // 6. Create Appointment
+//       return await tx.appointment.create({
+//         data: {
+//           studentId,
+//           educatorId,
+//           availabilityId,
+//           startTime,
+//           endTime,
+//           studentDescription,
+//           status: "Scheduled",
+//           videoSessionId: sessionId,
+//         },
+//       });
+//     });
+
+//     revalidatePath("/student");
+//     return { success: true, appointment: result };
+//   } catch (error: unknown) {
+//     console.error("Create appointment error:", error);
+
+//     if (error instanceof Error) {
+//       throw new Error(error.message);
+//     }
+
+//     throw new Error("Error creating appointment");
+//   }
+// }
+
 export async function bookAppointment(formData: FormData) {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
 
-  if (!session?.user.id) throw new Error("Unauthorized");
+  if (!session?.user.id) {
+    return {
+      success: false,
+      message: "Unauthorized",
+    };
+  }
 
   try {
     const studentId = session.user.id;
@@ -195,30 +375,45 @@ export async function bookAppointment(formData: FormData) {
       isNaN(endTime.getTime()) ||
       !availabilityId
     ) {
-      throw new Error("Missing required booking information.");
+      return {
+        success: false,
+        message: "Missing required booking information.",
+      };
     }
 
     const result = await prisma.$transaction(async (tx) => {
       // 1. CHECK FOR DUPLICATE BY SAME STUDENT
-      // We allow the slot to be booked multiple times, but NOT by the same person twice.
-      const alreadtBookedByMe = await tx.appointment.findFirst({
-        where: { availabilityId, studentId, status: "Scheduled" },
+      const alreadyBookedByMe = await tx.appointment.findFirst({
+        where: {
+          availabilityId,
+          studentId,
+          status: "Scheduled",
+        },
       });
 
-      if (alreadtBookedByMe) {
-        throw new Error("You have already booked a seat in this session.");
+      if (alreadyBookedByMe) {
+        return {
+          success: false,
+          message: "You have already booked a seat in this session.",
+        };
       }
 
-      // 2. Validate Student & Credits
-      const student = await tx.user.findUnique({
+      // 2. Validate Student
+      const student = await tx.user.findFirst({
         where: {
           id: studentId,
           role: "Student",
         },
+        include: {
+          subscription: true,
+        },
       });
 
-      if (!student || (student.credits ?? 0) < 2) {
-        throw new Error("Insufficient credits or Student not found");
+      if (!student) {
+        return {
+          success: false,
+          message: "Student not found",
+        };
       }
 
       // 3. Validate Educator
@@ -231,15 +426,18 @@ export async function bookAppointment(formData: FormData) {
       });
 
       if (!educator) {
-        throw new Error("Educator not found or not verified");
+        return {
+          success: false,
+          message: "Educator not found or not verified",
+        };
       }
 
-      // 4. Time Overlap Check (Secondary Safety)
+      // 4. Time Overlap Check
       const overLappingAppointment = await tx.appointment.findFirst({
         where: {
           educatorId,
           status: "Scheduled",
-          OR: [
+          AND: [
             {
               startTime: {
                 lt: endTime,
@@ -254,24 +452,67 @@ export async function bookAppointment(formData: FormData) {
         },
       });
 
-      if (overLappingAppointment)
-        throw new Error("Educator is already booked for this timeframe.");
-
-      // 5. External Actions (Keep these inside the try but outside tx if possible,
-      // but if you need atomicity, they stay here)
-      const sessionId = await createVideoSession();
-
-      const { success } = await deductCreditsForAppointment(
-        studentId,
-        educatorId,
-      );
-
-      if (!success) {
-        throw new Error("Failed to deduct credits");
+      if (overLappingAppointment) {
+        return {
+          success: false,
+          message: "Educator is already booked for this timeframe.",
+        };
       }
 
-      // 6. Create Appointment
-      return await tx.appointment.create({
+      const sessionId = await createVideoSession();
+
+      // Get active subscription
+      const subscription = student.subscription;
+
+      const currentPlan = subscription?.planId || "Free";
+
+      // Monthly booking window
+      const now = new Date();
+
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+      // Count monthly sessions
+      const monthlySessions = await tx.appointment.count({
+        where: {
+          studentId,
+          status: {
+            in: ["Scheduled", "Completed"],
+          },
+          createdAt: {
+            gte: startOfMonth,
+            lt: endOfMonth,
+          },
+        },
+      });
+
+      // FREE PLAN LIMIT
+      if (currentPlan === "Free" && monthlySessions >= PLAN_LIMITS.Free) {
+        return {
+          success: false,
+          upgradeRequired: true,
+          plan: "Free",
+          message:
+            "You have already used your free live session. Upgrade to Standard or Premium to continue booking sessions.",
+        };
+      }
+
+      // STANDARD PLAN LIMIT
+      if (
+        currentPlan === "Standard" &&
+        monthlySessions >= PLAN_LIMITS.Standard
+      ) {
+        return {
+          success: false,
+          upgradeRequired: true,
+          plan: "Standard",
+          message:
+            "You have reached your 8 monthly live sessions limit on the Standard plan. Upgrade to Premium for unlimited sessions.",
+        };
+      }
+
+      // Create appointment
+      const appointment = await tx.appointment.create({
         data: {
           studentId,
           educatorId,
@@ -283,12 +524,30 @@ export async function bookAppointment(formData: FormData) {
           videoSessionId: sessionId,
         },
       });
+
+      return {
+        success: true,
+        appointment,
+      };
     });
 
     revalidatePath("/student");
-    return { success: true, appointment: result };
-  } catch (error) {
-    throw new Error("An unexpected error occurred" + error);
+
+    return result;
+  } catch (error: unknown) {
+    console.error("Create appointment error:", error);
+
+    if (error instanceof Error) {
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
+
+    return {
+      success: false,
+      message: "Error creating appointment",
+    };
   }
 }
 

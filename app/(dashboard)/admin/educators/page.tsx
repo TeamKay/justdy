@@ -109,24 +109,3 @@ async function EducatorDataWrapper({ query }: { query: string }) {
 
   return <AdminEducatorTable data={filtered} />;
 }
-
-// import { getVerifiedEducators } from "@/app/actions/admin";
-// import VerifiedEducators from "../../../_components/verified-educators";
-
-// export default async function AdminPage() {
-//   const [verifiedEducatorsData] = await Promise.all([getVerifiedEducators()]);
-
-//   return (
-//     <div className="w-full space-y-10">
-//       {/* Verified Educators Section */}
-//       <section className="space-y-4">
-//         <h2 className="text-lg font-semibold">Verified Educators</h2>
-//         <div className="border rounded-lg p-4 bg-background">
-//           <VerifiedEducators
-//             educators={verifiedEducatorsData.educators || []}
-//           />
-//         </div>
-//       </section>
-//     </div>
-//   );
-// }

@@ -31,10 +31,6 @@ export const auth = betterAuth({
         type: "string",
         defaultValue: "Pending", // Adjust default as needed
       },
-      credits: {
-        type: "number",
-        defaultValue: 0,
-      },
     },
   },
 

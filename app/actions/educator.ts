@@ -131,6 +131,7 @@ export async function getEducatorAppointments() {
   try {
     const educator = await prisma.user.findUnique({
       where: { id: session.user.id, role: "Educator" },
+      select: { id: true },
     });
 
     if (!educator) {
@@ -140,9 +141,6 @@ export async function getEducatorAppointments() {
     const appointments = await prisma.appointment.findMany({
       where: {
         educatorId: educator.id,
-        status: {
-          in: ["Scheduled"],
-        },
       },
       include: {
         student: true,
@@ -154,12 +152,7 @@ export async function getEducatorAppointments() {
     });
 
     return {
-      appointments: appointments.map((a) => ({
-        ...a,
-        startTime: a.startTime.toISOString(),
-        endTime: a.endTime.toISOString(),
-        studentDescription: a.studentDescription ?? undefined,
-      })),
+      appointments,
     };
   } catch (error) {
     throw new Error("Failed to fect appointments " + error);

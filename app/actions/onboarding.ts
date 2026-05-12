@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
+import { PlanType, SubscriptionStatus } from "@/lib/generated/prisma/enums";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
@@ -29,28 +30,54 @@ export async function setUserRole(formData: FormData) {
   }
 
   try {
+    /**
+     * =========================
+     * STUDENT ONBOARDING
+     * =========================
+     */
     if (role === "Student") {
-      await prisma.user.update({
-        where: { id: session.user.id },
-        data: { role: "Student", credits: 2 },
+      await prisma.$transaction(async (tx) => {
+        // Update user role
+        await tx.user.update({
+          where: { id: session.user.id },
+          data: {
+            role: "Student",
+          },
+        });
+
+        // Ensure subscription exist
+        const existingSubscription = await tx.subscription.findFirst({
+          where: {
+            userId: session.user.id,
+          },
+        });
+
+        if (!existingSubscription) {
+          await tx.subscription.create({
+            data: {
+              userId: session.user.id,
+              planId: PlanType.Free,
+              status: SubscriptionStatus.active,
+              currentPeriodStart: new Date(),
+              interval: "month",
+              currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            },
+          });
+        }
       });
 
+      //Set cookies
       (await cookies()).set("role", "Student", { path: "/" });
 
-      // 2. Create the initial transaction record
-      await prisma.creditTransaction.create({
-        data: {
-          userId: user.id,
-          amount: 2,
-          type: "Credit_Purchase",
-          packageId: "free_user",
-        },
-      });
-
-      revalidatePath("/educators");
-      return { success: true, redirect: "/educators" };
+      revalidatePath("/");
+      return { success: true, redirect: "/" };
     }
 
+    /**
+     * =========================
+     * EDUCATOR ONBOARDING
+     * =========================
+     */
     if (role === "Educator") {
       const specialty = formData.get("specialty") as string;
       const experience = formData.get("experience") as string;

@@ -1,4 +1,3 @@
-import AppointmentCard from "@/app/_components/AppointmentCard";
 import { Button } from "@/app/_components/ui/button";
 import { Card, CardContent } from "@/app/_components/ui/card";
 import { getCurrentUser } from "@/app/actions/onboarding";
@@ -6,6 +5,7 @@ import { getStudentAppointments } from "@/app/actions/students";
 import { Calendar, Search, Sparkles, AlertCircle, Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import AppointmentsTable from "@/app/_components/AppointmentTable";
 
 export default async function StudentAppointments() {
   const user = await getCurrentUser();
@@ -18,10 +18,6 @@ export default async function StudentAppointments() {
 
   const safeAppointments = appointments ?? [];
 
-  const scheduledCount = safeAppointments.filter(
-    (app) => app.status === "Scheduled",
-  ).length;
-
   // In your parent component (e.g., StudentDashboard.tsx)
   const sortedAppointments = [...safeAppointments].sort((a, b) => {
     if (a.status === "Scheduled" && b.status !== "Scheduled") return -1;
@@ -31,7 +27,7 @@ export default async function StudentAppointments() {
   });
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="w-full h-full flex flex-col space-y-10 mt-12">
       {/* Header Section with Booking Button */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-6">
         <div>
@@ -63,16 +59,6 @@ export default async function StudentAppointments() {
       ) : safeAppointments.length > 0 ? (
         <div className="grid grid-cols-1 gap-6">
           {/* Appointment Counter Badge */}
-          <div className="flex items-center gap-2 px-1">
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-            </span>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              {scheduledCount} Upcoming{" "}
-              {scheduledCount === 1 ? "Session" : "Sessions"}
-            </h2>
-          </div>
 
           <div className="space-y-4">
             {sortedAppointments.map((appointment) => (
@@ -80,9 +66,8 @@ export default async function StudentAppointments() {
                 key={appointment.id}
                 className="transition-all duration-300 hover:translate-x-1"
               >
-                <AppointmentCard
-                  key={appointment.id}
-                  appointment={appointment}
+                <AppointmentsTable
+                  appointments={appointments}
                   userRole="Student"
                 />
               </div>

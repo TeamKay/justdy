@@ -7,7 +7,7 @@ export default async function EnrolledCoursesPage() {
   const [enrolledCourses] = await Promise.all([getEnrolledCourses()]);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 py-6">
+    <div className="w-full h-full flex flex-col space-y-10 mt-12">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">

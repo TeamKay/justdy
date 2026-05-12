@@ -3,8 +3,7 @@ import { BarChart3, Calendar, Coins, TrendingUp } from "lucide-react";
 
 import { redirect } from "next/navigation";
 import { useSession } from "@/lib/auth-client";
-import Link from "next/link";
-import { IconLogout } from "@tabler/icons-react";
+
 import { Card, CardContent } from "./ui/card";
 
 type Appointment = {
@@ -35,7 +34,6 @@ export default function EducatorDashboard({
   if (!session)
     return <div className="p-8 text-center text-red-500">Access Denied</div>;
 
-  const name = session?.user?.name ?? "User";
   const credits = (session.user as { credits?: number }).credits ?? 0;
   const scheduledAppointments =
     appointments?.filter((app) => app.status === "Scheduled") || [];
@@ -92,7 +90,7 @@ export default function EducatorDashboard({
     },
     {
       label: "Students",
-      value: credits,
+      value: 0,
       sub: "Enrolled",
       icon: BarChart3,
       color: "text-orange-400",
@@ -102,32 +100,6 @@ export default function EducatorDashboard({
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Welcome Card */}
-      <div className="col-span-12 overflow-hidden rounded-xl border border-emerald-800/50 bg-linear-to-br from-emerald-900/40 to-emerald-950/60 p-6 shadow-sm backdrop-blur-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h3 className="text-2xl font-semibold tracking-tight text-white">
-              Welcome back,{" "}
-              <span className="text-[#DFFF00] drop-shadow-[0_0_15px_rgba(223,255,0,0.3)]">
-                {name}
-              </span>
-            </h3>
-            <p className="text-sm text-emerald-200/60">
-              Here&apos;s what&apos;s happening with your platform today.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Exit Button */}
-            <Link
-              href="/"
-              className="flex items-center gap-2 rounded-lg bg-white/5 px-4 py-2 text-sm font-medium text-white border border-white/10 hover:bg-red-500/10 hover:border-red-500/50 hover:text-red-400 transition-all duration-200"
-            >
-              <IconLogout size={18} />
-              <span>Exit</span>
-            </Link>
-          </div>
-        </div>
-      </div>
 
       {/* 2. Other Cards arranged horizontally below */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

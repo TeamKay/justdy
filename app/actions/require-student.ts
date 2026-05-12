@@ -25,7 +25,6 @@ export const requireUser = cache(async () => {
       email: true,
       role: true,
       imageUrl: true,
-      credits: true,
       specialty: true,
       experience: true,
       credentialUrl: true,

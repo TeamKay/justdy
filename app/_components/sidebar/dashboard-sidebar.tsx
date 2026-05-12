@@ -41,6 +41,7 @@ const navigationData = {
   ],
   educator: [
     { title: "Dashboard", url: "/educator", icon: LayoutDashboard },
+    { title: "My Profile", url: "/educator/profile", icon: Users },
     { title: "Availability", url: "/educator/availability", icon: Clock },
     { title: "Appointments", url: "/educator/appointments", icon: Calendar },
     { title: "My Courses", url: "/educator/courses", icon: BookOpen },
@@ -51,6 +52,7 @@ const navigationData = {
     { title: "Dashboard", url: "/student", icon: LayoutDashboard },
     { title: "Appointments", url: "/student/appointments", icon: Users },
     { title: "Enrolled Courses", url: "/student/enrolled", icon: Columns },
+    { title: "My Plan", url: "/student/myplan", icon: Columns },
   ],
 };
 
