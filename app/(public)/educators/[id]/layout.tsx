@@ -7,23 +7,6 @@ type PageProps = {
   params: { id: string };
 };
 
-// ✅ Metadata
-export async function generateMetadata({ params }: { params: { id: string } }) {
-  const { educator } = await getEducatorById(params.id);
-
-  if (!educator) {
-    return {
-      title: "Educator Not Found",
-    };
-  }
-
-  return {
-    title: `${educator.name} - Justdy`,
-    description: `Book an appointment with ${educator.name}, ${educator.specialty} specialist with ${educator.experience} years of experience.`,
-  };
-}
-
-// ✅ Layout
 export default async function EducatorProfileLayout({
   children,
   params,
