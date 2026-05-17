@@ -18,11 +18,13 @@ interface TimeSlot {
   availabilityId: string;
 }
 
-const PLAN_LIMITS = {
-  Free: 1,
-  Standard: 8,
-  Premium: Infinity,
-};
+export enum PlanType {
+  Free = "Free",
+  FlexPay_30m = "FlexPay_30m",
+  FlexPay_45m = "FlexPay_45m",
+  FlexPay_60m = "FlexPay_60m",
+  Monthly = "Monthly",
+}
 
 const credentials = new Auth({
   applicationId: process.env.NEXT_PUBLIC_VONAGE_APPLICATION_ID,
@@ -185,7 +187,12 @@ export async function getAvailableTimeSlots(educatorId: string) {
 //     headers: await headers(),
 //   });
 
-//   if (!session?.user.id) throw new Error("Unauthorized");
+//   if (!session?.user.id) {
+//     return {
+//       success: false,
+//       message: "Unauthorized",
+//     };
+//   }
 
 //   try {
 //     const studentId = session.user.id;
@@ -201,40 +208,45 @@ export async function getAvailableTimeSlots(educatorId: string) {
 //       isNaN(endTime.getTime()) ||
 //       !availabilityId
 //     ) {
-//       throw new Error("Missing required booking information.");
+//       return {
+//         success: false,
+//         message: "Missing required booking information.",
+//       };
 //     }
 
 //     const result = await prisma.$transaction(async (tx) => {
 //       // 1. CHECK FOR DUPLICATE BY SAME STUDENT
-//       const alreadtBookedByMe = await tx.appointment.findFirst({
-//         where: { availabilityId, studentId, status: "Scheduled" },
+//       const alreadyBookedByMe = await tx.appointment.findFirst({
+//         where: {
+//           availabilityId,
+//           studentId,
+//           status: "Scheduled",
+//         },
 //       });
 
-//       if (alreadtBookedByMe) {
-//         throw new Error("You have already booked a seat in this session.");
+//       if (alreadyBookedByMe) {
+//         return {
+//           success: false,
+//           message: "You have already booked a seat in this session.",
+//         };
 //       }
 
 //       // 2. Validate Student
-//       const student = await tx.user.findUnique({
+//       const student = await tx.user.findFirst({
 //         where: {
 //           id: studentId,
 //           role: "Student",
 //         },
 //         include: {
-//           subscriptions: {
-//             where: {
-//               status: "Active",
-//             },
-//             orderBy: {
-//               createdAt: "desc",
-//             },
-//             take: 1,
-//           },
+//           subscription: true,
 //         },
 //       });
 
 //       if (!student) {
-//         throw new Error("Student not found");
+//         return {
+//           success: false,
+//           message: "Student not found",
+//         };
 //       }
 
 //       // 3. Validate Educator
@@ -247,10 +259,13 @@ export async function getAvailableTimeSlots(educatorId: string) {
 //       });
 
 //       if (!educator) {
-//         throw new Error("Educator not found or not verified");
+//         return {
+//           success: false,
+//           message: "Educator not found or not verified",
+//         };
 //       }
 
-//       // 4. Time Overlap Check (Secondary Safety)
+//       // 4. Time Overlap Check
 //       const overLappingAppointment = await tx.appointment.findFirst({
 //         where: {
 //           educatorId,
@@ -270,15 +285,19 @@ export async function getAvailableTimeSlots(educatorId: string) {
 //         },
 //       });
 
-//       if (overLappingAppointment)
-//         throw new Error("Educator is already booked for this timeframe.");
+//       if (overLappingAppointment) {
+//         return {
+//           success: false,
+//           message: "Educator is already booked for this timeframe.",
+//         };
+//       }
 
 //       const sessionId = await createVideoSession();
 
 //       // Get active subscription
-//       const subscription = student.subscriptions[0];
+//       const subscription = student.subscription;
 
-//       const currentPlan = subscription?.plan || "Free";
+//       const currentPlan = subscription?.planId || "Free";
 
 //       // Monthly booking window
 //       const now = new Date();
@@ -286,7 +305,7 @@ export async function getAvailableTimeSlots(educatorId: string) {
 //       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 //       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-//       // Count student's booked sessions THIS MONTH
+//       // Count monthly sessions
 //       const monthlySessions = await tx.appointment.count({
 //         where: {
 //           studentId,
@@ -300,29 +319,33 @@ export async function getAvailableTimeSlots(educatorId: string) {
 //         },
 //       });
 
-//       // PLAN VALIDATION
-
-//       // FREE PLAN
+//       // FREE PLAN LIMIT
 //       if (currentPlan === "Free" && monthlySessions >= PLAN_LIMITS.Free) {
-//         throw new Error(
-//           "You have already used your free live session. Upgrade to Standard or Premium to continue booking sessions.",
-//         );
+//         return {
+//           success: false,
+//           upgradeRequired: true,
+//           plan: "Free",
+//           message:
+//             "You have already used your free live session. Upgrade to Standard or Premium to continue booking sessions.",
+//         };
 //       }
 
-//       // STANDARD PLAN
+//       // STANDARD PLAN LIMIT
 //       if (
 //         currentPlan === "Standard" &&
 //         monthlySessions >= PLAN_LIMITS.Standard
 //       ) {
-//         throw new Error(
-//           "You have reached your 8 monthly live sessions limit on the Standard plan. Upgrade to Premium for unlimited sessions.",
-//         );
+//         return {
+//           success: false,
+//           upgradeRequired: true,
+//           plan: "Standard",
+//           message:
+//             "You have reached your 8 monthly live sessions limit on the Standard plan. Upgrade to Premium for unlimited sessions.",
+//         };
 //       }
 
-//       // PREMIUM = unlimited
-
-//       // 6. Create Appointment
-//       return await tx.appointment.create({
+//       // Create appointment
+//       const appointment = await tx.appointment.create({
 //         data: {
 //           studentId,
 //           educatorId,
@@ -334,18 +357,30 @@ export async function getAvailableTimeSlots(educatorId: string) {
 //           videoSessionId: sessionId,
 //         },
 //       });
+
+//       return {
+//         success: true,
+//         appointment,
+//       };
 //     });
 
 //     revalidatePath("/student");
-//     return { success: true, appointment: result };
+
+//     return result;
 //   } catch (error: unknown) {
 //     console.error("Create appointment error:", error);
 
 //     if (error instanceof Error) {
-//       throw new Error(error.message);
+//       return {
+//         success: false,
+//         message: error.message,
+//       };
 //     }
 
-//     throw new Error("Error creating appointment");
+//     return {
+//       success: false,
+//       message: "Error creating appointment",
+//     };
 //   }
 // }
 
@@ -378,6 +413,17 @@ export async function bookAppointment(formData: FormData) {
       return {
         success: false,
         message: "Missing required booking information.",
+      };
+    }
+
+    // Calculate appointment duration in minutes
+    const appointmentDurationMinutes =
+      (endTime.getTime() - startTime.getTime()) / (1000 * 60);
+
+    if (appointmentDurationMinutes <= 0) {
+      return {
+        success: false,
+        message: "Invalid appointment duration.",
       };
     }
 
@@ -459,59 +505,52 @@ export async function bookAppointment(formData: FormData) {
         };
       }
 
-      const sessionId = await createVideoSession();
+      // Get current plan from subscription (Defaults to PlanType.Free if none exists)
+      // Cast the database string or the fallback string explicitly to your Enum type
+      const currentPlan = (student.subscription?.planId ?? "Free") as PlanType;
 
-      // Get active subscription
-      const subscription = student.subscription;
+      // 5. NEW PLAN RULES & DURATION RESTRICTIONS
 
-      const currentPlan = subscription?.planId || "Free";
+      // Determine max minutes based on the PlanType enum mapping
+      let maxAllowedMinutes = 0;
+      let planName = "Free";
 
-      // Monthly booking window
-      const now = new Date();
+      if (currentPlan === PlanType.FlexPay_30m) {
+        maxAllowedMinutes = 30;
+        planName = "FlexPay 30 Min";
+      } else if (currentPlan === PlanType.FlexPay_45m) {
+        maxAllowedMinutes = 45;
+        planName = "FlexPay 45 Min";
+      } else if (currentPlan === PlanType.FlexPay_60m) {
+        maxAllowedMinutes = 60;
+        planName = "FlexPay 60 Min";
+      } else if (currentPlan === PlanType.Monthly) {
+        maxAllowedMinutes = 60; // Assuming Monthly tier gets maximum session length per booking
+        planName = "Monthly Subscription";
+      }
 
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
-      // Count monthly sessions
-      const monthlySessions = await tx.appointment.count({
-        where: {
-          studentId,
-          status: {
-            in: ["Scheduled", "Completed"],
-          },
-          createdAt: {
-            gte: startOfMonth,
-            lt: endOfMonth,
-          },
-        },
-      });
-
-      // FREE PLAN LIMIT
-      if (currentPlan === "Free" && monthlySessions >= PLAN_LIMITS.Free) {
+      // Free Tier Logic
+      if (currentPlan === PlanType.Free) {
         return {
           success: false,
           upgradeRequired: true,
           plan: "Free",
           message:
-            "You have already used your free live session. Upgrade to Standard or Premium to continue booking sessions.",
+            "Free accounts cannot book live sessions directly. Please choose a FlexPay tier or Monthly subscription.",
         };
       }
 
-      // STANDARD PLAN LIMIT
-      if (
-        currentPlan === "Standard" &&
-        monthlySessions >= PLAN_LIMITS.Standard
-      ) {
+      // Enforce the duration cap calculated from the plan configuration map
+      if (appointmentDurationMinutes > maxAllowedMinutes) {
         return {
           success: false,
-          upgradeRequired: true,
-          plan: "Standard",
-          message:
-            "You have reached your 8 monthly live sessions limit on the Standard plan. Upgrade to Premium for unlimited sessions.",
+          message: `Your current plan (${planName}) only allows sessions up to ${maxAllowedMinutes} minutes. This session is ${appointmentDurationMinutes} minutes.`,
         };
       }
 
-      // Create appointment
+      // 6. Create appointment if all rules pass
+      const sessionId = await createVideoSession();
+
       const appointment = await tx.appointment.create({
         data: {
           studentId,
