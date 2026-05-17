@@ -136,7 +136,7 @@ export function PricingTable() {
             className="h-full"
           >
             <Card
-              className={`relative h-full flex flex-col border-slate-800 bg-slate-900/40 backdrop-blur-md transition-shadow duration-500 ${
+              className={`relative h-full flex flex-col border-slate-800 bg-background backdrop-blur-md transition-shadow duration-500 ${
                 item.popular
                   ? "border-emerald-500/40 ring-1 ring-emerald-500/20 shadow-[0_0_40px_-10px_rgba(16,185,129,0.2)]"
                   : "hover:border-slate-700 hover:shadow-2xl hover:shadow-indigo-500/10"
