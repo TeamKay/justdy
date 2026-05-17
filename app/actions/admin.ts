@@ -156,86 +156,86 @@ export async function getPendingPayouts() {
   }
 }
 
-export async function approvePayout(formData: FormData) {
-  const isAdmin = await verifyAdmin();
-  if (!isAdmin) throw new Error("Unauthorized");
+// export async function approvePayout(formData: FormData) {
+//   const isAdmin = await verifyAdmin();
+//   if (!isAdmin) throw new Error("Unauthorized");
 
-  const payoutId = formData.get("payoutId");
+//   const payoutId = formData.get("payoutId");
 
-  if (!payoutId) {
-    throw new Error("Payout ID is required");
-  }
+//   if (!payoutId) {
+//     throw new Error("Payout ID is required");
+//   }
 
-  try {
-    // Get admin user info
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+//   try {
+//     // Get admin user info
+//     const session = await auth.api.getSession({
+//       headers: await headers(),
+//     });
 
-    const admin = await prisma.user.findUnique({
-      where: { id: session?.user.id },
-    });
+//     const admin = await prisma.user.findUnique({
+//       where: { id: session?.user.id },
+//     });
 
-    // Find the payout request
-    const payout = await prisma.payout.findUnique({
-      where: {
-        id: payoutId as string,
-        status: "Processing",
-      },
-      include: {
-        educator: true,
-      },
-    });
+//     // Find the payout request
+//     const payout = await prisma.payout.findUnique({
+//       where: {
+//         id: payoutId as string,
+//         status: "Processing",
+//       },
+//       include: {
+//         educator: true,
+//       },
+//     });
 
-    if (!payout) {
-      throw new Error("Payout request not found or already processed");
-    }
+//     if (!payout) {
+//       throw new Error("Payout request not found or already processed");
+//     }
 
-    // Check if doctor has enough credits
-    if (payout.educator.credits < payout.credits) {
-      throw new Error("Doctor doesn't have enough credits for this payout");
-    }
+//     // Check if doctor has enough credits
+//     if (payout.educator.credits < payout.credits) {
+//       throw new Error("Doctor doesn't have enough credits for this payout");
+//     }
 
-    // Process the payout in a transaction
-    await prisma.$transaction(async (tx) => {
-      // Update payout status to PROCESSED
-      await tx.payout.update({
-        where: {
-          id: payoutId as string,
-        },
-        data: {
-          status: "Processed",
-          processedAt: new Date(),
-          processedBy: admin?.id || "unknown",
-        },
-      });
+//     // Process the payout in a transaction
+//     await prisma.$transaction(async (tx) => {
+//       // Update payout status to PROCESSED
+//       await tx.payout.update({
+//         where: {
+//           id: payoutId as string,
+//         },
+//         data: {
+//           status: "Processed",
+//           processedAt: new Date(),
+//           processedBy: admin?.id || "unknown",
+//         },
+//       });
 
-      // Deduct credits from doctor's account
-      await tx.user.update({
-        where: {
-          id: payout.educatorId,
-        },
-        data: {
-          credits: {
-            decrement: payout.credits,
-          },
-        },
-      });
+//       // Deduct credits from doctor's account
+//       await tx.user.update({
+//         where: {
+//           id: payout.educatorId,
+//         },
+//         data: {
+//           credits: {
+//             decrement: payout.credits,
+//           },
+//         },
+//       });
 
-      // Create a transaction record for the deduction
-      await tx.creditTransaction.create({
-        data: {
-          userId: payout.educatorId,
-          amount: -payout.credits,
-          type: "Admin_Adjustment",
-        },
-      });
-    });
+//       // Create a transaction record for the deduction
+//       await tx.creditTransaction.create({
+//         data: {
+//           userId: payout.educatorId,
+//           amount: -payout.credits,
+//           type: "Admin_Adjustment",
+//         },
+//       });
+//     });
 
-    revalidatePath("/admin");
-    return { success: true };
-  } catch (error) {
-    console.error("Failed to approve payout:", error);
-    throw new Error(`Failed to approve payout: ${error}`);
-  }
-}
+//     revalidatePath("/admin");
+//     return { success: true };
+//   } catch (error) {
+//     console.error("Failed to approve payout:", error);
+//     throw new Error(`Failed to approve payout: ${error}`);
+//   }
+// }
