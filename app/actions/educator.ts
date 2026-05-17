@@ -222,23 +222,23 @@ export async function cancelAppointment(formData: FormData) {
         },
       });
 
-      await tx.creditTransaction.create({
-        data: {
-          userId: appointment.studentId,
-          amount: 2,
-          type: "Appointment_Deduction",
-          description: `Refund for cancelled appointment successful`,
-        },
-      });
+      // await tx.creditTransaction.create({
+      //   data: {
+      //     userId: appointment.studentId,
+      //     amount: 2,
+      //     type: "Appointment_Deduction",
+      //     description: `Refund for cancelled appointment successful`,
+      //   },
+      // });
 
-      await tx.creditTransaction.create({
-        data: {
-          userId: appointment.educatorId,
-          amount: -2,
-          type: "Appointment_Deduction",
-          description: `Refund for cancelled appointment successful`,
-        },
-      });
+      // await tx.creditTransaction.create({
+      //   data: {
+      //     userId: appointment.educatorId,
+      //     amount: -2,
+      //     type: "Appointment_Deduction",
+      //     description: `Refund for cancelled appointment successful`,
+      //   },
+      // });
 
       await tx.user.update({
         where: {
