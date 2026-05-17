@@ -251,16 +251,16 @@ export async function cancelAppointment(formData: FormData) {
       //   },
       // });
 
-      await tx.user.update({
-        where: {
-          id: appointment.educatorId,
-        },
-        data: {
-          credits: {
-            decrement: 2,
-          },
-        },
-      });
+      // await tx.user.update({
+      //   where: {
+      //     id: appointment.educatorId,
+      //   },
+      //   data: {
+      //     credits: {
+      //       decrement: 2,
+      //     },
+      //   },
+      // });
     });
 
     if (user.role === "Educator") {
