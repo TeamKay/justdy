@@ -211,16 +211,16 @@ export async function approvePayout(formData: FormData) {
       });
 
       // Deduct credits from doctor's account
-      await tx.user.update({
-        where: {
-          id: payout.educatorId,
-        },
-        data: {
-          credits: {
-            decrement: payout.credits,
-          },
-        },
-      });
+      // await tx.user.update({
+      //   where: {
+      //     id: payout.educatorId,
+      //   },
+      //   data: {
+      //     credits: {
+      //       decrement: payout.credits,
+      //     },
+      //   },
+      // });
 
       // Create a transaction record for the deduction
       // await tx.creditTransaction.create({
