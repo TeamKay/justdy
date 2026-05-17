@@ -344,8 +344,8 @@ enum TransactionStatus {
 
 enum PlanType {
   Free
-  FlexPay
-  Standard
-  Premium
+  FlexPay_30m
+  FlexPay_45m
+  FlexPay_60m
+  Monthly
 }
-
