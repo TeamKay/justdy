@@ -240,16 +240,16 @@ export async function cancelAppointment(formData: FormData) {
       //   },
       // });
 
-      await tx.user.update({
-        where: {
-          id: appointment.studentId,
-        },
-        data: {
-          credits: {
-            increment: 2,
-          },
-        },
-      });
+      // await tx.user.update({
+      //   where: {
+      //     id: appointment.studentId,
+      //   },
+      //   data: {
+      //     credits: {
+      //       increment: 2,
+      //     },
+      //   },
+      // });
 
       await tx.user.update({
         where: {
