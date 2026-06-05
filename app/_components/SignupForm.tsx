@@ -8,10 +8,8 @@ import Link from "next/link";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
 import { signupSchema } from "@/lib/zodSchemas";
 import { signupUser } from "@/app/actions/signup-user";
-
 import {
   Form,
   FormControl,

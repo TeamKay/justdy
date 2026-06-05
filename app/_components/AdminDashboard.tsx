@@ -4,13 +4,13 @@ import { Card, CardContent } from "./ui/card";
 import { BarChart3, Calendar, Coins, TrendingUp } from "lucide-react";
 
 export async function AdminDashboard() {
-  const { totalStudents, totalEducators, totalCourses, totalLessons } =
+  const { totallearners, totalEducators, totalCourses, totalLessons } =
     await adminGetDashboardStats();
 
   const stats = [
     {
-      label: "Students",
-      value: totalStudents,
+      label: "Members",
+      value: totallearners,
       sub: "Enrolled",
       icon: Coins,
       color: "text-emerald-400",

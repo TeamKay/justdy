@@ -11,7 +11,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "../ui/card";
 
 export async function AdminDashboardSectionCards() {
   // ✅ FIX: Destructure the actual fields returned by your server action
-  const { totalStudents, totalEducators, totalCourses, totalLessons } =
+  const { totallearners, totalEducators, totalCourses, totalLessons } =
     await adminGetDashboardStats();
 
   return (
@@ -19,10 +19,10 @@ export async function AdminDashboardSectionCards() {
       <Card className="@container/card bg-none">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div className="">
-            <CardDescription>Total Students</CardDescription>
+            <CardDescription>Total Learners</CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
               {/* ✅ Updated to actual variable name */}
-              {totalStudents}
+              {totallearners}
             </CardTitle>
           </div>
           <IconUsers className="size-10 text-muted-foreground rounded-lg border border-emerald-800 p-2 mr-2" />
@@ -35,7 +35,7 @@ export async function AdminDashboardSectionCards() {
             <CardDescription>Total Enrollments</CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
               {/* Note: If your backend adds an actual 'totalEnrollments' count later, swap this out. For now, using totalStudents to avoid crashes */}
-              {totalStudents}
+              {totallearners}
             </CardTitle>
           </div>
           <IconBook2 className="size-10 text-muted-foreground rounded-lg border border-emerald-800 p-2 mr-2" />

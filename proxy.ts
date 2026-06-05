@@ -27,7 +27,7 @@ export default createMiddleware(aj, async (request: NextRequest) => {
 
   const userRole = session?.user?.role?.toLowerCase();
 
-  // 🔒 Admin
+  // 🔒 Admin Protected Routes
   if (pathname.startsWith("/admin")) {
     if (!session) return NextResponse.redirect(new URL("/login", request.url));
     if (userRole !== "admin") {
@@ -35,7 +35,7 @@ export default createMiddleware(aj, async (request: NextRequest) => {
     }
   }
 
-  // 🔒 Educator ONLY
+  // 🔒 Educator Protected Routes
   if (pathname.startsWith("/educator/") || pathname === "/educator") {
     if (!session) return NextResponse.redirect(new URL("/login", request.url));
     if (userRole !== "educator") {
@@ -43,56 +43,23 @@ export default createMiddleware(aj, async (request: NextRequest) => {
     }
   }
 
-  // 🔒 Student ONLY
-  if (pathname.startsWith("/educators")) {
-    if (!session) return NextResponse.redirect(new URL("/login", request.url));
-    if (userRole !== "student") {
+  // 🔒 Profile View & Booking Restriction
+  // Catches '/educators/some-id' but ignores the main dashboard route ('/educators')
+  if (pathname.startsWith("/educators") && pathname !== "/educators") {
+    // 1. Force authentication for anyone trying to view profiles or book
+    if (!session) {
+      // Optional: Pass the original path as a redirect parameter so they return here after logging in
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("callbackUrl", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // 2. Restrict booking steps or individual profiles strictly to students if required
+    // (Remove or modify this sub-check if other roles like admins are allowed to view profile pages)
+    if (userRole !== "student" && userRole !== "admin") {
       return NextResponse.redirect(new URL("/", request.url));
     }
   }
 
   return NextResponse.next();
 });
-
-// export default createMiddleware(aj, async (request: NextRequest) => {
-//   const { pathname } = request.nextUrl;
-//   const session = getSessionCookie(request);
-//   const userRole = request.cookies.get("role")?.value?.toLowerCase();
-
-//   // Protect Admin Routes
-//   if (pathname.startsWith("/admin")) {
-//     if (!session) return NextResponse.redirect(new URL("/login", request.url));
-//     if (userRole !== "admin")
-//       return NextResponse.redirect(new URL("/admin", request.url));
-//   }
-
-//   if (pathname.startsWith("/educator")) {
-//     if (!session) return NextResponse.redirect(new URL("/login", request.url));
-
-//     // allow both educator AND student
-//     if (userRole !== "educator" && userRole !== "student") {
-//       return NextResponse.redirect(new URL("/", request.url));
-//     }
-//   }
-
-//   // // Protect Educator Routes
-//   if (pathname.startsWith("/educator")) {
-//     if (!session) return NextResponse.redirect(new URL("/login", request.url));
-//     if (userRole !== "educator")
-//       return NextResponse.redirect(new URL("/", request.url));
-//   }
-
-//   // Protect Student Routes
-//   if (pathname.startsWith("/educators")) {
-//     if (!session) return NextResponse.redirect(new URL("/login", request.url));
-//     if (userRole !== "student") {
-//       return NextResponse.redirect(new URL("/", request.url));
-//     }
-//   }
-
-//   return NextResponse.next();
-// });
-
-// export const config = {
-//   matcher: ["/((?!_next/static|_next/image|favicon.ico|api/auth|public).*)"],
-// };

@@ -6,12 +6,12 @@ import prisma from "@/lib/prisma";
 export async function adminGetDashboardStats() {
   await requireAdmin();
 
-  const [totalStudents, totalEducators, totalCourses, totalLessons] =
+  const [totallearners, totalEducators, totalCourses, totalLessons] =
     await Promise.all([
       //total students
       prisma.user.count({
         where: {
-          role: "Student",
+          role: "Learner",
         },
       }),
 
@@ -30,7 +30,7 @@ export async function adminGetDashboardStats() {
     ]);
 
   return {
-    totalStudents,
+    totallearners,
     totalEducators,
     totalCourses,
     totalLessons,

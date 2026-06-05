@@ -36,6 +36,13 @@ model User {
   educatorAppointments   Appointment[]     @relation("EducatorAppointments")
   availabilities        Availability[]
   payout                Payout[]
+  sentMessages          Message[] @relation("SentMessages")
+  receivedMessages      Message[] @relation("ReceivedMessages")
+  communityMemberships  CommunityMember[]
+  userPoints            UserPoints[]
+  enrollmentProgress    EnrollmentProgress[]
+  communityPosts        CommunityPost[]
+  postComments          PostComment[]
 
   @@unique([email])
   @@map("user")
@@ -55,8 +62,8 @@ model Availability {
 
 model Appointment {
   id             String   @id @default(cuid())
-  studentId      String
-  student        User     @relation("StudentAppointments", fields: [studentId], references: [id], onDelete: Cascade)
+  learnerId      String
+  learner        User     @relation("StudentAppointments", fields: [learnerId], references: [id], onDelete: Cascade)
   educatorId     String
   educator             User     @relation("EducatorAppointments", fields: [educatorId], references: [id], onDelete: Cascade)
   startTime             DateTime
@@ -64,6 +71,9 @@ model Appointment {
   status                AppointmentStatus   @default(Scheduled)
   notes                 String?   @db.Text
   studentDescription    String?   @db.Text
+
+  sessionType     SessionType
+  payoutStatus    PayoutStatus    @default(Unpaid)
 
   // Video Session fields
   videoSessionId      String?
@@ -77,7 +87,7 @@ model Appointment {
 
   @@index([status, startTime])
   @@index([educatorId, startTime])
-  @@index([studentId, createdAt])
+  @@index([learnerId, createdAt])
 }
 
 model Subscription {
@@ -91,10 +101,8 @@ model Subscription {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
   cancelAtPeriodEnd       Boolean @default(false)
-
   userId                  String? @unique
   user                    User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
 }
 
 model Session {
@@ -170,6 +178,7 @@ model Course {
   userId           String
   chapter         Chapter[]
   enrollment      Enrollment[]
+    enrollmentProgress EnrollmentProgress[]
 }
 
 model Chapter {
@@ -219,6 +228,23 @@ model Enrollment {
   @@unique([userId, courseId])
 }
 
+model EnrollmentProgress {
+  id           String   @id @default(uuid())
+
+  userId       String
+  courseId     String
+
+  progress     Float    @default(0) // 0 - 100
+  lastLessonId String?
+
+  updatedAt    DateTime @updatedAt
+
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+}
+
 model LessonProgress {
   id String @id @default(uuid())
 
@@ -240,7 +266,6 @@ model Payout {
   educatorId            String
   educator              User           @relation(fields: [educatorId], references: [id], onDelete: Cascade)
   amount                Float
-  credits               Int
   platformFee           Float
   netAmount             Float
   paypalEmail           String
@@ -254,6 +279,83 @@ model Payout {
   @@index([educatorId, status])
 }
 
+model Community {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  smallDescription String
+  description String
+  category    String
+  fileKey     String
+  videoKey    String?
+  price       Float    @default(0)
+  memberCount Int      @default(0)
+  onlineCount Int      @default(0)
+  adminCount  Int      @default(1)
+  createdAt   DateTime @default(now())
+  members     CommunityMember[]
+  posts CommunityPost[]
+  onboardingTasks CommunityOnboardingTask[]
+  userPoints UserPoints[]
+}
+
+model CommunityMember {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  communityId  String
+  community    Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  role         CommunityRole @default(Member)
+  status       MembershipStatus @default(Active)
+  joinedAt     DateTime @default(now())
+  @@unique([userId, communityId])
+  @@index([communityId])
+  @@index([userId])
+}
+
+
+
+model CommunityOnboardingTask {
+  id           String   @id @default(cuid())
+
+  communityId  String
+  title        String
+  order        Int
+  isActive     Boolean @default(true)
+
+  community    Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@index([communityId])
+}
+
+model UserPoints {
+  id        String @id @default(cuid())
+
+  userId    String
+  communityId String?
+
+  points    Int @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  User      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Community Community? @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, communityId])
+}
+
+enum CommunityRole {
+  Member
+  Admin
+  Owner
+}
+
+enum MembershipStatus {
+  Active
+  Pending
+  Banned
+  Cancelled
+}
 
 model Chat {
   id        String   @id @default(uuid())
@@ -262,17 +364,23 @@ model Chat {
 }
 
 model Message {
-  id      String   @id @default(uuid())
-  role    String
-  content String
-  chatId  String
-  chat    Chat     @relation(fields: [chatId], references: [id])
+  id        String   @id @default(uuid())
+  chatId    String
+  senderId  String
+  receiverId String?
+  content   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  chat      Chat     @relation(fields: [chatId], references: [id])
+  sender    User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiver  User?    @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  @@index([receiverId, read])
 }
 
 
 enum UserRole {
   Unassigned
-  Student
+  Learner
   Educator
   Admin
 }
@@ -314,12 +422,6 @@ enum EnrollmentStatus {
   Cancelled
 }
 
-enum PaymentStatus {
-  Pending
-  Paid
-  Failed
-  Refunded
-}
 
 enum SubscriptionStatus {
   active
@@ -331,9 +433,11 @@ enum SubscriptionStatus {
   unpaid
 }
 
+
 enum PayoutStatus {
+  Unpaid
   Processing
-  Processed
+  Paid
 }
 
 enum TransactionStatus {
@@ -349,3 +453,48 @@ enum PlanType {
   FlexPay_60m
   Monthly
 }
+
+enum SessionType {
+  THIRTY_MIN
+  FORTY_FIVE_MIN
+  SIXTY_MIN
+  MONTHLY_SUBSCRIPTION
+}
+
+
+model CommunityPost {
+  id          String   @id @default(cuid())
+  communityId String
+  userId    String
+  title       String?
+  content     String?
+  category    String?
+  isPublished Boolean  @default(true)
+  isPinned    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes     PostLike[]
+  comments  PostComment[]
+  @@index([communityId, createdAt])
+}
+
+model PostLike {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@unique([userId, postId]) 
+}
+
+model PostComment {
+  id        String        @id @default(cuid())
+  content   String
+  postId    String
+  userId    String
+  createdAt DateTime      @default(now())
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+

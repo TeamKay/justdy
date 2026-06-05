@@ -3,7 +3,7 @@ import { IconLogout } from "@tabler/icons-react";
 
 export function HeaderWelcome({ name }: { name: string }) {
   return (
-    <div className="w-full rounded-md p-0 backdrop-blur-md flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row md:items-center md:justify-between gap-0">
       <div>
         <h3 className="text-lg font-semibold text-white">
           Welcome back, <span className="text-[#DFFF00]">{name}</span>

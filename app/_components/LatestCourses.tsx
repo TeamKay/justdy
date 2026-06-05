@@ -20,7 +20,7 @@ export default async function LatestCourses() {
           ))}
         </div>
       ) : (
-        <div className="relative overflow-hidden rounded-md p-6 md:pt-10 md:pb-30 text-center">
+        <div className="relative max-w-7xl mx-auto px-12 rounded-md p-8 md:p-25 text-center shadow-sm backdrop-blur-md">
           <div className="relative z-10 flex flex-col items-center">
             {/* Icon */}
             <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-md bg-white/10 border border-white/10">

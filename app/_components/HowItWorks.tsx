@@ -3,7 +3,7 @@ import React from "react";
 
 const cards = [
   {
-    title: "Private Learning Studio",
+    title: "Community Learning",
     tag: "Available now",
     link: "/session",
     tagColor: "text-blue-400 bg-blue-400/10 border-blue-400/20",
@@ -75,7 +75,7 @@ const cards = [
 
 export default function HowItWorks() {
   return (
-    <section className="bg-background mt-5 mb-30 px-6">
+    <section className="bg-background py-20 px-0">
       <div className="max-w-7xl mx-auto px-8">
         <div className="text-center mb-10">
           <h2 className="text-4xl font-semibold text-white mb-4 tracking-tight">

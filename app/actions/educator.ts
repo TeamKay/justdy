@@ -143,7 +143,7 @@ export async function getEducatorAppointments() {
         educatorId: educator.id,
       },
       include: {
-        student: true,
+        learner: true,
         educator: true,
       },
       orderBy: {
@@ -207,7 +207,7 @@ export async function cancelAppointment(formData: FormData) {
 
     if (
       appointment.educatorId !== user.id &&
-      appointment.studentId !== user.id
+      appointment.learnerId !== user.id
     ) {
       throw new Error("You are not authorized to cancel this appointment");
     }
@@ -265,7 +265,7 @@ export async function cancelAppointment(formData: FormData) {
 
     if (user.role === "Educator") {
       revalidatePath("/educator");
-    } else if (user.role === "Student") {
+    } else if (user.role === "Learner") {
       revalidatePath("/appointments");
     }
 
@@ -363,7 +363,7 @@ export async function markAppointmentCompleted(formData: FormData) {
         educatorId: educator.id,
       },
       include: {
-        student: true,
+        learner: true,
       },
     });
 

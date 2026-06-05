@@ -1,112 +1,109 @@
-import React, { ReactNode } from "react";
-import { BotIcon, BarChart3, Database, Cloud, Grid3X3 } from "lucide-react";
+import Link from "next/link";
+import React from "react";
 
-type GlassCardProps = {
-  title: string;
-  icon: ReactNode;
-  desc: string;
-};
-
-export default function AiBotInterface() {
+export default function AiIntegrationBanner() {
   return (
-    <div className="min-h-screen bg-background text-gray-400 relative overflow-hidden font-sans">
-      {/* FLOATING DATA LINES */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/3 left-1/4 w-px h-40 bg-blue-500/20 rotate-45" />
-        <div className="absolute top-1/2 right-1/3 w-px h-52 bg-blue-500/10 -rotate-12" />
-      </div>
+    <div className="min-h-screen w-full bg-background flex items-center justify-center p-6 md:p-12 font-sans overflow-hidden select-none">
+      <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative">
+        {/* LEFT SIDE: SMARTPHONE & ROBOT GRAPHIC */}
+        <div className="lg:col-span-6 flex items-center justify-center relative min-h-112.5 md:min-h-137.5">
+          {/* Ambient Glow Effects */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-blue-400/40 rounded-full blur-[80px] animate-pulse" />
+          <div className="absolute top-1/3 left-1/4 w-72 h-72 bg-cyan-300/20 rounded-full blur-[100px]" />
 
-      <div className="relative max-w-7xl mx-auto px-8 py-16 grid grid-cols-1 md:grid-cols-12 gap-8 z-10">
-        {/* HERO */}
-        <div className="md:col-span-12 flex flex-col items-center justify-center mb-10">
-          <h1 className="text-white text-3xl md:text-3xl font-semibold mt-6">
-            AI Learning System
-          </h1>
-          <p className="text-gray-500 mt-2 text-center max-w-md">
-            An intelligent tutoring platform that adapts to each student,
-            delivers real-time explanations, and accelerates mastery with AI.
-          </p>
+          {/* Holographic Data UI Floating Shapes */}
+          <div className="absolute left-[10%] top-[20%] w-10 h-10 border border-white/20 rounded-xl rotate-12 backdrop-blur-sm flex items-center justify-center text-white/40 text-xs">
+            ✕
+          </div>
+          <div className="absolute right-[15%] top-[30%] w-8 h-8 border border-white/20 rounded-md -rotate-12 backdrop-blur-sm" />
+          <div className="absolute left-[8%] bottom-[25%] w-12 h-12 border border-white/10 rounded-lg rotate-45 backdrop-blur-sm" />
 
-          {/* BOT */}
-          <div className="relative pt-5">
-            <div className="absolute inset-0 rounded-full blur-3xl bg-blue-600/30 animate-pulse" />
-
-            <div className="w-56 h-56 bg-white rounded-full flex flex-col items-center justify-center border border-white/20 shadow-2xl relative">
-              <div className="flex gap-4 mb-4">
-                <div className="w-12 h-6 bg-blue-600 rounded-full" />
-                <div className="w-12 h-6 bg-blue-600 rounded-full" />
-              </div>
-              <div className="w-20 h-2 bg-blue-300 rounded-full" />
+          {/* Smartphone Container */}
+          <div className="relative w-64 h-120 bg-linear-to-b from-white/10 to-white/5 rounded-[40px] border border-white/30 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] backdrop-blur-md transform -rotate-6 flex flex-col justify-between p-4 overflow-hidden group hover:rotate-0 transition-transform duration-700 ease-out">
+            {/* Top Speaker/Camera Bar */}
+            <div className="w-20 h-4 bg-black/30 rounded-full mx-auto mb-2 flex items-center justify-end px-2">
+              <div className="w-2 h-1 bg-white/20 rounded-full" />
             </div>
 
-            {/* EARS */}
-            <div className="absolute top-1/2 -left-8 -translate-y-1/2 w-12 h-20 bg-white/80 backdrop-blur rounded-l-3xl" />
-            <div className="absolute top-1/2 -right-8 -translate-y-1/2 w-12 h-20 bg-white/80 backdrop-blur rounded-r-3xl" />
+            {/* Glowing UI Wireframes inside Phone */}
+            <div className="flex-1 w-full border border-white/10 rounded-2xl p-3 flex flex-col justify-between bg-linear-to-b from-white/5 to-transparent">
+              <div className="flex justify-between items-center">
+                <div className="bg-white/20 px-3 py-1 rounded-full text-[10px] text-white font-mono tracking-wider">
+                  12:47
+                </div>
+                <div className="w-4 h-2 bg-white/40 rounded-sm" />
+              </div>
+
+              {/* Chart Lines Simulation */}
+              <div className="space-y-2 opacity-60">
+                <div className="h-1 bg-linear-to-r from-cyan-400 to-transparent rounded-full w-3/4" />
+                <div className="h-1 bg-linear-to-r from-blue-400 to-transparent rounded-full w-1/2" />
+                <div className="h-1 bg-linear-to-r from-white/30 to-transparent rounded-full w-5/6" />
+              </div>
+            </div>
+          </div>
+
+          {/* FLOATING 3D-STYLE ROBOT */}
+          <div className="absolute top-[18%] left-[22%] transform translate-x-4 -translate-y-4 filter drop-shadow-[0_35px_35px_rgba(0,0,0,0.6)] animate-bounce animation-duration-[5s] flex flex-col items-center">
+            {/* Head */}
+            <div className="w-44 h-32 bg-linear-to-b from-white via-slate-100 to-slate-200 rounded-[50px] shadow-inner relative flex items-center justify-center p-4 border-b-4 border-slate-300">
+              {/* Glossy Reflection overlay */}
+              <div className="absolute top-2 left-6 right-6 h-6 bg-white/60 rounded-full blur-[1px]" />
+
+              {/* Screen Face */}
+              <div className="w-[85%] h-[80%] bg-[#09152e] rounded-[35px] flex items-center justify-center gap-5 p-2 shadow-inner border border-black/50">
+                {/* Glowing Blue Eyes */}
+                <div className="w-8 h-8 bg-cyan-400 rounded-full shadow-[0_0_15px_#22d3ee] animate-pulse" />
+                <div className="w-8 h-8 bg-cyan-400 rounded-full shadow-[0_0_15px_#22d3ee] animate-pulse" />
+              </div>
+
+              {/* Headphones/Ears */}
+              <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-5 h-14 bg-slate-400 rounded-l-xl shadow-md border-r border-slate-500" />
+              <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-5 h-14 bg-slate-400 rounded-r-xl shadow-md border-l border-slate-500" />
+            </div>
+
+            {/* Neck Connection */}
+            <div className="w-12 h-3 bg-slate-400/80 -mt-1 shadow-inner" />
+
+            {/* Body */}
+            <div className="w-36 h-24 bg-linear-to-b from-white to-slate-200 rounded-[40px] relative shadow-lg border-b-4 border-slate-300 flex items-center justify-center">
+              {/* Decorative Chest Line */}
+              <div className="w-16 h-1 bg-slate-300 rounded-full absolute top-4" />
+
+              {/* Left Arm */}
+              <div className="absolute -left-6 top-4 w-6 h-14 bg-white rounded-full origin-top rotate-12 shadow-md border-b-2 border-slate-300" />
+              {/* Right Arm */}
+              <div className="absolute -right-6 top-4 w-6 h-14 bg-white rounded-full origin-top -rotate-12 shadow-md border-b-2 border-slate-300" />
+            </div>
           </div>
         </div>
 
-        {/* LEFT */}
-        <div className="md:col-span-4">
-          <GlassCard
-            title="Student Identity & Profiles"
-            icon={<Grid3X3 className="w-5 h-5 text-blue-400" />}
-            desc="Secure student accounts with personalized profiles, learning history, and progress tracking."
-          />
-        </div>
+        {/* RIGHT SIDE: TYPOGRAPHY BANNER CONTENT */}
+        <div className="lg:col-span-6 flex flex-col items-center lg:items-start text-center lg:text-left space-y-4">
+          {/* Small Branding Header */}
+          <div className="flex items-center gap-1 tracking-wider text-xs font-black text-[#0d2c7f] bg-white px-3 py-1 rounded-md shadow-sm">
+            24/7 <span className="text-blue-600">AI Tutor</span>
+          </div>
 
-        {/* CENTER */}
-        <div className="md:col-span-4 flex flex-col gap-6 items-center">
-          <GlassCard
-            title="AI Tutor Engine"
-            icon={<BotIcon className="w-5 h-5 text-blue-400" />}
-            desc="Real-time AI explanations, adaptive questioning, and intelligent guidance tailored to each learner."
-          />
-        </div>
+          {/* Dynamic Typography Stack */}
+          <div className="space-y-1">
+            <h3 className="text-white text-2xl md:text-2xl font-medium tracking-tight drop-shadow-sm">
+              Explore the Future of Learning with Our
+            </h3>
+            <h1 className="text-5xl md:text-7xl font-black text-[#f0f022] tracking-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.25)] bg-clip-text bg-linear-to-b from-white via-white to-blue-100 py-1">
+              Smart Tutor
+            </h1>
+          </div>
 
-        {/* RIGHT */}
-        <div className="md:col-span-4">
-          <GlassCard
-            title="Learning Data System"
-            icon={<Database className="w-5 h-5 text-blue-400" />}
-            desc="Stores student interactions, performance data, and learning patterns to continuously improve recommendations."
-          />
-        </div>
-
-        {/* BOTTOM LEFT */}
-        <div className="md:col-span-6">
-          <GlassCard
-            title="Interactive Learning API"
-            icon={<Cloud className="w-5 h-5 text-blue-400" />}
-            desc="Delivers real-time sessions, voice tutoring, and seamless AI interactions across devices."
-          />
-        </div>
-
-        {/* BOTTOM RIGHT */}
-        <div className="md:col-span-6">
-          <GlassCard
-            title="AI Learning Analytics"
-            icon={<BarChart3 className="w-5 h-5 text-blue-400" />}
-            desc="Tracks progress, identifies weak areas, and provides actionable insights to accelerate student performance."
-          />
+          {/* Pill-shaped Container for Subtitle */}
+          <Link
+            href="/ai-tutor"
+            className="inline-flex items-center gap-2 text-sm font-medium text-white bg-[#857938] border border-neutral-700 px-10 py-3 rounded-lg transition-all duration-300 hover:bg-neutral-700 hover:border-neutral-600"
+          >
+            Try it now
+          </Link>
         </div>
       </div>
     </div>
   );
 }
-
-/* GLASS CARD */
-const GlassCard = ({ title, icon, desc }: GlassCardProps) => {
-  return (
-    <div className="relative group">
-      <div className="absolute inset-0 bg-background blur-2xl opacity-0 group-hover:opacity-100 transition" />
-
-      <div className="relative bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-6 hover:-translate-y-1 transition-all duration-300">
-        <div className="flex items-center gap-3 mb-4">
-          {icon}
-          <h3 className="text-white font-medium">{title}</h3>
-        </div>
-        <p className="text-sm text-gray-500 leading-relaxed">{desc}</p>
-      </div>
-    </div>
-  );
-};

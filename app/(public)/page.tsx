@@ -1,18 +1,14 @@
-import Testimonials from "../_components/Testimonials";
-import CallToAction from "../_components/CallToAction";
-import LandingPage from "../_components/LandingPage";
 import AITutor from "../_components/AITutor";
+import CallToAction from "../_components/CallToAction";
 import HowItWorks from "../_components/HowItWorks";
-import LatestCourses from "../_components/LatestCourses";
-import { PricingTable } from "../_components/PricingTable";
+import LandingPage from "../_components/LandingPage";
+import Testimonials from "../_components/Testimonials";
 
-export default async function HomePage() {
+export default function Home() {
   return (
     <>
       <LandingPage />
       <HowItWorks />
-      <LatestCourses />
-      <PricingTable />
       <AITutor />
       <Testimonials />
       <CallToAction />

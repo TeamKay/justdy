@@ -16,7 +16,7 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Online Tutor | Justdy Learning Platform",
+  title: "Justdy| Learning from a community of experts",
   description: "Where smart learning takes place",
   icons: {
     icon: "/logo.ico",
@@ -28,9 +28,6 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // const session = await auth.api.getSession({
-  //   headers: await headers(),
-  // });
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${playfair.variable} font-sans`}>

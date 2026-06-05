@@ -1,5 +1,5 @@
 "use client";
-import { BarChart3, Calendar, Coins, TrendingUp } from "lucide-react";
+import { BarChart3, Coins, TrendingUp } from "lucide-react";
 
 import { redirect } from "next/navigation";
 import { useSession } from "@/lib/auth-client";
@@ -34,7 +34,6 @@ export default function EducatorDashboard({
   if (!session)
     return <div className="p-8 text-center text-red-500">Access Denied</div>;
 
-  const credits = (session.user as { credits?: number }).credits ?? 0;
   const scheduledAppointments =
     appointments?.filter((app) => app.status === "Scheduled") || [];
 
@@ -82,13 +81,6 @@ export default function EducatorDashboard({
       color: "text-blue-400",
     },
     {
-      label: "Credits",
-      value: credits,
-      sub: `$${credits.toFixed(2)} ready`,
-      icon: Calendar,
-      color: "text-purple-400",
-    },
-    {
       label: "Students",
       value: 0,
       sub: "Enrolled",
@@ -102,7 +94,7 @@ export default function EducatorDashboard({
       {/* Welcome Card */}
 
       {/* 2. Other Cards arranged horizontally below */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {stats.map((stat, i) => (
           <Card
             key={i}

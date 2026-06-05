@@ -56,8 +56,19 @@ interface Payout {
   createdAt: string | Date;
 }
 
+interface PendingPayoutItem {
+  id: string;
+  educator: { name: string; email: string; specialty: string };
+  amount: number;
+  platformFee: number;
+  netAmount: number;
+  paypalEmail: string;
+  createdAt: Date;
+  // credits: number; <--- ❌ DELETE THIS LINE
+}
+
 interface PendingPayoutsProps {
-  payouts: Payout[];
+  payouts: PendingPayoutItem[];
 }
 
 export function PendingPayouts({ payouts = [] }: PendingPayoutsProps) {
@@ -170,9 +181,7 @@ export function PendingPayouts({ payouts = [] }: PendingPayoutsProps) {
                         <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">
                           Credits
                         </p>
-                        <p className="text-white font-semibold">
-                          {payout.credits}
-                        </p>
+                        <p className="text-white font-semibold"></p>
                       </div>
                     </div>
 

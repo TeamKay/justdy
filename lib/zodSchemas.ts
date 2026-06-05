@@ -19,6 +19,12 @@ export const courseCategories = [
   "Teaching & Academics",
 ] as const;
 
+export const communityCategories = [
+  "IT & Software",
+  "Photography & Video",
+  "Teaching & Academics",
+] as const;
+
 export const loginSchema = z.object({
   email: z.string().email("Invalid email"),
   password: z.string().min(8, "Password must be at least 8 characters"),
@@ -102,8 +108,23 @@ export const educatorSchema = z.object({
   description: z.string().min(3).max(500),
 });
 
+export const communitySchema = z.object({
+  name: z.string().min(1),
+  slug: z.string().optional(),
+  smallDescription: z
+    .string()
+    .min(10, "Small description must be at least 10 characters")
+    .max(500, "Small description cannot exceed 500 characters"),
+  description: z.string().min(1),
+  category: z.string().min(1),
+  fileKey: z.string().min(1),
+  videoKey: z.string().min(1),
+  price: z.number().optional(),
+});
+
 export type CourseSchemaType = z.output<typeof courseSchema>;
 export type ChapterSchemaType = z.infer<typeof chapterSchema>;
 export type LessonSchemaType = z.infer<typeof lessonSchema>;
 export type SettingsSchemaType = z.infer<typeof settingsSchema>;
 export type EducatorSchemaType = z.infer<typeof educatorSchema>;
+export type CommunitySchemaType = z.output<typeof communitySchema>;

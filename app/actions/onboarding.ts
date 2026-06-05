@@ -25,8 +25,20 @@ export async function setUserRole(formData: FormData) {
 
   const role = formData.get("role") as string;
 
-  if (!role || !["Student", "Educator"].includes(role)) {
+  if (!role || !["Learner", "Educator"].includes(role)) {
     throw new Error("Invalid user selection");
+  }
+
+  // Extract and parse selected communities from frontend JSON string
+  const communitiesRaw = formData.get("communities") as string;
+  let communityIds: string[] = [];
+
+  if (communitiesRaw) {
+    try {
+      communityIds = JSON.parse(communitiesRaw);
+    } catch (e) {
+      console.error("Failed to parse communities selection array", e);
+    }
   }
 
   try {
@@ -35,21 +47,37 @@ export async function setUserRole(formData: FormData) {
      * STUDENT ONBOARDING
      * =========================
      */
-    if (role === "Student") {
+    if (role === "Learner") {
       await prisma.$transaction(async (tx) => {
-        // Update user role
+        // Update user role and map selected communities concurrently
         await tx.user.update({
           where: { id: session.user.id },
           data: {
-            role: "Student",
+            role: "Learner",
+            communityMemberships: {
+              createMany: {
+                data: communityIds.map((communityId) => ({
+                  communityId,
+                  role: "Member", // Maps to your CommunityRole Enum
+                  status: "Active", // Maps to your MembershipStatus Enum
+                })),
+                skipDuplicates: true,
+              },
+            },
           },
         });
 
-        // Ensure subscription exist
+        // Increment member counts for selected communities
+        if (communityIds.length > 0) {
+          await tx.community.updateMany({
+            where: { id: { in: communityIds } },
+            data: { memberCount: { increment: 1 } },
+          });
+        }
+
+        // Ensure subscription exists
         const existingSubscription = await tx.subscription.findFirst({
-          where: {
-            userId: session.user.id,
-          },
+          where: { userId: session.user.id },
         });
 
         if (!existingSubscription) {
@@ -66,8 +94,8 @@ export async function setUserRole(formData: FormData) {
         }
       });
 
-      //Set cookies
-      (await cookies()).set("role", "Student", { path: "/" });
+      // Set cookies
+      (await cookies()).set("role", "Learner", { path: "/" });
 
       revalidatePath("/");
       return { success: true, redirect: "/" };
@@ -88,17 +116,39 @@ export async function setUserRole(formData: FormData) {
         throw new Error("All fields are required for educator role");
       }
 
-      await prisma.user.update({
-        where: { id: session.user.id },
-        data: {
-          specialty,
-          experience: parseInt(experience, 10),
-          credentialUrl,
-          description,
-          role: "Educator",
-          verificationStatus: "Pending",
-        },
+      // Wrapped in transaction to protect role assignment and community counts
+      await prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: session.user.id },
+          data: {
+            specialty,
+            experience: parseInt(experience, 10),
+            credentialUrl,
+            description,
+            role: "Educator",
+            verificationStatus: "Pending",
+            communityMemberships: {
+              createMany: {
+                data: communityIds.map((communityId) => ({
+                  communityId,
+                  role: "Member",
+                  status: "Active",
+                })),
+                skipDuplicates: true,
+              },
+            },
+          },
+        });
+
+        // Increment member counts for selected communities
+        if (communityIds.length > 0) {
+          await tx.community.updateMany({
+            where: { id: { in: communityIds } },
+            data: { memberCount: { increment: 1 } },
+          });
+        }
       });
+
       (await cookies()).set("role", "Educator", { path: "/" });
       revalidatePath("/");
       return { success: true, redirect: "/educator/verification" };
@@ -137,9 +187,10 @@ export async function getCurrentUser() {
 // "use server";
 
 // import { auth } from "@/lib/auth";
+// import { PlanType, SubscriptionStatus } from "@/lib/generated/prisma/enums";
 // import prisma from "@/lib/prisma";
 // import { revalidatePath } from "next/cache";
-// import { headers } from "next/headers";
+// import { cookies, headers } from "next/headers";
 
 // export async function setUserRole(formData: FormData) {
 //   const session = await auth.api.getSession({
@@ -160,40 +211,90 @@ export async function getCurrentUser() {
 
 //   const role = formData.get("role") as string;
 
-//   if (!role || !["Student", "Educator"].includes(role)) {
-//     throw new Error("Invalid user role");
+//   if (!role || !["Learner", "Educator"].includes(role)) {
+//     throw new Error("Invalid user selection");
 //   }
 
 //   try {
-//     if (role === "Student") {
-//       await prisma.user.update({
-//         where: { id: session.user.id },
-//         data: { role: "Student" },
+//     /**
+//      * =========================
+//      * STUDENT ONBOARDING
+//      * =========================
+//      */
+//     if (role === "Learner") {
+//       await prisma.$transaction(async (tx) => {
+//         // Update user role
+//         await tx.user.update({
+//           where: { id: session.user.id },
+//           data: {
+//             role: "Learner",
+//           },
+//         });
+
+//         // Ensure subscription exist
+//         const existingSubscription = await tx.subscription.findFirst({
+//           where: {
+//             userId: session.user.id,
+//           },
+//         });
+
+//         if (!existingSubscription) {
+//           await tx.subscription.create({
+//             data: {
+//               userId: session.user.id,
+//               planId: PlanType.Free,
+//               status: SubscriptionStatus.active,
+//               currentPeriodStart: new Date(),
+//               interval: "month",
+//               currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+//             },
+//           });
+//         }
 //       });
 
+//       //Set cookies
+//       (await cookies()).set("role", "Learner", { path: "/" });
+
 //       revalidatePath("/");
-//       return { success: true, redirect: "/educators" };
+//       return { success: true, redirect: "/" };
 //     }
 
+//     /**
+//      * =========================
+//      * EDUCATOR ONBOARDING
+//      * =========================
+//      */
 //     if (role === "Educator") {
+//       const specialty = formData.get("specialty") as string;
+//       const experience = formData.get("experience") as string;
+//       const credentialUrl = formData.get("credentialUrl") as string;
+//       const description = formData.get("description") as string;
+
+//       if (!specialty || !experience || !credentialUrl || !description) {
+//         throw new Error("All fields are required for educator role");
+//       }
+
 //       await prisma.user.update({
 //         where: { id: session.user.id },
 //         data: {
-//           specialty: user.specialty,
-//           experience: user.experience,
-//           credentialUrl: user.credentialUrl,
-//           description: user.description,
+//           specialty,
+//           experience: parseInt(experience, 10),
+//           credentialUrl,
+//           description,
 //           role: "Educator",
 //           verificationStatus: "Pending",
 //         },
 //       });
+//       (await cookies()).set("role", "Educator", { path: "/" });
 //       revalidatePath("/");
 //       return { success: true, redirect: "/educator/verification" };
 //     }
 //   } catch (error) {
 //     console.error("Failed to set user role", error);
 //     throw new Error(
-//       `Failed to update user profile: ${error instanceof Error ? error.message : "Unknown error"}`,
+//       `Failed to update user profile: ${
+//         error instanceof Error ? error.message : "Unknown error"
+//       }`,
 //     );
 //   }
 // }

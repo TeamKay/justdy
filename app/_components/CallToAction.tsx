@@ -2,9 +2,8 @@ import Link from "next/link";
 
 export default function CTASection() {
   return (
-    <section className="bg-background py-20 flex justify-center items-center">
-      <div className="relative max-w-4xl w-full px-8 py-16 rounded-2xl border border-white/10 bg-linear-to-b from-zinc-900 to-black text-center">
-
+    <section className="bg-background py-10 flex justify-center items-center">
+      <div className="relative max-w-4xl mx-auto px-8 py-16 rounded-none border border-white/10 bg-background text-center">
         {/* Decorative corner borders */}
         <div className="absolute inset-0 pointer-events-none">
           {/* Top left */}
@@ -29,7 +28,6 @@ export default function CTASection() {
 
         {/* Buttons */}
         <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
-          
           {/* Free Tutorials Button */}
           <Link
             href="/courses"
@@ -38,18 +36,17 @@ export default function CTASection() {
             <span className="w-5 h-5 flex items-center justify-center border border-gray-400 rounded-full text-xs">
               ▶
             </span>
-            Free Courses
+            Courses
           </Link>
 
           {/* Join Waitlist Button */}
-         <Link
+          <Link
             href="/signup"
             className="flex items-center justify-center gap-2 px-6 py-3 rounded-sm bg-[#857938] text-white hover:bg-[#857938] transition font-medium"
           >
             Get Started
             <span>→</span>
           </Link>
-
         </div>
       </div>
     </section>

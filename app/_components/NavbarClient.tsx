@@ -25,19 +25,14 @@ import { useEffect, useState } from "react";
 
 const productItems = [
   {
-    title: "Courses",
-    href: "/courses",
+    title: "Communities",
+    href: "/communities",
+    icon: <Video className="h-5 w-5 text-red-500" />,
+  },
+  {
+    title: "Learn more",
+    href: "/learnmore",
     icon: <BookOpen className="h-5 w-5 text-blue-500" />,
-  },
-  {
-    title: "Sessions",
-    href: "/session",
-    icon: <Video className="h-5 w-5 text-red-500" />,
-  },
-  {
-    title: "AI Tutor",
-    href: "/aitutor",
-    icon: <Video className="h-5 w-5 text-red-500" />,
   },
 ];
 
@@ -55,9 +50,9 @@ const ROLE_NAV_CONFIG: Record<
     href: "/educator",
     icon: <GraduationCap className="h-4 w-4" />,
   },
-  student: {
-    label: "Student Dashboard",
-    href: "/student",
+  learner: {
+    label: "Learner Dashboard",
+    href: "/learner",
     icon: <User className="h-4 w-4" />,
   },
   unassigned: {

@@ -1,173 +1,121 @@
 "use client";
 
-import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, FileText, HelpCircle, Star } from "lucide-react";
-import Image from "next/image";
-import HeroImage from "@/public/images/hero.png";
+import { ArrowRight, Star } from "lucide-react";
+import Link from "next/link";
 
 export default function Hero() {
   return (
-    <section className="relative overflow-hidden bg-white dark:bg-background min-h-screen mt-20 font-sans">
-      {/* Background glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(13,44,87,0.08),transparent_60%)]" />
+    <section className="relative min-h-screen w-full bg-background text-white flex flex-col justify-between items-center px-6 pt-32 pb-12 overflow-hidden font-sans select-none">
+      {/* PERFECT CIRCLE.SO RADIATING RINGS BACKGROUND */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+        {/* Central Radial Glow Layer */}
+        <div className="absolute w-150 h-150 bg-[radial-gradient(circle_at_center,rgba(30,58,138,0.4)_0%,transparent_70%)] blur-2xl" />
+        <div className="absolute w-200 h-200 bg-[radial-gradient(circle_at_center,rgba(88,28,135,0.2)_0%,transparent_70%)] blur-3xl" />
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-12 py-20 grid lg:grid-cols-2 gap-14 items-center relative z-10">
-        {/* LEFT CONTENT */}
-        <div>
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-3 rounded-full bg-emerald-500/10 px-5 py-2 shadow-md border border-blue-200/20 mb-6"
-          >
-            <div className="relative flex items-center justify-center">
-              <span className="absolute h-3 w-3 rounded-full bg-blue-400 opacity-70 animate-ping" />
-              <span className="h-2.5 w-2.5 rounded-full bg-blue-300 animate-pulse" />
-            </div>
-            <span className="text-sm font-medium text-white tracking-wide">
-              AI-Powered Personalized Learning
-            </span>
-          </motion.div>
+        {/* Perfectly Centered Concentric Circles */}
+        <div className="absolute w-75 h-75 rounded-full border border-white/3" />
+        <div className="absolute w-125 h-125 rounded-full border border-white/4" />
+        <div className="absolute w-187.5 h-187.5 rounded-full border border-white/[0.035]" />
+        <div className="absolute w-262.5 h-262.5 rounded-full border border-white/2.5" />
+        <div className="absolute w-350 h-350 rounded-full border border-white/1.5" />
+        <div className="absolute w-450 h-450 rounded-full border border-white/[0.008]" />
 
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#0d2c57] dark:text-white leading-[1.2]">
-            Elevate Your Learning
-            <br />
-            Anytime, Anywhere
-            <br />
-            <span className="text-[#f4a11a]">In Just 4 Weeks</span>
-          </h1>
-
-          <p className="mt-6 text-lg text-muted-foreground dark:text-muted-foreground max-w-xl leading-relaxed">
-            Experience the recorded fast students growth with live tutoring,
-            AI-powered lessons, interactive practice, and structured learning
-            pathways built for modern education.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 mt-8">
-            <Link href="/signup" className="w-full sm:w-auto">
-              <button className="w-full sm:w-52 h-12 bg-[#857938] hover:bg-[#123d74] text-white font-semibold rounded-lg shadow-lg transition-all flex items-center justify-center gap-2">
-                Start Learning
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </Link>
-            <Link href="/educators" className="w-full sm:w-auto">
-              <button className="w-full sm:w-52 h-12 bg-white border border-gray-300 hover:border-[#0d2c57] text-[#0d2c57] font-semibold rounded-lg transition-all flex items-center justify-center">
-                Find Teachers
-              </button>
-            </Link>
-          </div>
+        {/* Orbiting Tech Nodes (Subtle Accent Highlights) */}
+        <div className="absolute w-125 h-125 animate-[spin_80s_linear_infinite]">
+          <span className="absolute top-0 left-1/2 w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.8)]" />
         </div>
+        <div className="absolute w-187.5 h-187.5 animate-[spin_120s_linear_infinite_reverse]">
+          <span className="absolute bottom-1/4 left-0 w-1 h-1 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.6)]" />
+        </div>
+      </div>
 
-        {/* RIGHT VISUAL - UPDATED WITH FLOATING CARDS */}
+      {/* HERO MAIN BODY */}
+      <div className="relative z-10 max-w-4xl mx-auto flex flex-col items-center text-center my-auto">
+        {/* Trust Review Pill Badge */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8 }}
-          className="relative flex justify-center items-center"
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="inline-flex items-center gap-2 bg-[#121626]/90 border border-slate-800/80 rounded-md px-4 py-1.5 shadow-xl shadow-black/20 mb-8 backdrop-blur-sm"
         >
-          {/* Red Circle Background Accent */}
-          <div className="absolute w-[80%] h-[80%] bg-red-500 rounded-full opacity-10 dark:opacity-20 blur-2xl" />
-          <div className="absolute w-[70%] h-[70%] border-2 border-dashed border-red-200 dark:border-red-900/30 rounded-full animate-[spin_20s_linear_infinite]" />
-
-          {/* Main Hero Image Wrapper */}
-          <div className="relative z-10 w-full max-w-112.5">
-            <Image
-              src={HeroImage}
-              alt="Student using tablet"
-              className="relative z-20 w-full h-auto drop-shadow-2xl"
-              priority
-            />
-
-            {/* Floating Card: FREE SESSION (Top Right) - NEW */}
-            <motion.div
-              animate={{ y: [0, 8, 0] }}
-              transition={{
-                duration: 3.5,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              className="absolute -top-12 -right-4 z-30 bg-white dark:bg-gray-900 p-3 rounded-md shadow-xl flex items-center gap-3 border border-emerald-100 dark:border-emerald-900/30 min-w-48"
-            >
-              <div className="bg-emerald-100 dark:bg-emerald-500/20 p-2 rounded-lg">
-                <Star className="w-5 h-5 text-emerald-600 animate-pulse" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-[#0d2c57] dark:text-white leading-none">
-                  1 Free Session
-                </p>
-                <p className="text-[10px] text-emerald-600 font-medium mt-1">
-                  On Signup
-                </p>
-              </div>
-            </motion.div>
-
-            {/* Floating Card 1: Video Lessons (Top Left) */}
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -top-4 -left-10 z-30 bg-white dark:bg-gray-900 p-3 rounded-md shadow-xl flex items-center gap-3 border border-gray-100 dark:border-gray-800 min-w-45"
-            >
-              <div className="bg-red-100 p-2 rounded-lg">
-                <FileText className="w-5 h-5 text-red-500" />
-              </div>
-              <div>
-                <p className="text-lg font-bold text-[#0d2c57] dark:text-white leading-none">
-                  4,000+
-                </p>
-                <p className="text-xs text-gray-500">Video Lessons</p>
-              </div>
-            </motion.div>
-
-            {/* Floating Card 2: Personalized Reporting (Mid Left) */}
-            <motion.div
-              animate={{ x: [0, -5, 0] }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute bottom-10 -left-20 z-30 bg-white dark:bg-gray-900 p-4 rounded-md shadow-2xl border border-gray-100 dark:border-gray-800 max-w-50"
-            >
-              <h4 className="text-sm font-bold text-[#0d2c57] dark:text-white mb-1">
-                Personalized Reporting
-              </h4>
-              <p className="text-[10px] text-gray-400 mb-3 leading-tight">
-                Get real-time improvement and mastery data
-              </p>
-              <div className="flex items-end gap-1 h-12">
-                <div className="w-2 h-8 bg-cyan-400 rounded-full" />
-                <div className="w-2 h-4 bg-cyan-200 rounded-full" />
-                <div className="w-2 h-6 bg-cyan-400 rounded-full" />
-                <div className="w-2 h-10 bg-cyan-400 rounded-full" />
-                <div className="w-2 h-5 bg-cyan-200 rounded-full" />
-                <div className="w-2 h-7 bg-cyan-400 rounded-full" />
-              </div>
-            </motion.div>
-
-            {/* Floating Card 3: Assessment Questions (Mid Right) */}
-            <motion.div
-              animate={{ y: [0, 10, 0] }}
-              transition={{
-                duration: 4.5,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              className="absolute top-1/2 -right-12 z-30 bg-white dark:bg-gray-900 p-3 rounded-md shadow-xl flex items-center gap-3 border border-gray-100 dark:border-gray-800 min-w-50"
-            >
-              <div className="bg-cyan-50 p-2 rounded-lg">
-                <HelpCircle className="w-5 h-5 text-cyan-600" />
-              </div>
-              <div>
-                <p className="text-lg font-bold text-[#0d2c57] dark:text-white leading-none">
-                  100,000+
-                </p>
-                <p className="text-xs text-gray-500">Assessment Questions</p>
-              </div>
-            </motion.div>
-
-            {/* Chat Bubble (Bottom Right) */}
-            <div className="absolute -bottom-4 right-0 z-40 bg-white dark:bg-gray-900 px-4 py-2 rounded-md shadow-lg border border-gray-100 dark:border-gray-800 flex items-center gap-2">
-              <span className="text-sm">👋 Hi! How can we help?</span>
+          {/* Mock Micro-Avatars Layout */}
+          <div className="flex -space-x-2">
+            <div className="w-5 h-5 rounded-full bg-linear-to-r from-red-500 to-orange-500 border border-[#070913] flex items-center justify-center text-[8px] font-bold">
+              G
+            </div>
+            <div className="w-5 h-5 rounded-full bg-linear-to-r from-blue-500 to-indigo-500 border border-[#070913] flex items-center justify-center text-[8px] font-bold">
+              A
+            </div>
+            <div className="w-5 h-5 rounded-full bg-linear-to-r from-emerald-500 to-teal-500 border border-[#070913] flex items-center justify-center text-[8px] font-bold">
+              P
             </div>
           </div>
+
+          {/* Star Rating icons */}
+          <div className="flex items-center gap-0.5 ml-1">
+            {[...Array(5)].map((_, i) => (
+              <Star
+                key={i}
+                className="w-3.5 h-3.5 text-amber-400 fill-amber-400"
+              />
+            ))}
+          </div>
+
+          <span className="text-xs font-medium text-slate-300 tracking-wide border-l border-slate-800 pl-2 ml-1">
+            70k+ reviews
+          </span>
         </motion.div>
+
+        {/* Clean, Massive Heading Layer */}
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.1 }}
+          className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight text-white leading-[1.1] max-w-3xl"
+        >
+          Elevate Your Learning <br />
+          <span className="text-[#ebd07a] drop-shadow-sm">
+            Anytime, Anywhere
+          </span>
+        </motion.h1>
+
+        {/* Minimal Subtitle Paragraph */}
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.2 }}
+          className="mt-6 text-base sm:text-lg text-slate-400/90 max-w-2xl mx-auto leading-relaxed font-light"
+        >
+          Experience the recorded fast students growth with live tutoring,
+          AI-powered lessons, interactive practice, and structured learning
+          pathways built for modern education.
+        </motion.p>
+
+        <div className="flex flex-col sm:flex-row gap-4 mt-8">
+          <Link href="/signup" className="w-full sm:w-auto">
+            {/* Added px-4 sm:px-0 below */}
+            <button className="w-full sm:w-52 h-12 px-4 sm:px-0 bg-[#857938] text-white hover:bg-[#5a30b5] text-sm rounded-md shadow-lg transition-all flex items-center justify-center gap-2">
+              Get Started
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </Link>
+          <Link href="/communities" className="w-full sm:w-auto">
+            {/* Added px-4 sm:px-0 below */}
+            <button className="w-full sm:w-52 h-12 px-4 sm:px-0 border border-emerald-400/20 text-sm hover:bg-emerald-100 dark:hover:bg-emerald-500/20 rounded-md transition-all flex items-center justify-center">
+              Explore Communities
+            </button>
+          </Link>
+        </div>
       </div>
+
+      {/* FOOTER: TRUSTED BY SATELLITE ROW */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1, delay: 0.5 }}
+        className="relative z-10 w-full max-w-6xl mx-auto mt-auto pt-8 border-t border-white/10 flex flex-col items-center gap-5"
+      ></motion.div>
     </section>
   );
 }
