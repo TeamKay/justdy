@@ -51,6 +51,7 @@ const navigationData = {
   ],
   learner: [
     { title: "Dashboard", url: "/learner", icon: LayoutDashboard },
+    { title: "Communities", url: "/learner/communities", icon: Camera },
     { title: "My Courses", url: "/learner/enrolled", icon: BookOpen },
     { title: "Bookings", url: "/learner/appointments", icon: Users },
     { title: "AI Tutor", url: "/learner/ai-tutor", icon: CreditCard },

@@ -1,4 +1,4 @@
-import EducatorProfile from "@/app/_components/educator-profile";
+import EducatorProfile from "@/app/_components/EducatorProfile";
 import {
   getAvailableTimeSlots,
   getEducatorById,
