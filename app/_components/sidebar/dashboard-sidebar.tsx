@@ -53,9 +53,7 @@ const navigationData = {
     { title: "Dashboard", url: "/learner", icon: LayoutDashboard },
     { title: "Communities", url: "/learner/communities", icon: Camera },
     { title: "My Courses", url: "/learner/enrolled", icon: BookOpen },
-    { title: "Bookings", url: "/learner/appointments", icon: Users },
-    { title: "AI Tutor", url: "/learner/ai-tutor", icon: CreditCard },
-    { title: "Messages", url: "/learner/messages", icon: Camera },
+    { title: "Appointments", url: "/learner/appointments", icon: Users },
     { title: "Settings", url: "/learner/settings", icon: Settings },
   ],
 };
