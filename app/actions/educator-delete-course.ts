@@ -3,10 +3,10 @@
 import { requireEducator } from "@/app/actions/require-educator";
 import arcjet, { fixedWindow } from "@/lib/arcjet";
 import prisma from "@/lib/prisma";
+import { deleteFromS3 } from "@/lib/s3";
 import { ApiResponse } from "@/lib/types";
 import { request } from "@arcjet/next";
 import { revalidatePath } from "next/cache";
-import { deleteFromS3 } from "@/lib/s3";
 
 const aj = arcjet.withRule(
   fixedWindow({
