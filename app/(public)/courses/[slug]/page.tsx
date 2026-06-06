@@ -1,4 +1,3 @@
-import { env } from "@/lib/env";
 import {
   IconBook,
   IconCategory,
@@ -8,7 +7,7 @@ import {
   IconPlayerPlay,
 } from "@tabler/icons-react";
 import { CheckIcon } from "lucide-react";
-import Image from "next/image";
+
 import { checkIfCourseBought } from "@/app/actions/user-is-enrolled";
 import Link from "next/link";
 import { EnrollmentButton } from "./_components/EnrollmentButton";
@@ -36,13 +35,13 @@ export default async function SlugPage({ params }: { params: Params }) {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="order-1 lg:col-span-2">
           <div className="relative aspect-video w-full overflow-hidden rounded-xl shadow-lg">
-            <Image
+            {/* <Image
               src={`https://${env.NEXT_PUBLIC_S3_BUCKET_NAME_IMAGES}.t3.storage.dev/${course.fileKey}`}
               alt=""
               fill
               className="object-cover"
               priority
-            />
+            /> */}
             <div className="absolute inset-0 bg-linear-to-t from-black/20 to-transparent"></div>
           </div>
 
