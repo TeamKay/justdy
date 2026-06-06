@@ -20,7 +20,12 @@ export default async function Page() {
   if (!user) return <div>User not found</div>;
 
   // 3. Cast the data directly to the component's expected prop type
-  type EducatorProfileProps = ComponentProps<typeof EducatorProfile>["user"];
+  type EducatorProfileUser = ComponentProps<typeof EducatorProfile>["educator"];
 
-  return <EducatorProfile user={user as EducatorProfileProps} />;
+  return (
+    <EducatorProfile
+      educator={user as EducatorProfileUser}
+      availableDays={[]}
+    />
+  );
 }
