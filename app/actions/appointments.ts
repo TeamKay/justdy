@@ -7,7 +7,6 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { Auth } from "@vonage/auth";
 import { Vonage } from "@vonage/server-sdk";
-
 import { MediaMode } from "@vonage/video";
 
 interface TimeSlot {
@@ -182,207 +181,207 @@ export async function getAvailableTimeSlots(educatorId: string) {
   }
 }
 
-// export async function bookAppointment(formData: FormData) {
-//   const session = await auth.api.getSession({
-//     headers: await headers(),
-//   });
+// // export async function bookAppointment(formData: FormData) {
+// //   const session = await auth.api.getSession({
+// //     headers: await headers(),
+// //   });
 
-//   if (!session?.user.id) {
-//     return {
-//       success: false,
-//       message: "Unauthorized",
-//     };
-//   }
+// //   if (!session?.user.id) {
+// //     return {
+// //       success: false,
+// //       message: "Unauthorized",
+// //     };
+// //   }
 
-//   try {
-//     const studentId = session.user.id;
-//     const availabilityId = formData.get("availabilityId") as string;
-//     const educatorId = formData.get("educatorId") as string;
-//     const studentDescription = formData.get("description") as string;
-//     const startTime = new Date(formData.get("startTime") as string);
-//     const endTime = new Date(formData.get("endTime") as string);
+// //   try {
+// //     const studentId = session.user.id;
+// //     const availabilityId = formData.get("availabilityId") as string;
+// //     const educatorId = formData.get("educatorId") as string;
+// //     const studentDescription = formData.get("description") as string;
+// //     const startTime = new Date(formData.get("startTime") as string);
+// //     const endTime = new Date(formData.get("endTime") as string);
 
-//     if (
-//       !educatorId ||
-//       isNaN(startTime.getTime()) ||
-//       isNaN(endTime.getTime()) ||
-//       !availabilityId
-//     ) {
-//       return {
-//         success: false,
-//         message: "Missing required booking information.",
-//       };
-//     }
+// //     if (
+// //       !educatorId ||
+// //       isNaN(startTime.getTime()) ||
+// //       isNaN(endTime.getTime()) ||
+// //       !availabilityId
+// //     ) {
+// //       return {
+// //         success: false,
+// //         message: "Missing required booking information.",
+// //       };
+// //     }
 
-//     const result = await prisma.$transaction(async (tx) => {
-//       // 1. CHECK FOR DUPLICATE BY SAME STUDENT
-//       const alreadyBookedByMe = await tx.appointment.findFirst({
-//         where: {
-//           availabilityId,
-//           studentId,
-//           status: "Scheduled",
-//         },
-//       });
+// //     const result = await prisma.$transaction(async (tx) => {
+// //       // 1. CHECK FOR DUPLICATE BY SAME STUDENT
+// //       const alreadyBookedByMe = await tx.appointment.findFirst({
+// //         where: {
+// //           availabilityId,
+// //           studentId,
+// //           status: "Scheduled",
+// //         },
+// //       });
 
-//       if (alreadyBookedByMe) {
-//         return {
-//           success: false,
-//           message: "You have already booked a seat in this session.",
-//         };
-//       }
+// //       if (alreadyBookedByMe) {
+// //         return {
+// //           success: false,
+// //           message: "You have already booked a seat in this session.",
+// //         };
+// //       }
 
-//       // 2. Validate Student
-//       const student = await tx.user.findFirst({
-//         where: {
-//           id: studentId,
-//           role: "Student",
-//         },
-//         include: {
-//           subscription: true,
-//         },
-//       });
+// //       // 2. Validate Student
+// //       const student = await tx.user.findFirst({
+// //         where: {
+// //           id: studentId,
+// //           role: "Student",
+// //         },
+// //         include: {
+// //           subscription: true,
+// //         },
+// //       });
 
-//       if (!student) {
-//         return {
-//           success: false,
-//           message: "Student not found",
-//         };
-//       }
+// //       if (!student) {
+// //         return {
+// //           success: false,
+// //           message: "Student not found",
+// //         };
+// //       }
 
-//       // 3. Validate Educator
-//       const educator = await tx.user.findUnique({
-//         where: {
-//           id: educatorId,
-//           role: "Educator",
-//           verificationStatus: "Verified",
-//         },
-//       });
+// //       // 3. Validate Educator
+// //       const educator = await tx.user.findUnique({
+// //         where: {
+// //           id: educatorId,
+// //           role: "Educator",
+// //           verificationStatus: "Verified",
+// //         },
+// //       });
 
-//       if (!educator) {
-//         return {
-//           success: false,
-//           message: "Educator not found or not verified",
-//         };
-//       }
+// //       if (!educator) {
+// //         return {
+// //           success: false,
+// //           message: "Educator not found or not verified",
+// //         };
+// //       }
 
-//       // 4. Time Overlap Check
-//       const overLappingAppointment = await tx.appointment.findFirst({
-//         where: {
-//           educatorId,
-//           status: "Scheduled",
-//           AND: [
-//             {
-//               startTime: {
-//                 lt: endTime,
-//               },
-//             },
-//             {
-//               endTime: {
-//                 gt: startTime,
-//               },
-//             },
-//           ],
-//         },
-//       });
+// //       // 4. Time Overlap Check
+// //       const overLappingAppointment = await tx.appointment.findFirst({
+// //         where: {
+// //           educatorId,
+// //           status: "Scheduled",
+// //           AND: [
+// //             {
+// //               startTime: {
+// //                 lt: endTime,
+// //               },
+// //             },
+// //             {
+// //               endTime: {
+// //                 gt: startTime,
+// //               },
+// //             },
+// //           ],
+// //         },
+// //       });
 
-//       if (overLappingAppointment) {
-//         return {
-//           success: false,
-//           message: "Educator is already booked for this timeframe.",
-//         };
-//       }
+// //       if (overLappingAppointment) {
+// //         return {
+// //           success: false,
+// //           message: "Educator is already booked for this timeframe.",
+// //         };
+// //       }
 
-//       const sessionId = await createVideoSession();
+// //       const sessionId = await createVideoSession();
 
-//       // Get active subscription
-//       const subscription = student.subscription;
+// //       // Get active subscription
+// //       const subscription = student.subscription;
 
-//       const currentPlan = subscription?.planId || "Free";
+// //       const currentPlan = subscription?.planId || "Free";
 
-//       // Monthly booking window
-//       const now = new Date();
+// //       // Monthly booking window
+// //       const now = new Date();
 
-//       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-//       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+// //       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+// //       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-//       // Count monthly sessions
-//       const monthlySessions = await tx.appointment.count({
-//         where: {
-//           studentId,
-//           status: {
-//             in: ["Scheduled", "Completed"],
-//           },
-//           createdAt: {
-//             gte: startOfMonth,
-//             lt: endOfMonth,
-//           },
-//         },
-//       });
+// //       // Count monthly sessions
+// //       const monthlySessions = await tx.appointment.count({
+// //         where: {
+// //           studentId,
+// //           status: {
+// //             in: ["Scheduled", "Completed"],
+// //           },
+// //           createdAt: {
+// //             gte: startOfMonth,
+// //             lt: endOfMonth,
+// //           },
+// //         },
+// //       });
 
-//       // FREE PLAN LIMIT
-//       if (currentPlan === "Free" && monthlySessions >= PLAN_LIMITS.Free) {
-//         return {
-//           success: false,
-//           upgradeRequired: true,
-//           plan: "Free",
-//           message:
-//             "You have already used your free live session. Upgrade to Standard or Premium to continue booking sessions.",
-//         };
-//       }
+// //       // FREE PLAN LIMIT
+// //       if (currentPlan === "Free" && monthlySessions >= PLAN_LIMITS.Free) {
+// //         return {
+// //           success: false,
+// //           upgradeRequired: true,
+// //           plan: "Free",
+// //           message:
+// //             "You have already used your free live session. Upgrade to Standard or Premium to continue booking sessions.",
+// //         };
+// //       }
 
-//       // STANDARD PLAN LIMIT
-//       if (
-//         currentPlan === "Standard" &&
-//         monthlySessions >= PLAN_LIMITS.Standard
-//       ) {
-//         return {
-//           success: false,
-//           upgradeRequired: true,
-//           plan: "Standard",
-//           message:
-//             "You have reached your 8 monthly live sessions limit on the Standard plan. Upgrade to Premium for unlimited sessions.",
-//         };
-//       }
+// //       // STANDARD PLAN LIMIT
+// //       if (
+// //         currentPlan === "Standard" &&
+// //         monthlySessions >= PLAN_LIMITS.Standard
+// //       ) {
+// //         return {
+// //           success: false,
+// //           upgradeRequired: true,
+// //           plan: "Standard",
+// //           message:
+// //             "You have reached your 8 monthly live sessions limit on the Standard plan. Upgrade to Premium for unlimited sessions.",
+// //         };
+// //       }
 
-//       // Create appointment
-//       const appointment = await tx.appointment.create({
-//         data: {
-//           studentId,
-//           educatorId,
-//           availabilityId,
-//           startTime,
-//           endTime,
-//           studentDescription,
-//           status: "Scheduled",
-//           videoSessionId: sessionId,
-//         },
-//       });
+// //       // Create appointment
+// //       const appointment = await tx.appointment.create({
+// //         data: {
+// //           studentId,
+// //           educatorId,
+// //           availabilityId,
+// //           startTime,
+// //           endTime,
+// //           studentDescription,
+// //           status: "Scheduled",
+// //           videoSessionId: sessionId,
+// //         },
+// //       });
 
-//       return {
-//         success: true,
-//         appointment,
-//       };
-//     });
+// //       return {
+// //         success: true,
+// //         appointment,
+// //       };
+// //     });
 
-//     revalidatePath("/student");
+// //     revalidatePath("/student");
 
-//     return result;
-//   } catch (error: unknown) {
-//     console.error("Create appointment error:", error);
+// //     return result;
+// //   } catch (error: unknown) {
+// //     console.error("Create appointment error:", error);
 
-//     if (error instanceof Error) {
-//       return {
-//         success: false,
-//         message: error.message,
-//       };
-//     }
+// //     if (error instanceof Error) {
+// //       return {
+// //         success: false,
+// //         message: error.message,
+// //       };
+// //     }
 
-//     return {
-//       success: false,
-//       message: "Error creating appointment",
-//     };
-//   }
-// }
+// //     return {
+// //       success: false,
+// //       message: "Error creating appointment",
+// //     };
+// //   }
+// // }
 
 export async function bookAppointment(formData: FormData) {
   const session = await auth.api.getSession({
@@ -399,8 +398,8 @@ export async function bookAppointment(formData: FormData) {
   try {
     const studentId = session.user.id;
     const availabilityId = formData.get("availabilityId") as string;
+    const learnerDescription = formData.get("learnerDescription") as string;
     const educatorId = formData.get("educatorId") as string;
-    const studentDescription = formData.get("description") as string;
     const startTime = new Date(formData.get("startTime") as string);
     const endTime = new Date(formData.get("endTime") as string);
 
@@ -448,7 +447,7 @@ export async function bookAppointment(formData: FormData) {
       const student = await tx.user.findFirst({
         where: {
           id: studentId,
-          role: "Student",
+          role: "Learner",
         },
         include: {
           subscription: true,
@@ -458,7 +457,7 @@ export async function bookAppointment(formData: FormData) {
       if (!student) {
         return {
           success: false,
-          message: "Student not found",
+          message: "Learner not found",
         };
       }
 
@@ -553,14 +552,15 @@ export async function bookAppointment(formData: FormData) {
 
       const appointment = await tx.appointment.create({
         data: {
-          studentId,
+          learnerId: studentId,
           educatorId,
           availabilityId,
           startTime,
           endTime,
-          studentDescription,
+          learnerDescription,
           status: "Scheduled",
           videoSessionId: sessionId,
+          sessionType: "FORTY_FIVE_MIN",
         },
       });
 
@@ -570,7 +570,7 @@ export async function bookAppointment(formData: FormData) {
       };
     });
 
-    revalidatePath("/student");
+    revalidatePath("/learner");
 
     return result;
   } catch (error: unknown) {
@@ -639,7 +639,7 @@ export async function generateVideoToken(formData: FormData) {
 
     if (
       appointment.educatorId !== user.id &&
-      appointment.studentId !== user.id
+      appointment.learnerId !== user.id
     ) {
       throw new Error("You are not authorized to join this call");
     }

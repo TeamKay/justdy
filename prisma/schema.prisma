@@ -32,7 +32,7 @@ model User {
   courses               Course[]
   enrollment            Enrollment[]
   lessonProgress        LessonProgress[]
-  studentAppointments    Appointment[]     @relation("StudentAppointments")
+  learnerAppointments    Appointment[]     @relation("LearnerAppointments")
   educatorAppointments   Appointment[]     @relation("EducatorAppointments")
   availabilities        Availability[]
   payout                Payout[]
@@ -63,14 +63,14 @@ model Availability {
 model Appointment {
   id             String   @id @default(cuid())
   learnerId      String
-  learner        User     @relation("StudentAppointments", fields: [learnerId], references: [id], onDelete: Cascade)
+  learner        User     @relation("LearnerAppointments", fields: [learnerId], references: [id], onDelete: Cascade)
   educatorId     String
   educator             User     @relation("EducatorAppointments", fields: [educatorId], references: [id], onDelete: Cascade)
   startTime             DateTime
   endTime               DateTime
   status                AppointmentStatus   @default(Scheduled)
   notes                 String?   @db.Text
-  studentDescription    String?   @db.Text
+  learnerDescription    String?   @db.Text
 
   sessionType     SessionType
   payoutStatus    PayoutStatus    @default(Unpaid)
@@ -178,7 +178,7 @@ model Course {
   userId           String
   chapter         Chapter[]
   enrollment      Enrollment[]
-    enrollmentProgress EnrollmentProgress[]
+  enrollmentProgress EnrollmentProgress[]
 }
 
 model Chapter {
@@ -312,8 +312,6 @@ model CommunityMember {
   @@index([communityId])
   @@index([userId])
 }
-
-
 
 model CommunityOnboardingTask {
   id           String   @id @default(cuid())

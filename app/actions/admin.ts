@@ -204,7 +204,7 @@ export async function approvePayout(formData: FormData) {
           id: payoutId as string,
         },
         data: {
-          status: "Processed",
+          status: "Paid",
           processedAt: new Date(),
           processedBy: admin?.id || "unknown",
         },
