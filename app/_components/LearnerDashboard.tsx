@@ -5,6 +5,11 @@ import React from "react";
 import Image from "next/image";
 
 // ---------------- TYPES ----------------
+type UserProfile = {
+  id?: string;
+  description?: string | null;
+  // Add other fields returned by your DB if necessary
+};
 
 type Appointment = {
   id: string;
@@ -33,6 +38,7 @@ type Props = {
   appointments?: Appointment[];
   courses?: CourseWithProgress[];
   communityMemberships?: CommunityMembership[];
+  userProfile?: UserProfile;
   plan?: string;
 };
 
