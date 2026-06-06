@@ -281,7 +281,7 @@ export default function CommunityCreationPage() {
           <div className="space-y-6">
             {/* THUMBNAIL */}
             <ImageUploader
-              onFileSelect={(file) => {
+              onChange={(file) => {
                 setSelectedImage(file);
                 form.setValue("fileKey", file ? file.name : "");
               }}
@@ -289,7 +289,7 @@ export default function CommunityCreationPage() {
 
             {/* VIDEO */}
             <VideoUploader
-              onFileSelect={(file) => {
+              onChange={(file) => {
                 setSelectedVideo(file);
                 form.setValue("videoKey", file ? file.name : "");
               }}
