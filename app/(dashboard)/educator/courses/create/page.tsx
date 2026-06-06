@@ -34,7 +34,7 @@ import {
 import { Input } from "@/app/_components/ui/input";
 import { Textarea } from "@/app/_components/ui/textarea";
 import { RichTextEditor } from "@/app/_components/rich-text-editor/Editor";
-import { Uploader } from "@/app/_components/file-uploader/Uploader";
+
 import {
   Select,
   SelectContent,
@@ -44,6 +44,7 @@ import {
 } from "@/app/_components/ui/select";
 import { FileText, Image as ImageIcon, Settings } from "lucide-react";
 import { CreateCourse } from "@/app/actions/educator-create-course";
+import { ImageUploader } from "@/app/_components/file-uploader/Uploader";
 
 export default function CourseCreationPage() {
   const router = useRouter();
@@ -425,10 +426,10 @@ export default function CourseCreationPage() {
                   render={({}) => (
                     <FormItem>
                       <FormControl>
-                        <Uploader
-                          fileTypeAccepted="image"
-                          onChange={setThumbnailFile}
-                          value={thumbnailFile}
+                        <ImageUploader
+                          onFileSelect={(file) => {
+                            setThumbnailFile(file);
+                          }}
                         />
                       </FormControl>
                       <FormMessage />

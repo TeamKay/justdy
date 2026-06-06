@@ -3,7 +3,6 @@
 import { requireEducator } from "@/app/actions/require-educator";
 import arcjet, { fixedWindow } from "@/lib/arcjet";
 import prisma from "@/lib/prisma";
-import { deleteFromS3 } from "@/lib/s3";
 import { ApiResponse } from "@/lib/types";
 import { request } from "@arcjet/next";
 import { revalidatePath } from "next/cache";
@@ -45,11 +44,6 @@ export async function deleteCourse(courseId: string): Promise<ApiResponse> {
         status: "error",
         message: "Course not found",
       };
-    }
-
-    // ✅ 2. Delete file from S3
-    if (course.fileKey) {
-      await deleteFromS3(course.fileKey);
     }
 
     // ✅ 3. Delete course from DB

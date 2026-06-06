@@ -27,8 +27,8 @@ import {
 } from "@/app/_components/ui/form";
 import { Input } from "@/app/_components/ui/input";
 import { RichTextEditor } from "@/app/_components/rich-text-editor/Editor";
-import { Uploader } from "@/app/_components/file-uploader/Uploader";
 import { updateLesson } from "../actions/update-lesson";
+import { ImageUploader, VideoUploader } from "./file-uploader/Uploader";
 
 interface iAppProps {
   data: AdminLessonType;
@@ -125,10 +125,9 @@ export function LessonForm({ chapterId, data, courseId }: iAppProps) {
                     <FormLabel>Thumbnail Image</FormLabel>
                     <FormControl>
                       {/* ✅ FIX: Cast string value safely to unknown then to File to satisfy component props without using 'any' */}
-                      <Uploader
+                      <ImageUploader
                         onChange={field.onChange}
                         value={field.value as unknown as File}
-                        fileTypeAccepted="image"
                       />
                     </FormControl>
                     <FormMessage />
@@ -144,10 +143,9 @@ export function LessonForm({ chapterId, data, courseId }: iAppProps) {
                     <FormLabel>Video File</FormLabel>
                     <FormControl>
                       {/* ✅ FIX: Cast string value safely to unknown then to File to satisfy component props without using 'any' */}
-                      <Uploader
+                      <VideoUploader
                         onChange={field.onChange}
                         value={field.value as unknown as File}
-                        fileTypeAccepted="video"
                       />
                     </FormControl>
                     <FormMessage />

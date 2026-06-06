@@ -38,7 +38,6 @@ import {
 import { Input } from "@/app/_components/ui/input";
 import { Textarea } from "@/app/_components/ui/textarea";
 import { RichTextEditor } from "@/app/_components/rich-text-editor/Editor";
-import { Uploader } from "@/app/_components/file-uploader/Uploader";
 import {
   Select,
   SelectContent,
@@ -56,6 +55,7 @@ import {
 } from "@/app/_components/ui/card";
 import { Separator } from "@/app/_components/ui/separator";
 import { editCourse } from "../actions/educator-edit-course";
+import { ImageUploader } from "./file-uploader/Uploader";
 
 interface iAppProps {
   data: AdminCourseSingularType;
@@ -262,8 +262,7 @@ export function EditCourseForm({ data }: iAppProps) {
                     <FormItem>
                       <FormControl>
                         {/* ✅ FIX: Avoids 'any' by using unknown-to-File casting contract */}
-                        <Uploader
-                          fileTypeAccepted="image"
+                        <ImageUploader
                           onChange={field.onChange}
                           value={field.value as unknown as File}
                         />
