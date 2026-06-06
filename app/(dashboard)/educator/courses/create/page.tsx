@@ -53,7 +53,8 @@ export default function CourseCreationPage() {
     null,
   );
 
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailFile] = useState<File | null>(null);
+  const [, setSelectedImage] = useState<File | null>(null);
 
   const form = useForm<CourseSchemaType>({
     resolver: zodResolver(courseSchema) as Resolver<CourseSchemaType>,
@@ -427,8 +428,10 @@ export default function CourseCreationPage() {
                     <FormItem>
                       <FormControl>
                         <ImageUploader
-                          onFileSelect={(file) => {
-                            setThumbnailFile(file);
+                          onChange={(file) => {
+                            // 👈 Change this to onChange
+                            setSelectedImage(file);
+                            form.setValue("fileKey", file ? file.name : "");
                           }}
                         />
                       </FormControl>
