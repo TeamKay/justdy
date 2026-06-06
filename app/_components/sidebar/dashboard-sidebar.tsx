@@ -29,7 +29,7 @@ import { NavUser } from "./nav-user";
 
 import { authClient } from "@/lib/auth-client";
 import MyLogo from "../Logo";
-import { Calendar, Clock } from "lucide-react";
+import { Calendar } from "lucide-react";
 
 const navigationData = {
   admin: [
@@ -42,12 +42,12 @@ const navigationData = {
   ],
   educator: [
     { title: "Dashboard", url: "/educator", icon: LayoutDashboard },
-    { title: "My Profile", url: "/educator/profile", icon: Users },
-    { title: "Availability", url: "/educator/availability", icon: Clock },
+    { title: "Communities", url: "/educator/communities", icon: Camera },
     { title: "Appointments", url: "/educator/appointments", icon: Calendar },
     { title: "My Courses", url: "/educator/courses", icon: BookOpen },
     { title: "Student Roster", url: "/educator/roster", icon: Users },
     { title: "My Earnings", url: "/educator/earnings", icon: CreditCard },
+    { title: "Settings", url: "/educator/settings", icon: Settings },
   ],
   learner: [
     { title: "Dashboard", url: "/learner", icon: LayoutDashboard },

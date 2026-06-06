@@ -1,4 +1,5 @@
-import LearnerCommunities from "@/app/_components/LearnerCommunities";
+import EducatorCommunities from "@/app/_components/EducatorCommunities";
+
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { headers } from "next/headers";
@@ -18,13 +19,7 @@ export default async function Page() {
   // =========================
   // 1. GLOBAL STATS (DB ONLY)
   // =========================
-  const [
-    enrolledCoursesCount,
-    upcomingBookingsCount,
-    communitiesCount,
-    unreadMessagesCount,
-    currentSubscriptionsCount,
-  ] = await Promise.all([
+  const [upcomingBookingsCount, communitiesCount] = await Promise.all([
     prisma.enrollment.count({
       where: { userId, status: "Active" },
     }),
@@ -45,17 +40,9 @@ export default async function Page() {
         },
       },
     }),
-    prisma.subscription.count({
-      where: { userId, status: "active" },
-    }),
   ]);
 
   const globalStats = [
-    {
-      title: "Courses Enrolled",
-      value: enrolledCoursesCount,
-      label: "Active learning",
-    },
     {
       title: "Upcoming Bookings",
       value: upcomingBookingsCount,
@@ -65,16 +52,6 @@ export default async function Page() {
       title: "Communities Joined",
       value: communitiesCount,
       label: "Active spaces",
-    },
-    {
-      title: "Unread Messages",
-      value: unreadMessagesCount,
-      label: "New alerts",
-    },
-    {
-      title: "Subscriptions",
-      value: currentSubscriptionsCount,
-      label: "Premium plan",
     },
   ];
 
@@ -210,7 +187,7 @@ export default async function Page() {
   // 5. RENDER DASHBOARD
   // =========================
   return (
-    <LearnerCommunities
+    <EducatorCommunities
       globalStats={globalStats}
       communities={communities}
       currentUserId={userId}
