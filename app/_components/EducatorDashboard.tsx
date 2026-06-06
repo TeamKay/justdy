@@ -59,7 +59,7 @@ export default function EducatorDashboard({
 
   // --- UploadThing Image Generation Logic ---
   // Safely extract the file key from your session's user object
-  const fileKey = session.user.imageUrl || session.user.image;
+  const fileKey = session.user.image || session.user.image;
 
   // Construct the secure CDN url using UploadThing's delivery format, falling back to local asset if null
   const userAvatarSrc = fileKey

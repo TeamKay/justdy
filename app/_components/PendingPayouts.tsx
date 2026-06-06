@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  AlertCircle,
   Check,
   Loader2,
   Mail,
@@ -25,7 +24,7 @@ import {
 } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { Alert, AlertDescription } from "./ui/alert";
+
 import {
   Dialog,
   DialogContent,
@@ -47,9 +46,8 @@ interface Payout {
     name: string;
     email: string;
     specialty: string | null;
-    credits: number;
   };
-  credits: number;
+
   platformFee: number;
   netAmount: number;
   paypalEmail: string;
@@ -255,11 +253,11 @@ export function PendingPayouts({ payouts = [] }: PendingPayoutsProps) {
                   <p className="text-[10px] uppercase text-zinc-500 font-bold mb-1">
                     Wallet Balance
                   </p>
-                  <span
+                  {/* <span
                     className={`text-sm font-medium ${selectedPayout.educator.credits < selectedPayout.credits ? "text-red-400" : "text-emerald-400"}`}
                   >
                     {selectedPayout.educator.credits} Credits Available
-                  </span>
+                  </span> */}
                 </div>
               </div>
 
@@ -276,7 +274,7 @@ export function PendingPayouts({ payouts = [] }: PendingPayoutsProps) {
                 <div className="p-4 space-y-3 bg-zinc-950">
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-500">
-                      Gross ({selectedPayout.credits} cr)
+                      {/* Gross ({selectedPayout.credits} cr) */}
                     </span>
                     <span className="text-zinc-300">
                       $
@@ -303,7 +301,7 @@ export function PendingPayouts({ payouts = [] }: PendingPayoutsProps) {
                 </div>
               </div>
 
-              {selectedPayout.educator.credits < selectedPayout.credits && (
+              {/* {selectedPayout.educator.credits < selectedPayout.credits && (
                 <Alert
                   variant="destructive"
                   className="bg-red-500/10 border-red-500/20 text-red-400"
@@ -314,7 +312,7 @@ export function PendingPayouts({ payouts = [] }: PendingPayoutsProps) {
                     and no longer meets the request threshold.
                   </AlertDescription>
                 </Alert>
-              )}
+              )} */}
             </div>
           )}
 
@@ -326,7 +324,7 @@ export function PendingPayouts({ payouts = [] }: PendingPayoutsProps) {
             >
               Close
             </Button>
-            <Button
+            {/* <Button
               className="bg-emerald-600 hover:bg-emerald-500"
               onClick={() => handleApprovePayout(selectedPayout!)}
               disabled={
@@ -335,7 +333,7 @@ export function PendingPayouts({ payouts = [] }: PendingPayoutsProps) {
               }
             >
               Begin Approval
-            </Button>
+            </Button> */}
           </DialogFooter>
         </DialogContent>
       </Dialog>
