@@ -266,11 +266,9 @@ export default function CommunityEditForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Description</FormLabel>
-
                       <FormControl>
                         <RichTextEditor field={field} />
                       </FormControl>
-
                       <FormMessage />
                     </FormItem>
                   )}
@@ -305,7 +303,7 @@ export default function CommunityEditForm({
 
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-60 transition flex items-center justify-center">
                   <ImageUploader
-                    onFileSelect={(file) => {
+                    onChange={(file) => {
                       setSelectedFile(file);
                     }}
                   />
@@ -336,7 +334,7 @@ export default function CommunityEditForm({
                 {/* overlay replace button */}
                 <div className="absolute inset-0 opacity-0 hover:opacity-100 transition flex items-center justify-center bg-black/40">
                   <VideoUploader
-                    onFileSelect={(file) => {
+                    onChange={(file) => {
                       setSelectedVideo(file);
                       form.setValue("videoKey", file?.name || "");
                     }}
@@ -354,7 +352,6 @@ export default function CommunityEditForm({
                   render={({ field }) => (
                     <FormItem className="flex-1">
                       <FormLabel>Category</FormLabel>
-
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
@@ -364,7 +361,6 @@ export default function CommunityEditForm({
                             <SelectValue placeholder="Select category" />
                           </SelectTrigger>
                         </FormControl>
-
                         <SelectContent>
                           {communityCategories.map((c) => (
                             <SelectItem key={c} value={c}>
@@ -385,7 +381,6 @@ export default function CommunityEditForm({
                   render={({ field }) => (
                     <FormItem className="flex-1">
                       <FormLabel>Price</FormLabel>
-
                       <FormControl>
                         <Input
                           type="number"
@@ -408,334 +403,3 @@ export default function CommunityEditForm({
     </Form>
   );
 }
-
-// "use client";
-
-// import {
-//   CommunitySchemaType,
-//   communitySchema,
-//   communityCategories,
-// } from "@/lib/zodSchemas";
-
-// import { ArrowLeft, Loader2, Save } from "lucide-react";
-// import Link from "next/link";
-// import { useForm, Resolver } from "react-hook-form";
-// import { zodResolver } from "@hookform/resolvers/zod";
-// import { useState } from "react";
-// import { toast } from "sonner";
-// import { useRouter } from "next/navigation";
-// import { useConfetti } from "@/hooks/use-confetti";
-// import { Button, buttonVariants } from "@/app/_components/ui/button";
-// import { Card, CardContent } from "@/app/_components/ui/card";
-// import Image from "next/image";
-// import {
-//   Form,
-//   FormControl,
-//   FormField,
-//   FormItem,
-//   FormLabel,
-//   FormMessage,
-// } from "@/app/_components/ui/form";
-// import { Input } from "@/app/_components/ui/input";
-// import { RichTextEditor } from "@/app/_components/rich-text-editor/Editor";
-// import {
-//   Select,
-//   SelectContent,
-//   SelectItem,
-//   SelectTrigger,
-//   SelectValue,
-// } from "@/app/_components/ui/select";
-
-// import { updateCommunity } from "@/app/actions/admin-communities";
-
-// import { useUploadThing } from "@/lib/uploadthing";
-// import { ImageUploader } from "./file-uploader/Uploader";
-
-// interface Community {
-//   id: string;
-//   name: string;
-//   description: string | null;
-//   category: string;
-//   fileKey: string | null;
-//   price: number | null;
-//   slug?: string | null; // ✅ added
-// }
-
-// interface CommunityEditFormProps {
-//   initialData: Community;
-// }
-
-// export default function CommunityEditForm({
-//   initialData,
-// }: CommunityEditFormProps) {
-//   const router = useRouter();
-//   const { triggerConfetti } = useConfetti();
-//   const { startUpload } = useUploadThing("mediaUploader");
-
-//   const [isSubmitting, setIsSubmitting] = useState(false);
-//   const [loadingMessage, setLoadingMessage] = useState("");
-//   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
-//   const slugify = (text: string) =>
-//     text
-//       .toLowerCase()
-//       .trim()
-//       .replace(/[^a-z0-9\s-]/g, "")
-//       .replace(/\s+/g, "-")
-//       .replace(/-+/g, "-");
-
-//   const form = useForm<CommunitySchemaType>({
-//     resolver: zodResolver(communitySchema) as Resolver<CommunitySchemaType>,
-//     defaultValues: {
-//       name: initialData.name,
-//       description:
-//         typeof initialData.description === "object"
-//           ? JSON.stringify(initialData.description)
-//           : initialData.description || "",
-//       category: initialData.category,
-//       fileKey: initialData.fileKey || "",
-//       price: initialData.price || 0,
-//       slug: initialData.slug || slugify(initialData.name), // ✅ added
-//     },
-//   });
-
-//   async function handleProcess(values: CommunitySchemaType) {
-//     setIsSubmitting(true);
-//     let finalFileUrl = values.fileKey;
-
-//     try {
-//       if (selectedFile) {
-//         setLoadingMessage("Uploading new image...");
-//         const uploadedFiles = await startUpload([selectedFile]);
-
-//         if (!uploadedFiles || uploadedFiles.length === 0) {
-//           throw new Error("Image upload failed");
-//         }
-
-//         finalFileUrl = uploadedFiles[0].url;
-//       }
-
-//       setLoadingMessage("Updating community...");
-
-//       const result = await updateCommunity(initialData.id, {
-//         ...values,
-//         fileKey: finalFileUrl,
-//         slug: values.slug || slugify(values.name), // ✅ ensure slug always sent
-//       });
-
-//       if (result.status === "success") {
-//         toast.success("Community updated successfully!");
-//         triggerConfetti();
-//         router.refresh();
-//         router.push("/admin/communities");
-//       } else {
-//         toast.error(result.message);
-//       }
-//     } catch (error) {
-//       console.error(error);
-//       toast.error(
-//         error instanceof Error ? error.message : "Something went wrong",
-//       );
-//     } finally {
-//       setIsSubmitting(false);
-//       setLoadingMessage("");
-//     }
-//   }
-
-//   return (
-//     <Form {...form}>
-//       <form
-//         className="w-full px-4 md:px-8 pb-20 pt-5"
-//         onSubmit={form.handleSubmit(handleProcess)}
-//       >
-//         <div className="flex justify-between mb-8">
-//           <div className="flex items-center gap-4">
-//             <Link
-//               href="/admin/communities"
-//               className={buttonVariants({
-//                 variant: "secondary",
-//                 size: "icon",
-//               })}
-//             >
-//               <ArrowLeft className="size-5" />
-//             </Link>
-
-//             <h1 className="text-3xl font-bold">Edit Community</h1>
-//           </div>
-
-//           <Button type="submit" disabled={isSubmitting}>
-//             {isSubmitting ? (
-//               <div className="flex items-center gap-2">
-//                 <Loader2 className="animate-spin size-4" />
-//                 <span>{loadingMessage || "Saving..."}</span>
-//               </div>
-//             ) : (
-//               <>
-//                 <Save className="mr-2 size-4" />
-//                 Save Changes
-//               </>
-//             )}
-//           </Button>
-//         </div>
-
-//         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-//           <div className="lg:col-span-2 space-y-6">
-//             <Card>
-//               <CardContent className="pt-0 space-y-6">
-//                 {/* NAME (auto-updates slug) */}
-//                 <FormField
-//                   control={form.control}
-//                   name="name"
-//                   render={({ field }) => (
-//                     <FormItem>
-//                       <FormLabel>Community Name</FormLabel>
-
-//                       <FormControl>
-//                         <Input
-//                           {...field}
-//                           disabled={isSubmitting}
-//                           onChange={(e) => {
-//                             const value = e.target.value;
-
-//                             field.onChange(value);
-
-//                             form.setValue("slug", slugify(value));
-//                           }}
-//                         />
-//                       </FormControl>
-
-//                       <p className="text-xs text-muted-foreground">
-//                         URL:
-//                         <span className="font-mono ml-1">
-//                           {form.watch("slug")}
-//                         </span>
-//                       </p>
-
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
-
-//                 {/* SHORT DESCRIPTION (NEW FIELD) */}
-//                 <FormField
-//                   control={form.control}
-//                   name="smallDescription"
-//                   render={({ field }) => (
-//                     <FormItem>
-//                       <FormLabel>Small Description</FormLabel>
-
-//                       <FormControl>
-//                         <Input
-//                           {...field}
-//                           disabled={isSubmitting}
-//                           placeholder="Brief summary of your community"
-//                           maxLength={500}
-//                         />
-//                       </FormControl>
-
-//                       <p className="text-xs text-muted-foreground">
-//                         This appears in community listings and cards.
-//                       </p>
-
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
-
-//                 {/* DESCRIPTION */}
-//                 <FormField
-//                   control={form.control}
-//                   name="description"
-//                   render={({ field }) => (
-//                     <FormItem>
-//                       <FormLabel>Description</FormLabel>
-//                       <FormControl>
-//                         <RichTextEditor field={field} />
-//                       </FormControl>
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
-//               </CardContent>
-//             </Card>
-//           </div>
-
-//           <div className="space-y-6">
-//             <div className="relative w-full h-40 overflow-hidden rounded-xl group">
-//               <Image
-//                 // Change this line to convert the file key into a valid UploadThing URL 👇
-//                 src={`https://utfs.io/f/${initialData.fileKey}`}
-//                 alt="Current Thumbnail"
-//                 fill
-//                 className="object-cover"
-//               />
-//               {/* Optional: Hover overlay */}
-//               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-50 transition flex items-center justify-center text-white text-sm font-medium cursor-pointer">
-//                 <ImageUploader onFileSelect={(file) => setSelectedFile(file)} />
-//               </div>
-//             </div>
-
-//             <Card>
-//               <CardContent className="pt-6 space-y-6">
-//                 {/* CATEGORY */}
-//                 <FormField
-//                   control={form.control}
-//                   name="category"
-//                   render={({ field }) => (
-//                     <FormItem>
-//                       <FormLabel>Category</FormLabel>
-
-//                       <Select
-//                         onValueChange={field.onChange}
-//                         defaultValue={field.value}
-//                         disabled={isSubmitting}
-//                       >
-//                         <FormControl>
-//                           <SelectTrigger>
-//                             <SelectValue placeholder="Select category" />
-//                           </SelectTrigger>
-//                         </FormControl>
-
-//                         <SelectContent>
-//                           {communityCategories.map((c) => (
-//                             <SelectItem key={c} value={c}>
-//                               {c}
-//                             </SelectItem>
-//                           ))}
-//                         </SelectContent>
-//                       </Select>
-
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
-
-//                 {/* PRICE */}
-//                 <FormField
-//                   control={form.control}
-//                   name="price"
-//                   render={({ field }) => (
-//                     <FormItem>
-//                       <FormLabel>Price</FormLabel>
-//                       <FormControl>
-//                         <Input
-//                           type="number"
-//                           {...field}
-//                           disabled={isSubmitting}
-//                           onChange={(e) =>
-//                             field.onChange(Number(e.target.value))
-//                           }
-//                         />
-//                       </FormControl>
-//                       <FormMessage />
-//                     </FormItem>
-//                   )}
-//                 />
-//               </CardContent>
-//             </Card>
-//           </div>
-//         </div>
-//       </form>
-//     </Form>
-//   );
-// }
