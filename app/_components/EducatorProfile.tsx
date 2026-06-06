@@ -13,10 +13,17 @@ import { useUploadThing } from "@/lib/uploadthing";
 
 /* ---------------- TYPES ---------------- */
 
+export interface DaySlot {
+  date: string; // or Date, depending on what getAvailableTimeSlots returns
+  slots?: string[]; // adjust these properties to match your actual database schema
+  [key: string]: unknown; // Temporary catch-all if you have other unknown dynamic keys
+}
+
 type User = {
   id: string;
   name?: string;
   email?: string;
+  role?: string;
   specialty?: string;
   experience?: number | string;
   description?: string;
@@ -24,6 +31,11 @@ type User = {
   imageUrl?: string;
   verificationStatus?: "Verified" | "Unverified" | string;
 };
+
+interface EducatorProfileProps {
+  educator: User;
+  availableDays: DaySlot[]; // Strictly typed array instead of any[]
+}
 
 type ProfileForm = {
   name: string;
@@ -42,7 +54,9 @@ type CropArea = {
 
 /* ---------------- COMPONENT ---------------- */
 
-export default function EducatorProfile({ user }: { user: User }) {
+export default function EducatorProfile({
+  educator: user,
+}: EducatorProfileProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { startUpload, isUploading } = useUploadThing("mediaUploader");
