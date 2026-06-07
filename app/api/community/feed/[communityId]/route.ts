@@ -13,7 +13,7 @@ export async function GET(
       communityId: communityId, // 2. Use the resolved variable here
     },
     include: {
-      author: true,
+      user: true,
       likes: true,
       comments: {
         include: {
