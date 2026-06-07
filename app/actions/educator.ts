@@ -196,7 +196,7 @@ export async function cancelAppointment(formData: FormData) {
         id: appointmentId,
       },
       include: {
-        student: true,
+        learner: true,
         educator: true,
       },
     });
