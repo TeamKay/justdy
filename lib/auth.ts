@@ -43,7 +43,7 @@ export const auth = betterAuth({
     emailOTP({
       async sendVerificationOTP({ email, otp }) {
         await resend.emails.send({
-          from: "Justdy <onboarding@resend.dev>",
+          from: "Justdy <no-reply@justdy.com>",
           to: [email],
           subject: "Verify your Justdy Account",
           html: `

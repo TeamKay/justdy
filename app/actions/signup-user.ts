@@ -53,6 +53,8 @@ export async function signupUser(formData: unknown) {
       type: "created",
     };
   } catch (error) {
-    throw new Error("Server Error" + error);
+    // Crucial for debugging your API calls locally
+    console.error("Signup Flow Error Details:", error);
+    return { ok: false, type: "signup_failed" };
   }
 }

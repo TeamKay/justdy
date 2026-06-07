@@ -3,7 +3,7 @@ import React from "react";
 
 export default function AiIntegrationBanner() {
   return (
-    <div className="min-h-screen w-full bg-background flex items-center justify-center p-6 md:p-12 font-sans overflow-hidden select-none">
+    <div className="w-full bg-background flex items-center justify-center p-5 md:p-20 font-sans overflow-hidden select-none">
       <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative">
         {/* LEFT SIDE: SMARTPHONE & ROBOT GRAPHIC */}
         <div className="lg:col-span-6 flex items-center justify-center relative min-h-112.5 md:min-h-137.5">
