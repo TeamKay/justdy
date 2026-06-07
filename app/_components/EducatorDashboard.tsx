@@ -7,12 +7,14 @@ import { redirect } from "next/navigation";
 import { useSession } from "@/lib/auth-client";
 import { Card } from "./ui/card";
 
-type Appointment = {
+// ---------------- TYPES ----------------
+export type Appointment = {
   id: string;
-  status: "Scheduled" | "Completed" | "Cancelled";
+  status: "Scheduled" | "Completed" | "Cancelled" | "Pending_payment" | string; // 🔥 Added support for DB statuses
   date?: string;
   studentName?: string;
   createdAt: string;
+  startTime: string | Date; // Added property alignment field
 };
 
 // Define the type structure for incoming community requests/notifications
