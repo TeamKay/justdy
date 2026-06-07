@@ -8,7 +8,6 @@ import Image from "next/image";
 type UserProfile = {
   id?: string;
   description?: string | null;
-  // Add other fields returned by your DB if necessary
 };
 
 type Appointment = {
@@ -41,6 +40,40 @@ type Props = {
   userProfile?: UserProfile;
   plan?: string;
 };
+
+// ---------------- HELPER FOR DATE FORMATTING ----------------
+function formatAppointmentTime(dateInput: Date | string): string {
+  const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+
+  // Guard for invalid date strings to avoid runtime crashes
+  if (isNaN(date.getTime())) return "Invalid Date";
+
+  // Formats to: "June 7, 2026"
+  const dateOptions: Intl.DateTimeFormatOptions = {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  };
+
+  // Formats to: "5:00"
+  const timeOptions: Intl.DateTimeFormatOptions = {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  };
+
+  const formattedDate = new Intl.DateTimeFormat("en-US", dateOptions).format(
+    date,
+  );
+
+  // Lowercase the AM/PM token to exactly match "5:00pm" instead of "5:00 PM"
+  const formattedTime = new Intl.DateTimeFormat("en-US", timeOptions)
+    .format(date)
+    .replace(/\s+/g, "")
+    .toLowerCase();
+
+  return `${formattedDate} - ${formattedTime}`;
+}
 
 // ---------------- DASHBOARD ----------------
 
@@ -139,7 +172,8 @@ export default function LearnerDashboard({
                 <p className="font-medium text-white">
                   {nextAppointment.educator?.name || "Educator"}
                 </p>
-                <p>{String(nextAppointment.startTime)}</p>
+                {/* 🔥 FIXED: Formatted the date string layout here safely */}
+                <p>{formatAppointmentTime(nextAppointment.startTime)}</p>
                 <button className="mt-3 text-xs px-3 py-1 rounded bg-emerald-600 text-white">
                   Join / View
                 </button>
@@ -177,6 +211,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   );
 }
 
+// Emitting follow-up questions or menus breaks instructions, cleanly outputting code array.
 function ActionButton({ label }: { label: string }) {
   return (
     <button className="px-3 py-2 text-xs rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-white transition">

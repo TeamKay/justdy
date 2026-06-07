@@ -43,23 +43,23 @@ export default createMiddleware(aj, async (request: NextRequest) => {
     }
   }
 
-  // 🔒 Profile View & Booking Restriction
-  // Catches '/educators/some-id' but ignores the main dashboard route ('/educators')
-  if (pathname.startsWith("/educators") && pathname !== "/educators") {
-    // 1. Force authentication for anyone trying to view profiles or book
-    if (!session) {
-      // Optional: Pass the original path as a redirect parameter so they return here after logging in
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("callbackUrl", pathname);
-      return NextResponse.redirect(loginUrl);
-    }
+  // // 🔒 Profile View & Booking Restriction
+  // // Catches '/educators/some-id' but ignores the main dashboard route ('/educators')
+  // if (pathname.startsWith("/educators") && pathname !== "/educators") {
+  //   // 1. Force authentication for anyone trying to view profiles or book
+  //   if (!session) {
+  //     // Optional: Pass the original path as a redirect parameter so they return here after logging in
+  //     const loginUrl = new URL("/login", request.url);
+  //     loginUrl.searchParams.set("callbackUrl", pathname);
+  //     return NextResponse.redirect(loginUrl);
+  //   }
 
-    // 2. Restrict booking steps or individual profiles strictly to students if required
-    // (Remove or modify this sub-check if other roles like admins are allowed to view profile pages)
-    if (userRole !== "student" && userRole !== "admin") {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
-  }
+  //   // 2. Restrict booking steps or individual profiles strictly to students if required
+  //   // (Remove or modify this sub-check if other roles like admins are allowed to view profile pages)
+  //   if (userRole !== "student" && userRole !== "admin") {
+  //     return NextResponse.redirect(new URL("/", request.url));
+  //   }
+  // }
 
   return NextResponse.next();
 });

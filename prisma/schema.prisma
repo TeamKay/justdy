@@ -61,10 +61,10 @@ model Availability {
 }
 
 model Appointment {
-  id             String   @id @default(cuid())
-  learnerId      String
-  learner        User     @relation("LearnerAppointments", fields: [learnerId], references: [id], onDelete: Cascade)
-  educatorId     String
+  id                    String   @id @default(cuid())
+  learnerId             String
+  learner               User     @relation("LearnerAppointments", fields: [learnerId], references: [id], onDelete: Cascade)
+  educatorId            String
   educator             User     @relation("EducatorAppointments", fields: [educatorId], references: [id], onDelete: Cascade)
   startTime             DateTime
   endTime               DateTime
@@ -399,6 +399,7 @@ enum AppointmentStatus {
   Scheduled
   Completed
   Cancelled
+  Pending_payment
 }
 
 

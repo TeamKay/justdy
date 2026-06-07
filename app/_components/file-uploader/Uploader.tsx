@@ -14,6 +14,12 @@ interface UploaderProps {
 export function ImageUploader({ onChange }: UploaderProps) {
   const [preview, setPreview] = useState<string | null>(null);
 
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { "image/*": [] },
     maxFiles: 1,

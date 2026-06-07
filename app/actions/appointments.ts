@@ -8,6 +8,8 @@ import { revalidatePath } from "next/cache";
 import { Auth } from "@vonage/auth";
 import { Vonage } from "@vonage/server-sdk";
 import { MediaMode } from "@vonage/video";
+import Stripe from "stripe";
+import { stripe } from "@/lib/stripe";
 
 interface TimeSlot {
   startTime: string;
@@ -181,207 +183,212 @@ export async function getAvailableTimeSlots(educatorId: string) {
   }
 }
 
-// // export async function bookAppointment(formData: FormData) {
-// //   const session = await auth.api.getSession({
-// //     headers: await headers(),
-// //   });
+// export async function bookAppointment(formData: FormData) {
+//   const session = await auth.api.getSession({
+//     headers: await headers(),
+//   });
 
-// //   if (!session?.user.id) {
-// //     return {
-// //       success: false,
-// //       message: "Unauthorized",
-// //     };
-// //   }
+//   if (!session?.user.id) {
+//     return {
+//       success: false,
+//       message: "Unauthorized",
+//     };
+//   }
 
-// //   try {
-// //     const studentId = session.user.id;
-// //     const availabilityId = formData.get("availabilityId") as string;
-// //     const educatorId = formData.get("educatorId") as string;
-// //     const studentDescription = formData.get("description") as string;
-// //     const startTime = new Date(formData.get("startTime") as string);
-// //     const endTime = new Date(formData.get("endTime") as string);
+//   try {
+//     const learnerId = session.user.id;
+//     const availabilityId = formData.get("availabilityId") as string;
+//     const learnerDescription = formData.get("learnerDescription") as string;
+//     const educatorId = formData.get("educatorId") as string;
+//     const startTime = new Date(formData.get("startTime") as string);
+//     const endTime = new Date(formData.get("endTime") as string);
 
-// //     if (
-// //       !educatorId ||
-// //       isNaN(startTime.getTime()) ||
-// //       isNaN(endTime.getTime()) ||
-// //       !availabilityId
-// //     ) {
-// //       return {
-// //         success: false,
-// //         message: "Missing required booking information.",
-// //       };
-// //     }
+//     if (
+//       !educatorId ||
+//       isNaN(startTime.getTime()) ||
+//       isNaN(endTime.getTime()) ||
+//       !availabilityId
+//     ) {
+//       return {
+//         success: false,
+//         message: "Missing required booking information.",
+//       };
+//     }
 
-// //     const result = await prisma.$transaction(async (tx) => {
-// //       // 1. CHECK FOR DUPLICATE BY SAME STUDENT
-// //       const alreadyBookedByMe = await tx.appointment.findFirst({
-// //         where: {
-// //           availabilityId,
-// //           studentId,
-// //           status: "Scheduled",
-// //         },
-// //       });
+//     // Calculate appointment duration in minutes
+//     const appointmentDurationMinutes =
+//       (endTime.getTime() - startTime.getTime()) / (1000 * 60);
 
-// //       if (alreadyBookedByMe) {
-// //         return {
-// //           success: false,
-// //           message: "You have already booked a seat in this session.",
-// //         };
-// //       }
+//     if (appointmentDurationMinutes <= 0) {
+//       return {
+//         success: false,
+//         message: "Invalid appointment duration.",
+//       };
+//     }
 
-// //       // 2. Validate Student
-// //       const student = await tx.user.findFirst({
-// //         where: {
-// //           id: studentId,
-// //           role: "Student",
-// //         },
-// //         include: {
-// //           subscription: true,
-// //         },
-// //       });
+//     const result = await prisma.$transaction(async (tx) => {
+//       // 1. CHECK FOR DUPLICATE BY SAME STUDENT
+//       const alreadyBookedByMe = await tx.appointment.findFirst({
+//         where: {
+//           availabilityId,
+//           learnerId,
+//           status: "Scheduled",
+//         },
+//       });
 
-// //       if (!student) {
-// //         return {
-// //           success: false,
-// //           message: "Student not found",
-// //         };
-// //       }
+//       if (alreadyBookedByMe) {
+//         return {
+//           success: false,
+//           message: "You have already booked a seat in this session.",
+//         };
+//       }
 
-// //       // 3. Validate Educator
-// //       const educator = await tx.user.findUnique({
-// //         where: {
-// //           id: educatorId,
-// //           role: "Educator",
-// //           verificationStatus: "Verified",
-// //         },
-// //       });
+//       // 2. Validate Student
+//       const student = await tx.user.findFirst({
+//         where: {
+//           id: learnerId,
+//           role: "Learner",
+//         },
+//         include: {
+//           subscription: true,
+//         },
+//       });
 
-// //       if (!educator) {
-// //         return {
-// //           success: false,
-// //           message: "Educator not found or not verified",
-// //         };
-// //       }
+//       if (!student) {
+//         return {
+//           success: false,
+//           message: "Learner not found",
+//         };
+//       }
 
-// //       // 4. Time Overlap Check
-// //       const overLappingAppointment = await tx.appointment.findFirst({
-// //         where: {
-// //           educatorId,
-// //           status: "Scheduled",
-// //           AND: [
-// //             {
-// //               startTime: {
-// //                 lt: endTime,
-// //               },
-// //             },
-// //             {
-// //               endTime: {
-// //                 gt: startTime,
-// //               },
-// //             },
-// //           ],
-// //         },
-// //       });
+//       // 3. Validate Educator
+//       const educator = await tx.user.findUnique({
+//         where: {
+//           id: educatorId,
+//           role: "Educator",
+//           verificationStatus: "Verified",
+//         },
+//       });
 
-// //       if (overLappingAppointment) {
-// //         return {
-// //           success: false,
-// //           message: "Educator is already booked for this timeframe.",
-// //         };
-// //       }
+//       if (!educator) {
+//         return {
+//           success: false,
+//           message: "Educator not found or not verified",
+//         };
+//       }
 
-// //       const sessionId = await createVideoSession();
+//       // 4. Time Overlap Check
+//       const overLappingAppointment = await tx.appointment.findFirst({
+//         where: {
+//           educatorId,
+//           status: "Scheduled",
+//           AND: [
+//             {
+//               startTime: {
+//                 lt: endTime,
+//               },
+//             },
+//             {
+//               endTime: {
+//                 gt: startTime,
+//               },
+//             },
+//           ],
+//         },
+//       });
 
-// //       // Get active subscription
-// //       const subscription = student.subscription;
+//       if (overLappingAppointment) {
+//         return {
+//           success: false,
+//           message: "Educator is already booked for this timeframe.",
+//         };
+//       }
 
-// //       const currentPlan = subscription?.planId || "Free";
+//       // Get current plan from subscription (Defaults to PlanType.Free if none exists)
+//       // Cast the database string or the fallback string explicitly to your Enum type
+//       const currentPlan = (student.subscription?.planId ?? "Free") as PlanType;
 
-// //       // Monthly booking window
-// //       const now = new Date();
+//       // 5. NEW PLAN RULES & DURATION RESTRICTIONS
 
-// //       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-// //       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+//       // Determine max minutes based on the PlanType enum mapping
+//       let maxAllowedMinutes = 0;
+//       let planName = "Free";
 
-// //       // Count monthly sessions
-// //       const monthlySessions = await tx.appointment.count({
-// //         where: {
-// //           studentId,
-// //           status: {
-// //             in: ["Scheduled", "Completed"],
-// //           },
-// //           createdAt: {
-// //             gte: startOfMonth,
-// //             lt: endOfMonth,
-// //           },
-// //         },
-// //       });
+//       if (currentPlan === PlanType.FlexPay_30m) {
+//         maxAllowedMinutes = 30;
+//         planName = "FlexPay 30 Min";
+//       } else if (currentPlan === PlanType.FlexPay_45m) {
+//         maxAllowedMinutes = 45;
+//         planName = "FlexPay 45 Min";
+//       } else if (currentPlan === PlanType.FlexPay_60m) {
+//         maxAllowedMinutes = 60;
+//         planName = "FlexPay 60 Min";
+//       } else if (currentPlan === PlanType.Monthly) {
+//         maxAllowedMinutes = 60; // Assuming Monthly tier gets maximum session length per booking
+//         planName = "Monthly Subscription";
+//       }
 
-// //       // FREE PLAN LIMIT
-// //       if (currentPlan === "Free" && monthlySessions >= PLAN_LIMITS.Free) {
-// //         return {
-// //           success: false,
-// //           upgradeRequired: true,
-// //           plan: "Free",
-// //           message:
-// //             "You have already used your free live session. Upgrade to Standard or Premium to continue booking sessions.",
-// //         };
-// //       }
+//       // Free Tier Logic
+//       if (currentPlan === PlanType.Free) {
+//         return {
+//           success: false,
+//           upgradeRequired: true,
+//           plan: "Free",
+//           message:
+//             "Free accounts cannot book live sessions directly. Please choose a FlexPay tier or Monthly subscription.",
+//         };
+//       }
 
-// //       // STANDARD PLAN LIMIT
-// //       if (
-// //         currentPlan === "Standard" &&
-// //         monthlySessions >= PLAN_LIMITS.Standard
-// //       ) {
-// //         return {
-// //           success: false,
-// //           upgradeRequired: true,
-// //           plan: "Standard",
-// //           message:
-// //             "You have reached your 8 monthly live sessions limit on the Standard plan. Upgrade to Premium for unlimited sessions.",
-// //         };
-// //       }
+//       // Enforce the duration cap calculated from the plan configuration map
+//       if (appointmentDurationMinutes > maxAllowedMinutes) {
+//         return {
+//           success: false,
+//           message: `Your current plan (${planName}) only allows sessions up to ${maxAllowedMinutes} minutes. This session is ${appointmentDurationMinutes} minutes.`,
+//         };
+//       }
 
-// //       // Create appointment
-// //       const appointment = await tx.appointment.create({
-// //         data: {
-// //           studentId,
-// //           educatorId,
-// //           availabilityId,
-// //           startTime,
-// //           endTime,
-// //           studentDescription,
-// //           status: "Scheduled",
-// //           videoSessionId: sessionId,
-// //         },
-// //       });
+//       // 6. Create appointment if all rules pass
+//       const sessionId = await createVideoSession();
 
-// //       return {
-// //         success: true,
-// //         appointment,
-// //       };
-// //     });
+//       const appointment = await tx.appointment.create({
+//         data: {
+//           learnerId: learnerId,
+//           educatorId,
+//           availabilityId,
+//           startTime,
+//           endTime,
+//           learnerDescription,
+//           status: "Scheduled",
+//           videoSessionId: sessionId,
+//           sessionType: "FORTY_FIVE_MIN",
+//         },
+//       });
 
-// //     revalidatePath("/student");
+//       return {
+//         success: true,
+//         appointment,
+//       };
+//     });
 
-// //     return result;
-// //   } catch (error: unknown) {
-// //     console.error("Create appointment error:", error);
+//     revalidatePath("/learner");
 
-// //     if (error instanceof Error) {
-// //       return {
-// //         success: false,
-// //         message: error.message,
-// //       };
-// //     }
+//     return result;
+//   } catch (error: unknown) {
+//     console.error("Create appointment error:", error);
 
-// //     return {
-// //       success: false,
-// //       message: "Error creating appointment",
-// //     };
-// //   }
-// // }
+//     if (error instanceof Error) {
+//       return {
+//         success: false,
+//         message: error.message,
+//       };
+//     }
+
+//     return {
+//       success: false,
+//       message: "Error creating appointment",
+//     };
+//   }
+// }
 
 export async function bookAppointment(formData: FormData) {
   const session = await auth.api.getSession({
@@ -396,18 +403,21 @@ export async function bookAppointment(formData: FormData) {
   }
 
   try {
-    const studentId = session.user.id;
+    const learnerId = session.user.id;
     const availabilityId = formData.get("availabilityId") as string;
     const learnerDescription = formData.get("learnerDescription") as string;
     const educatorId = formData.get("educatorId") as string;
     const startTime = new Date(formData.get("startTime") as string);
     const endTime = new Date(formData.get("endTime") as string);
 
+    const paymentType = formData.get("paymentType") as "hourly" | "monthly";
+
     if (
       !educatorId ||
       isNaN(startTime.getTime()) ||
       isNaN(endTime.getTime()) ||
-      !availabilityId
+      !availabilityId ||
+      !paymentType
     ) {
       return {
         success: false,
@@ -415,7 +425,6 @@ export async function bookAppointment(formData: FormData) {
       };
     }
 
-    // Calculate appointment duration in minutes
     const appointmentDurationMinutes =
       (endTime.getTime() - startTime.getTime()) / (1000 * 60);
 
@@ -426,31 +435,40 @@ export async function bookAppointment(formData: FormData) {
       };
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. CHECK FOR DUPLICATE BY SAME STUDENT
-      const alreadyBookedByMe = await tx.appointment.findFirst({
+    const transactionResult = await prisma.$transaction(async (tx) => {
+      // 1. 🔥 UPDATED: CHECK FOR TIME OVERLAP FOR *THIS LEARNER* (Instead of checking availabilityId uniqueness)
+      const learnerOverlappingAppointment = await tx.appointment.findFirst({
         where: {
-          availabilityId,
-          studentId,
-          status: "Scheduled",
+          learnerId,
+          status: { in: ["Scheduled", "Pending_payment"] },
+          AND: [
+            {
+              startTime: {
+                lt: endTime,
+              },
+            },
+            {
+              endTime: {
+                gt: startTime,
+              },
+            },
+          ],
         },
       });
 
-      if (alreadyBookedByMe) {
+      if (learnerOverlappingAppointment) {
         return {
           success: false,
-          message: "You have already booked a seat in this session.",
+          message:
+            "You already have an appointment scheduled or pending payment that overlaps with this timeframe.",
         };
       }
 
       // 2. Validate Student
       const student = await tx.user.findFirst({
         where: {
-          id: studentId,
+          id: learnerId,
           role: "Learner",
-        },
-        include: {
-          subscription: true,
         },
       });
 
@@ -477,11 +495,11 @@ export async function bookAppointment(formData: FormData) {
         };
       }
 
-      // 4. Time Overlap Check
+      // 4. Time Overlap Check for Educator (Unchanged - ensures the educator is free)
       const overLappingAppointment = await tx.appointment.findFirst({
         where: {
           educatorId,
-          status: "Scheduled",
+          status: { in: ["Scheduled", "Pending_payment"] },
           AND: [
             {
               startTime: {
@@ -500,65 +518,24 @@ export async function bookAppointment(formData: FormData) {
       if (overLappingAppointment) {
         return {
           success: false,
-          message: "Educator is already booked for this timeframe.",
-        };
-      }
-
-      // Get current plan from subscription (Defaults to PlanType.Free if none exists)
-      // Cast the database string or the fallback string explicitly to your Enum type
-      const currentPlan = (student.subscription?.planId ?? "Free") as PlanType;
-
-      // 5. NEW PLAN RULES & DURATION RESTRICTIONS
-
-      // Determine max minutes based on the PlanType enum mapping
-      let maxAllowedMinutes = 0;
-      let planName = "Free";
-
-      if (currentPlan === PlanType.FlexPay_30m) {
-        maxAllowedMinutes = 30;
-        planName = "FlexPay 30 Min";
-      } else if (currentPlan === PlanType.FlexPay_45m) {
-        maxAllowedMinutes = 45;
-        planName = "FlexPay 45 Min";
-      } else if (currentPlan === PlanType.FlexPay_60m) {
-        maxAllowedMinutes = 60;
-        planName = "FlexPay 60 Min";
-      } else if (currentPlan === PlanType.Monthly) {
-        maxAllowedMinutes = 60; // Assuming Monthly tier gets maximum session length per booking
-        planName = "Monthly Subscription";
-      }
-
-      // Free Tier Logic
-      if (currentPlan === PlanType.Free) {
-        return {
-          success: false,
-          upgradeRequired: true,
-          plan: "Free",
           message:
-            "Free accounts cannot book live sessions directly. Please choose a FlexPay tier or Monthly subscription.",
+            "Educator is already booked or undergoing payment for this timeframe.",
         };
       }
 
-      // Enforce the duration cap calculated from the plan configuration map
-      if (appointmentDurationMinutes > maxAllowedMinutes) {
-        return {
-          success: false,
-          message: `Your current plan (${planName}) only allows sessions up to ${maxAllowedMinutes} minutes. This session is ${appointmentDurationMinutes} minutes.`,
-        };
-      }
-
-      // 6. Create appointment if all rules pass
+      // 5. Initialize Video Session
       const sessionId = await createVideoSession();
 
+      // 6. Save the booking in DB as 'Pending_payment' to reserve the spot
       const appointment = await tx.appointment.create({
         data: {
-          learnerId: studentId,
+          learnerId: learnerId,
           educatorId,
           availabilityId,
           startTime,
           endTime,
           learnerDescription,
-          status: "Scheduled",
+          status: "Pending_payment",
           videoSessionId: sessionId,
           sessionType: "FORTY_FIVE_MIN",
         },
@@ -570,9 +547,75 @@ export async function bookAppointment(formData: FormData) {
       };
     });
 
+    if (!transactionResult.success || !transactionResult.appointment) {
+      return { success: false, message: transactionResult.message };
+    }
+
+    const savedAppointment = transactionResult.appointment;
+
+    // ---------------- STRIPE CHECKOUT PAYLOAD INJECTION ----------------
+    let lineItems: Stripe.Checkout.SessionCreateParams["line_items"] = [];
+
+    if (paymentType === "monthly") {
+      if (!process.env.STRIPE_MONTHLY_PRICE_ID) {
+        throw new Error(
+          "Missing STRIPE_MONTHLY_PRICE_ID configuration variable.",
+        );
+      }
+      lineItems = [
+        {
+          price: process.env.STRIPE_MONTHLY_PRICE_ID,
+          quantity: 1,
+        },
+      ];
+    } else {
+      const hourlyRateInCents = 3500;
+      const totalCostInCents = Math.round(
+        (hourlyRateInCents / 60) * appointmentDurationMinutes,
+      );
+
+      if (totalCostInCents < 50) {
+        throw new Error(
+          "Invalid duration calculation; must exceed the minimum transaction rate of $0.50.",
+        );
+      }
+
+      lineItems = [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: "One-on-One Live Math Tutoring",
+              description: `Custom reservation for exactly ${appointmentDurationMinutes} minutes of instructional support.`,
+            },
+            unit_amount: totalCostInCents,
+          },
+          quantity: 1,
+        },
+      ];
+    }
+
+    const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+    const stripeSession = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: lineItems,
+      mode: paymentType === "monthly" ? "subscription" : "payment",
+      success_url: `${siteUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${siteUrl}/payment/cancel`,
+      metadata: {
+        appointmentId: savedAppointment.id,
+        paymentType: paymentType,
+        learnerId: learnerId,
+      },
+    });
+
     revalidatePath("/learner");
 
-    return result;
+    return {
+      success: true,
+      checkoutUrl: stripeSession.url,
+    };
   } catch (error: unknown) {
     console.error("Create appointment error:", error);
 
@@ -585,7 +628,7 @@ export async function bookAppointment(formData: FormData) {
 
     return {
       success: false,
-      message: "Error creating appointment",
+      message: "Error processing checkout session initialization.",
     };
   }
 }

@@ -19,7 +19,7 @@ export async function getLearnerDashboardData() {
     where: { email: session.user.email },
     include: {
       subscription: true,
-      studentAppointments: {
+      learnerAppointments: {
         include: {
           educator: {
             select: { name: true },
@@ -55,7 +55,7 @@ export async function getLearnerDashboardData() {
   }
 
   // 3. Format structural fields to match UI prop interfaces
-  const appointments = userData.studentAppointments.map((appt) => ({
+  const appointments = userData.learnerAppointments.map((appt) => ({
     id: appt.id,
     status: appt.status,
     startTime: appt.startTime.toISOString(),

@@ -1,4 +1,4 @@
-import UnifiedEducatorsClient from "@/app/_components/UnifiedEducatorsPage";
+import EducatorsList from "@/app/_components/EducatorsList";
 import { getAllEducators } from "@/app/actions/educators-listing";
 
 export default async function EducatorsPage() {
@@ -12,5 +12,5 @@ export default async function EducatorsPage() {
     );
   }
 
-  return <UnifiedEducatorsClient initialEducators={educators || []} />;
+  return <EducatorsList initialEducators={educators || []} />;
 }

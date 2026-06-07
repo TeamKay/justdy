@@ -27,8 +27,9 @@ export default function PaymentSuccessful() {
               Congratulations
             </p>
             <p className="text-sm mt-2 text-muted-foreground tracking-tight text-balance">
-              Your payment was successful. You should now have full access to
-              the course.
+              Your payment was successful. You should now be granted full
+              access.
+              <span>Thank you for the payment</span>
             </p>
 
             <Link

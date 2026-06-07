@@ -14,7 +14,7 @@ interface Educator {
   description: string | null;
 }
 
-export default function UnifiedEducatorsClient({
+export default function EducatorsList({
   initialEducators,
 }: {
   initialEducators: Educator[];
@@ -38,24 +38,9 @@ export default function UnifiedEducatorsClient({
   }, [selectedSpecialty, searchQuery, initialEducators]);
 
   return (
-    <div className="relative min-h-screen w-full bg-background px-4 py-12 text-slate-100 overflow-hidden">
-      {/* === MODERN AMBIENT BACKGROUND === */}
-      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/2 h-125 w-250 -translate-x-1/2 rounded-full bg-emerald-500/6 blur-[120px]" />
-        <div className="absolute top-1/4 right-0 h-75 w-75 bg-blue-500/4 blur-[100px]" />
-      </div>
-
+    <div className="relative min-h-screen w-full bg-background px-4 py-0 text-slate-100 overflow-hidden">
       <div className="mx-auto max-w-6xl space-y-10">
         {/* === HEADER === */}
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">
-            Find the perfect tutor
-          </h1>
-          <p className="text-slate-400 text-base max-w-xl">
-            Discover specialized educators tailored to your learning style and
-            goals.
-          </p>
-        </div>
 
         {/* === SEARCH & FILTER BAR === */}
         <div className="flex flex-col sm:flex-row gap-3 p-2 rounded-xl border border-slate-800 bg-slate-900/40 backdrop-blur-md shadow-lg">
@@ -116,7 +101,7 @@ export default function UnifiedEducatorsClient({
 
         {/* === GRID LAYOUT === */}
         {filteredEducators.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
             {filteredEducators.map((educator) => (
               <EducatorCard
                 key={educator.id}
