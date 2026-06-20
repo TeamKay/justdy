@@ -35,9 +35,9 @@ export default function Hero() {
       {/* =======================
           MAIN HERO CONTENT
       ======================= */}
-      <div className="relative z-10 max-w-7xl w-full mx-auto px-6 pb-40 sm:px-12 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center my-auto pt-24">
+      <div className="relative z-10 max-w-7xl w-full mx-auto px-6 pb-40 sm:px-12 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center my-auto pt-0 md:pt-24">
         {/* Left Column: Copy & Actions */}
-        <div className="lg:col-span-6 flex flex-col justify-center text-left space-y-6 max-w-2xl mx-auto lg:mx-0">
+        <div className="lg:col-span-6 flex flex-col justify-center text-left space-y-6 max-w-2xl mx-auto lg:mx-0 pb-15">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -160,7 +160,7 @@ export default function Hero() {
             <div>
               <div className="text-sm font-bold text-white">55K</div>
               <div className="text-xs  text-purple-300/50">
-                27/4 AI Smart Lessons
+                24/7 AI Smart Tutor
               </div>
             </div>
           </div>
