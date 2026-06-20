@@ -113,7 +113,7 @@ export default function LearnerDashboard({
     <div className="min-h-screen bg-background text-gray-900 pb-10">
       <div className="max-w-6xl mx-auto px-4 space-y-6">
         {/* ---------------- HERO ---------------- */}
-        <div className="rounded-xl overflow-hidden border border-white/10 shadow-sm bg-linear-to-r from-emerald-950 via-slate-900 to-indigo-950">
+        <div className="rounded-md overflow-hidden border border-white/10 shadow-sm bg-linear-to-r from-emerald-950 via-slate-900 to-indigo-950">
           <div className="h-40 relative opacity-30 bg-[linear-gradient(45deg,#000_25%,transparent_25%,transparent_50%,#000_50%,#000_75%,transparent_75%,transparent)] bg-size-[40px_40px]" />
 
           <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 mt-0">
@@ -152,10 +152,11 @@ export default function LearnerDashboard({
 
         {/* ---------------- QUICK ACTIONS ---------------- */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <ActionButton label="Continue Learning" href="/learner/enrolled" />
-          <ActionButton label="Book Appointment" href="/learner/appointments" />
-          <ActionButton label="Browse Courses" href="/courses" />
           <ActionButton label="Join Community" href="/learner/communities" />
+          <ActionButton label="Manage Sessions" href="/learner/appointments" />
+          <ActionButton label="Continue Learning" href="/learner/enrolled" />
+          <ActionButton label="Browse Courses" href="/courses" />
+
           <ActionButton label="View Progress" />
         </div>
 

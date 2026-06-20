@@ -53,6 +53,13 @@ function useChart() {
   return context;
 }
 
+function useIsMounted() {
+  return React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+}
 /* =========================
    CHART CONTAINER
 ========================= */
@@ -93,9 +100,7 @@ function ChartContainer({
 ========================= */
 
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
-  const [mounted, setMounted] = React.useState(false);
-
-  React.useEffect(() => setMounted(true), []);
+  const mounted = useIsMounted();
 
   const colorConfig = Object.entries(config).filter(
     ([, c]) => c.theme || c.color,
@@ -113,7 +118,8 @@ ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, item]) => {
     const color = item.theme?.[theme as keyof typeof item.theme] || item.color;
-    return color ? `  --color-${key}: ${color};` : "";
+
+    return color ? `--color-${key}: ${color};` : "";
   })
   .join("\n")}
 }

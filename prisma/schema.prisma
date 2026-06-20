@@ -108,7 +108,7 @@ model Subscription {
 model Session {
   id        String   @id
   expiresAt DateTime
-  token     String
+  token     String 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   ipAddress String?
@@ -143,6 +143,7 @@ model Account {
   @@map("account")
 }
 
+
 model Verification {
   id         String   @id
   identifier String
@@ -152,7 +153,7 @@ model Verification {
   updatedAt  DateTime @updatedAt
 
   @@index([identifier])
-  @@map("verification")
+  @@map("Verification")
 }
 
 
@@ -284,7 +285,7 @@ model Community {
   name        String
   slug        String   @unique
   smallDescription String
-  description String
+  description String @db.Text
   category    String
   fileKey     String
   videoKey    String?

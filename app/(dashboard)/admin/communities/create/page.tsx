@@ -5,10 +5,10 @@ import {
   communityCategories,
   communitySchema,
 } from "@/lib/zodSchemas";
-
+import { useForm, useWatch, Resolver } from "react-hook-form";
 import { ArrowLeft, Loader2, SendHorizonal } from "lucide-react";
 import Link from "next/link";
-import { useForm, Resolver } from "react-hook-form";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -67,6 +67,11 @@ export default function CommunityCreationPage() {
       price: 0,
       slug: "",
     },
+  });
+
+  const slug = useWatch({
+    control: form.control,
+    name: "slug",
   });
 
   const slugify = (text: string) =>
@@ -221,9 +226,7 @@ export default function CommunityCreationPage() {
 
                       <p className="text-xs text-muted-foreground">
                         URL:
-                        <span className="font-mono ml-1">
-                          {form.watch("slug")}
-                        </span>
+                        <span className="font-mono ml-1">{slug}</span>
                       </p>
 
                       <FormMessage />

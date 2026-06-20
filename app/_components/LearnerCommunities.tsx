@@ -110,6 +110,7 @@ export default function LearnerCommunities({
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const hasLoadedOnce = useRef(false);
 
   const activeCommunity =
     communities.find((c) => c.id === activeCommunityId) || communities[0];
@@ -122,6 +123,11 @@ export default function LearnerCommunities({
   const fetchCommunityData = useCallback(
     async (communityId: string) => {
       if (!communityId) return;
+
+      if (!hasLoadedOnce.current) {
+        setIsLoading(true);
+      }
+
       try {
         const res = await fetch(
           `/api/community/posts?communityId=${communityId}&userId=${currentUserId}`,
@@ -129,17 +135,16 @@ export default function LearnerCommunities({
             cache: "no-store",
           },
         );
+
         if (res.ok) {
           const newData = await res.json();
 
-          // ✨ FIX: Preserve currently loaded comments when background polling syncs
           setPosts((prevPosts) => {
             return newData.map((newPost: Post) => {
-              // Find if this post was already inside our state with active loaded comments
               const existingPost = prevPosts.find((p) => p.id === newPost.id);
+
               return {
                 ...newPost,
-                // Keep the loaded comments if they exist locally!
                 loadedComments:
                   existingPost?.loadedComments || newPost.loadedComments || [],
               };
@@ -165,15 +170,26 @@ export default function LearnerCommunities({
 
   // CRITICAL FIX: Runs instantly when page loads (mounts) AND when community switches
   useEffect(() => {
-    setIsLoading(true);
-    fetchCommunityData(activeCommunityId);
+    let cancelled = false;
 
-    // Continuous Sync: Polls database every 4 seconds so background changes sync automatically
+    const loadCommunity = async () => {
+      await Promise.resolve();
+
+      if (!cancelled) {
+        fetchCommunityData(activeCommunityId);
+      }
+    };
+
+    loadCommunity();
+
     const liveSyncInterval = setInterval(() => {
       fetchCommunityData(activeCommunityId);
     }, 4000);
 
-    return () => clearInterval(liveSyncInterval);
+    return () => {
+      cancelled = true;
+      clearInterval(liveSyncInterval);
+    };
   }, [activeCommunityId, fetchCommunityData]);
 
   // =========================

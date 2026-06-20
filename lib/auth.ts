@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import prisma from "./prisma";
 import { resend } from "./resend";
-import { emailOTP } from "better-auth/plugins";
+import { env } from "./env";
 
 export interface User {
   id: string;
@@ -11,7 +11,8 @@ export interface User {
 }
 
 export const auth = betterAuth({
-  appName: "better_auth_nextjs",
+  appName: "Justdy",
+
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
@@ -37,46 +38,216 @@ export const auth = betterAuth({
     minPasswordLength: 8,
     maxPasswordLength: 20,
     requireEmailVerification: true,
+
+    sendResetPassword: async ({ user, url }) => {
+      const { render } = await import("@react-email/render");
+      const ForgotPasswordEmail = (
+        await import("@/app/_components/ForgotPasswordEmail")
+      ).default;
+
+      const emailHtml = await render(
+        ForgotPasswordEmail({
+          username: user.name ?? "User",
+          userEmail: user.email,
+          resetUrl: url,
+        }),
+      );
+
+      await resend.emails.send({
+        from: `${env.EMAIL_SENDER_NAME} <${env.EMAIL_SENDER_ADDRESS}>`,
+        to: user.email,
+        subject: "Reset your Justdy password",
+        html: emailHtml,
+      });
+    },
   },
 
-  plugins: [
-    emailOTP({
-      async sendVerificationOTP({ email, otp }) {
-        await resend.emails.send({
-          from: "Justdy <no-reply@justdy.com>",
-          to: [email],
-          subject: "Verify your Justdy Account",
-          html: `
-            <div style="font-family: Arial, sans-serif; background-color: #edeff5; padding: 20px;">
-              <div style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
-                
-                <h2 style="color: #1d4ed8; text-align: center;">Welcome to LearnSmat!</h2>
-                <p style="font-size: 16px; color: #333333; text-align: center;">
-                  Use the OTP below to verify your email address and activate your account.
-                </p>
+  emailVerification: {
+    sendVerificationEmail: async ({ user, url }) => {
+      const verificationUrl = new URL(url);
 
-                <div style="text-align: center; margin: 30px 0;">
-                  <span style="font-size: 24px; font-weight: bold; background: #e0f2fe; padding: 10px 20px; border-radius: 6px; letter-spacing: 2px; color: #1d4ed8;">
-                    ${otp}
-                  </span>
-                </div>
+      verificationUrl.searchParams.set(
+        "callbackURL",
+        `${env.BETTER_AUTH_URL}/onboarding`,
+      );
 
-                <p style="font-size: 14px; color: #555555; text-align: center;">
-                  This OTP is valid for 10 minutes. Do not share it with anyone.
-                </p>
+      const finalUrl = verificationUrl.toString();
 
-                <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;" />
+      await resend.emails.send({
+        from: `${env.EMAIL_SENDER_NAME} <${env.EMAIL_SENDER_ADDRESS}>`,
+        to: user.email,
+        subject: "Verify your Justdy Account",
 
-                <p style="font-size: 12px; color: #999999; text-align: center;">
-                  LearnSmat Inc.<br/>
-                  123 Learning St, Knowledge City<br/>
-                  &copy; ${new Date().getFullYear()} LearnSmat. All rights reserved.
-                </p>
-              </div>
-            </div>
+        html: `
+      <div style="font-family:Arial,sans-serif;background:#f5f7fb;padding:40px">
+        <div style="max-width:600px;margin:auto;background:white;padding:40px;border-radius:12px">
+
+          <h1 style="text-align:center;color:#2563eb">
+            Welcome to Justdy
+          </h1>
+
+          <p style="font-size:16px;color:#333">
+            Thank you for creating an account.
+          </p>
+
+          <p style="font-size:16px;color:#333">
+            Click the button below to verify your email address.
+          </p>
+
+          <div style="text-align:center;margin:32px 0">
+            <a
+              href="${finalUrl}"
+              style="
+                background:#2563eb;
+                color:white;
+                text-decoration:none;
+                padding:14px 24px;
+                border-radius:8px;
+                display:inline-block;
+                font-weight:bold;
+              "
+            >
+              Verify Email
+            </a>
+          </div>
+
+          <p style="font-size:14px;color:#666">
+            If the button doesn't work, copy and paste this link:
+          </p>
+
+          <p style="word-break:break-all;color:#2563eb">
+            ${finalUrl}
+          </p>
+
+          <hr style="margin:30px 0" />
+
+          <p style="font-size:12px;color:#999;text-align:center">
+            © ${new Date().getFullYear()} Justdy
+          </p>
+
+        </div>
+      </div>
       `,
-        });
-      },
-    }),
-  ],
+      });
+    },
+
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+  },
 });
+
+// import { betterAuth } from "better-auth";
+// import { prismaAdapter } from "better-auth/adapters/prisma";
+// import prisma from "./prisma";
+// import { resend } from "./resend";
+// import { env } from "./env";
+
+// export interface User {
+//   id: string;
+//   email: string;
+//   role?: string;
+// }
+
+// export const auth = betterAuth({
+//   appName: "Justdy",
+
+//   database: prismaAdapter(prisma, {
+//     provider: "postgresql",
+//   }),
+
+//   user: {
+//     additionalFields: {
+//       role: {
+//         type: "string",
+//         defaultValue: "Unassigned",
+//         input: false,
+//         required: false,
+//       },
+//       verificationStatus: {
+//         type: "string",
+//         defaultValue: "Pending",
+//       },
+//     },
+//   },
+
+//   emailAndPassword: {
+//     enabled: true,
+//     autoSignIn: false,
+//     minPasswordLength: 8,
+//     maxPasswordLength: 20,
+//     requireEmailVerification: true,
+//   },
+
+//   emailVerification: {
+//     sendVerificationEmail: async ({ user, url }) => {
+//       const verificationUrl = new URL(url);
+
+//       verificationUrl.searchParams.set(
+//         "callbackURL",
+//         `${env.BETTER_AUTH_URL}/onboarding`,
+//       );
+
+//       const finalUrl = verificationUrl.toString();
+
+//       await resend.emails.send({
+//         from: `${env.EMAIL_SENDER_NAME} <${env.EMAIL_SENDER_ADDRESS}>`,
+//         to: user.email,
+//         subject: "Verify your Justdy Account",
+
+//         html: `
+//       <div style="font-family:Arial,sans-serif;background:#f5f7fb;padding:40px">
+//         <div style="max-width:600px;margin:auto;background:white;padding:40px;border-radius:12px">
+
+//           <h1 style="text-align:center;color:#2563eb">
+//             Welcome to Justdy
+//           </h1>
+
+//           <p style="font-size:16px;color:#333">
+//             Thank you for creating an account.
+//           </p>
+
+//           <p style="font-size:16px;color:#333">
+//             Click the button below to verify your email address.
+//           </p>
+
+//           <div style="text-align:center;margin:32px 0">
+//             <a
+//               href="${finalUrl}"
+//               style="
+//                 background:#2563eb;
+//                 color:white;
+//                 text-decoration:none;
+//                 padding:14px 24px;
+//                 border-radius:8px;
+//                 display:inline-block;
+//                 font-weight:bold;
+//               "
+//             >
+//               Verify Email
+//             </a>
+//           </div>
+
+//           <p style="font-size:14px;color:#666">
+//             If the button doesn't work, copy and paste this link:
+//           </p>
+
+//           <p style="word-break:break-all;color:#2563eb">
+//             ${finalUrl}
+//           </p>
+
+//           <hr style="margin:30px 0" />
+
+//           <p style="font-size:12px;color:#999;text-align:center">
+//             © ${new Date().getFullYear()} Justdy
+//           </p>
+
+//         </div>
+//       </div>
+//       `,
+//       });
+//     },
+
+//     sendOnSignUp: true,
+//     autoSignInAfterVerification: true,
+//   },
+// });

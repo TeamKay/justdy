@@ -3,7 +3,14 @@
 import React, { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { GraduationCap, Loader2, User, ChevronLeft, X } from "lucide-react";
+import {
+  GraduationCap,
+  Loader2,
+  User,
+  ChevronLeft,
+  X,
+  Check,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/app/_components/ui/button";
@@ -153,11 +160,11 @@ export default function OnboardingPage() {
         {/* HEADER */}
         <div className="text-center mb-10">
           <h1 className="text-3xl font-extrabold text-white mb-3">
-            Welcome to Justdy Online Tutoring
+            Onboarding...
           </h1>
           <p className="text-slate-400 text-lg">
             {step === "choose-role" &&
-              "How would you like to use our platform?"}
+              "How would you like to use the platform?"}
             {step === "choose-community" &&
               "Join communities to personalize your experience."}
             {step === "educator-form" &&
@@ -262,85 +269,126 @@ export default function OnboardingPage() {
               <CardTitle className="text-white text-xl text-center mb-1">
                 Select Communities
               </CardTitle>
+
               <CardDescription className="text-slate-400 text-center">
                 Choose one or multiple spaces you want to belong to.
               </CardDescription>
             </CardHeader>
+
             <CardContent className="space-y-6">
               {loadingCommunities ? (
                 <div className="flex justify-center py-6">
                   <Loader2 className="animate-spin text-emerald-400" />
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="w-full flex items-center justify-center">
-                    <Select onValueChange={(id) => toggleCommunity(id)}>
-                      <SelectTrigger className="bg-slate-950 text-white border-slate-800 h-11 w-80">
-                        <SelectValue placeholder="Click to explore and select communities" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                        {communities
-                          .filter((c) => !selectedCommunities.includes(c.id))
-                          .map((community) => (
-                            <SelectItem key={community.id} value={community.id}>
-                              {community.name}
-                            </SelectItem>
-                          ))}
-                        {communities.filter(
-                          (c) => !selectedCommunities.includes(c.id),
-                        ).length === 0 && (
-                          <div className="p-2 text-sm text-slate-500 text-center">
-                            All communities selected or none found
-                          </div>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {communities.map((community) => {
+                    const isSelected = selectedCommunities.includes(
+                      community.id,
+                    );
 
-                  {/* PREVIEW AND DESCRIPTION SECITON FOR SELECTED ITEMS */}
-                  {selectedCommunities.length > 0 && (
-                    <div className="space-y-3 pt-2">
-                      <Label className="text-slate-400 text-xs uppercase tracking-wider">
-                        Your Selections ({selectedCommunities.length})
-                      </Label>
-                      <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                        {communities
-                          .filter((c) => selectedCommunities.includes(c.id))
-                          .map((community) => (
-                            <div
-                              key={community.id}
-                              className="flex items-start justify-between p-3 rounded-lg bg-slate-950 border border-slate-800 animate-in fade-in-50 duration-200"
-                            >
-                              <div className="space-y-1">
-                                <h4 className="text-white text-sm font-semibold">
-                                  {community.name}
-                                </h4>
-                                <p className="text-slate-400 text-xs line-clamp-2">
-                                  {community.smallDescription}
-                                </p>
-                              </div>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7 text-slate-500 hover:text-rose-400 hover:bg-slate-900 rounded-full shrink-0 ml-2"
-                                onClick={() => toggleCommunity(community.id)}
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          ))}
+                    return (
+                      <div
+                        key={community.id}
+                        onClick={() => toggleCommunity(community.id)}
+                        className={`
+                  relative cursor-pointer rounded-xl border p-5
+                  transition-all duration-200
+
+                  ${
+                    isSelected
+                      ? "border-emerald-500 bg-emerald-500/10"
+                      : "border-slate-800 bg-slate-950 hover:border-slate-600"
+                  }
+                `}
+                      >
+                        {/* CHECKBOX */}
+                        <div
+                          className={`
+                    absolute top-4 right-4
+                    h-5 w-5 rounded-md
+                    border flex items-center justify-center
+
+                    ${
+                      isSelected
+                        ? "bg-emerald-500 border-emerald-500"
+                        : "border-slate-600"
+                    }
+                  `}
+                        >
+                          {isSelected && (
+                            <Check className="w-3.5 h-3.5 text-white" />
+                          )}
+                        </div>
+
+                        {/* CONTENT */}
+
+                        <h3 className="text-white font-semibold text-lg pr-8">
+                          {community.name}
+                        </h3>
+
+                        <p className="text-slate-400 text-sm mt-2 line-clamp-3">
+                          {community.smallDescription}
+                        </p>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* SELECTED COUNT */}
+
+              {selectedCommunities.length > 0 && (
+                <div className="pt-3">
+                  <Label className="text-slate-400 text-xs uppercase tracking-wider">
+                    Selected ({selectedCommunities.length})
+                  </Label>
+
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {communities
+                      .filter((c) => selectedCommunities.includes(c.id))
+                      .map((community) => (
+                        <div
+                          key={community.id}
+                          className="
+                    flex items-center gap-2
+                    bg-slate-950
+                    border border-slate-800
+                    rounded-full
+                    px-3 py-1.5
+                  "
+                        >
+                          <span className="text-white text-sm">
+                            {community.name}
+                          </span>
+
+                          <button
+                            onClick={() => toggleCommunity(community.id)}
+                            className="
+                      text-slate-400
+                      hover:text-rose-400
+                    "
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               )}
 
               {/* ACTION BUTTONS */}
+
               <div className="flex gap-4 pt-4">
                 <Button
                   variant="outline"
                   onClick={() => setStep("choose-role")}
-                  className="flex-1 border-slate-800 text-slate-300 hover:bg-slate-800"
+                  className="
+            flex-1
+            border-slate-800
+            text-slate-300
+            hover:bg-slate-800
+          "
                 >
                   <ChevronLeft className="w-4 h-4 mr-2" />
                   Back
@@ -355,7 +403,12 @@ export default function OnboardingPage() {
                     }
                   }}
                   disabled={selectedCommunities.length === 0 || loading}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white"
+                  className="
+            flex-1
+            bg-emerald-600
+            hover:bg-emerald-500
+            text-white
+          "
                 >
                   {loading && selectedRole !== "Educator" ? (
                     <Loader2 className="animate-spin w-4 h-4" />
@@ -388,35 +441,42 @@ export default function OnboardingPage() {
                 onSubmit={handleSubmit(onEducatorSubmit)}
                 className="space-y-6"
               >
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Specialty</Label>
-                  <Select
-                    value={specialtyValue}
-                    onValueChange={(v) => setValue("specialty", v)}
-                  >
-                    <SelectTrigger className="bg-slate-950 text-white border-slate-800">
-                      <SelectValue placeholder="Select subject" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-950 border-slate-800 text-white">
-                      {Specialties.map((s) => (
-                        <SelectItem key={s.name} value={s.name}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Specialty */}
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Specialty</Label>
 
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Experience</Label>
-                  <Input
-                    placeholder="Experience (years)"
-                    type="number"
-                    className="bg-slate-950 text-white border-slate-800"
-                    {...register("experience", {
-                      valueAsNumber: true,
-                    })}
-                  />
+                    <Select
+                      value={specialtyValue}
+                      onValueChange={(v) => setValue("specialty", v)}
+                    >
+                      <SelectTrigger className="bg-slate-950 text-white border-slate-800">
+                        <SelectValue placeholder="Select subject" />
+                      </SelectTrigger>
+
+                      <SelectContent className="bg-slate-950 border-slate-800 text-white">
+                        {Specialties.map((s) => (
+                          <SelectItem key={s.name} value={s.name}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Experience */}
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Experience</Label>
+
+                    <Input
+                      placeholder="Experience (years)"
+                      type="number"
+                      className="bg-slate-950 text-white border-slate-800"
+                      {...register("experience", {
+                        valueAsNumber: true,
+                      })}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">

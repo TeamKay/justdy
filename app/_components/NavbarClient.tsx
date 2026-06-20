@@ -10,9 +10,6 @@ import {
   Video,
   LayoutDashboard,
   LogInIcon,
-  Shield,
-  GraduationCap,
-  User,
 } from "lucide-react";
 import clsx from "clsx";
 import { ThemeToggle } from "@/app/_components/themeToggle";
@@ -22,6 +19,7 @@ import { buttonVariants } from "./ui/button";
 import { cn } from "@/lib/utils";
 import MyLogo from "./Logo";
 import { useEffect, useState } from "react";
+import { ROLE_NAV_CONFIG } from "@/lib/role-config";
 
 const productItems = [
   {
@@ -35,32 +33,6 @@ const productItems = [
     icon: <BookOpen className="h-5 w-5 text-blue-500" />,
   },
 ];
-
-const ROLE_NAV_CONFIG: Record<
-  string,
-  { label: string; href: string; icon?: React.ReactNode }
-> = {
-  admin: {
-    label: "Admin Dashboard",
-    href: "/admin",
-    icon: <Shield className="h-4 w-4" />,
-  },
-  educator: {
-    label: "Educator Dashboard",
-    href: "/educator",
-    icon: <GraduationCap className="h-4 w-4" />,
-  },
-  learner: {
-    label: "Learner Dashboard",
-    href: "/learner",
-    icon: <User className="h-4 w-4" />,
-  },
-  unassigned: {
-    label: "Complete Profile",
-    href: "/onboarding",
-    icon: <LayoutDashboard className="h-4 w-4" />,
-  },
-};
 
 interface UserProps {
   id: string;

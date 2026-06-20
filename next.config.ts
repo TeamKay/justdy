@@ -8,8 +8,14 @@ const nextConfig = {
         port: "",
         pathname: "/f/**",
       },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        port: "",
+        pathname: "/**",
+      },
     ],
   },
 };
 
-module.exports = nextConfig;
+export default nextConfig;

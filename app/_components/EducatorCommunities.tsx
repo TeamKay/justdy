@@ -104,12 +104,12 @@ export default function EducatorCommunities({
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [editTitle, setEditTitle] = useState("");
-  const [, setOpenPostMenuId] = useState<string | null>(null);
 
   // State for tracking actual database posts live
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const isInitialLoad = useRef(true);
 
   const activeCommunity =
     communities.find((c) => c.id === activeCommunityId) || communities[0];
@@ -120,8 +120,9 @@ export default function EducatorCommunities({
 
   // Reusable fetching function to hit your database endpoint
   const fetchCommunityData = useCallback(
-    async (communityId: string) => {
+    async (communityId: string, showLoading = false) => {
       if (!communityId) return;
+
       try {
         const res = await fetch(
           `/api/community/posts?communityId=${communityId}&userId=${currentUserId}`,
@@ -129,46 +130,45 @@ export default function EducatorCommunities({
             cache: "no-store",
           },
         );
+
         if (res.ok) {
           const newData = await res.json();
 
-          // ✨ FIX: Preserve currently loaded comments when background polling syncs
-          setPosts((prevPosts) => {
-            return newData.map((newPost: Post) => {
-              // Find if this post was already inside our state with active loaded comments
+          setPosts((prevPosts) =>
+            newData.map((newPost: Post) => {
               const existingPost = prevPosts.find((p) => p.id === newPost.id);
+
               return {
                 ...newPost,
-                // Keep the loaded comments if they exist locally!
                 loadedComments:
                   existingPost?.loadedComments || newPost.loadedComments || [],
               };
-            });
-          });
+            }),
+          );
         }
       } catch (error) {
-        console.error("Failed to fetch community database records:", error);
+        console.error(error);
       } finally {
-        setIsLoading(false);
+        if (showLoading) {
+          setIsLoading(false);
+        }
       }
     },
     [currentUserId],
   );
 
   useEffect(() => {
-    const closeMenu = () => setOpenPostMenuId(null);
-    document.addEventListener("scroll", closeMenu);
-    return () => {
-      document.removeEventListener("scroll", closeMenu);
+    const sync = async () => {
+      if (isInitialLoad.current) {
+        setIsLoading(true);
+        isInitialLoad.current = false;
+      }
+
+      await fetchCommunityData(activeCommunityId);
     };
-  }, []);
 
-  // CRITICAL FIX: Runs instantly when page loads (mounts) AND when community switches
-  useEffect(() => {
-    setIsLoading(true);
-    fetchCommunityData(activeCommunityId);
+    sync();
 
-    // Continuous Sync: Polls database every 4 seconds so background changes sync automatically
     const liveSyncInterval = setInterval(() => {
       fetchCommunityData(activeCommunityId);
     }, 4000);

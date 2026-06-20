@@ -187,7 +187,7 @@ export default function CommunitiesDiscoveryPage({
             <button
               key={category.id}
               onClick={() => setActiveCategory(category.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition ${
                 isActive
                   ? "bg-emerald-600 text-white"
                   : "bg-emerald-900/20 border border-emerald-900/30 text-white/60 hover:bg-emerald-900/40"

@@ -51,9 +51,9 @@ function extractTextFromRichContent(description: RichTextDoc | string) {
 /* ✅ UPDATED IMAGE COMPONENT */
 function CommunityImage({ src, alt }: { src?: string | null; alt: string }) {
   const fallback = "/placeholder.png";
+  const [hasError, setHasError] = useState(false);
 
-  // If the src is an UploadThing fileKey, append the standard UploadThing domain.
-  // If it's already a full URL or an empty string, leave it as is.
+  // Derive the URL cleanly during render
   const imageUrl = src
     ? src.startsWith("http")
       ? src
@@ -63,16 +63,12 @@ function CommunityImage({ src, alt }: { src?: string | null; alt: string }) {
   return (
     <div className="relative w-12 h-12 shrink-0 rounded-md overflow-hidden border">
       <Image
-        src={imageUrl}
+        src={hasError ? fallback : imageUrl}
         alt={alt}
         fill
         sizes="48px"
         className="object-cover"
-        // Prevent crashing if the image fails to resolve
-        onError={(e) => {
-          const target = e.target as HTMLImageElement;
-          target.src = fallback;
-        }}
+        onError={() => setHasError(true)}
       />
     </div>
   );

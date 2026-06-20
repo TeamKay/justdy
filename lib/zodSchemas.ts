@@ -118,7 +118,7 @@ export const communitySchema = z.object({
   description: z.string().min(1),
   category: z.string().min(1),
   fileKey: z.string().min(1),
-  videoKey: z.string().min(1),
+  videoKey: z.string().default(""),
   price: z.number().optional(),
 });
 

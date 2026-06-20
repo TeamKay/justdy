@@ -1,108 +1,105 @@
-// // /app/api/auth/[...all]/route.ts
-// import { auth } from "@/lib/auth"; // path to your auth file
-// import { toNextJsHandler } from "better-auth/next-js";
-
-// export const { POST, GET } = toNextJsHandler(auth);
-
-
-
-import "server-only";
-
-import { NextRequest } from "next/server";
-import { toNextJsHandler } from "better-auth/next-js";
+// /app/api/auth/[...all]/route.ts
 import { auth } from "@/lib/auth";
+import { toNextJsHandler } from "better-auth/next-js";
 
-import arcjet from "@/lib/arcjet";
-import ip from "@arcjet/ip";
-import {detectBot,slidingWindow,protectSignup,ArcjetDecision,BotOptions,EmailOptions,ProtectSignupOptions,SlidingWindowRateLimitOptions} from "@arcjet/next";
+export const { POST, GET } = toNextJsHandler(auth);
 
-/* -------------------------------------------------------------------------- */
-/*                              Arcjet Config                                 */
-/* -------------------------------------------------------------------------- */
+// import "server-only";
 
-const emailOptions = {
-  mode: "LIVE",
-  deny: ["DISPOSABLE", "INVALID", "NO_MX_RECORDS"],
-} satisfies EmailOptions;
+// import { NextRequest } from "next/server";
+// import { toNextJsHandler } from "better-auth/next-js";
+// import { auth } from "@/lib/auth";
 
-const botOptions = {
-  mode: "LIVE",
-  allow: [],
-} satisfies BotOptions;
+// import arcjet from "@/lib/arcjet";
+// import ip from "@arcjet/ip";
+// import {detectBot,slidingWindow,protectSignup,ArcjetDecision,BotOptions,EmailOptions,ProtectSignupOptions,SlidingWindowRateLimitOptions} from "@arcjet/next";
 
-const rateLimitOptions = {
-  mode: "LIVE",
-  interval: "2m",
-  max: 5,
-} satisfies SlidingWindowRateLimitOptions<[]>;
+// /* -------------------------------------------------------------------------- */
+// /*                              Arcjet Config                                 */
+// /* -------------------------------------------------------------------------- */
 
-const signupOptions = {
-  email: emailOptions,
-  bots: botOptions,
-  rateLimit: rateLimitOptions,
-} satisfies ProtectSignupOptions<[]>;
+// const emailOptions = {
+//   mode: "LIVE",
+//   deny: ["DISPOSABLE", "INVALID", "NO_MX_RECORDS"],
+// } satisfies EmailOptions;
 
-/* -------------------------------------------------------------------------- */
-/*                         Arcjet Protection Logic                             */
-/* -------------------------------------------------------------------------- */
+// const botOptions = {
+//   mode: "LIVE",
+//   allow: [],
+// } satisfies BotOptions;
 
-async function protect(req: NextRequest): Promise<ArcjetDecision> {
-  const session = await auth.api.getSession({
-    headers: req.headers,
-  });
+// const rateLimitOptions = {
+//   mode: "LIVE",
+//   interval: "2m",
+//   max: 5,
+// } satisfies SlidingWindowRateLimitOptions<[]>;
 
-  
-  const fingerprint =
-    session?.user?.id ?? ip(req) ?? "127.0.0.1";
+// const signupOptions = {
+//   email: emailOptions,
+//   bots: botOptions,
+//   rateLimit: rateLimitOptions,
+// } satisfies ProtectSignupOptions<[]>;
 
-  if (req.nextUrl.pathname.includes("/sign-up")) {
-    const body = await req.clone().json().catch(() => null);
+// /* -------------------------------------------------------------------------- */
+// /*                         Arcjet Protection Logic                             */
+// /* -------------------------------------------------------------------------- */
 
-    if (body?.email) {
-      return arcjet
-        .withRule(protectSignup(signupOptions))
-        .protect(req, {
-          email: body.email,
-          fingerprint,
-        });
-    }
-  }
+// async function protect(req: NextRequest): Promise<ArcjetDecision> {
+//   const session = await auth.api.getSession({
+//     headers: req.headers,
+//   });
 
-  return arcjet
-    .withRule(detectBot(botOptions))
-    .withRule(slidingWindow(rateLimitOptions))
-    .protect(req, { fingerprint });
-}
+//   const fingerprint =
+//     session?.user?.id ?? ip(req) ?? "127.0.0.1";
 
-/* -------------------------------------------------------------------------- */
-/*                        BetterAuth Handlers                                  */
-/* -------------------------------------------------------------------------- */
+//   if (req.nextUrl.pathname.includes("/sign-up")) {
+//     const body = await req.clone().json().catch(() => null);
 
-const handlers = toNextJsHandler(auth.handler);
+//     if (body?.email) {
+//       return arcjet
+//         .withRule(protectSignup(signupOptions))
+//         .protect(req, {
+//           email: body.email,
+//           fingerprint,
+//         });
+//     }
+//   }
 
-/* -------------------------------------------------------------------------- */
-/*                            Route Exports                                    */
-/* -------------------------------------------------------------------------- */
+//   return arcjet
+//     .withRule(detectBot(botOptions))
+//     .withRule(slidingWindow(rateLimitOptions))
+//     .protect(req, { fingerprint });
+// }
 
-export async function POST(req: NextRequest) {
-  const decision = await protect(req);
+// /* -------------------------------------------------------------------------- */
+// /*                        BetterAuth Handlers                                  */
+// /* -------------------------------------------------------------------------- */
 
-  if (decision.isDenied()) {
-    return new Response(
-      JSON.stringify({
-        error: "Request blocked by security rules",
-        reason: decision.reason,
-      }),
-      {
-        status: 403,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-  }
+// const handlers = toNextJsHandler(auth.handler);
 
-  return handlers.POST(req);
-}
+// /* -------------------------------------------------------------------------- */
+// /*                            Route Exports                                    */
+// /* -------------------------------------------------------------------------- */
 
-export async function GET(req: NextRequest) {
-  return handlers.GET(req);
-}
+// export async function POST(req: NextRequest) {
+//   const decision = await protect(req);
+
+//   if (decision.isDenied()) {
+//     return new Response(
+//       JSON.stringify({
+//         error: "Request blocked by security rules",
+//         reason: decision.reason,
+//       }),
+//       {
+//         status: 403,
+//         headers: { "Content-Type": "application/json" },
+//       }
+//     );
+//   }
+
+//   return handlers.POST(req);
+// }
+
+// export async function GET(req: NextRequest) {
+//   return handlers.GET(req);
+// }

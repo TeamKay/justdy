@@ -11,7 +11,7 @@ export default async function LatestCourses() {
   });
 
   return (
-    <section className="py-0">
+    <section className="py-0 mb-20">
       {/* Cards Grid / Empty State */}
       {courses.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 auto-cols-fr">
@@ -20,7 +20,7 @@ export default async function LatestCourses() {
           ))}
         </div>
       ) : (
-        <div className="relative max-w-7xl mx-auto px-12 rounded-md p-8 md:p-25 text-center shadow-sm backdrop-blur-md">
+        <div className="max-w-296 mx-auto px-4 sm:px-6 lg:px-8 mt-8 md:py-30 rounded-md border border-emerald-950 text-center shadow-sm backdrop-blur-md">
           <div className="relative z-10 flex flex-col items-center">
             {/* Icon */}
             <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-md bg-white/10 border border-white/10">

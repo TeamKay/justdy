@@ -96,9 +96,8 @@ export async function setUserRole(formData: FormData) {
 
       // Set cookies
       (await cookies()).set("role", "Learner", { path: "/" });
-
-      revalidatePath("/");
-      return { success: true, redirect: "/" };
+      revalidatePath("/", "layout");
+      return { success: true, redirect: "/learner" };
     }
 
     /**

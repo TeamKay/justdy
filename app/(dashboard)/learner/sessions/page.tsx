@@ -87,7 +87,7 @@ export default async function StudentAppointments() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-6">
         <div>
           <h1 className="text-3xl font-bold text-white tracking-tight">
-            My Appointments
+            My Sessions
           </h1>
           <p className="text-muted-foreground">
             Manage your learning schedule and sessions.
@@ -107,7 +107,7 @@ export default async function StudentAppointments() {
           <CardContent className="flex items-center justify-center py-10 gap-3">
             <AlertCircle className="text-destructive size-5" />
             <p className="text-destructive font-medium">
-              Failed to load appointments: {error}
+              Failed to load sessions: {error}
             </p>
           </CardContent>
         </Card>

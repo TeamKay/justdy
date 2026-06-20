@@ -10,6 +10,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { ReactNode, useMemo, useState } from "react";
 import {
   arrayMove,
   SortableContext,
@@ -17,7 +18,6 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { ReactNode, useEffect, useState } from "react";
 import { CSS } from "@dnd-kit/utilities";
 import { AdminCourseSingularType } from "@/app/actions/educator-get-course";
 import { cn } from "@/lib/utils";
@@ -66,42 +66,23 @@ interface SortableItemsProps {
 }
 
 export default function CourseStructure({ data }: iAppProps) {
-  const initialItems =
-    data.chapter.map((chapter) => ({
-      id: chapter.id,
-      title: chapter.title,
-      order: chapter.position,
-      isOpen: true,
-      lessons: chapter.lessons.map((lesson) => ({
-        id: lesson.id,
-        title: lesson.title,
-        order: lesson.position,
-      })),
-    })) || [];
+  const initialItems = useMemo(() => {
+    return (
+      data.chapter.map((chapter) => ({
+        id: chapter.id,
+        title: chapter.title,
+        order: chapter.position,
+        isOpen: true,
+        lessons: chapter.lessons.map((lesson) => ({
+          id: lesson.id,
+          title: lesson.title,
+          order: lesson.position,
+        })),
+      })) || []
+    );
+  }, [data.chapter]);
 
   const [items, setItems] = useState(initialItems);
-
-  console.log(items);
-
-  useEffect(() => {
-    setItems((prevItems) => {
-      const updatedItems =
-        data.chapter.map((chapter) => ({
-          id: chapter.id,
-          title: chapter.title,
-          order: chapter.position,
-          isOpen:
-            prevItems.find((item) => item.id === chapter.id)?.isOpen ?? true,
-          lessons: chapter.lessons.map((lesson) => ({
-            id: lesson.id,
-            title: lesson.title,
-            order: lesson.position,
-          })),
-        })) || [];
-
-      return updatedItems;
-    });
-  }, [data]);
 
   function SortableItem({ children, id, className, data }: SortableItemsProps) {
     const {

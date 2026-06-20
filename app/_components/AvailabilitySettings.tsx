@@ -18,6 +18,7 @@ import useFetch from "@/hooks/use-fetch";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import deleteAvailabilitySlot from "../actions/educator-delete-availability";
 
 // --- Types & Helpers ---
 type SlotStatus = "Available" | "Booked" | "Blocked" | string;
@@ -55,6 +56,9 @@ export default function AvailabilitySettings({
 }: AvailabilitySettingsProps) {
   const [showForm, setShowForm] = useState(false);
   const { loading, fn: submitSlots } = useFetch(setAvailabilitySlots);
+  const { loading: deleting, fn: deleteSlot } = useFetch(
+    deleteAvailabilitySlot,
+  );
 
   const {
     register,
@@ -83,6 +87,19 @@ export default function AvailabilitySettings({
       setShowForm(false);
       toast.success("Availability updated");
       reset();
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const formData = new FormData();
+    formData.append("id", id);
+
+    const result = await deleteSlot(formData);
+
+    if (result?.success) {
+      toast.success("Slot deleted successfully");
+    } else {
+      toast.error("Failed to delete slot");
     }
   };
 
@@ -229,6 +246,8 @@ export default function AvailabilitySettings({
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => handleDelete(slot.id)}
+                        disabled={deleting}
                         className="size-8 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 hover:bg-red-400/10 transition-all"
                       >
                         <Trash2 className="size-4" />

@@ -75,7 +75,7 @@ const cards = [
 
 export default function HowItWorks() {
   return (
-    <section className="bg-background py-0 px-0">
+    <section className="bg-background py-0 px-0 mb-40">
       <div className="max-w-7xl mx-auto px-12">
         <div className="text-center mb-10">
           <h2 className="text-4xl font-semibold text-white mb-4 tracking-tight">
@@ -90,7 +90,7 @@ export default function HowItWorks() {
           {cards.map((card, i) => (
             <div
               key={i}
-              className="group relative bg-neutral-900/40 border border-neutral-800 rounded-2xl p-8 overflow-hidden 
+              className="group relative bg-neutral-900/40 border border-neutral-800 rounded-md p-8 overflow-hidden 
                          transition-all duration-500 ease-out
                          hover:border-neutral-700 hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]"
             >
@@ -99,7 +99,7 @@ export default function HowItWorks() {
 
               {/* Dynamic Glow Effect */}
               <div
-                className={`absolute -top-24 -left-24 w-64 h-64 ${card.glow} blur-[80px] rounded-full 
+                className={`absolute -top-24 -left-24 w-64 h-64 ${card.glow} blur-[80px] rounded-md 
                                transition-all duration-700 ease-in-out
                                group-hover:scale-150 group-hover:translate-x-12 group-hover:translate-y-12 opacity-50 group-hover:opacity-100 pointer-events-none`}
               />
@@ -107,11 +107,11 @@ export default function HowItWorks() {
               <div className="relative z-10">
                 <div className="flex justify-between items-start mb-10">
                   {/* Icon with scaling effect */}
-                  <div className="bg-neutral-800 p-2.5 rounded-lg border border-neutral-700 text-white transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
+                  <div className="bg-neutral-800 p-2.5 rounded-md border border-neutral-700 text-white transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
                     {card.icon}
                   </div>
                   <span
-                    className={`text-[10px] tracking-widest font-bold px-3 py-1 rounded-full border transition-colors duration-300 ${card.tagColor}`}
+                    className={`text-[10px] tracking-widest font-bold px-3 py-1 rounded-md border transition-colors duration-300 ${card.tagColor}`}
                   >
                     {card.tag}
                   </span>
@@ -126,7 +126,7 @@ export default function HowItWorks() {
 
                 <Link
                   href={card.link}
-                  className="inline-flex items-center gap-2 text-sm font-medium text-white  bg-neutral-800 border border-neutral-700 px-4 py-2 rounded-lg transition-all duration-300 hover:bg-neutral-700 hover:border-neutral-600"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-white  bg-neutral-800 border border-neutral-700 px-4 py-2 rounded-md transition-all duration-300 hover:bg-neutral-700 hover:border-neutral-600"
                 >
                   Learn More →
                 </Link>

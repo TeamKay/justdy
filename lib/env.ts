@@ -10,6 +10,8 @@ export const env = createEnv({
     ARCJET_KEY: z.string().min(1),
     STRIPE_SECRET_KEY: z.string().min(1),
     STRIPE_WEBHOOK_SECRET: z.string().min(1),
+    EMAIL_SENDER_NAME: z.string().min(1),
+    EMAIL_SENDER_ADDRESS: z.string().min(1),
   },
 
   client: {},

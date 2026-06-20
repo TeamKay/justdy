@@ -42,8 +42,8 @@ const navigationData = {
   ],
   educator: [
     { title: "Dashboard", url: "/educator", icon: LayoutDashboard },
-    { title: "Communities", url: "/educator/communities", icon: Camera },
-    { title: "Appointments", url: "/educator/appointments", icon: Calendar },
+    { title: "My Communities", url: "/educator/communities", icon: Camera },
+    { title: "My Sessions", url: "/educator/sessions", icon: Calendar },
     { title: "My Courses", url: "/educator/courses", icon: BookOpen },
     { title: "Student Roster", url: "/educator/roster", icon: Users },
     { title: "My Earnings", url: "/educator/earnings", icon: CreditCard },
@@ -51,9 +51,9 @@ const navigationData = {
   ],
   learner: [
     { title: "Dashboard", url: "/learner", icon: LayoutDashboard },
-    { title: "Communities", url: "/learner/communities", icon: Camera },
+    { title: "My Communities", url: "/learner/communities", icon: Camera },
     { title: "My Courses", url: "/learner/enrolled", icon: BookOpen },
-    { title: "Appointments", url: "/learner/appointments", icon: Users },
+    { title: "My Sessions", url: "/learner/sessions", icon: Users },
     { title: "Settings", url: "/learner/settings", icon: Settings },
   ],
 };
@@ -64,15 +64,16 @@ const secondaryNav = [
 ];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const [mounted, setMounted] = React.useState(false);
+  const mounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+
   const { data: session, isPending } = authClient.useSession();
 
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
-
   if (!mounted) {
-    return <Sidebar {...props}></Sidebar>;
+    return <Sidebar {...props} />;
   }
 
   const rawRole = (session?.user as { role?: string })?.role || "Student";
