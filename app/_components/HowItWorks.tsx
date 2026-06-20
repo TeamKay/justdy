@@ -5,7 +5,7 @@ const cards = [
   {
     title: "Community Learning",
     tag: "Available now",
-    link: "/session",
+    link: "/communities",
     tagColor: "text-blue-400 bg-blue-400/10 border-blue-400/20",
     description:
       "Engage in real-time, one-on-one or group video sessions with expert tutors. Get instant feedback, ask questions freely, and experience personalized learning that adapts to your pace.",

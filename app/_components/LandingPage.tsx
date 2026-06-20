@@ -63,15 +63,17 @@ export default function Hero() {
               </span>
             </h1>
 
-            <p className="text-lg sm:text-xl text-purple-200/70 max-w-xl font-normal leading-relaxed">
-              Expert Math Online Tutoring for All Levels, Ages 8-18. Boost
-              Grades, Confidence & Understanding.
+            <p className="text-md sm:text-sm text-purple-200/70 max-w-xl font-normal leading-relaxed">
+              Turn math anxiety into academic mastery. Our personalized online
+              tutoring helps students bridge learning gaps, accelerate school
+              grades, and build the lifelong confidence to tackle any complex
+              problem with ease
             </p>
           </motion.div>
 
           <div className="flex flex-wrap items-center gap-4 pt-2">
             <Link href="/signup">
-              <button className="h-12 px-6 bg-purple-600 hover:bg-fuchsia-600 text-white font-medium rounded-md shadow-lg shadow-purple-900/30 transition dynamic-blur flex items-center gap-2 group text-sm cursor-pointer">
+              <button className="h-12 px-6 bg-[#857938] hover:bg-[#857938] text-white font-medium rounded-md shadow-lg shadow-purple-900/30 transition dynamic-blur flex items-center gap-2 group text-sm cursor-pointer">
                 Get Started
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition" />
               </button>
@@ -86,7 +88,6 @@ export default function Hero() {
           </div>
         </div>
 
-        {/* Right Column: Hero Image */}
         {/* Right Column: Hero Image */}
         <motion.div
           initial={{ opacity: 0, x: 40 }}
@@ -153,13 +154,13 @@ export default function Hero() {
       <div className="relative z-10 border-y border-purple-500/10 bg-[#040108]/60 backdrop-blur-sm w-full py-6">
         <div className="max-w-7xl mx-auto px-6 sm:px-12 grid grid-cols-2 md:grid-cols-4 gap-6 text-left">
           <div className="flex items-center gap-3.5">
-            <div className="p-2.5 rounded-lg bg-red-500/10 text-red-400">
+            <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-400">
               <Youtube className="w-5 h-5" />
             </div>
             <div>
               <div className="text-sm font-bold text-white">55K</div>
-              <div className="text-xs text-purple-300/50">
-                YouTube subscribers
+              <div className="text-xs  text-purple-300/50">
+                27/4 AI Smart Lessons
               </div>
             </div>
           </div>
@@ -169,8 +170,10 @@ export default function Hero() {
               <Disc className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-sm font-bold text-white">850+</div>
-              <div className="text-xs text-purple-300/50">Discord members</div>
+              <div className="text-sm font-bold text-white">20+</div>
+              <div className="text-xs text-purple-300/50">
+                Successful Sessions
+              </div>
             </div>
           </div>
 
@@ -180,7 +183,7 @@ export default function Hero() {
             </div>
             <div>
               <div className="text-sm font-bold text-white">2.1K</div>
-              <div className="text-xs text-purple-300/50">GitHub stars</div>
+              <div className="text-xs text-purple-300/50">Active Students</div>
             </div>
           </div>
 
@@ -189,10 +192,8 @@ export default function Hero() {
               <Rocket className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-sm font-bold text-white">320+</div>
-              <div className="text-xs text-purple-300/50">
-                Developers shipping
-              </div>
+              <div className="text-sm font-bold text-white">10+</div>
+              <div className="text-xs text-purple-300/50">Expert Tutors</div>
             </div>
           </div>
         </div>
