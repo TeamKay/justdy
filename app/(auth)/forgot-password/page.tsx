@@ -59,14 +59,15 @@ export default function ForgotPasswordPage() {
         redirectTo: "/reset-password",
       });
 
+      // Better-Auth will catch the server-side error thrown above and display it here
       if (error) {
-        toast.error(error.message);
+        toast.error(
+          error.message || "Failed to process password reset request.",
+        );
         return;
       }
 
       toast.success("Password reset link sent! Check your email.");
-
-      // router.push(`/reset-password?email=${encodeURIComponent(values.email)}`);
     } catch {
       toast.error("Something went wrong.");
     } finally {

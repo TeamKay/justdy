@@ -51,34 +51,42 @@ export default function LoginPage() {
 
   async function signInWithEmail(values: z.infer<typeof loginSchema>) {
     setLoading(true);
-    const { data, error } = await authClient.signIn.email({
-      email: values.email,
-      password: values.password,
-    });
 
-    if (data && data.user) {
-      const role = (data.user as User).role?.toLowerCase() || "student";
-      Cookies.set("role", role, {
-        expires: 7,
-        path: "/",
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
+    try {
+      const { data, error } = await authClient.signIn.email({
+        email: values.email,
+        password: values.password,
       });
 
-      toast.success("Successfully Logged In!");
-      const dashboard =
-        ROLE_NAV_CONFIG[role]?.href ?? ROLE_NAV_CONFIG["unassigned"].href;
+      if (error) {
+        toast.error(error.message || "Invalid credentials");
+        return;
+      }
 
-      router.push(dashboard);
-      router.refresh();
-    }
+      if (data?.user) {
+        const role = (data.user as User).role?.toLowerCase() || "student";
 
-    if (error) {
+        Cookies.set("role", role, {
+          expires: 7,
+          path: "/",
+          sameSite: "lax",
+          secure: process.env.NODE_ENV === "production",
+        });
+
+        toast.success("Successfully Logged In!");
+
+        const dashboard =
+          ROLE_NAV_CONFIG[role]?.href ?? ROLE_NAV_CONFIG["unassigned"].href;
+
+        router.push(dashboard);
+        router.refresh();
+      }
+    } catch (err) {
+      console.error("LOGIN ERROR:", err);
+      toast.error("Something went wrong during login");
+    } finally {
       setLoading(false);
-      toast.error(error.message || "Invalid credentials");
-      return;
     }
-    setLoading(false);
   }
 
   return (

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import { Toaster } from "./_components/ui/sonner";
 import { ThemeProvider } from "./_components/ui/theme-provider";
+import { TooltipProvider } from "./_components/ui/tooltip";
 
 import "./globals.css";
 
@@ -37,10 +38,59 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Toaster closeButton position="bottom-center" />
+          <TooltipProvider>
+            {children}
+            <Toaster closeButton position="bottom-center" />
+          </TooltipProvider>
         </ThemeProvider>
       </body>
     </html>
   );
 }
+
+// import type { Metadata } from "next";
+// import { Inter, Playfair_Display } from "next/font/google";
+// import { Toaster } from "./_components/ui/sonner";
+// import { ThemeProvider } from "./_components/ui/theme-provider";
+
+// import "./globals.css";
+
+// const inter = Inter({
+//   subsets: ["latin"],
+//   variable: "--font-inter",
+// });
+
+// const playfair = Playfair_Display({
+//   subsets: ["latin"],
+//   variable: "--font-playfair",
+// });
+
+// export const metadata: Metadata = {
+//   title: "Justdy| Learning from a community of experts",
+//   description: "Where smart learning takes place",
+//   icons: {
+//     icon: "/logo.ico",
+//   },
+// };
+
+// export default async function RootLayout({
+//   children,
+// }: {
+//   children: React.ReactNode;
+// }) {
+//   return (
+//     <html lang="en" suppressHydrationWarning>
+//       <body className={`${inter.variable} ${playfair.variable} font-sans`}>
+//         <ThemeProvider
+//           attribute="class"
+//           defaultTheme="system"
+//           enableSystem
+//           disableTransitionOnChange
+//         >
+//           {children}
+//           <Toaster closeButton position="bottom-center" />
+//         </ThemeProvider>
+//       </body>
+//     </html>
+//   );
+// }

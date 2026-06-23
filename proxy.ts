@@ -21,11 +21,45 @@ const aj = arcjet({
 export default createMiddleware(aj, async (request: NextRequest) => {
   const { pathname } = request.nextUrl;
 
+  // 1. Skip checks on the protection warning landing pages to prevent infinite loops
+  if (
+    pathname === "/verify-email-notice" ||
+    pathname === "/application-under-review"
+  ) {
+    return NextResponse.next();
+  }
+
   const session = await auth.api.getSession({
     headers: request.headers,
   });
 
-  const userRole = session?.user?.role?.toLowerCase();
+  const user = session?.user;
+  const userRole = user?.role?.toLowerCase();
+
+  // 2. Global Guards for Logged-In Users
+  if (session && user) {
+    // 🛡️ Guard A: Email Verification Check
+    if (!user.emailVerified) {
+      // Exclude admin from being forced to verify email if you wish, or enforce globally
+      return NextResponse.redirect(
+        new URL("/verify-email-notice", request.url),
+      );
+    }
+
+    // 🛡️ Guard B: Educator Under-Review Check
+    // Prevents pending educators from viewing any pages besides their notice route
+    if (userRole === "educator" && user.verificationStatus === "Pending") {
+      // Ensure they can't access /educator or /dashboard while pending
+      if (
+        pathname.startsWith("/educator") ||
+        pathname.startsWith("/dashboard")
+      ) {
+        return NextResponse.redirect(
+          new URL("/application-under-review", request.url),
+        );
+      }
+    }
+  }
 
   // 🔒 Admin Protected Routes
   if (pathname.startsWith("/admin")) {
@@ -39,15 +73,6 @@ export default createMiddleware(aj, async (request: NextRequest) => {
   if (pathname.startsWith("/educator/") || pathname === "/educator") {
     if (!session) return NextResponse.redirect(new URL("/login", request.url));
     if (userRole !== "educator") {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
-  }
-
-  // Learner
-  if (pathname.startsWith("/learner")) {
-    if (!session) return NextResponse.redirect(new URL("/login", request.url));
-
-    if (userRole !== "learner") {
       return NextResponse.redirect(new URL("/", request.url));
     }
   }

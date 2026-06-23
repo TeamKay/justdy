@@ -3,9 +3,28 @@ import prisma from "@/lib/prisma";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { PlanType, SubscriptionStatus } from "@/lib/generated/prisma/browser";
+import { resend } from "@/lib/resend";
+import { env } from "@/lib/env";
+import { render } from "@react-email/render";
+import crypto from "crypto";
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+
+function parseDateTime(dateStr: string, timeStr: string): Date {
+  const [datePart] = dateStr.split("T");
+  const [time, modifier] = timeStr.split(" ");
+
+  const parts = time.split(":").map(Number);
+  let hours = parts[0] ?? 0;
+  const minutes = parts[1] ?? 0;
+
+  if (modifier === "PM" && hours !== 12) hours += 12;
+  if (modifier === "AM" && hours === 12) hours = 0;
+
+  const date = new Date(datePart);
+  date.setHours(hours, minutes, 0, 0);
+  return date;
+}
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -21,194 +40,290 @@ export async function POST(req: Request) {
     return new NextResponse(`Webhook Error: ${message}`, { status: 400 });
   }
 
-  // -------------------------------------------------------------
-  // checkout.session.completed (Triggers for BOTH Sub & Hourly)
-  // -------------------------------------------------------------
+  const session = event.data.object as Stripe.Checkout.Session;
+
   if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
+    console.log(
+      `⚓ Webhook received: checkout.session.completed [${session.id}]`,
+    );
 
-    // Extract metadata values injected during session creation
-    const appointmentId = session.metadata?.appointmentId;
-    const paymentType = session.metadata?.paymentType;
+    try {
+      let stripeCustomerId = session.customer as string | null;
 
-    // 🔥 FIX CONFIGURATION A: HANDLE THE DYNAMIC HOURLY PACKAGES
-    if (paymentType === "hourly" && appointmentId) {
-      try {
-        await prisma.appointment.update({
-          where: { id: appointmentId },
-          data: { status: "Scheduled" }, // Match your custom schema configuration string case exactly
-        });
+      const email =
+        session.metadata?.billingEmail || session.customer_details?.email;
+      const name =
+        session.metadata?.billingName ||
+        session.customer_details?.name ||
+        "Learner Account";
+
+      if (!stripeCustomerId && email) {
         console.log(
-          `✅ Hourly Appointment ${appointmentId} confirmed successfully via webhook.`,
+          `ℹ️ stripeCustomerId missing from session. Creating one for ${email}...`,
         );
-        return NextResponse.json({ received: true });
-      } catch (dbErr) {
-        console.error("❌ Error updating hourly appointment status:", dbErr);
-        return new NextResponse("Database update failed", { status: 500 });
+        const customer = await stripe.customers.create({
+          email: email,
+          name: name,
+        });
+        stripeCustomerId = customer.id;
       }
-    }
 
-    // 🔥 FIX CONFIGURATION B: HANDLE THE RECURRING SUBSCRIPTION PLAN
-    if (paymentType === "monthly") {
-      // If there's an appointment associated with the signup initialization, unlock it too
-      if (appointmentId) {
-        try {
-          await prisma.appointment.update({
-            where: { id: appointmentId },
-            data: { status: "Scheduled" },
-          });
-        } catch (dbErr) {
-          console.error(
-            "❌ Error updating subscription appointment status:",
-            dbErr,
-          );
+      const emailPayload = await prisma.$transaction(async (tx) => {
+        const pendingEnrollment = await tx.pendingEnrollment.findUnique({
+          where: { stripeSessionId: session.id },
+        });
+
+        const finalEmail = pendingEnrollment?.email || email;
+        const finalName = pendingEnrollment?.name || name;
+
+        if (!finalEmail) {
+          throw new Error("Critical context missing: No customer email found.");
         }
-      }
 
-      // Continue with your existing customer record subscription syncing logic
-      if (!session.subscription) {
-        return new NextResponse("Missing subscription block context.", {
-          status: 400,
+        const targetEducatorId =
+          pendingEnrollment?.educatorId || session.metadata?.educatorId;
+        const subject =
+          pendingEnrollment?.subject ||
+          session.metadata?.subject ||
+          "Tutoring Session";
+        const gradeLevel =
+          pendingEnrollment?.gradeLevel ||
+          session.metadata?.gradeLevel ||
+          "N/A";
+        const topic = pendingEnrollment?.topic || session.metadata?.topic || "";
+
+        let finalStartDate: Date;
+        let finalEndDate: Date;
+        let finalSessionDate: Date;
+
+        if (pendingEnrollment) {
+          finalStartDate = pendingEnrollment.startTime;
+          finalEndDate = pendingEnrollment.endTime;
+          finalSessionDate = pendingEnrollment.sessionDate;
+        } else if (
+          session.metadata?.sessionDate &&
+          session.metadata?.startTime &&
+          session.metadata?.endTime
+        ) {
+          finalStartDate = parseDateTime(
+            session.metadata.sessionDate,
+            session.metadata.startTime,
+          );
+          finalEndDate = parseDateTime(
+            session.metadata.sessionDate,
+            session.metadata.endTime,
+          );
+          finalSessionDate = new Date(session.metadata.sessionDate);
+        } else {
+          throw new Error("Unable to parse session timeline dates.");
+        }
+
+        let finalEducatorId = targetEducatorId || null;
+        if (finalEducatorId) {
+          const educatorExists = await tx.user.findUnique({
+            where: { id: finalEducatorId },
+          });
+          if (!educatorExists) finalEducatorId = null;
+        }
+
+        if (!finalEducatorId) {
+          const fallbackEducator = await tx.user.findFirst({
+            where: { role: "Educator" },
+          });
+          if (!fallbackEducator) throw new Error("No valid educator found.");
+          finalEducatorId = fallbackEducator.id;
+        }
+
+        const educator = await tx.user.findUnique({
+          where: { id: finalEducatorId },
         });
-      }
+        let educatorEmail = "";
+        let educatorName = "Educator";
+        if (educator) {
+          educatorEmail = educator.email;
+          educatorName = educator.name || "Educator";
+        }
 
-      const subscription = await stripe.subscriptions.retrieve(
-        session.subscription as string,
-      );
-      const customerId = session.customer as string;
+        let user = await tx.user.findUnique({ where: { email: finalEmail } });
 
-      // Ensure your application checks metadata fallback if stripeCustomerId isn't stored yet
-      const learnerId = session.metadata?.learnerId;
-      const user = await prisma.user.findFirst({
-        where: {
-          OR: [{ stripeCustomerId: customerId }, { id: learnerId }],
-        },
+        if (!user) {
+          user = await tx.user.create({
+            data: {
+              email: finalEmail,
+              name: finalName,
+              stripeCustomerId: stripeCustomerId,
+              role: "Learner",
+            },
+          });
+        } else {
+          const updateData: Partial<
+            Pick<typeof user, "stripeCustomerId" | "role">
+          > = {};
+          if (!user.stripeCustomerId && stripeCustomerId) {
+            updateData.stripeCustomerId = stripeCustomerId;
+          }
+          if (user.role !== "Admin" && user.role !== "Educator") {
+            updateData.role = "Learner";
+          }
+          if (Object.keys(updateData).length > 0) {
+            user = await tx.user.update({
+              where: { id: user.id },
+              data: updateData,
+            });
+          }
+        }
+
+        // Generating random unique token ID matching your schema criteria
+        const tokenValue = crypto.randomBytes(32).toString("hex");
+        const tokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        // Matching your schema exactly: model Verification { id, identifier, value, expiresAt }
+        await tx.verification.create({
+          data: {
+            id: crypto.randomUUID(),
+            identifier: user.email,
+            value: tokenValue,
+            expiresAt: tokenExpires,
+          },
+        });
+
+        await tx.transaction.create({
+          data: {
+            userId: user.id,
+            amount: session.amount_total ?? 0,
+            stripeSessionId: session.id,
+            status: "Paid",
+          },
+        });
+
+        await tx.appointment.create({
+          data: {
+            learnerId: user.id,
+            educatorId: finalEducatorId,
+            subject: subject,
+            gradeLevel: gradeLevel,
+            date: finalSessionDate,
+            startTime: finalStartDate,
+            endTime: finalEndDate,
+            learnerDescription: topic,
+            status: "Scheduled",
+            payoutStatus: "Unpaid",
+            stripeCheckoutSessionId: session.id,
+          },
+        });
+
+        if (pendingEnrollment) {
+          await tx.pendingEnrollment.update({
+            where: { id: pendingEnrollment.id },
+            data: { status: "Completed" },
+          });
+        }
+
+        // Resiliently fallback on base application URL options
+        const baseUrl =
+          process.env.NEXT_PUBLIC_APP_URL ||
+          env.BETTER_AUTH_URL ||
+          "http://localhost:3000";
+        const verificationUrl = `${baseUrl}/api/auth/verify?token=${tokenValue}`;
+
+        return {
+          learnerEmail: user.email,
+          learnerName: user.name || "Learner",
+          educatorEmail,
+          educatorName,
+          verificationUrl,
+          appointmentDetails: {
+            subject,
+            date: finalSessionDate.toLocaleDateString("en-US", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }),
+            startTime: finalStartDate.toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            endTime: finalEndDate.toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          },
+        };
       });
 
-      if (!user) {
-        console.error(
-          `❌ User not found for Customer: ${customerId} or Learner: ${learnerId}`,
+      // -------------------------------------------------------------
+      // 🚀 ASYNC EMAILS TRIGGER OUTSIDE TRANSACTION BLOCKS
+      // -------------------------------------------------------------
+      try {
+        const {
+          appointmentDetails: details,
+          learnerName,
+          learnerEmail,
+          educatorEmail,
+          educatorName,
+          verificationUrl,
+        } = emailPayload;
+
+        const LearnerBookingConfirmedEmail = (
+          await import("@/app/_components/LearnerBookingConfirmedEmail")
+        ).default;
+
+        const learnerHtml = await render(
+          LearnerBookingConfirmedEmail({
+            username: learnerName,
+            subject: details.subject,
+            date: details.date,
+            time: `${details.startTime} - ${details.endTime}`,
+            amountPaid: session.amount_total
+              ? (session.amount_total / 100).toFixed(2)
+              : "0.00",
+            verificationUrl: verificationUrl,
+          }),
         );
-        return new NextResponse("User not found", { status: 404 });
-      }
 
-      // Save or connect customer record mapping reference tracking fields
-      if (!user.stripeCustomerId) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { stripeCustomerId: customerId },
+        await resend.emails.send({
+          from: `${env.EMAIL_SENDER_NAME} <${env.EMAIL_SENDER_ADDRESS}>`,
+          to: learnerEmail,
+          subject: "Appointment Confirmed & Verify Your Email!",
+          html: learnerHtml,
         });
+
+        if (educatorEmail) {
+          const EducatorSessionScheduledEmail = (
+            await import("@/app/_components/EducatorSessionScheduledEmail")
+          ).default;
+
+          const educatorHtml = await render(
+            EducatorSessionScheduledEmail({
+              educatorName: educatorName,
+              learnerName: learnerName,
+              subject: details.subject,
+              date: details.date,
+              time: `${details.startTime} - ${details.endTime}`,
+            }),
+          );
+
+          await resend.emails.send({
+            from: `${env.EMAIL_SENDER_NAME} <${env.EMAIL_SENDER_ADDRESS}>`,
+            to: educatorEmail,
+            subject: "New Student Session Scheduled",
+            html: educatorHtml,
+          });
+        }
+      } catch (emailErr) {
+        console.error(
+          "⚠️ Database write succeeded, but session emails failed:",
+          emailErr,
+        );
       }
 
-      await prisma.subscription.create({
-        data: {
-          stripeSubscriptionId: subscription.id,
-          userId: user.id,
-          currentPeriodStart: new Date(
-            subscription.items.data[0]!.current_period_start * 1000,
-          ),
-          currentPeriodEnd: new Date(
-            subscription.items.data[0]!.current_period_end * 1000,
-          ),
-          status: subscription.status as SubscriptionStatus,
-          interval:
-            subscription.items.data[0]?.price.recurring?.interval ?? "month",
-          planId: subscription.items.data[0]?.price.id as PlanType,
-          cancelAtPeriodEnd: subscription.cancel_at_period_end,
-        },
-      });
+      return NextResponse.json({ received: true });
+    } catch (dbErr) {
+      console.error("❌ TRANSACTION CRASHED:", dbErr);
+      return new NextResponse(`Database execution failed`, { status: 500 });
     }
   }
-
-  // -------------------------------------------------------------
-  // invoice.paid (Only loops for recurring subscription actions)
-  // -------------------------------------------------------------
-
-  if (event.type === "invoice.payment_succeeded") {
-    const invoice = event.data.object as Stripe.Invoice;
-
-    // 🔥 SAFE WORKAROUND: Look up the parameter dynamically using Record typing
-    const rawInvoice = invoice as unknown as Record<string, unknown>;
-    const rawSubscription = rawInvoice.subscription;
-
-    // Safely parse out the ID whether it's an object structure or a plain string
-    const subscriptionId =
-      typeof rawSubscription === "string"
-        ? rawSubscription
-        : (rawSubscription as Record<string, string> | null)?.id;
-
-    // Ignore casual custom inline charge invoices that don't belong to ongoing tiers
-    if (subscriptionId) {
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-
-      await prisma.subscription.update({
-        where: { stripeSubscriptionId: subscription.id },
-        data: {
-          planId: subscription.items.data[0]?.price.id as PlanType,
-          status: subscription.status as SubscriptionStatus,
-          currentPeriodStart: new Date(
-            subscription.items.data[0]!.current_period_start * 1000,
-          ),
-          currentPeriodEnd: new Date(
-            subscription.items.data[0]!.current_period_end * 1000,
-          ),
-        },
-      });
-    }
-  }
-
-  // -----------------------------
-  // subscription updated
-  // -----------------------------
-  if (event.type === "customer.subscription.updated") {
-    const subscription = event.data.object as Stripe.Subscription;
-
-    const sub = await prisma.subscription.findFirst({
-      where: { stripeSubscriptionId: subscription.id },
-    });
-
-    if (sub) {
-      await prisma.subscription.update({
-        where: { stripeSubscriptionId: subscription.id },
-        data: {
-          cancelAtPeriodEnd: subscription.cancel_at_period_end,
-          status: subscription.status as SubscriptionStatus,
-          interval:
-            subscription.items.data[0]?.price.recurring?.interval ?? "month",
-          planId: subscription.items.data[0]?.price.id as PlanType,
-          currentPeriodStart: new Date(
-            subscription.items.data[0]!.current_period_start * 1000,
-          ),
-          currentPeriodEnd: new Date(
-            subscription.items.data[0]!.current_period_end * 1000,
-          ),
-        },
-      });
-    }
-  }
-
-  // -----------------------------
-  // subscription deleted
-  // -----------------------------
-  if (event.type === "customer.subscription.deleted") {
-    const subscription = event.data.object as Stripe.Subscription;
-
-    const sub = await prisma.subscription.findFirst({
-      where: { stripeSubscriptionId: subscription.id },
-    });
-
-    if (sub) {
-      await prisma.subscription.update({
-        where: { stripeSubscriptionId: subscription.id },
-        data: {
-          status: "Canceled" as SubscriptionStatus,
-          cancelAtPeriodEnd: true,
-        },
-      });
-    }
-  }
-
-  return NextResponse.json({ received: true });
 }
 
 // import { stripe } from "@/lib/stripe";
@@ -216,9 +331,27 @@ export async function POST(req: Request) {
 // import { headers } from "next/headers";
 // import { NextResponse } from "next/server";
 // import Stripe from "stripe";
-// import { PlanType, SubscriptionStatus } from "@/lib/generated/prisma/browser";
+// import { resend } from "@/lib/resend"; // or whatever your correct relative path is
+// import { env } from "@/lib/env";
+// import { render } from "@react-email/render";
 
 // const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+
+// function parseDateTime(dateStr: string, timeStr: string): Date {
+//   const [datePart] = dateStr.split("T");
+//   const [time, modifier] = timeStr.split(" ");
+
+//   const parts = time.split(":").map(Number);
+//   let hours = parts[0] ?? 0;
+//   const minutes = parts[1] ?? 0;
+
+//   if (modifier === "PM" && hours !== 12) hours += 12;
+//   if (modifier === "AM" && hours === 12) hours = 0;
+
+//   const date = new Date(datePart);
+//   date.setHours(hours, minutes, 0, 0);
+//   return date;
+// }
 
 // export async function POST(req: Request) {
 //   const body = await req.text();
@@ -234,120 +367,280 @@ export async function POST(req: Request) {
 //     return new NextResponse(`Webhook Error: ${message}`, { status: 400 });
 //   }
 
-//   // -----------------------------
-//   // checkout.session.completed
-//   // -----------------------------
 //   const session = event.data.object as Stripe.Checkout.Session;
+
 //   if (event.type === "checkout.session.completed") {
-//     const subscription = await stripe.subscriptions.retrieve(
-//       session.subscription as string,
-//     );
-//     const customerId = session.customer as string;
-
-//     const user = await prisma.user.findUnique({
-//       where: { stripeCustomerId: customerId },
-//     });
-
-//     if (!user) {
-//       throw new Error("User not found");
-//     }
-
-//     await prisma.subscription.create({
-//       data: {
-//         stripeSubscriptionId: subscription.id,
-//         userId: user.id,
-//         currentPeriodStart: new Date(
-//           subscription.items.data[0]!.current_period_start * 1000,
-//         ),
-//         currentPeriodEnd: new Date(
-//           subscription.items.data[0]!.current_period_end * 1000,
-//         ),
-//         status: subscription.status as SubscriptionStatus,
-//         interval:
-//           subscription.items.data[0]?.price.recurring?.interval ?? "month",
-//         planId: subscription.items.data[0]?.price.id as PlanType,
-//         cancelAtPeriodEnd: subscription.cancel_at_period_end,
-//       },
-//     });
-//   }
-
-//   // -----------------------------
-//   // invoice.paid
-//   // -----------------------------
-//   if (event.type === "invoice.payment_succeeded") {
-//     const subscription = await stripe.subscriptions.retrieve(
-//       session.subscription as string,
+//     console.log(
+//       `⚓ Webhook received: checkout.session.completed [${session.id}]`,
 //     );
 
-//     await prisma.subscription.update({
-//       where: { stripeSubscriptionId: subscription.id },
-//       data: {
-//         planId: subscription.items.data[0]?.price.id as PlanType,
-//         status: subscription.status as SubscriptionStatus,
-//         currentPeriodStart: new Date(
-//           subscription.items.data[0]!.current_period_start * 1000,
-//         ),
-//         currentPeriodEnd: new Date(
-//           subscription.items.data[0]!.current_period_end * 1000,
-//         ),
-//       },
-//     });
-//   }
+//     try {
+//       // Return all necessary email payload data directly from the transaction
+//       const emailPayload = await prisma.$transaction(async (tx) => {
+//         const pendingEnrollment = await tx.pendingEnrollment.findUnique({
+//           where: { stripeSessionId: session.id },
+//         });
 
-//   // -----------------------------
-//   // subscription updated
-//   // -----------------------------
-//   if (event.type === "customer.subscription.updated") {
-//     const subscription = await stripe.subscriptions.retrieve(
-//       session.subscription as string,
-//     );
+//         const email =
+//           pendingEnrollment?.email ||
+//           session.metadata?.billingEmail ||
+//           session.customer_details?.email;
+//         const name =
+//           pendingEnrollment?.name ||
+//           session.metadata?.billingName ||
+//           session.customer_details?.name ||
+//           "Learner Account";
 
-//     const sub = await prisma.subscription.findFirst({
-//       where: { stripeSubscriptionId: subscription.id },
-//     });
+//         if (!email) {
+//           throw new Error(
+//             "Critical context missing: No customer email found in database ledger or Stripe session details.",
+//           );
+//         }
 
-//     if (sub) {
-//       await prisma.subscription.update({
-//         where: { stripeSubscriptionId: subscription.id },
-//         data: {
-//           cancelAtPeriodEnd: subscription.cancel_at_period_end,
-//           status: subscription.status as SubscriptionStatus,
-//           interval:
-//             subscription.items.data[0]?.price.recurring?.interval ?? "month",
-//           planId: subscription.items.data[0]?.price.id as PlanType,
-//           currentPeriodStart: new Date(
-//             subscription.items.data[0]!.current_period_start * 1000,
-//           ),
-//           currentPeriodEnd: new Date(
-//             subscription.items.data[0]!.current_period_end * 1000,
-//           ),
-//         },
+//         const targetEducatorId =
+//           pendingEnrollment?.educatorId || session.metadata?.educatorId;
+//         const subject =
+//           pendingEnrollment?.subject ||
+//           session.metadata?.subject ||
+//           "Tutoring Session";
+//         const gradeLevel =
+//           pendingEnrollment?.gradeLevel ||
+//           session.metadata?.gradeLevel ||
+//           "N/A";
+//         const topic = pendingEnrollment?.topic || session.metadata?.topic || "";
+
+//         let finalStartDate: Date;
+//         let finalEndDate: Date;
+//         let finalSessionDate: Date;
+
+//         if (pendingEnrollment) {
+//           finalStartDate = pendingEnrollment.startTime;
+//           finalEndDate = pendingEnrollment.endTime;
+//           finalSessionDate = pendingEnrollment.sessionDate;
+//         } else if (
+//           session.metadata?.sessionDate &&
+//           session.metadata?.startTime &&
+//           session.metadata?.endTime
+//         ) {
+//           finalStartDate = parseDateTime(
+//             session.metadata.sessionDate,
+//             session.metadata.startTime,
+//           );
+//           finalEndDate = parseDateTime(
+//             session.metadata.sessionDate,
+//             session.metadata.endTime,
+//           );
+//           finalSessionDate = new Date(session.metadata.sessionDate);
+//         } else {
+//           throw new Error(
+//             "Unable to parse session timeline dates. Missing operational timeframe fields.",
+//           );
+//         }
+
+//         let finalEducatorId = targetEducatorId || null;
+//         if (finalEducatorId) {
+//           const educatorExists = await tx.user.findUnique({
+//             where: { id: finalEducatorId },
+//           });
+//           if (!educatorExists) {
+//             console.warn(
+//               `⚠️ Educator ${finalEducatorId} not found. Defaulting to system matching.`,
+//             );
+//             finalEducatorId = null;
+//           }
+//         }
+
+//         if (!finalEducatorId) {
+//           const fallbackEducator = await tx.user.findFirst({
+//             where: { role: "Educator" },
+//           });
+//           if (!fallbackEducator) {
+//             throw new Error(
+//               "Transaction aborted: No valid educator found in the system to host this session.",
+//             );
+//           }
+//           finalEducatorId = fallbackEducator.id;
+//         }
+
+//         const educator = await tx.user.findUnique({
+//           where: { id: finalEducatorId },
+//         });
+
+//         let educatorEmail = "";
+//         let educatorName = "Educator";
+//         if (educator) {
+//           educatorEmail = educator.email;
+//           educatorName = educator.name || "Educator";
+//         }
+
+//         let user = await tx.user.findUnique({
+//           where: { email: email },
+//         });
+
+//         if (!user) {
+//           user = await tx.user.create({
+//             data: {
+//               email: email,
+//               name: name,
+//               stripeCustomerId: session.customer as string,
+//               role: "Learner",
+//             },
+//           });
+//         } else {
+//           const updateData: Partial<
+//             Pick<typeof user, "stripeCustomerId" | "role">
+//           > = {};
+
+//           if (!user.stripeCustomerId && session.customer) {
+//             updateData.stripeCustomerId = session.customer as string;
+//           }
+
+//           if (user.role !== "Admin" && user.role !== "Educator") {
+//             updateData.role = "Learner";
+//           }
+
+//           if (Object.keys(updateData).length > 0) {
+//             user = await tx.user.update({
+//               where: { id: user.id },
+//               data: updateData,
+//             });
+//           }
+//         }
+
+//         await tx.transaction.create({
+//           data: {
+//             userId: user.id,
+//             amount: session.amount_total ?? 0,
+//             stripeSessionId: session.id,
+//             status: "Paid",
+//           },
+//         });
+
+//         await tx.appointment.create({
+//           data: {
+//             learnerId: user.id,
+//             educatorId: finalEducatorId,
+//             subject: subject,
+//             gradeLevel: gradeLevel,
+//             date: finalSessionDate,
+//             startTime: finalStartDate,
+//             endTime: finalEndDate,
+//             learnerDescription: topic,
+//             status: "Scheduled",
+//             payoutStatus: "Unpaid",
+//             stripeCheckoutSessionId: session.id,
+//           },
+//         });
+
+//         if (pendingEnrollment) {
+//           await tx.pendingEnrollment.update({
+//             where: { id: pendingEnrollment.id },
+//             data: { status: "Completed" },
+//           });
+//         }
+
+//         // Return everything out of the transaction explicitly
+//         return {
+//           learnerEmail: user.email,
+//           learnerName: user.name || "Learner",
+//           educatorEmail,
+//           educatorName,
+//           appointmentDetails: {
+//             subject,
+//             date: finalSessionDate.toLocaleDateString("en-US", {
+//               weekday: "long",
+//               year: "numeric",
+//               month: "long",
+//               day: "numeric",
+//             }),
+//             startTime: finalStartDate.toLocaleTimeString("en-US", {
+//               hour: "2-digit",
+//               minute: "2-digit",
+//             }),
+//             endTime: finalEndDate.toLocaleTimeString("en-US", {
+//               hour: "2-digit",
+//               minute: "2-digit",
+//             }),
+//           },
+//         };
 //       });
+
+//       // -------------------------------------------------------------
+//       // 🚀 ASYNC EMAILS TRIGGER OUTSIDE TRANSACTION BLOCKS
+//       // -------------------------------------------------------------
+//       try {
+//         const {
+//           appointmentDetails: details,
+//           learnerName,
+//           learnerEmail,
+//           educatorEmail,
+//           educatorName,
+//         } = emailPayload;
+
+//         // 1. Send Email to Learner
+//         const LearnerBookingConfirmedEmail = (
+//           await import("@/app/_components/LearnerBookingConfirmedEmail")
+//         ).default;
+
+//         const learnerHtml = await render(
+//           LearnerBookingConfirmedEmail({
+//             username: learnerName,
+//             subject: details.subject,
+//             date: details.date,
+//             time: `${details.startTime} - ${details.endTime}`,
+//             amountPaid: session.amount_total
+//               ? (session.amount_total / 100).toFixed(2)
+//               : "0.00",
+//           }),
+//         );
+
+//         await resend.emails.send({
+//           from: `${env.EMAIL_SENDER_NAME} <${env.EMAIL_SENDER_ADDRESS}>`,
+//           to: learnerEmail,
+//           subject: "Appointment Confirmed & Payment Received!",
+//           html: learnerHtml,
+//         });
+
+//         // 2. Send Email to Educator (if educator email is available)
+//         if (educatorEmail) {
+//           const EducatorSessionScheduledEmail = (
+//             await import("@/app/_components/EducatorSessionScheduledEmail")
+//           ).default;
+
+//           const educatorHtml = await render(
+//             EducatorSessionScheduledEmail({
+//               educatorName: educatorName,
+//               learnerName: learnerName,
+//               subject: details.subject,
+//               date: details.date,
+//               time: `${details.startTime} - ${details.endTime}`,
+//             }),
+//           );
+
+//           await resend.emails.send({
+//             from: `${env.EMAIL_SENDER_NAME} <${env.EMAIL_SENDER_ADDRESS}>`,
+//             to: educatorEmail,
+//             subject: "New Student Session Scheduled",
+//             html: educatorHtml,
+//           });
+//         }
+//       } catch (emailErr) {
+//         console.error(
+//           "⚠️ Database write succeeded, but session emails failed to dispatch:",
+//           emailErr,
+//         );
+//       }
+
+//       return NextResponse.json({ received: true });
+//     } catch (dbErr) {
+//       console.error(
+//         "❌ THE DATABASE TRANSACTION CRASHED WITH THIS ERROR:",
+//         dbErr,
+//       );
+//       return new NextResponse(
+//         `Database execution failed: ${dbErr instanceof Error ? dbErr.message : "Unknown structural error"}`,
+//         { status: 500 },
+//       );
 //     }
 //   }
-
-//   // -----------------------------
-//   // subscription deleted
-//   // -----------------------------
-//   if (event.type === "customer.subscription.deleted") {
-//     const subscription = await stripe.subscriptions.retrieve(
-//       session.subscription as string,
-//     );
-
-//     const sub = await prisma.subscription.findFirst({
-//       where: { stripeSubscriptionId: subscription.id },
-//     });
-
-//     if (sub) {
-//       await prisma.subscription.update({
-//         where: { stripeSubscriptionId: subscription.id },
-//         data: {
-//           status: "Canceled" as SubscriptionStatus,
-//           cancelAtPeriodEnd: true,
-//         },
-//       });
-//     }
-//   }
-
-//   return NextResponse.json({ received: true });
 // }

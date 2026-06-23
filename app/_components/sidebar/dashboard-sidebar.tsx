@@ -34,11 +34,11 @@ import { Calendar } from "lucide-react";
 const navigationData = {
   admin: [
     { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
-    { title: "Communities", url: "/admin/communities", icon: Camera },
+    { title: "Subjects", url: "/admin/subjects", icon: Users },
     { title: "Educators", url: "/admin/educators", icon: Camera },
+    { title: "Students", url: "/admin/roster", icon: Users },
     { title: "Courses", url: "/admin/courses", icon: Columns },
     { title: "Payout", url: "/admin/payout", icon: CreditCard },
-    { title: "Students", url: "/admin/roster", icon: Users },
   ],
   educator: [
     { title: "Dashboard", url: "/educator", icon: LayoutDashboard },
@@ -47,7 +47,8 @@ const navigationData = {
     { title: "My Courses", url: "/educator/courses", icon: BookOpen },
     { title: "Student Roster", url: "/educator/roster", icon: Users },
     { title: "My Earnings", url: "/educator/earnings", icon: CreditCard },
-    { title: "Settings", url: "/educator/settings", icon: Settings },
+    { title: "My Profile", url: "/educator/profile", icon: Settings },
+    { title: "My Availability", url: "/educator/availability", icon: Settings },
   ],
   learner: [
     { title: "Dashboard", url: "/learner", icon: LayoutDashboard },

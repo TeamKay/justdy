@@ -102,7 +102,7 @@ const ForgotPasswordEmail = (props: ForgotPasswordEmailProps) => {
                   className="text-blue-600"
                   href="mailto:support@company.com"
                 >
-                  support@company.com
+                  noreply@justdy.com
                 </Link>
               </Text>
             </Section>

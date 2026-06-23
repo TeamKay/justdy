@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
+import { env } from "@/lib/env";
 import { VerificationStatus } from "@/lib/generated/prisma/enums";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -65,6 +66,7 @@ export async function getVerifiedEducators() {
 
 export async function updateEducatorStatus(formData: FormData) {
   const isAdmin = await verifyAdmin();
+
   if (!isAdmin) {
     throw new Error("Unauthorized");
   }
@@ -80,19 +82,46 @@ export async function updateEducatorStatus(formData: FormData) {
     throw new Error("Invalid input");
   }
 
-  const enumStatus = status as VerificationStatus;
-
   try {
-    await prisma.user.update({
-      where: { id: educatorId },
-      data: { verificationStatus: enumStatus }, // ✅ correct field + type
+    const educator = await prisma.user.update({
+      where: {
+        id: educatorId,
+      },
+
+      data: {
+        verificationStatus: status as VerificationStatus,
+      },
     });
 
+    // SEND PASSWORD SETUP EMAIL ONLY WHEN APPROVED
+
+    if (status === "Verified") {
+      await sendEducatorApprovalEmail(educator.email);
+    }
+
     revalidatePath("/admin");
-    return { success: true };
+
+    return {
+      success: true,
+    };
   } catch (error) {
     console.error("Error updating educator status:", error);
+
     throw new Error("Failed to update educator status");
+  }
+}
+
+async function sendEducatorApprovalEmail(email: string) {
+  try {
+    await auth.api.requestPasswordReset({
+      body: {
+        email,
+
+        redirectTo: `${env.BETTER_AUTH_URL}/reset-password`,
+      },
+    });
+  } catch (error) {
+    console.error("Failed sending approval email:", error);
   }
 }
 

@@ -65,6 +65,14 @@ const Footer = () => {
                 AI Tutoring
               </Link>
             </li>
+            <li>
+              <Link
+                href="/educatorapplication"
+                className="hover:text-white transition-colors"
+              >
+                Become Educator
+              </Link>
+            </li>
           </ul>
         </div>
 

@@ -28,7 +28,7 @@ export default async function VerificationPage() {
   const isRejected = user?.verificationStatus === "Rejected";
 
   return (
-    <div className="h-screen w-full flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden">
       <div className="w-full max-w-2xl relative z-10 animate-in fade-in zoom-in duration-500">
         <Card className="border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-2xl shadow-black/50 overflow-hidden">
           <div

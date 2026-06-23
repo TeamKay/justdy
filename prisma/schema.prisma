@@ -21,6 +21,7 @@ model User {
   // Educator-specific fields
   specialty             String?
   experience            Int?
+  contactNumber         String?
   credentialUrl         String?   
   description           String? @db.Text
   verificationStatus    VerificationStatus?  @default(Pending)
@@ -34,45 +35,76 @@ model User {
   lessonProgress        LessonProgress[]
   learnerAppointments    Appointment[]     @relation("LearnerAppointments")
   educatorAppointments   Appointment[]     @relation("EducatorAppointments")
-  availabilities        Availability[]
   payout                Payout[]
-  sentMessages          Message[] @relation("SentMessages")
-  receivedMessages      Message[] @relation("ReceivedMessages")
-  communityMemberships  CommunityMember[]
-  userPoints            UserPoints[]
   enrollmentProgress    EnrollmentProgress[]
-  communityPosts        CommunityPost[]
-  postComments          PostComment[]
+  transaction           Transaction[]
+  pendingEnrollments PendingEnrollment[]
 
   @@unique([email])
   @@map("user")
 }
 
-model Availability {
-  id                String    @id @default(cuid())
-  educatorId        String
-  educator          User      @relation(fields: [educatorId], references: [id], onDelete: Cascade)
-  startTime         DateTime
-  endTime           DateTime
-  status            SlotStatus  @default(Available)
-  appointments      Appointment[]
+model PendingEnrollment {
+  id String @id @default(cuid())
 
-  @@index([educatorId, startTime])
+  // learner info
+  name  String
+  email String
+
+  // onboarding selections
+  gradeLevel      String
+  subject         String
+  enrollmentType  EnrollmentTrack
+
+  topic           String? @db.Text
+
+  sessionDate     DateTime
+  startTime       DateTime
+  endTime         DateTime
+
+  educatorId      String?
+  educator        User? @relation(fields: [educatorId], references: [id])
+
+  // pricing
+  amount          Int // cents
+
+  // stripe
+  stripeSessionId String? @unique
+
+  status          PendingEnrollmentStatus @default(Pending)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([email])
+  @@index([status])
 }
 
+model Subject {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+ 
 model Appointment {
   id                    String   @id @default(cuid())
   learnerId             String
   learner               User     @relation("LearnerAppointments", fields: [learnerId], references: [id], onDelete: Cascade)
   educatorId            String
-  educator             User     @relation("EducatorAppointments", fields: [educatorId], references: [id], onDelete: Cascade)
+  educator              User     @relation("EducatorAppointments", fields: [educatorId], references: [id], onDelete: Cascade)
+  subject               String
+  gradeLevel            String
+  date                  DateTime
   startTime             DateTime
   endTime               DateTime
-  status                AppointmentStatus   @default(Scheduled)
-  notes                 String?   @db.Text
   learnerDescription    String?   @db.Text
+  status                AppointmentStatus   @default(Scheduled)
 
-  sessionType     SessionType
+  stripeCheckoutSessionId String?
+  paymentIntentId         String?
   payoutStatus    PayoutStatus    @default(Unpaid)
 
   // Video Session fields
@@ -81,9 +113,6 @@ model Appointment {
 
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
-
-  availabilityId String       
-  availability   Availability @relation(fields: [availabilityId], references: [id])
 
   @@index([status, startTime])
   @@index([educatorId, startTime])
@@ -143,7 +172,6 @@ model Account {
   @@map("account")
 }
 
-
 model Verification {
   id         String   @id
   identifier String
@@ -155,7 +183,6 @@ model Verification {
   @@index([identifier])
   @@map("Verification")
 }
-
 
 model Course {
   id               String       @id @default(uuid())
@@ -280,108 +307,30 @@ model Payout {
   @@index([educatorId, status])
 }
 
-model Community {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  smallDescription String
-  description String @db.Text
-  category    String
-  fileKey     String
-  videoKey    String?
-  price       Float    @default(0)
-  memberCount Int      @default(0)
-  onlineCount Int      @default(0)
-  adminCount  Int      @default(1)
-  createdAt   DateTime @default(now())
-  members     CommunityMember[]
-  posts CommunityPost[]
-  onboardingTasks CommunityOnboardingTask[]
-  userPoints UserPoints[]
-}
-
-model CommunityMember {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  communityId  String
-  community    Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  role         CommunityRole @default(Member)
-  status       MembershipStatus @default(Active)
-  joinedAt     DateTime @default(now())
-  @@unique([userId, communityId])
-  @@index([communityId])
-  @@index([userId])
-}
-
-model CommunityOnboardingTask {
-  id           String   @id @default(cuid())
-
-  communityId  String
-  title        String
-  order        Int
-  isActive     Boolean @default(true)
-
-  community    Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
-
-  @@index([communityId])
-}
-
-model UserPoints {
-  id        String @id @default(cuid())
-
-  userId    String
-  communityId String?
-
-  points    Int @default(0)
-
-  updatedAt DateTime @updatedAt
-
-  User      User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  Community Community? @relation(fields: [communityId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, communityId])
-}
-
-enum CommunityRole {
-  Member
-  Admin
-  Owner
-}
-
-enum MembershipStatus {
-  Active
-  Pending
-  Banned
-  Cancelled
-}
-
-model Chat {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
-  messages  Message[]
-}
-
-model Message {
-  id        String   @id @default(uuid())
-  chatId    String
-  senderId  String
-  receiverId String?
-  content   String
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
-  chat      Chat     @relation(fields: [chatId], references: [id])
-  sender    User     @relation("SentMessages", fields: [senderId], references: [id])
-  receiver  User?    @relation("ReceivedMessages", fields: [receiverId], references: [id])
-  @@index([receiverId, read])
-}
-
-
 enum UserRole {
   Unassigned
   Learner
   Educator
   Admin
+}
+
+model Transaction {
+  id String @id @default(cuid())
+
+  userId String?
+  user User? @relation(fields: [userId], references: [id])
+
+  amount Int
+
+  stripeSessionId String?
+  stripePaymentIntentId String?
+
+  status TransactionStatus @default(Pending)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
 }
 
 enum VerificationStatus {
@@ -403,7 +352,6 @@ enum AppointmentStatus {
   Pending_payment
 }
 
-
 enum CourseLevel {
   Beginner
   Intermediate
@@ -422,7 +370,6 @@ enum EnrollmentStatus {
   Cancelled
 }
 
-
 enum SubscriptionStatus {
   active
   canceled
@@ -432,7 +379,6 @@ enum SubscriptionStatus {
   trialing
   unpaid
 }
-
 
 enum PayoutStatus {
   Unpaid
@@ -454,47 +400,17 @@ enum PlanType {
   Monthly
 }
 
-enum SessionType {
-  THIRTY_MIN
-  FORTY_FIVE_MIN
-  SIXTY_MIN
-  MONTHLY_SUBSCRIPTION
+enum PendingEnrollmentStatus {
+  Pending
+  Completed
+  Expired
+  Cancelled
+}
+
+enum EnrollmentTrack {
+  Hourly
+  Monthly
 }
 
 
-model CommunityPost {
-  id          String   @id @default(cuid())
-  communityId String
-  userId    String
-  title       String?
-  content     String?
-  category    String?
-  isPublished Boolean  @default(true)
-  isPinned    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  likes     PostLike[]
-  comments  PostComment[]
-  @@index([communityId, createdAt])
-}
-
-model PostLike {
-  id        String   @id @default(cuid())
-  userId    String
-  postId    String
-  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  @@unique([userId, postId]) 
-}
-
-model PostComment {
-  id        String        @id @default(cuid())
-  content   String
-  postId    String
-  userId    String
-  createdAt DateTime      @default(now())
-  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
 

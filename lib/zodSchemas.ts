@@ -108,18 +108,19 @@ export const educatorSchema = z.object({
   description: z.string().min(3).max(500),
 });
 
-export const communitySchema = z.object({
-  name: z.string().min(1),
-  slug: z.string().optional(),
-  smallDescription: z
-    .string()
-    .min(10, "Small description must be at least 10 characters")
-    .max(500, "Small description cannot exceed 500 characters"),
-  description: z.string().min(1),
-  category: z.string().min(1),
-  fileKey: z.string().min(1),
-  videoKey: z.string().default(""),
-  price: z.number().optional(),
+export const subjectSchema = z.object({
+  name: z.string().min(1, "Subject name is required"),
+  description: z.string().optional().nullable(),
+});
+
+export const packagesSchema = z.object({
+  name: z.string().min(1, "Package name is required"),
+  description: z.string().optional().nullable(),
+  targetGrades: z.string().min(1, "Target grades are required"),
+  price: z.coerce
+    .number()
+    .min(1, { message: "Price must be a positive number" }),
+  subjectId: z.string().min(1, "Subject is required"),
 });
 
 export type CourseSchemaType = z.output<typeof courseSchema>;
@@ -127,4 +128,5 @@ export type ChapterSchemaType = z.infer<typeof chapterSchema>;
 export type LessonSchemaType = z.infer<typeof lessonSchema>;
 export type SettingsSchemaType = z.infer<typeof settingsSchema>;
 export type EducatorSchemaType = z.infer<typeof educatorSchema>;
-export type CommunitySchemaType = z.output<typeof communitySchema>;
+export type SubjectSchemaType = z.infer<typeof subjectSchema>;
+export type PackagesSchemaType = z.infer<typeof packagesSchema>;

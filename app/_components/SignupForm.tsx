@@ -57,6 +57,15 @@ export default function SignupPage() {
     try {
       const res = await signupUser(values);
 
+      if (res.type === "awaiting_admin_approval") {
+        toast.info(
+          "Your account has been verified but is awaiting admin approval.",
+        );
+
+        router.push("/login");
+        return;
+      }
+
       if (res.type === "exists_verified") {
         toast.error("Account already exists. Please log in.");
         router.push("/login");

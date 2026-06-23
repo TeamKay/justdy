@@ -23,13 +23,13 @@ import { ROLE_NAV_CONFIG } from "@/lib/role-config";
 
 const productItems = [
   {
-    title: "Communities",
-    href: "/communities",
+    title: "Programs",
+    href: "/programs",
     icon: <Video className="h-5 w-5 text-red-500" />,
   },
   {
-    title: "Learn more",
-    href: "/learnmore",
+    title: "Our Approach",
+    href: "/ourapproach",
     icon: <BookOpen className="h-5 w-5 text-blue-500" />,
   },
 ];

@@ -22,6 +22,16 @@ export async function signupUser(formData: unknown) {
     });
 
     if (existingUser) {
+      if (
+        existingUser.emailVerified &&
+        existingUser.verificationStatus === "Pending"
+      ) {
+        return {
+          ok: false,
+          type: "awaiting_admin_approval",
+        };
+      }
+
       if (existingUser.emailVerified) {
         return {
           ok: false,
@@ -40,6 +50,7 @@ export async function signupUser(formData: unknown) {
         name,
         email,
         password,
+        callbackURL: "/onboarding",
       },
     });
 

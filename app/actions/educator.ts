@@ -5,120 +5,6 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
-// 1. Define the parameter type
-export default async function setAvailabilitySlots(formData: FormData) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user.id) {
-    throw new Error("Unauthorized");
-  }
-
-  try {
-    const educator = await prisma.user.findUnique({
-      where: {
-        id: session.user.id,
-        role: "Educator",
-      },
-    });
-
-    if (!educator) {
-      throw new Error("Educator not found");
-    }
-
-    const startTime = formData.get("startTime") as string;
-    const endTime = formData.get("endTime") as string;
-
-    if (!startTime || !endTime) {
-      throw new Error("Start time and end time are required");
-    }
-
-    if (new Date(startTime) >= new Date(endTime)) {
-      throw new Error("Start time must be before end time");
-    }
-
-    // 2. Include the relation so TypeScript sees 'appointment'
-    const existingSlots = await prisma.availability.findMany({
-      where: {
-        educatorId: educator.id,
-      },
-      include: {
-        appointments: true,
-      },
-    });
-
-    // Filter slots that don't have an associated appointment
-    const slotsToDelete = existingSlots
-      .filter((slot) => !slot.appointments)
-      .map((slot) => slot.id);
-
-    if (slotsToDelete.length > 0) {
-      await prisma.availability.deleteMany({
-        where: {
-          id: { in: slotsToDelete },
-        },
-      });
-    }
-
-    const newSlot = await prisma.availability.create({
-      data: {
-        educatorId: educator.id,
-        startTime: new Date(startTime),
-        endTime: new Date(endTime),
-        status: "Available",
-      },
-    });
-
-    revalidatePath("/educator");
-    return { success: true, slot: newSlot };
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Failed to set availability: ${error.message}`);
-    }
-    throw new Error("An unknown error occurred");
-  }
-}
-
-export async function getEducatorAvailability() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user.id) {
-    throw new Error("Unauthorized");
-  }
-
-  try {
-    const educator = await prisma.user.findUnique({
-      where: {
-        id: session.user.id,
-        role: "Educator",
-      },
-    });
-
-    if (!educator) {
-      throw new Error("Educator not found");
-    }
-
-    const availabilitySlots = await prisma.availability.findMany({
-      where: {
-        educatorId: session.user.id,
-      },
-      orderBy: {
-        startTime: "asc",
-      },
-    });
-
-    return { slots: availabilitySlots };
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(`Failed to fetch availability slots: ${error.message}`);
-    }
-    throw new Error("An unknown error occurred");
-  }
-}
-
 export async function getEducatorAppointments() {
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -300,7 +186,7 @@ export async function addAppointmentNotes(formData: FormData) {
     }
 
     const appointmentId = rawAppointmentId;
-    const notes = formData.get("notes") as string;
+    const learnerDescription = formData.get("learnerDescription") as string;
 
     const appointment = await prisma.appointment.findUnique({
       where: {
@@ -318,7 +204,7 @@ export async function addAppointmentNotes(formData: FormData) {
         id: appointmentId,
       },
       data: {
-        notes,
+        learnerDescription,
       },
     });
 
@@ -397,5 +283,30 @@ export async function markAppointmentCompleted(formData: FormData) {
     return { success: true, appointment: updatedAppointment };
   } catch (error) {
     throw new Error("Failed to mark appointment as complete " + error);
+  }
+}
+
+export async function getOnboardingEducators() {
+  try {
+    return await prisma.user.findMany({
+      where: {
+        role: "Educator",
+        verificationStatus: "Verified",
+      },
+      select: {
+        id: true,
+        name: true,
+        imageUrl: true,
+        specialty: true,
+        experience: true,
+        description: true,
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
+  } catch (error) {
+    console.error("Failed to load educators:", error);
+    return [];
   }
 }

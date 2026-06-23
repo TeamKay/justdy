@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Youtube, Disc, Github, Rocket, Users } from "lucide-react";
+import { Youtube, Disc, Github, Rocket, Users } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -10,7 +10,6 @@ export default function Hero() {
     <section className="relative pt-20 mb-30 w-full bg-emerald-900/10 text-white flex flex-col justify-between overflow-hidden font-sans select-none">
       {/* =======================
           MODIFIED BACKGROUND LAYER 
-          (Deep Purple Core Glow + Neon Abstract Wave Ribbons)
       ======================= */}
       <div className="absolute inset-0 pointer-events-none z-0">
         {/* Base dark purple radial glow radiating from the right side */}
@@ -35,9 +34,9 @@ export default function Hero() {
       {/* =======================
           MAIN HERO CONTENT
       ======================= */}
-      <div className="relative z-10 max-w-7xl w-full mx-auto px-6 pb-40 sm:px-12 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center my-auto pt-0 md:pt-24">
+      <div className="relative z-10 max-w-7xl w-full mx-auto px-8 pb-40 sm:px-12 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center my-auto pt-0 md:pt-24">
         {/* Left Column: Copy & Actions */}
-        <div className="lg:col-span-6 flex flex-col justify-center text-left space-y-6 max-w-2xl mx-auto lg:mx-0 pb-15">
+        <div className="lg:col-span-6 flex flex-col justify-center text-left space-y-6 max-w-2xl mx-auto lg:mx-0 pb-15 md:pb-0">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -72,17 +71,17 @@ export default function Hero() {
           </motion.div>
 
           <div className="flex flex-wrap items-center gap-4 pt-2">
-            <Link href="/signup">
+            <Link href="/onboarding">
               <button className="h-12 px-6 bg-[#857938] hover:bg-[#857938] text-white font-medium rounded-md shadow-lg shadow-purple-900/30 transition dynamic-blur flex items-center gap-2 group text-sm cursor-pointer">
-                Get Started
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition" />
+                <Users className="w-3.5 h-3.5 fill-current" />
+                Start Learning Now
               </button>
             </Link>
 
-            <Link href="/communities">
+            <Link href="/ourapproach">
               <button className="h-12 px-6 bg-[#160d24] text-purple-200 hover:text-white border border-purple-500/20 hover:border-purple-500/40 font-medium rounded-md transition flex items-center gap-2 text-sm cursor-pointer">
                 <Users className="w-3.5 h-3.5 fill-current" />
-                Explore Communities
+                Explore Our Approach
               </button>
             </Link>
           </div>
