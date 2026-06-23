@@ -1,7 +1,4 @@
-import {
-  getEducatorAppointments,
-  getEducatorAvailability,
-} from "@/app/actions/educator";
+import { getEducatorAppointments } from "@/app/actions/educator";
 
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
@@ -24,10 +21,7 @@ export default async function EducatorDashboard() {
     redirect("/educator/verification");
   }
 
-  const [appointmentsData] = await Promise.all([
-    getEducatorAppointments(),
-    getEducatorAvailability(),
-  ]);
+  const [appointmentsData] = await Promise.all([getEducatorAppointments()]);
 
   return (
     <div className="space-y-6 mt-5">
