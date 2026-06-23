@@ -522,7 +522,6 @@ export default function LearnerOnboarding() {
                           setDateInputValue(formatDate(date));
                           setOpenDatePicker(false);
                         }}
-                        initialFocus
                         className="bg-amber-100 rounded-md p-3"
                       />
                     </PopoverContent>
