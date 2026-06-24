@@ -59,7 +59,7 @@ export default function AiIntegrationBannerAlternative() {
             <div className="pt-4 w-full sm:w-auto">
               <Link
                 href="/"
-                className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-blue-500 text-neutral-950 font-bold shadow-[0_4px_20px_-5px_rgba(59,130,246,0.4)] transition-all duration-300 hover:bg-blue-400 hover:shadow-[0_4px_24px_-2px_rgba(59,130,246,0.5)] hover:-translate-y-0.5"
+                className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-2 rounded-md bg-[#857938] text-white font-bold shadow-[0_4px_20px_-5px_rgba(59,130,246,0.4)] transition-all duration-300 hover:bg-blue-400 hover:shadow-[0_4px_24px_-2px_rgba(59,130,246,0.5)] hover:-translate-y-0.5"
               >
                 <span>Launch Smart Tutor</span>
                 <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
