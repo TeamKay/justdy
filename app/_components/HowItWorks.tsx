@@ -3,70 +3,81 @@ import React from "react";
 
 const cards = [
   {
-    title: "Community Learning",
-    tag: "Available now",
-    link: "/communities",
+    title: "Our Program",
+    tag: "Explore Now",
+    link: "/programs",
     tagColor: "text-blue-400 bg-blue-400/10 border-blue-400/20",
     description:
-      "Engage in real-time, one-on-one or group video sessions with expert tutors. Get instant feedback, ask questions freely, and experience personalized learning that adapts to your pace.",
-
+      "Discover our comprehensive educational framework designed to build core competencies. From foundational concepts to mastery, explore structured curriculums that set you up for long-term academic success.",
     glow: "bg-blue-500/20",
     icon: (
       <svg
         className="w-6 h-6"
         fill="none"
         stroke="currentColor"
+        strokeWidth="1.5"
         viewBox="0 0 24 24"
       >
-        <path d="M12 14l9-5-9-5-9 5 9 5z" />
-        <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+        {/* Graduation cap / Academy icon */}
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M4.26 10.147L12 14.28l7.74-4.133a1 1 0 000-1.753L12 4.26 4.26 8.394a1 1 0 000 1.753z"
+        />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M20.25 12.5v4.618a1 1 0 01-.553.894L12 21.75l-7.697-4.238a1 1 0 01-.553-.894V12.5"
+        />
       </svg>
     ),
   },
   {
-    title: "Guided Learning Paths",
-    tag: "Coming soon",
-    link: "/courses",
+    title: "Our Approach",
+    tag: "How It Works",
+    link: "/ourapproach",
     tagColor: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
     description:
-      "Explore structured, hands-on courses designed to make learning engaging and effective. Practice with interactive exercises, track your progress, and master concepts step by step.",
+      "We pair proven pedagogical frameworks with hands-on, interactive execution. By focusing on critical thinking, targeted feedback, and continuous progress tracking, we transform how students internalize knowledge.",
     glow: "bg-emerald-500/20",
     icon: (
       <svg
         className="w-6 h-6"
         fill="none"
         stroke="currentColor"
+        strokeWidth="1.5"
         viewBox="0 0 24 24"
       >
+        {/* Strategy / Pathway icon */}
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
-          strokeWidth="1.5"
-          d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+          d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
         />
       </svg>
     ),
   },
   {
-    title: "Intelligent Tutor",
-    tag: "Coming soon",
+    title: "AI Smart Tutoring",
+    tag: "24/7 Support",
     link: "/aitutor",
     tagColor: "text-orange-400 bg-orange-400/10 border-orange-400/20",
     description:
-      "Learn anytime with your intelligent AI tutor. Get instant explanations, guided problem-solving, and adaptive support tailored to your unique learning style—24/7.",
+      "Experience deeply hyper-personalized guidance with our advanced AI tutor. Get instant concept breakdowns, step-by-step problem-solving hints, and adaptive drills tailored dynamically to your real-time learning pace.",
     glow: "bg-orange-500/20",
     icon: (
       <svg
         className="w-6 h-6"
         fill="none"
         stroke="currentColor"
+        strokeWidth="1.5"
         viewBox="0 0 24 24"
       >
+        {/* Chip / Spark / AI icon */}
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
-          strokeWidth="1.5"
-          d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+          d="M9.813 15.904L9 21l8.982-11.795H14.19C15.42 6.578 17.513 3 17.513 3L8.529 14.795h5.454L9.813 15.904z"
         />
       </svg>
     ),
@@ -82,7 +93,8 @@ export default function HowItWorks() {
             How we serve you!
           </h2>
           <p className="text-neutral-400 text-base max-w-2xl mx-auto">
-            We bridge the gap between connecting you with expert tutors.
+            Discover a modern ecosystem built around structured learning,
+            optimized pedagogy, and next-generation intelligence.
           </p>
         </div>
 

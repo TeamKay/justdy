@@ -32,6 +32,11 @@ const productItems = [
     href: "/ourapproach",
     icon: <BookOpen className="h-5 w-5 text-blue-500" />,
   },
+  {
+    title: "AI Tutor",
+    href: "/aitutor",
+    icon: <BookOpen className="h-5 w-5 text-blue-500" />,
+  },
 ];
 
 interface UserProps {

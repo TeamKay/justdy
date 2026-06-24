@@ -1,109 +1,154 @@
+"use client";
+
 import Link from "next/link";
-import React from "react";
+import React, { useState } from "react";
+import {
+  Brain,
+  Sparkles,
+  Send,
+  Bot,
+  User,
+  CheckCircle2,
+  ArrowRight,
+} from "lucide-react";
 
-export default function AiIntegrationBanner() {
+export default function AiIntegrationBannerAlternative() {
+  const [messages] = useState([
+    { role: "user", text: "Can you explain how to find the derivative of x²?" },
+    {
+      role: "assistant",
+      text: "Bring the exponent down to the front (2) and subtract 1 from the power. So, f'(x) = 2x! Try x³ next.",
+    },
+  ]);
+
   return (
-    <div className="w-full bg-background flex items-center justify-center p-5 md:p-20 font-sans overflow-hidden select-none">
-      <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative">
-        {/* LEFT SIDE: SMARTPHONE & ROBOT GRAPHIC */}
-        <div className="lg:col-span-6 flex items-center justify-center relative min-h-112.5 md:min-h-137.5">
-          {/* Ambient Glow Effects */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-blue-400/40 rounded-full blur-[80px] animate-pulse" />
-          <div className="absolute top-1/3 left-1/4 w-72 h-72 bg-cyan-300/20 rounded-full blur-[100px]" />
+    <section className="relative overflow-hidden py-24 bg-background">
+      {/* Blueprint Topographic Dot Matrix Overlay */}
+      <div className="absolute inset-0 bg-[radial-gradient(#ffffff05_1px,transparent_1px)] bg-size-[24px_24px] mask-[radial-gradient(ellipse_60%_60%_at_50%_50%,#000_70%,transparent_100%)]" />
 
-          {/* Holographic Data UI Floating Shapes */}
-          <div className="absolute left-[10%] top-[20%] w-10 h-10 border border-white/20 rounded-xl rotate-12 backdrop-blur-sm flex items-center justify-center text-white/40 text-xs">
-            ✕
-          </div>
-          <div className="absolute right-[15%] top-[30%] w-8 h-8 border border-white/20 rounded-md -rotate-12 backdrop-blur-sm" />
-          <div className="absolute left-[8%] bottom-[25%] w-12 h-12 border border-white/10 rounded-lg rotate-45 backdrop-blur-sm" />
+      {/* Cybernetic Core Lighting Halos */}
+      <div className="absolute top-1/4 left-1/4 w-125 h-125 bg-blue-500/10 blur-[130px] rounded-full pointer-events-none animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-100 h-100 bg-cyan-500/5 blur-[100px] rounded-full pointer-events-none" />
 
-          {/* Smartphone Container */}
-          <div className="relative w-64 h-120 bg-linear-to-b from-white/10 to-white/5 rounded-[40px] border border-white/30 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] backdrop-blur-md transform -rotate-6 flex flex-col justify-between p-4 overflow-hidden group hover:rotate-0 transition-transform duration-700 ease-out">
-            {/* Top Speaker/Camera Bar */}
-            <div className="w-20 h-4 bg-black/30 rounded-full mx-auto mb-2 flex items-center justify-end px-2">
-              <div className="w-2 h-1 bg-white/20 rounded-full" />
+      <div className="max-w-7xl mx-auto px-6 lg:px-12 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+          {/* LEFT COLUMN: Modern Glassmorphic AI Chat Simulator Simulation (Spans 6) */}
+          <div className="lg:col-span-6 space-y-6 text-center lg:text-left flex flex-col items-center lg:items-start">
+            {/* Micro Category Badge */}
+            <div className="inline-flex items-center gap-2 rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-1 text-xs font-semibold text-blue-400 uppercase tracking-widest">
+              <Brain className="w-3.5 h-3.5" />
+              <span>Adaptive Intelligence</span>
             </div>
 
-            {/* Glowing UI Wireframes inside Phone */}
-            <div className="flex-1 w-full border border-white/10 rounded-2xl p-3 flex flex-col justify-between bg-linear-to-b from-white/5 to-transparent">
-              <div className="flex justify-between items-center">
-                <div className="bg-white/20 px-3 py-1 rounded-full text-[10px] text-white font-mono tracking-wider">
-                  12:47
-                </div>
-                <div className="w-4 h-2 bg-white/40 rounded-sm" />
-              </div>
-
-              {/* Chart Lines Simulation */}
-              <div className="space-y-2 opacity-60">
-                <div className="h-1 bg-linear-to-r from-cyan-400 to-transparent rounded-full w-3/4" />
-                <div className="h-1 bg-linear-to-r from-blue-400 to-transparent rounded-full w-1/2" />
-                <div className="h-1 bg-linear-to-r from-white/30 to-transparent rounded-full w-5/6" />
-              </div>
-            </div>
-          </div>
-
-          {/* FLOATING 3D-STYLE ROBOT */}
-          <div className="absolute top-[18%] left-[22%] transform translate-x-4 -translate-y-4 filter drop-shadow-[0_35px_35px_rgba(0,0,0,0.6)] animate-bounce animation-duration-[5s] flex flex-col items-center">
-            {/* Head */}
-            <div className="w-44 h-32 bg-linear-to-b from-white via-slate-100 to-slate-200 rounded-[50px] shadow-inner relative flex items-center justify-center p-4 border-b-4 border-slate-300">
-              {/* Glossy Reflection overlay */}
-              <div className="absolute top-2 left-6 right-6 h-6 bg-white/60 rounded-full blur-[1px]" />
-
-              {/* Screen Face */}
-              <div className="w-[85%] h-[80%] bg-[#09152e] rounded-[35px] flex items-center justify-center gap-5 p-2 shadow-inner border border-black/50">
-                {/* Glowing Blue Eyes */}
-                <div className="w-8 h-8 bg-cyan-400 rounded-full shadow-[0_0_15px_#22d3ee] animate-pulse" />
-                <div className="w-8 h-8 bg-cyan-400 rounded-full shadow-[0_0_15px_#22d3ee] animate-pulse" />
-              </div>
-
-              {/* Headphones/Ears */}
-              <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-5 h-14 bg-slate-400 rounded-l-xl shadow-md border-r border-slate-500" />
-              <div className="absolute -right-4 top-1/2 -translate-y-1/2 w-5 h-14 bg-slate-400 rounded-r-xl shadow-md border-l border-slate-500" />
-            </div>
-
-            {/* Neck Connection */}
-            <div className="w-12 h-3 bg-slate-400/80 -mt-1 shadow-inner" />
-
-            {/* Body */}
-            <div className="w-36 h-24 bg-linear-to-b from-white to-slate-200 rounded-[40px] relative shadow-lg border-b-4 border-slate-300 flex items-center justify-center">
-              {/* Decorative Chest Line */}
-              <div className="w-16 h-1 bg-slate-300 rounded-full absolute top-4" />
-
-              {/* Left Arm */}
-              <div className="absolute -left-6 top-4 w-6 h-14 bg-white rounded-full origin-top rotate-12 shadow-md border-b-2 border-slate-300" />
-              {/* Right Arm */}
-              <div className="absolute -right-6 top-4 w-6 h-14 bg-white rounded-full origin-top -rotate-12 shadow-md border-b-2 border-slate-300" />
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT SIDE: TYPOGRAPHY BANNER CONTENT */}
-        <div className="lg:col-span-6 flex flex-col items-center lg:items-start text-center lg:text-left space-y-4">
-          {/* Small Branding Header */}
-          <div className="flex items-center gap-1 tracking-wider text-xs font-black text-[#0d2c7f] bg-white px-3 py-1 rounded-md shadow-sm">
-            24/7 <span className="text-blue-600">AI Tutor</span>
-          </div>
-
-          {/* Dynamic Typography Stack */}
-          <div className="space-y-1">
-            <h3 className="text-white text-2xl md:text-2xl font-medium tracking-tight drop-shadow-sm">
-              Explore the Future of Learning with Our
-            </h3>
-            <h1 className="text-5xl md:text-7xl font-black text-[#f0f022] tracking-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.25)] bg-clip-text bg-linear-to-b from-white via-white to-blue-100 py-1">
-              Smart Tutor
+            {/* Structured Headings Hierarchy */}
+            <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl leading-[1.1]">
+              Explore the Future <br />
+              of Learning with an <br />
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-400 via-cyan-200 to-white">
+                Intelligent Tutor.
+              </span>
             </h1>
+
+            <p className="max-w-xl text-neutral-400 text-base md:text-lg leading-relaxed font-light">
+              Get personalized step-by-step math breakdowns, instant vector
+              dynamic corrections, and targeted curriculum feedback 24 hours a
+              day.
+            </p>
+
+            {/* Core Action Call Target Link */}
+            <div className="pt-4 w-full sm:w-auto">
+              <Link
+                href="/"
+                className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-blue-500 text-neutral-950 font-bold shadow-[0_4px_20px_-5px_rgba(59,130,246,0.4)] transition-all duration-300 hover:bg-blue-400 hover:shadow-[0_4px_24px_-2px_rgba(59,130,246,0.5)] hover:-translate-y-0.5"
+              >
+                <span>Launch Smart Tutor</span>
+                <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
+              </Link>
+            </div>
           </div>
 
-          {/* Pill-shaped Container for Subtitle */}
-          <Link
-            href="/ai-tutor"
-            className="inline-flex items-center gap-2 text-sm font-medium text-white bg-[#857938] border border-neutral-700 px-10 py-3 rounded-lg transition-all duration-300 hover:bg-neutral-700 hover:border-neutral-600"
-          >
-            Try it now
-          </Link>
+          {/* RIGHT COLUMN: Editorial Clean Value Core Block (Spans 6) */}
+
+          <div className="lg:col-span-6 relative w-full max-w-lg mx-auto lg:max-w-none">
+            {/* Underlying technical geometry brackets */}
+            <div className="absolute -inset-4 border border-neutral-800/40 rounded-3xl mask-[linear-gradient(to_bottom,black_30%,transparent_100%)] hidden sm:block" />
+
+            {/* Main Interactive Sandbox Mockup Frame */}
+            <div className="relative rounded-2xl border border-neutral-800/80 bg-neutral-950/60 backdrop-blur-xl shadow-2xl overflow-hidden">
+              {/* Window Header Utility Tab */}
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-neutral-900 bg-neutral-900/30">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-500/10 text-blue-400">
+                    <Bot className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-xs font-mono tracking-wider text-neutral-400">
+                    justdy_core_tutor.sh
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                  <span className="text-[10px] font-mono font-bold text-neutral-500 uppercase tracking-widest">
+                    Active Engine
+                  </span>
+                </div>
+              </div>
+
+              {/* Chat Thread Body Area */}
+              <div className="p-6 space-y-4 min-h-64 flex flex-col justify-end">
+                {messages.map((msg, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex gap-3 max-w-[85%] ${
+                      msg.role === "user"
+                        ? "ml-auto flex-row-reverse"
+                        : "mr-auto"
+                    }`}
+                  >
+                    <div
+                      className={`h-7 w-7 rounded-md shrink-0 flex items-center justify-center border text-xs ${
+                        msg.role === "user"
+                          ? "bg-neutral-900 border-neutral-800 text-neutral-300"
+                          : "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                      }`}
+                    >
+                      {msg.role === "user" ? (
+                        <User className="w-3.5 h-3.5" />
+                      ) : (
+                        <Sparkles className="w-3.5 h-3.5" />
+                      )}
+                    </div>
+                    <div
+                      className={`rounded-xl p-3.5 text-sm leading-relaxed shadow-xs ${
+                        msg.role === "user"
+                          ? "bg-neutral-900 border border-neutral-800 text-neutral-200"
+                          : "bg-neutral-900/40 border border-neutral-800/50 text-neutral-300"
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Dummy input bar action wrapper */}
+              <div className="p-4 border-t border-neutral-950 bg-neutral-900/20 flex items-center gap-3">
+                <div className="flex-1 text-xs text-neutral-600 font-mono bg-neutral-950/60 border border-neutral-900 rounded-lg px-3 py-2.5 flex items-center justify-between">
+                  <span>Type a math system formula...</span>
+                  <Send className="w-3 h-3 text-neutral-700" />
+                </div>
+              </div>
+            </div>
+
+            {/* Micro Floating Diagnostic Node */}
+            <div className="absolute -bottom-6 -right-4 bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2.5 shadow-xl hidden sm:flex items-center gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <p className="text-[11px] font-mono text-neutral-300 tracking-wide">
+                Context Window: Optimized
+              </p>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

@@ -2,7 +2,7 @@ import AITutor from "../_components/AITutor";
 import CallToAction from "../_components/CallToAction";
 import HowItWorks from "../_components/HowItWorks";
 import LandingPage from "../_components/LandingPage";
-import LatestCourses from "../_components/LatestCourses";
+import { MathSectionAlternative } from "../_components/MathProgramSection";
 import Testimonials from "../_components/Testimonials";
 
 export default function Home() {
@@ -10,7 +10,8 @@ export default function Home() {
     <>
       <LandingPage />
       <HowItWorks />
-      <LatestCourses />
+      <MathSectionAlternative />
+      {/* <LatestCourses /> */}
       <AITutor />
       <Testimonials />
       <CallToAction />
