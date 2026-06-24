@@ -156,7 +156,7 @@ export async function requestPayout(formData: FormData) {
     let platformFees = 0;
 
     for (const appointment of completedAppointments) {
-      const earnings = calculateSessionEarnings(appointment.sessionType);
+      const earnings = calculateSessionEarnings(appointment.payoutStatus);
 
       grossAmount += earnings.total;
       educatorEarnings += earnings.educatorPay;
@@ -286,7 +286,7 @@ export async function getEducatorEarnings() {
     let thisMonthEarnings = 0;
 
     for (const appointment of completedAppointments) {
-      const earnings = calculateSessionEarnings(appointment.sessionType);
+      const earnings = calculateSessionEarnings(appointment.payoutStatus);
 
       totalEarnings += earnings.educatorPay;
       totalPlatformFees += earnings.platformFee;
@@ -304,7 +304,7 @@ export async function getEducatorEarnings() {
     let availablePayout = 0;
 
     for (const appointment of unpaidAppointments) {
-      const earnings = calculateSessionEarnings(appointment.sessionType);
+      const earnings = calculateSessionEarnings(appointment.payoutStatus);
 
       availablePayout += earnings.educatorPay;
     }
