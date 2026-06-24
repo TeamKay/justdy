@@ -41,12 +41,6 @@ export async function getLearnerDashboardData() {
         },
       },
       enrollmentProgress: true,
-      communityMemberships: {
-        select: {
-          id: true,
-          communityId: true,
-        },
-      },
     },
   });
 
@@ -90,7 +84,6 @@ export async function getLearnerDashboardData() {
   return {
     appointments,
     courses,
-    communityMemberships: userData.communityMemberships,
     userProfile,
     plan,
   };
