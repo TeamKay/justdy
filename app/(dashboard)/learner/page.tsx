@@ -32,7 +32,6 @@ export default async function StudentDashboardPage() {
       <LearnerDashboard
         appointments={data.appointments}
         courses={data.courses}
-        communityMemberships={data.communityMemberships}
         userProfile={data.userProfile}
         plan={data.plan}
       />
