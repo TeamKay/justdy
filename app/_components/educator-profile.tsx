@@ -29,11 +29,6 @@ type TimeSlot = {
   availabilityId: string;
 };
 
-type DayWithSlots = {
-  date: string;
-  slots: TimeSlot[];
-};
-
 type Educator = {
   id: string;
   name: string;
@@ -45,7 +40,6 @@ type Educator = {
 
 interface Props {
   educator: Educator;
-  availableDays: DayWithSlots[];
 }
 
 /* ---------------- HELPERS ---------------- */
@@ -111,10 +105,7 @@ function StepIndicator({ step }: { step: BookingStep }) {
 
 /* ---------------- MAIN ---------------- */
 
-export default function EducatorProfile({
-  educator,
-  availableDays = [],
-}: Props) {
+export default function EducatorProfile({ educator }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -165,17 +156,12 @@ export default function EducatorProfile({
     !isSelectedEndInPast
   ) {
     const baseDateStr = format(selectedDate, "yyyy-MM-dd");
-    const directDayMatch = availableDays.find((d) =>
-      isSameDay(new Date(d.date), selectedDate),
-    );
-    const finalAvailabilityId =
-      directDayMatch?.slots[0]?.availabilityId ?? "custom-generated-slot-id";
 
     selectedSlot = {
       startTime: `${baseDateStr}T${startTime}:00.000Z`,
       endTime: `${baseDateStr}T${endTime}:00.000Z`,
       formatted: `${format(selectedDate, "eee, MMM d")} (${formatTimeLabel(startTime)} - ${formatTimeLabel(endTime)})`,
-      availabilityId: finalAvailabilityId,
+      availabilityId: "custom-generated-slot-id",
     };
   }
 
@@ -215,8 +201,6 @@ export default function EducatorProfile({
     setStep(order[Math.max(order.indexOf(step) - 1, 0)]);
   };
 
-  // 🚀 HANDLE SUBMISSION TO THE SERVER ACTION
-  // 🚀 HANDLE SUBMISSION TO THE SERVER ACTION
   const handlePaymentAndBooking = () => {
     if (!selectedSlot) return;
     setErrorMessage(null);
@@ -228,23 +212,19 @@ export default function EducatorProfile({
       formData.append("learnerDescription", sessionDetails.description);
       formData.append("startTime", selectedSlot!.startTime);
       formData.append("endTime", selectedSlot!.endTime);
-      formData.append("paymentType", paymentType); // Passes 'hourly' or 'monthly'
+      formData.append("paymentType", paymentType);
 
       const response = await bookAppointment(formData);
 
       if (response.success && response.checkoutUrl) {
-        // 🔥 CRITICAL FIX: Manually redirect the browser window to Stripe's hosted URL
         window.location.href = response.checkoutUrl;
       } else {
-        // Fallback for errors or missing configurations
         setErrorMessage(
           response.message || "Failed to initialize secure checkout session.",
         );
       }
     });
   };
-
-  const hasAvailableSlots = availableDays.some((d) => d.slots?.length);
 
   return (
     <div className="max-w-7xl mx-auto px-4 space-y-6">
@@ -261,18 +241,6 @@ export default function EducatorProfile({
         <div className="md:col-span-1">
           <div className="md:sticky md:top-24">
             <Card className="border-emerald-900/20 bg-emerald-900/20 relative">
-              <div className="absolute top-4 right-4 z-10">
-                {hasAvailableSlots ? (
-                  <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 px-3 py-1 animate-pulse">
-                    ● Available Now
-                  </Badge>
-                ) : (
-                  <Badge className="bg-zinc-800 text-zinc-400 border-zinc-700 px-3 py-1">
-                    Offline
-                  </Badge>
-                )}
-              </div>
-
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center text-center">
                   <div className="relative w-60 h-60 rounded-full overflow-hidden mb-4 bg-emerald-900/20">
@@ -522,7 +490,6 @@ export default function EducatorProfile({
             </Card>
           )}
 
-          {/* STEP 4 */}
           {/* STEP 4 - PAYMENT TYPE SELECTION */}
           {step === "payment" && (
             <Card className="bg-[#121212] border-white/10">
@@ -531,14 +498,12 @@ export default function EducatorProfile({
               </CardHeader>
 
               <CardContent className="space-y-6">
-                {/* Dynamically display transaction error messages if returned from server action */}
                 {errorMessage && (
                   <div className="p-3 text-sm bg-red-950/40 border border-red-500/30 text-red-400 rounded-lg">
                     {errorMessage}
                   </div>
                 )}
 
-                {/* Option Container Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* OPTION A: ONE-ON-ONE HOURLY FLEXPAY */}
                   <div
@@ -657,8 +622,6 @@ export default function EducatorProfile({
                   </div>
                 </div>
 
-                {/* Pricing summary breakdown box */}
-                {/* Pricing summary breakdown box */}
                 <div className="bg-neutral-950 p-4 rounded-xl border border-white/5 space-y-2">
                   <div className="flex justify-between text-xs text-neutral-400">
                     <span>Duration:</span>
@@ -678,7 +641,6 @@ export default function EducatorProfile({
                   </div>
                 </div>
 
-                {/* Form Action Controls */}
                 <div className="flex items-center justify-between gap-4 pt-2">
                   <Button
                     variant="outline"
