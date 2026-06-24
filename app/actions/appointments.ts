@@ -2,7 +2,6 @@
 
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { addDays, endOfDay, addMinutes, isBefore, format } from "date-fns";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { Auth } from "@vonage/auth";
@@ -10,14 +9,6 @@ import { Vonage } from "@vonage/server-sdk";
 import { MediaMode } from "@vonage/video";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
-
-interface TimeSlot {
-  startTime: string;
-  endTime: string;
-  formatted: string;
-  day: string;
-  availabilityId: string;
-}
 
 export enum PlanType {
   Free = "Free",
@@ -54,342 +45,6 @@ export async function getEducatorById(id: string) {
   }
 }
 
-export async function getAvailableTimeSlots(educatorId: string) {
-  try {
-    const educator = await prisma.user.findFirst({
-      where: {
-        id: educatorId,
-        role: "Educator",
-        verificationStatus: "Verified",
-      },
-    });
-
-    if (!educator) throw new Error("Educator not found");
-
-    const availabilityRecords = await prisma.availability.findMany({
-      where: {
-        educatorId: educator.id,
-        status: "Available",
-      },
-    });
-
-    // Fix: Check length, not truthiness
-    if (availabilityRecords.length === 0) {
-      return {
-        days: [],
-        message: "This educator hasn't set their availability yet.",
-      };
-    }
-
-    const now = new Date();
-    const totalDaysToShow = 60;
-    const days = Array.from({ length: totalDaysToShow }, (_, i) =>
-      addDays(now, i),
-    );
-
-    const lastDay = endOfDay(days[days.length - 1]);
-
-    const existingAppointments = await prisma.appointment.findMany({
-      where: {
-        educatorId: educator.id,
-        status: "Scheduled",
-        startTime: { lte: lastDay, gte: now },
-      },
-    });
-
-    const availableSlotsByDay: Record<string, TimeSlot[]> = {};
-
-    for (const day of days) {
-      const dayString = format(day, "yyyy-MM-dd");
-      availableSlotsByDay[dayString] = [];
-
-      for (const record of availabilityRecords) {
-        const availabilityStart = new Date(record.startTime);
-        const availabilityEnd = new Date(record.endTime);
-
-        availabilityStart.setFullYear(
-          day.getFullYear(),
-          day.getMonth(),
-          day.getDate(),
-        );
-        availabilityEnd.setFullYear(
-          day.getFullYear(),
-          day.getMonth(),
-          day.getDate(),
-        );
-
-        let current = new Date(availabilityStart);
-        const end = new Date(availabilityEnd);
-
-        while (
-          isBefore(addMinutes(current, 60), end) ||
-          +addMinutes(current, 60) === +end
-        ) {
-          const next = addMinutes(current, 60);
-
-          if (isBefore(current, now)) {
-            current = next;
-            continue;
-          }
-
-          const overlaps = existingAppointments.some((appointment) => {
-            const aStart = new Date(appointment.startTime);
-            const aEnd = new Date(appointment.endTime);
-            return current < aEnd && next > aStart;
-          });
-
-          if (!overlaps) {
-            const isDuplicate = availableSlotsByDay[dayString].some(
-              (s) => s.startTime === current.toISOString(),
-            );
-
-            if (!isDuplicate) {
-              availableSlotsByDay[dayString].push({
-                startTime: current.toISOString(),
-                endTime: next.toISOString(),
-                formatted: `${format(current, "h:mm a")} - ${format(next, "h:mm a")}`,
-                day: format(current, "EEE, MMMM d"),
-                availabilityId: record.id,
-              });
-            }
-          }
-          current = next;
-        }
-      }
-
-      availableSlotsByDay[dayString].sort(
-        (a, b) =>
-          new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
-      );
-    }
-    const result = Object.entries(availableSlotsByDay).map(([date, slots]) => ({
-      date,
-      displayDate:
-        slots.length > 0 ? slots[0].day : format(new Date(date), "EEE, MMMM d"),
-      slots,
-    }));
-
-    const totalFound = result.reduce((acc, day) => acc + day.slots.length, 0);
-
-    return {
-      days: result,
-      totalFound: totalFound,
-      hasAvailability: totalFound > 0,
-      message:
-        totalFound === 0 ? "No slots available for the next 4 days." : null,
-    };
-  } catch (error) {
-    throw new Error("Failed to fetch available slots" + error);
-  }
-}
-
-// export async function bookAppointment(formData: FormData) {
-//   const session = await auth.api.getSession({
-//     headers: await headers(),
-//   });
-
-//   if (!session?.user.id) {
-//     return {
-//       success: false,
-//       message: "Unauthorized",
-//     };
-//   }
-
-//   try {
-//     const learnerId = session.user.id;
-//     const availabilityId = formData.get("availabilityId") as string;
-//     const learnerDescription = formData.get("learnerDescription") as string;
-//     const educatorId = formData.get("educatorId") as string;
-//     const startTime = new Date(formData.get("startTime") as string);
-//     const endTime = new Date(formData.get("endTime") as string);
-
-//     if (
-//       !educatorId ||
-//       isNaN(startTime.getTime()) ||
-//       isNaN(endTime.getTime()) ||
-//       !availabilityId
-//     ) {
-//       return {
-//         success: false,
-//         message: "Missing required booking information.",
-//       };
-//     }
-
-//     // Calculate appointment duration in minutes
-//     const appointmentDurationMinutes =
-//       (endTime.getTime() - startTime.getTime()) / (1000 * 60);
-
-//     if (appointmentDurationMinutes <= 0) {
-//       return {
-//         success: false,
-//         message: "Invalid appointment duration.",
-//       };
-//     }
-
-//     const result = await prisma.$transaction(async (tx) => {
-//       // 1. CHECK FOR DUPLICATE BY SAME STUDENT
-//       const alreadyBookedByMe = await tx.appointment.findFirst({
-//         where: {
-//           availabilityId,
-//           learnerId,
-//           status: "Scheduled",
-//         },
-//       });
-
-//       if (alreadyBookedByMe) {
-//         return {
-//           success: false,
-//           message: "You have already booked a seat in this session.",
-//         };
-//       }
-
-//       // 2. Validate Student
-//       const student = await tx.user.findFirst({
-//         where: {
-//           id: learnerId,
-//           role: "Learner",
-//         },
-//         include: {
-//           subscription: true,
-//         },
-//       });
-
-//       if (!student) {
-//         return {
-//           success: false,
-//           message: "Learner not found",
-//         };
-//       }
-
-//       // 3. Validate Educator
-//       const educator = await tx.user.findUnique({
-//         where: {
-//           id: educatorId,
-//           role: "Educator",
-//           verificationStatus: "Verified",
-//         },
-//       });
-
-//       if (!educator) {
-//         return {
-//           success: false,
-//           message: "Educator not found or not verified",
-//         };
-//       }
-
-//       // 4. Time Overlap Check
-//       const overLappingAppointment = await tx.appointment.findFirst({
-//         where: {
-//           educatorId,
-//           status: "Scheduled",
-//           AND: [
-//             {
-//               startTime: {
-//                 lt: endTime,
-//               },
-//             },
-//             {
-//               endTime: {
-//                 gt: startTime,
-//               },
-//             },
-//           ],
-//         },
-//       });
-
-//       if (overLappingAppointment) {
-//         return {
-//           success: false,
-//           message: "Educator is already booked for this timeframe.",
-//         };
-//       }
-
-//       // Get current plan from subscription (Defaults to PlanType.Free if none exists)
-//       // Cast the database string or the fallback string explicitly to your Enum type
-//       const currentPlan = (student.subscription?.planId ?? "Free") as PlanType;
-
-//       // 5. NEW PLAN RULES & DURATION RESTRICTIONS
-
-//       // Determine max minutes based on the PlanType enum mapping
-//       let maxAllowedMinutes = 0;
-//       let planName = "Free";
-
-//       if (currentPlan === PlanType.FlexPay_30m) {
-//         maxAllowedMinutes = 30;
-//         planName = "FlexPay 30 Min";
-//       } else if (currentPlan === PlanType.FlexPay_45m) {
-//         maxAllowedMinutes = 45;
-//         planName = "FlexPay 45 Min";
-//       } else if (currentPlan === PlanType.FlexPay_60m) {
-//         maxAllowedMinutes = 60;
-//         planName = "FlexPay 60 Min";
-//       } else if (currentPlan === PlanType.Monthly) {
-//         maxAllowedMinutes = 60; // Assuming Monthly tier gets maximum session length per booking
-//         planName = "Monthly Subscription";
-//       }
-
-//       // Free Tier Logic
-//       if (currentPlan === PlanType.Free) {
-//         return {
-//           success: false,
-//           upgradeRequired: true,
-//           plan: "Free",
-//           message:
-//             "Free accounts cannot book live sessions directly. Please choose a FlexPay tier or Monthly subscription.",
-//         };
-//       }
-
-//       // Enforce the duration cap calculated from the plan configuration map
-//       if (appointmentDurationMinutes > maxAllowedMinutes) {
-//         return {
-//           success: false,
-//           message: `Your current plan (${planName}) only allows sessions up to ${maxAllowedMinutes} minutes. This session is ${appointmentDurationMinutes} minutes.`,
-//         };
-//       }
-
-//       // 6. Create appointment if all rules pass
-//       const sessionId = await createVideoSession();
-
-//       const appointment = await tx.appointment.create({
-//         data: {
-//           learnerId: learnerId,
-//           educatorId,
-//           availabilityId,
-//           startTime,
-//           endTime,
-//           learnerDescription,
-//           status: "Scheduled",
-//           videoSessionId: sessionId,
-//           sessionType: "FORTY_FIVE_MIN",
-//         },
-//       });
-
-//       return {
-//         success: true,
-//         appointment,
-//       };
-//     });
-
-//     revalidatePath("/learner");
-
-//     return result;
-//   } catch (error: unknown) {
-//     console.error("Create appointment error:", error);
-
-//     if (error instanceof Error) {
-//       return {
-//         success: false,
-//         message: error.message,
-//       };
-//     }
-
-//     return {
-//       success: false,
-//       message: "Error creating appointment",
-//     };
-//   }
-// }
-
 export async function bookAppointment(formData: FormData) {
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -410,14 +65,23 @@ export async function bookAppointment(formData: FormData) {
     const startTime = new Date(formData.get("startTime") as string);
     const endTime = new Date(formData.get("endTime") as string);
 
+    // 1. Extract the missing fields from formData
+    const subject = formData.get("subject") as string;
+    const gradeLevel = formData.get("gradeLevel") as string;
+    const dateInput = formData.get("date") as string;
+    const date = dateInput ? new Date(dateInput) : new Date(startTime); // Fallback to startTime if needed
+
     const paymentType = formData.get("paymentType") as "hourly" | "monthly";
 
     if (
       !educatorId ||
       isNaN(startTime.getTime()) ||
       isNaN(endTime.getTime()) ||
+      isNaN(date.getTime()) ||
       !availabilityId ||
-      !paymentType
+      !paymentType ||
+      !subject ||
+      !gradeLevel
     ) {
       return {
         success: false,
@@ -531,13 +195,14 @@ export async function bookAppointment(formData: FormData) {
         data: {
           learnerId: learnerId,
           educatorId,
-          availabilityId,
+          subject, // ✅ Added
+          gradeLevel, // ✅ Added
+          date, // ✅ Added
           startTime,
           endTime,
           learnerDescription,
           status: "Pending_payment",
           videoSessionId: sessionId,
-          sessionType: "FORTY_FIVE_MIN",
         },
       });
 
