@@ -77,7 +77,7 @@ export default function TestimonialsGrid() {
       <div className="max-w-7xl mx-auto px-12 lg:px-12 relative z-10">
         {/* HEADER SECTION */}
         <div className="text-center mb-20">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
             <span>Student Success</span>
           </div>
           <h2 className="text-4xl font-bold text-white mb-4 tracking-tight md:text-5xl">
@@ -94,10 +94,10 @@ export default function TestimonialsGrid() {
           {testimonials.map((t) => (
             <div
               key={t.id}
-              className={`group relative bg-neutral-900/40 border border-neutral-800 rounded-2xl p-6 md:p-8 overflow-hidden flex flex-col justify-between transition-all duration-300 hover:border-neutral-700 hover:-translate-y-1 hover:shadow-xl ${t.className}`}
+              className={`group relative bg-neutral-900/40 border border-neutral-800 rounded-md p-6 md:p-8 overflow-hidden flex flex-col justify-between transition-all duration-300 hover:border-neutral-700 hover:-translate-y-1 hover:shadow-xl ${t.className}`}
             >
               {/* Background ambient lighting halo glow */}
-              <div className="absolute -top-12 -left-12 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/10 transition-colors duration-500" />
+              <div className="absolute -top-12 -left-12 w-48 h-48 bg-emerald-500/5 rounded-md blur-3xl pointer-events-none group-hover:bg-emerald-500/10 transition-colors duration-500" />
 
               {/* Decorative Subtle Quote Mark Icon */}
               <div className="absolute bottom-6 right-6 text-neutral-800 pointer-events-none group-hover:text-neutral-700/50 transition-colors duration-300">
@@ -124,7 +124,7 @@ export default function TestimonialsGrid() {
 
               {/* Author Info Profile Container */}
               <div className="relative z-10 flex items-center gap-3.5 pt-4 border-t border-neutral-800/80">
-                <div className="w-10 h-10 shrink-0 rounded-full border border-neutral-700 bg-neutral-800 flex items-center justify-center text-white font-bold text-sm tracking-tight shadow-inner">
+                <div className="w-10 h-10 shrink-0 rounded-md border border-neutral-700 bg-neutral-800 flex items-center justify-center text-white font-bold text-sm tracking-tight shadow-inner">
                   {t.name.charAt(0)}
                 </div>
                 <div className="truncate">
