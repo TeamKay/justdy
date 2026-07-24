@@ -15,6 +15,7 @@ import {
 } from "@/app/_components/ui/alert-dialog";
 import { Button } from "@/app/_components/ui/button";
 import { deleteChapter } from "../actions/educator-edit-course";
+import { useRouter } from "next/navigation";
 
 export function DeleteChapter({
   chapterId,
@@ -23,6 +24,7 @@ export function DeleteChapter({
   chapterId: string;
   courseId: string;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -40,6 +42,7 @@ export function DeleteChapter({
       if (result.status === "success") {
         toast.success(result.message);
         setOpen(false);
+        router.refresh();
       } else if (result.status === "error") {
         toast.error(result.message);
       }

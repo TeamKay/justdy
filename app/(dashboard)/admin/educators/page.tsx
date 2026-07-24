@@ -28,7 +28,7 @@ export default async function AdminEducatorsPage({
   const { q: query = "" } = await searchParams;
 
   return (
-    <div className="max-w-6xl mx-auto px-0 py-0 space-y-4">
+    <div className="max-w-8xl w-full mx-auto p-2 py-0 space-y-4 pt-2">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Manage Educators</h1>
       </div>
@@ -37,19 +37,19 @@ export default async function AdminEducatorsPage({
         <table className="min-w-full divide-y divide-border">
           <thead className="bg-muted/50">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <th className="px-6 py-4 text-left text-[12px] font-semibold tracking-wider text-muted-foreground">
                 Educator
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <th className="px-6 py-4 text-left text-[12px] font-semibold tracking-wider text-muted-foreground">
                 Specialty
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <th className="px-6 py-4 text-left text-[12px] font-semibold tracking-wider text-muted-foreground">
                 Status
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <th className="px-6 py-4 text-left text-[12px] font-semibold tracking-wider text-muted-foreground">
                 Experience
               </th>
-              <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <th className="px-6 py-4 text-right text-[12px] font-semibold tracking-wider text-muted-foreground">
                 Actions
               </th>
             </tr>

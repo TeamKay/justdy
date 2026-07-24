@@ -3,10 +3,10 @@
 import {
   Quote,
   CheckCircle2,
-  MessageSquareCode,
-  Brain,
+  LineChart,
+  Bot,
   Video,
-  GraduationCap,
+  Download,
   Sparkles,
 } from "lucide-react";
 
@@ -14,78 +14,74 @@ const testimonials = [
   {
     id: 1,
     name: "Dr. Evelyn Brooks",
-    role: "Community Member & Researcher",
-    badgeRight: "Intellectual Community",
-    glow: "bg-purple-500/10 border-purple-500/20 text-purple-400",
-    icon: <MessageSquareCode className="w-4 h-4" />,
+    role: "Strategic Business Consulting Client",
+    badgeRight: "Tutoring & Consulting",
+    glow: "bg-blue-500/10 border-blue-500/20 text-blue-400",
+    icon: <LineChart className="w-4 h-4" />,
     className: "md:col-span-2", // Spans wide on desktop for visual weight
     content:
-      "The community for intellectual discussions has completely elevated my weekly routine. The depth of tutoring and high-level debate here is incredibly hard to find anywhere else online. 🧠",
+      "The private 1-on-1 consulting sessions completely transformed our workflow blueprint. Having direct access to an expert who can isolate operational roadblocks saved us months of costly trial and error. 📈",
   },
   {
     id: 2,
     name: "Liam Henderson",
     role: "Computer Science Student",
-    badgeRight: "AI Smart Tutor",
+    badgeRight: "Smart AI Tutor",
     glow: "bg-cyan-500/10 border-cyan-500/20 text-cyan-400",
-    icon: <Brain className="w-4 h-4" />,
+    icon: <Bot className="w-4 h-4" />,
     className: "md:col-span-1",
     content:
-      "I was stuck on data structures for weeks, but the AI smart tutor broke down concepts instantly. Having 24/7 access to tailored explanations feels like a learning superpower. ⚡",
+      "I was struggling with complex algorithms until I used the platform's AI tutor. Having 24/7 instant concept breakdowns and adaptive practice drills tailored to my exact pace felt like an absolute superpower. ⚡",
   },
   {
     id: 3,
     name: "Sarah Jenkins",
-    role: "Career Professional",
+    role: "Up-skilling Professional",
     badgeRight: "Online Video Courses",
-    glow: "bg-pink-500/10 border-pink-500/20 text-pink-400",
+    glow: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
     icon: <Video className="w-4 h-4" />,
     className: "md:col-span-1",
     content:
-      "The self-paced online courses are masterfully structured. No fluff—just high-yield, step-by-step video modules that helped me completely upskill and land a promotion. 📈",
+      "The self-paced video modules are incredibly deep and structured. There's zero fluff—just high-yield, step-by-step masterclasses that helped me build practical competencies and secure my promotion. 🎯",
   },
   {
     id: 4,
     name: "Mateo Silva",
-    role: "1-on-1 Mentee",
-    badgeRight: "Live 1:1 Sessions",
-    glow: "bg-amber-500/10 border-amber-500/20 text-amber-400",
-    icon: <GraduationCap className="w-4 h-4" />,
+    role: "Independent Creator",
+    badgeRight: "Digital Products",
+    glow: "bg-orange-500/10 border-orange-500/20 text-orange-400",
+    icon: <Download className="w-4 h-4" />,
     className: "md:col-span-1",
     content:
-      "Booking live online sessions was the best investment I made this year. The undivided attention and real-time feedback completely cleared my learning blockages. 🎯",
+      "The premium layout templates and resource toolkits are worth every single penny. They are beautifully organized, production-ready source files that drastically cut down our development hours. 📁",
   },
   {
     id: 5,
-    name: "Prof. Amara Okafor",
-    role: "Discussion Moderator",
-    badgeRight: "Expert Tutoring",
-    glow: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
+    name: "Marcus Vance",
+    role: "Advanced Academic Mentee",
+    badgeRight: "1-on-1 Tutoring",
+    glow: "bg-amber-500/10 border-amber-500/20 text-amber-400",
     icon: <Sparkles className="w-4 h-4" />,
     className: "md:col-span-1 lg:col-span-1",
     content:
-      "A brilliant ecosystem where modern AI tools and deep human intellect meet. The quality of engagement here is absolute top-tier. 🌱",
+      "A remarkable platform where human expertise, smart AI infrastructure, and high-quality downloadable resources live together. My test scores and execution confidence skyrocketed. 🌱",
   },
 ];
 
 export default function TestimonialsGrid() {
   return (
-    <section className="py-24 bg-background relative overflow-hidden">
+    <section className="py-20 bg-background relative overflow-hidden">
       {/* Structural Tech Grid Overlays */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-size-[40px_40px] mask-[radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
 
-      <div className="max-w-7xl mx-auto px-12 lg:px-12 relative z-10">
+      <div className="max-w-7xl mx-auto px-12 lg:px-8 relative z-10">
         {/* HEADER SECTION */}
-        <div className="text-center mb-20">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-            <span>Student Success</span>
-          </div>
-          <h2 className="text-4xl font-bold text-white mb-4 tracking-tight md:text-5xl">
-            Real Stories From Real Learners
-          </h2>
-          <p className="text-neutral-400 text-lg max-w-2xl mx-auto leading-relaxed">
-            See how our integrated ecosystem of interactive communities, AI
-            assistance, and expert-led sessions changes the game.
+        <div className="text-center mb-10">
+          <h1 className="text-3xl font-semibold text-slate-400 mb-4 tracking-tight">
+            Real Impact. Verified Success.
+          </h1>
+          <p className="text-muted-foreground text-sm max-w-2xl mx-auto">
+            Success stories from real impactful clients
           </p>
         </div>
 
@@ -117,7 +113,7 @@ export default function TestimonialsGrid() {
                 </div>
 
                 {/* Content Quote Text Box */}
-                <p className="text-neutral-300 text-base leading-relaxed mb-8 font-normal">
+                <p className="text-neutral-300 text-base leading-relaxed mb-8 font-light">
                   “{t.content}”
                 </p>
               </div>

@@ -1,29 +1,13 @@
 import { z } from "zod";
-
-export const courseLevels = ["Beginner", "Intermediate", "Advanced"] as const;
-export const courseStatus = [
+export const productStatus = [
   "Draft",
   "Published",
   "Rejected",
   "Pending",
 ] as const;
-export const courseCategories = [
-  "Development",
-  "Business",
-  "Finance & Accounting",
-  "IT & Software",
-  "Marketing",
-  "Lifestyle",
-  "Photography & Video",
-  "Health & Fitness",
-  "Teaching & Academics",
-] as const;
 
-export const communityCategories = [
-  "IT & Software",
-  "Photography & Video",
-  "Teaching & Academics",
-] as const;
+export const productType = ["Course", "Downloadable"] as const;
+export const courseCategories = ["Mathematics", "Writing", "Reading"] as const;
 
 export const loginSchema = z.object({
   email: z.string().email("Invalid email"),
@@ -42,6 +26,30 @@ export const signupSchema = z
     path: ["confirmPassword"],
   });
 
+export const productSchema = z.object({
+  title: z
+    .string()
+    .min(3, { message: "Title must be at least 3 characters long" })
+    .max(100, { message: "Title must be at most 100 characters long" }),
+  description: z
+    .string()
+    .min(3, { message: "Description must be at least 3 characters long" }),
+  price: z.coerce
+    .number()
+    .min(1, { message: "Price must be a positive number" }),
+  type: z.enum(productType, { message: "Type is required" }),
+  smallDescription: z
+    .string()
+    .min(3, { message: "Small description must be at least 3 characters long" })
+    .max(200, {
+      message: "Small description must be at most 200 characters long",
+    }),
+  slug: z
+    .string()
+    .min(3, { message: "Slug must be at least 3 characters long" }),
+  status: z.enum(productStatus, { message: "Status is required" }),
+});
+
 export const courseSchema = z.object({
   title: z
     .string()
@@ -50,16 +58,12 @@ export const courseSchema = z.object({
   description: z
     .string()
     .min(3, { message: "Description must be at least 3 characters long" }),
-  fileKey: z.string().min(1, "File key is required"),
+  fileKey: z.string().optional(),
 
   price: z.coerce
     .number()
     .min(1, { message: "Price must be a positive number" }),
-  duration: z.coerce
-    .number()
-    .min(1, { message: "Duration must be at least 1 hour" })
-    .max(500, { message: "Duration must be at most 500 hours" }),
-  level: z.enum(courseLevels, { message: "Level is required" }),
+  duration: z.coerce.number().positive().nullable().optional(),
   category: z.enum(courseCategories, { message: "Category is required" }),
   smallDescription: z
     .string()
@@ -70,22 +74,21 @@ export const courseSchema = z.object({
   slug: z
     .string()
     .min(3, { message: "Slug must be at least 3 characters long" }),
-  status: z.enum(courseStatus, { message: "Status is required" }),
 });
 
 export const chapterSchema = z.object({
   name: z
     .string()
     .min(3, { message: "Name must be at least 3 characters long" }),
-  courseId: z.string().uuid({ message: "Invalid course id" }),
+  productId: z.string(),
 });
 
 export const lessonSchema = z.object({
   name: z
     .string()
     .min(3, { message: "Name must be at least 3 characters long" }),
-  courseId: z.string().uuid({ message: "Invalid course id" }),
-  chapterId: z.string().uuid({ message: "Invalid chapter id" }),
+  productId: z.string().min(1, { message: "Invalid product id" }),
+  chapterId: z.string().min(1, { message: "Invalid chapter id" }),
   description: z
     .string()
     .min(3, { message: "Description must be at least 3 characters long" })
@@ -123,6 +126,7 @@ export const packagesSchema = z.object({
   subjectId: z.string().min(1, "Subject is required"),
 });
 
+export type ProductSchemaType = z.output<typeof productSchema>;
 export type CourseSchemaType = z.output<typeof courseSchema>;
 export type ChapterSchemaType = z.infer<typeof chapterSchema>;
 export type LessonSchemaType = z.infer<typeof lessonSchema>;

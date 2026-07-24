@@ -26,14 +26,16 @@ import {
 } from "@/app/_components/ui/form";
 import { Input } from "@/app/_components/ui/input";
 import { createLesson } from "../actions/educator-edit-course";
+import { useRouter } from "next/navigation";
 
 export function NewLessonModal({
-  courseId,
+  productId,
   chapterId,
 }: {
-  courseId: string;
+  productId: string;
   chapterId: string;
 }) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -41,7 +43,7 @@ export function NewLessonModal({
     resolver: zodResolver(lessonSchema),
     defaultValues: {
       name: "",
-      courseId: courseId,
+      productId,
       chapterId: chapterId,
     },
   });
@@ -59,6 +61,7 @@ export function NewLessonModal({
         toast.success(result.message);
         form.reset();
         setIsOpen(false);
+        router.refresh();
       } else if (result.status === "error") {
         toast.error(result.message);
       }

@@ -29,13 +29,13 @@ type CommunityNotification = {
 
 interface EducatorDashboardProps {
   appointments: Appointment[];
-  publishedCoursesCount: number;
+  publishedProductsCount: number;
   notifications?: CommunityNotification[]; // Array of community alerts requiring user response
 }
 
 export default function EducatorDashboard({
   appointments,
-  publishedCoursesCount,
+  publishedProductsCount,
   notifications = [], // Default to an empty array if none are provided
 }: EducatorDashboardProps) {
   const { data: session, isPending: sessionPending } = useSession();
@@ -61,8 +61,8 @@ export default function EducatorDashboard({
     : "/avatar-placeholder.png";
 
   return (
-    <div className="bg-background text-[#1d1d1d] font-sans antialiased pb-12">
-      <div className="max-w-6xl mx-auto px-4 md:px-0 space-y-6">
+    <div className="w-full text-[#1d1d1d] font-sans antialiased p-2">
+      <div className="max-w-8xl w-full mx-auto px-4 md:px-0 space-y-6">
         {/* Profile Card Header Block */}
         <div className="bg-emerald-900/10 rounded-md border border-emerald-950 shadow-sm overflow-hidden">
           {/* Cover Graphic Strip */}
@@ -107,10 +107,10 @@ export default function EducatorDashboard({
               </div>
               <div>
                 <p className="text-2xl font-bold text-emerald-300">
-                  {publishedCoursesCount}
+                  {publishedProductsCount}
                 </p>
                 <p className="text-xs text-gray-400 font-medium mt-0.5">
-                  Published Courses
+                  Published Products
                 </p>
               </div>
               <div>

@@ -31,11 +31,15 @@ export async function getLearnerDashboardData() {
       },
       enrollment: {
         include: {
-          Course: {
+          course: {
             select: {
               id: true,
-              title: true,
-              category: true,
+              category: true, // category is directly on Course
+              product: {
+                select: {
+                  title: true, // title lives on Product
+                },
+              },
             },
           },
         },
@@ -64,9 +68,9 @@ export async function getLearnerDashboardData() {
     );
 
     return {
-      id: enr.Course.id,
-      title: enr.Course.title,
-      category: enr.Course.category,
+      id: enr.course.id,
+      title: enr.course.product?.title || "Untitled Course",
+      category: enr.course.category,
       enrollmentProgress: [
         {
           progress: matchingProgress ? matchingProgress.progress : 0,
@@ -75,16 +79,12 @@ export async function getLearnerDashboardData() {
     };
   });
 
-  const userProfile = {
-    description: userData.description,
-  };
-
   const plan = userData.subscription?.planId || "Free";
 
   return {
     appointments,
     courses,
-    userProfile,
+    userProfile: {},
     plan,
   };
 }

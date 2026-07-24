@@ -15,6 +15,9 @@ import {
 import { request } from "@arcjet/next";
 import { revalidatePath } from "next/cache";
 import { requireEducator } from "./require-educator";
+import { UTApi } from "uploadthing/server";
+
+const utapi = new UTApi();
 
 const aj = arcjet.withRule(
   fixedWindow({
@@ -26,7 +29,7 @@ const aj = arcjet.withRule(
 
 export async function editCourse(
   data: CourseSchemaType,
-  courseId: string,
+  id: string,
 ): Promise<ApiResponse> {
   const user = await requireEducator();
 
@@ -59,15 +62,83 @@ export async function editCourse(
       };
     }
 
-    await prisma.course.update({
-      where: {
-        id: courseId,
-        userId: user.user.id,
-      },
-      data: {
-        ...result.data,
-      },
+    let oldFileKeyToDelete: string | null = null;
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Check product exists
+      const product = await tx.product.findFirst({
+        where: {
+          id,
+          userId: user.user.id,
+        },
+        include: {
+          course: true,
+        },
+      });
+
+      if (!product) {
+        throw new Error("Product not found");
+      }
+
+      // 2. Identify if the file key changed
+      const currentImageKey = product.course?.imageKey;
+      if (currentImageKey && currentImageKey !== result.data.fileKey) {
+        oldFileKeyToDelete = currentImageKey;
+      }
+
+      // Update Product table
+      await tx.product.update({
+        where: {
+          id,
+        },
+        data: {
+          title: result.data.title,
+          description: result.data.description,
+          smallDescription: result.data.smallDescription,
+          price: result.data.price,
+          slug: result.data.slug,
+        },
+      });
+
+      // 3. Check if course exists
+      if (product.course) {
+        // Course exists -> update
+        await tx.course.update({
+          where: {
+            productId: id,
+          },
+          data: {
+            duration: result.data.duration,
+            category: result.data.category,
+            imageKey: result.data.fileKey,
+          },
+        });
+      } else {
+        // Course does not exist -> create
+        await tx.course.create({
+          data: {
+            productId: id,
+            duration: result.data.duration,
+            category: result.data.category,
+            imageKey: result.data.fileKey,
+          },
+        });
+      }
     });
+
+    // 4. Delete the old file from UploadThing after DB transaction succeeds
+    if (oldFileKeyToDelete) {
+      try {
+        await utapi.deleteFiles(oldFileKeyToDelete);
+      } catch (deleteError) {
+        console.error(
+          "Failed to delete old image from UploadThing:",
+          deleteError,
+        );
+      }
+    }
+
+    revalidatePath("/educator/products");
 
     return {
       status: "success",
@@ -76,7 +147,98 @@ export async function editCourse(
   } catch {
     return {
       status: "error",
-      message: "An error occurred while updating the course",
+      message: "An error occurred while updating the product",
+    };
+  }
+}
+
+export async function editLesson({
+  lessonId,
+  productId,
+  values,
+}: {
+  lessonId: string;
+  productId: string;
+  values: LessonSchemaType;
+}): Promise<ApiResponse> {
+  await requireEducator();
+
+  try {
+    const result = lessonSchema.safeParse(values);
+
+    if (!result.success) {
+      return {
+        status: "error",
+        message: "Invalid data",
+      };
+    }
+
+    const keysToDelete: string[] = [];
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Fetch existing lesson to check for old keys
+      const existingLesson = await tx.lesson.findUnique({
+        where: { id: lessonId },
+        select: { videoKey: true, thumbnailKey: true },
+      });
+
+      if (!existingLesson) {
+        throw new Error("Lesson not found");
+      }
+
+      // 2. Collect old video key if replaced
+      if (
+        existingLesson.videoKey &&
+        result.data.videoKey &&
+        existingLesson.videoKey !== result.data.videoKey
+      ) {
+        keysToDelete.push(existingLesson.videoKey);
+      }
+
+      // 3. Collect old thumbnail key if replaced
+      if (
+        existingLesson.thumbnailKey &&
+        result.data.thumbnailKey &&
+        existingLesson.thumbnailKey !== result.data.thumbnailKey
+      ) {
+        keysToDelete.push(existingLesson.thumbnailKey);
+      }
+
+      // 4. Update the lesson
+      await tx.lesson.update({
+        where: { id: lessonId },
+        data: {
+          title: result.data.name,
+          description: result.data.description,
+          videoKey: result.data.videoKey,
+          thumbnailKey: result.data.thumbnailKey,
+        },
+      });
+    });
+
+    // 5. Delete old files from UploadThing
+    if (keysToDelete.length > 0) {
+      try {
+        await utapi.deleteFiles(keysToDelete);
+      } catch (deleteError) {
+        console.error(
+          "Failed to delete old lesson files from UploadThing:",
+          deleteError,
+        );
+      }
+    }
+
+    revalidatePath(`/educator/products/${productId}/edit`);
+
+    return {
+      status: "success",
+      message: "Lesson updated successfully",
+    };
+  } catch (error) {
+    console.error("EDIT LESSON ERROR:", error);
+    return {
+      status: "error",
+      message: "Failed to update lesson",
     };
   }
 }
@@ -109,7 +271,7 @@ export async function reorderLessons(
 
     await prisma.$transaction(updates);
 
-    revalidatePath(`/educator/courses/${courseId}/edit`);
+    revalidatePath(`/educator/products/${courseId}/edit`);
 
     return {
       status: "success",
@@ -124,7 +286,7 @@ export async function reorderLessons(
 }
 
 export async function reorderChapters(
-  courseId: string,
+  productId: string,
   chapters: { id: string; position: number }[],
 ): Promise<ApiResponse> {
   await requireEducator();
@@ -140,7 +302,7 @@ export async function reorderChapters(
       prisma.chapter.update({
         where: {
           id: chapter.id,
-          courseId: courseId,
+          productId,
         },
         data: {
           position: chapter.position,
@@ -150,7 +312,7 @@ export async function reorderChapters(
 
     await prisma.$transaction(updates);
 
-    revalidatePath(`/educator/courses/${courseId}/edit`);
+    revalidatePath(`/educator/products/${productId}/edit`);
 
     return {
       status: "success",
@@ -179,9 +341,19 @@ export async function createChapter(
     }
 
     await prisma.$transaction(async (tx) => {
+      const course = await tx.course.findUnique({
+        where: {
+          productId: result.data.productId,
+        },
+      });
+
+      if (!course) {
+        throw new Error("Course does not exist");
+      }
+
       const maxPos = await tx.chapter.findFirst({
         where: {
-          courseId: result.data.courseId,
+          courseId: course.id,
         },
         select: {
           position: true,
@@ -194,19 +366,20 @@ export async function createChapter(
       await tx.chapter.create({
         data: {
           title: result.data.name,
-          courseId: result.data.courseId,
+          courseId: course.id,
           position: (maxPos?.position ?? 0) + 1,
         },
       });
     });
 
-    revalidatePath(`/educator/courses/${result.data.courseId}/edit`);
+    revalidatePath(`/educator/products/${result.data.productId}/edit`);
 
     return {
       status: "success",
       message: "Chapter Created Successfully",
     };
-  } catch {
+  } catch (error) {
+    console.error("CREATE CHAPTER ERROR:", error);
     return {
       status: "error",
       message: "Failed to create chapter",
@@ -253,7 +426,7 @@ export async function createLesson(
       });
     });
 
-    revalidatePath(`/educator/courses/${result.data.courseId}/edit`);
+    revalidatePath(`/educator/products/${result.data.productId}/edit`);
 
     return {
       status: "success",
@@ -290,6 +463,8 @@ export async function deleteLesson({
           select: {
             id: true,
             position: true,
+            videoKey: true,
+            thumbnailKey: true,
           },
         },
       },
@@ -312,6 +487,12 @@ export async function deleteLesson({
       };
     }
 
+    // Collect keys to delete from UploadThing
+    const keysToDelete: string[] = [];
+    if (lessonsToDelete.videoKey) keysToDelete.push(lessonsToDelete.videoKey);
+    if (lessonsToDelete.thumbnailKey)
+      keysToDelete.push(lessonsToDelete.thumbnailKey);
+
     const remainingLessons = lessons.filter((lesson) => lesson.id !== lessonId);
 
     const updates = remainingLessons.map((lesson, index) => {
@@ -320,6 +501,7 @@ export async function deleteLesson({
         data: { position: index + 1 },
       });
     });
+
     await prisma.$transaction([
       ...updates,
       prisma.lesson.delete({
@@ -329,7 +511,19 @@ export async function deleteLesson({
         },
       }),
     ]);
-    revalidatePath(`/educator/courses/${courseId}/edit`);
+
+    if (keysToDelete.length > 0) {
+      try {
+        await utapi.deleteFiles(keysToDelete);
+      } catch (deleteError) {
+        console.error(
+          "Failed to delete lesson files from UploadThing:",
+          deleteError,
+        );
+      }
+    }
+
+    revalidatePath(`/educator/products/${courseId}/edit`);
 
     return {
       status: "success",
@@ -352,9 +546,9 @@ export async function deleteChapter({
 }): Promise<ApiResponse> {
   await requireEducator();
   try {
-    const courseWithChapters = await prisma.course.findUnique({
+    const productWithChapters = await prisma.course.findUnique({
       where: {
-        id: courseId,
+        productId: courseId,
       },
       select: {
         chapter: {
@@ -369,14 +563,14 @@ export async function deleteChapter({
       },
     });
 
-    if (!courseWithChapters) {
+    if (!productWithChapters) {
       return {
         status: "error",
-        message: "Course not Found",
+        message: "Product not Found",
       };
     }
 
-    const chapters = courseWithChapters.chapter;
+    const chapters = productWithChapters.chapter;
     const chapterToDelete = chapters.find(
       (chapter) => chapter.id === chapterId,
     );
@@ -384,7 +578,7 @@ export async function deleteChapter({
     if (!chapterToDelete) {
       return {
         status: "error",
-        message: "Chapter not Found in the course",
+        message: "Chapter not Found in the product",
       };
     }
 
@@ -394,7 +588,7 @@ export async function deleteChapter({
 
     const updates = remainingChapters.map((chapter, index) => {
       return prisma.chapter.update({
-        where: { id: chapterId },
+        where: { id: chapter.id },
         data: { position: index + 1 },
       });
     });
@@ -406,7 +600,7 @@ export async function deleteChapter({
         },
       }),
     ]);
-    revalidatePath(`/educator/courses/${courseId}/edit`);
+    revalidatePath(`/educator/products/${courseId}/edit`);
 
     return {
       status: "success",

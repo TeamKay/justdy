@@ -58,9 +58,9 @@ export const auth = betterAuth({
     additionalFields: {
       role: {
         type: "string",
-        defaultValue: "Unassigned",
-        input: false,
-        required: false,
+        defaultValue: "Learner",
+        input: true,
+        required: true,
       },
       verificationStatus: {
         type: "string",

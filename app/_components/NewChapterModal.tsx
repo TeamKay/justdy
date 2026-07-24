@@ -1,6 +1,5 @@
 import { tryCatch } from "@/hooks/try-catch";
 import { chapterSchema, ChapterSchemaType } from "@/lib/zodSchemas";
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus } from "lucide-react";
 import { useState, useTransition } from "react";
@@ -26,8 +25,10 @@ import {
 } from "@/app/_components/ui/form";
 import { Input } from "@/app/_components/ui/input";
 import { createChapter } from "../actions/educator-edit-course";
+import { useRouter } from "next/navigation";
 
-export function NewChapterModal({ courseId }: { courseId: string }) {
+export function NewChapterModal({ productId }: { productId: string }) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -35,7 +36,7 @@ export function NewChapterModal({ courseId }: { courseId: string }) {
     resolver: zodResolver(chapterSchema),
     defaultValues: {
       name: "",
-      courseId: courseId,
+      productId,
     },
   });
 
@@ -52,6 +53,7 @@ export function NewChapterModal({ courseId }: { courseId: string }) {
         toast.success(result.message);
         form.reset();
         setIsOpen(false);
+        router.refresh();
       } else if (result.status === "error") {
         toast.error(result.message);
       }

@@ -1,20 +1,25 @@
-import AITutor from "../_components/AITutor";
-import CallToAction from "../_components/CallToAction";
-import HowItWorks from "../_components/HowItWorks";
 import LandingPage from "../_components/LandingPage";
-import { MathSectionAlternative } from "../_components/MathProgramSection";
 import Testimonials from "../_components/Testimonials";
+import CTASectionSplit from "../_components/CTASectionSplit";
+import DashboardExperience from "../_components/DashboardExperience";
+import FreeVideos from "../_components/FreeVideos";
 
-export default function Home() {
+export default function HomePage() {
   return (
     <>
       <LandingPage />
-      <HowItWorks />
-      <MathSectionAlternative />
-      {/* <LatestCourses /> */}
-      <AITutor />
+      <DashboardExperience />
+      <FreeVideos />
       <Testimonials />
-      <CallToAction />
+      <CTASectionSplit />
+      {/* <DashboardExperience />
+      <TutoringConsultingAISection /> */}
+      {/* <LatestCourses />
+      <FeaturedProducts /> */}
+      {/* <OnlineCoursesBanner />
+      <DigitalProductsCatalog />
+     
+      <CTASectionSplit /> */}
     </>
   );
 }

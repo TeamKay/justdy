@@ -21,7 +21,11 @@ const aj = arcjet({
 export default createMiddleware(aj, async (request: NextRequest) => {
   const { pathname } = request.nextUrl;
 
-  // 1. Skip checks on the protection warning landing pages to prevent infinite loops
+  // Prevent auth recursion
+  if (pathname.startsWith("/api/auth") || pathname.startsWith("/api/session")) {
+    return NextResponse.next();
+  }
+
   if (
     pathname === "/verify-email-notice" ||
     pathname === "/application-under-review"

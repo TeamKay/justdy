@@ -45,8 +45,8 @@ export default function AdminDashboard({
   }
 
   return (
-    <div className="min-h-screen bg-background text-gray-900 pb-10">
-      <div className="max-w-6xl mx-auto px-4 md:px-0 space-y-6">
+    <div className="min-h-screen w-full text-gray-900 pb-10">
+      <div className="max-w-7xl mx-auto px-0 md:p-1 space-y-6">
         {/* ---------------- HERO ---------------- */}
         <div className="rounded-md overflow-hidden border border-white/10 shadow-sm bg-linear-to-r from-emerald-950 via-slate-900 to-indigo-950">
           <div className="h-40 relative opacity-30 bg-[linear-gradient(45deg,#000_25%,transparent_25%,transparent_50%,#000_50%,#000_75%,transparent_75%,transparent)] bg-size-[40px_40px]" />

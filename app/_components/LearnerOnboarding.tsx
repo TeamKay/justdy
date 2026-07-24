@@ -1,72 +1,120 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useMemo } from "react";
+import { motion } from "framer-motion";
 import {
   Calendar as CalendarIcon,
   CreditCard,
   Loader2,
   User,
-  GraduationCap,
-  Award,
   Lock,
   Mail,
   Clock,
+  ArrowRight,
+  CheckCircle2,
+  Search,
+  X,
   Sparkles,
 } from "lucide-react";
-import { getActiveOnboardingSubjects } from "@/app/actions/admin-subjects";
 import { getOnboardingEducators } from "../actions/educator";
 
-// Custom UI Component Imports
+// UI Imports
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import Image from "next/image";
 
-const steps = ["Subject & Grade", "Program", "Schedule", "Review", "Payment"];
+const steps = [
+  "Topic & Focus",
+  "Select Session",
+  "Schedule",
+  "Review",
+  "Checkout",
+];
 
-const stepColors = Array(6).fill("bg-[#4B4C4E]");
-
-const gradeLevels = [
-  "Grades 1–5 (Elementary Math)",
-  "Grades 6–8 (Middle School Math)",
-  "Grades 9–12 (High School Math & AP)",
-  "College Math",
-  "Adult Learner",
+// Flat list of topics for search & filter
+const allTopics = [
+  // Academic & Sciences
+  "Mathematics",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "Economics",
+  "Statistics",
+  // Tech & Software
+  "Web Development",
+  "Python Programming",
+  "Data Analysis & AI",
+  "Cybersecurity",
+  "Cloud Computing",
+  "Mobile App Development",
+  // Business & Growth
+  "Accounting & Finance",
+  "Marketing Strategy",
+  "Entrepreneurship",
+  "Product Management",
+  "Sales & Business Development",
+  // Career & Leadership
+  "Interview Preparation",
+  "Resume & Portfolio Review",
+  "Career Guidance",
+  "Leadership Coaching",
+  "Public Speaking",
 ] as const;
 
-const pricing = {
-  "Grades 1–5 (Elementary Math)": {
-    hourly: 35,
-    monthly: 230,
-    perks: "8 sessions/mo (Save $50)",
+// Quick access badges below search bar
+const popularQuickPicks = [
+  "Mathematics",
+  "Web Development",
+  "Python Programming",
+  "Data Analysis & AI",
+] as const;
+
+// Inclusive Current Stages
+const stageOptions = [
+  "K-12 Student",
+  "College / University Student",
+  "Working Professional",
+  "Lifelong Learner",
+] as const;
+
+// Goal chips for Step 1
+const purposeOptions = [
+  "Understand a topic",
+  "Complete an assignment",
+  "Prepare for an exam",
+  "Build a project",
+] as const;
+
+// Duration / Session format options (Time-based pricing)
+const durationPricing = {
+  "30": {
+    name: "30 Minutes",
+    price: 30,
+    desc: "Quick Q&A, topic sanity check, or targeted feedback.",
   },
-  "Grades 6–8 (Middle School Math)": {
-    hourly: 35,
-    monthly: 230,
-    perks: "8 sessions/mo (Save $50)",
+  "60": {
+    name: "60 Minutes",
+    price: 55,
+    desc: "Standard deep dive, lesson execution, or project review.",
   },
-  "Grades 9–12 (High School Math & AP)": {
-    hourly: 35,
-    monthly: 230,
-    perks: "8 sessions/mo (Save $50)",
-  },
-  "College Math": {
-    hourly: 35,
-    monthly: 230,
-    perks: "8 sessions/mo (Save $50)",
-  },
-  "Adult Learner": {
-    hourly: 35,
-    monthly: 230,
-    perks: "8 sessions/mo (Save $50)",
+  "90": {
+    name: "90 Minutes",
+    price: 80,
+    desc: "Intensive session, multi-topic prep, or guided build.",
   },
 };
 
-interface SubjectDbItem {
-  id: string;
-  name: string;
-  description: string | null;
-}
+const recurringPricing = {
+  weekly: {
+    name: "Weekly Plan",
+    price: 200,
+    desc: "4 sessions / month (Save $20) — Steady skill growth",
+  },
+  biweekly: {
+    name: "Twice Weekly Plan",
+    price: 380,
+    desc: "8 sessions / month (Save $60) — Fast-track goals",
+  },
+};
 
 interface EducatorDbItem {
   id: string;
@@ -88,117 +136,87 @@ function formatDate(date: Date | undefined) {
 
 export default function LearnerOnboarding() {
   const [step, setStep] = useState(0);
-  const [selectedSubject, setSelectedSubject] = useState("");
-  const [gradeLevel, setGradeLevel] = useState("");
-  const [enrollmentType, setEnrollmentType] = useState<
-    "hourly" | "monthly" | ""
-  >("");
 
-  const [showLanguageAlert, setShowLanguageAlert] = useState(false);
+  // Step 1: Option 2 Combobox + Quick Pick States
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [areaOfInterest, setAreaOfInterest] = useState("");
+  const [currentStage, setCurrentStage] = useState("");
+  const [sessionPurpose, setSessionPurpose] = useState("");
 
-  // Scheduling states
+  // Step 2: Session Type & Duration
+  const [sessionType, setSessionType] = useState<"one-time" | "coaching">(
+    "one-time",
+  );
+  const [selectedDuration, setSelectedDuration] = useState<"30" | "60" | "90">(
+    "60",
+  );
+  const [recurringFrequency, setRecurringFrequency] = useState<
+    "weekly" | "biweekly"
+  >("weekly");
+
+  // Step 3: Schedule & Details
   const [openDatePicker, setOpenDatePicker] = useState(false);
   const [sessionDate, setSessionDate] = useState<Date | undefined>(undefined);
   const [month, setMonth] = useState<Date | undefined>(new Date());
   const [dateInputValue, setDateInputValue] = useState("");
 
   const [startHour, setStartHour] = useState("10");
-  const [startMinute, setStartMinute] = useState("30");
+  const [startMinute, setStartMinute] = useState("00");
   const [startPeriod, setStartPeriod] = useState("AM");
 
-  const [endHour, setEndHour] = useState("11");
-  const [endMinute, setEndMinute] = useState("30");
-  const [endPeriod, setEndPeriod] = useState("PM");
+  const [goalsNotes, setGoalsNotes] = useState("");
 
-  const [topic, setTopic] = useState("");
-  const [dbSubjects, setDbSubjects] = useState<SubjectDbItem[]>([]);
-  const [isLoadingSubjects, setIsLoadingSubjects] = useState(true);
-
-  // Educator states
-  const [educators, setEducators] = useState<EducatorDbItem[]>([]);
-  const [isLoadingEducators, setIsLoadingEducators] = useState(true);
-
+  // Step 5: Checkout
   const [billingName, setBillingName] = useState("");
   const [billingEmail, setBillingEmail] = useState("");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  const currentPricing = pricing[gradeLevel as keyof typeof pricing] ?? {
-    hourly: 0,
-    monthly: 0,
-  };
-
-  const getTimeInMinutes = (
-    hourStr: string,
-    minuteStr: string,
-    period: string,
-  ) => {
-    let hours = parseInt(hourStr, 10);
-    const minutes = parseInt(minuteStr, 10);
-    if (period === "PM" && hours !== 12) hours += 12;
-    if (period === "AM" && hours === 12) hours = 0;
-    return hours * 60 + minutes;
-  };
-
-  const calculatePrice = () => {
-    if (!gradeLevel) return 0;
-    if (enrollmentType === "monthly") return currentPricing.monthly;
-
-    const startMins = getTimeInMinutes(startHour, startMinute, startPeriod);
-    const endMins = getTimeInMinutes(endHour, endMinute, endPeriod);
-    const diffMins = endMins - startMins;
-    if (diffMins <= 0) return 0;
-    return parseFloat(((diffMins / 60) * currentPricing.hourly).toFixed(2));
-  };
-
-  const isDateTimeInPast = () => {
-    if (!sessionDate) return false;
-    const now = new Date();
-    const selectedDateTime = new Date(sessionDate);
-    let hours = parseInt(startHour, 10);
-    const minutes = parseInt(startMinute, 10);
-    if (startPeriod === "PM" && hours !== 12) hours += 12;
-    if (startPeriod === "AM" && hours === 12) hours = 0;
-    selectedDateTime.setHours(hours, minutes, 0, 0);
-    return selectedDateTime < now;
-  };
-
-  const isTimeRangeInvalid = () => {
-    const startMins = getTimeInMinutes(startHour, startMinute, startPeriod);
-    const endMins = getTimeInMinutes(endHour, endMinute, endPeriod);
-    return endMins <= startMins;
-  };
+  // Educator states
+  const [educators, setEducators] = useState<EducatorDbItem[]>([]);
 
   useEffect(() => {
-    async function loadSubjects() {
-      try {
-        const data = await getActiveOnboardingSubjects();
-        setDbSubjects(data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsLoadingSubjects(false);
-      }
-    }
-
     async function loadEducators() {
       try {
         const data = await getOnboardingEducators();
         setEducators(data);
       } catch (error) {
         console.error("Error fetching educators:", error);
-      } finally {
-        setIsLoadingEducators(false);
       }
     }
-
-    loadSubjects();
     loadEducators();
   }, []);
+
+  // Filtered topics based on user search
+  const filteredTopics = useMemo(() => {
+    if (!searchQuery.trim()) return allTopics;
+    return allTopics.filter((t) =>
+      t.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
+  }, [searchQuery]);
+
+  const selectTopic = (topic: string) => {
+    setAreaOfInterest(topic);
+    setSearchQuery(topic);
+    setIsDropdownOpen(false);
+  };
+
+  const clearTopicSelection = () => {
+    setAreaOfInterest("");
+    setSearchQuery("");
+  };
 
   const next = () => setStep((prev) => prev + 1);
   const back = () => setStep((prev) => prev - 1);
 
-  // Pick an educator assigned to their layout context or fallback gracefully
+  // Dynamic Price Calculation
+  const calculatePrice = () => {
+    if (sessionType === "one-time") {
+      return durationPricing[selectedDuration].price;
+    }
+    return recurringPricing[recurringFrequency].price;
+  };
+
   const matchedEducator = educators[0] || null;
 
   const handleStripeCheckout = async () => {
@@ -210,14 +228,18 @@ export default function LearnerOnboarding() {
         body: JSON.stringify({
           name: billingName,
           email: billingEmail,
-          subject: selectedSubject,
-          enrollmentType,
+          areaOfInterest,
+          currentStage,
+          sessionPurpose,
+          sessionType,
+          durationOrFrequency:
+            sessionType === "one-time"
+              ? `${selectedDuration} Minutes`
+              : recurringFrequency,
           amount: calculatePrice(),
           sessionDate: dateInputValue,
           startTime: `${startHour}:${startMinute} ${startPeriod}`,
-          endTime: `${endHour}:${endMinute} ${endPeriod}`,
-          gradeLevel,
-          topic,
+          goalsNotes,
           educatorId: matchedEducator?.id || null,
         }),
       });
@@ -225,90 +247,46 @@ export default function LearnerOnboarding() {
       const data = await response.json();
       if (data.url) window.location.assign(data.url);
     } catch (error) {
-      console.error("Stripe checkout error:", error);
+      console.error("Checkout error:", error);
     } finally {
       setIsProcessingPayment(false);
     }
   };
 
   return (
-    <div className="grow h-full flex flex-col items-center justify-center bg-background px-6 py-10 relative">
-      {/* SHADCN STYLE INTERSTITIAL MODAL */}
-      <AnimatePresence>
-        {showLanguageAlert && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowLanguageAlert(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-
-            {/* Content Container */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-              className="relative w-full max-w-sm rounded-xl border border-gray-100 bg-white p-6 shadow-2xl z-10 text-center select-none"
-            >
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600 mb-4">
-                <Sparkles className="h-6 w-6" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 tracking-tight">
-                Coming Soon!
-              </h3>
-              <p className="mt-2 text-sm text-gray-500 leading-relaxed">
-                Languages sessions will be coming soon. We are currently
-                polishing our curriculum to give you the best experience!
-              </p>
-              <div className="mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowLanguageAlert(false)}
-                  className="w-full inline-flex justify-center rounded-md bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 transition-all"
-                >
-                  Got it, thanks!
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <div className="text-center mb-6 select-none">
-        <h1 className="text-2xl font-extrabold tracking-tight text-white/70 sm:text-3xl pt-10">
-          Start Your Personalized Math Success Plan
+    <div className="grow h-full flex flex-col items-center justify-center bg-background px-4 py-10 text-slate-100 relative">
+      {/* HEADER / WELCOME TEXT */}
+      <div className="text-center mb-8 max-w-2xl select-none pt-4">
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+          Book a Personalized Learning Session
         </h1>
-        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mt-1">
-          Step {step + 1} of {steps.length} — {steps[step]}
-        </p>
       </div>
 
       {/* STEPPER BAR */}
-      <div className="w-full max-w-4xl mb-10 overflow-x-auto no-scrollbar">
-        <div className="flex items-center min-w-175 w-full select-none">
+      <div className="w-full max-w-3xl mb-8 overflow-x-auto no-scrollbar">
+        <div className="flex items-center min-w-150 w-full select-none">
           {steps.map((item, index) => {
             const isActiveOrPassed = index <= step;
-            const baseColor = stepColors[index];
             return (
               <div
                 key={item}
-                className="relative flex-1 h-12 flex items-center justify-center transition-opacity duration-300"
+                className="relative flex-1 h-10 flex items-center justify-center transition-all duration-300"
                 style={{
                   clipPath:
-                    "polygon(0% 0%, calc(100% - 12px) 0%, 100% 50%, calc(100% - 12px) 100%, 0% 100%, 12px 50%)",
-                  marginLeft: index === 0 ? "0px" : "-10px",
+                    "polygon(0% 0%, calc(100% - 10px) 0%, 100% 50%, calc(100% - 10px) 100%, 0% 100%, 10px 50%)",
+                  marginLeft: index === 0 ? "0px" : "-8px",
                   zIndex: steps.length - index,
                 }}
               >
                 <div
-                  className={`absolute inset-0 transition-colors duration-300 ${isActiveOrPassed ? baseColor : "bg-gray-200"}`}
+                  className={`absolute inset-0 transition-colors duration-300 ${
+                    isActiveOrPassed ? "bg-indigo-600" : "bg-slate-800"
+                  }`}
                 />
                 <span
-                  className={`relative z-10 text-[10px] font-bold tracking-wider uppercase pl-2 ${isActiveOrPassed ? "text-white" : "text-gray-400"}`}
+                  className={`relative z-10 text-[10px] sm:text-xs font-semibold tracking-wider uppercase pl-2 ${
+                    isActiveOrPassed ? "text-white" : "text-slate-400"
+                  }`}
                 >
                   {item}
                 </span>
@@ -319,666 +297,605 @@ export default function LearnerOnboarding() {
       </div>
 
       {/* CONTENT BOX */}
-      <div className="max-w-xl w-full bg-white rounded-md shadow-lg p-8">
+      <div className="max-w-xl w-full bg-white rounded-xl shadow-2xl p-6 sm:p-8 text-slate-900 border border-slate-200">
         <motion.div
           key={step}
-          initial={{ opacity: 0, x: 20 }}
+          initial={{ opacity: 0, x: 12 }}
           animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.18 }}
         >
-          {/* STEP 1: SUBJECT & GRADE LEVEL */}
+          {/* STEP 1: CHOOSE YOUR TOPIC & FOCUS (OPTION 2: SEARCH + QUICK PICKS) */}
           {step === 0 && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-bold text-[#4B4C4E]">
-                What & who are we teaching?
-              </h2>
+            <div className="space-y-5">
               <div>
-                <label className="block text-sm font-medium mb-1 text-[#4B4C4E]">
-                  Grade Level
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                  What would you like help with?
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Search or pick a topic below, then set your goal and stage.
+                </p>
+              </div>
+
+              {/* Search Combobox Input */}
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  Area of Interest
+                </label>
+
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search topics (e.g. Python, Interview Prep, Finance)..."
+                    value={searchQuery}
+                    onFocus={() => setIsDropdownOpen(true)}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setAreaOfInterest(e.target.value);
+                      setIsDropdownOpen(true);
+                    }}
+                    className="w-full pl-9 pr-9 py-2.5 text-xs sm:text-sm border border-slate-300 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-indigo-600 focus:outline-none shadow-xs"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={clearTopicSelection}
+                      className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+
+                  {/* Dropdown Menu */}
+                  {isDropdownOpen && filteredTopics.length > 0 && (
+                    <div className="absolute z-30 left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl py-1">
+                      {filteredTopics.map((topic) => (
+                        <button
+                          key={topic}
+                          type="button"
+                          onClick={() => selectTopic(topic)}
+                          className={`w-full text-left px-3.5 py-2 text-xs transition-colors flex items-center justify-between ${
+                            areaOfInterest === topic
+                              ? "bg-indigo-50 font-semibold text-indigo-900"
+                              : "text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          <span>{topic}</span>
+                          {areaOfInterest === topic && (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Popular Quick Pick Badges */}
+                <div className="pt-1">
+                  <span className="text-[11px] font-medium text-slate-400 block mb-1.5 items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-amber-500" /> Popular
+                    right now:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {popularQuickPicks.map((quick) => {
+                      const isSelected = areaOfInterest === quick;
+                      return (
+                        <button
+                          key={quick}
+                          type="button"
+                          onClick={() => selectTopic(quick)}
+                          className={`px-2.5 py-1 text-[11px] rounded-md border transition-all ${
+                            isSelected
+                              ? "bg-slate-900 text-white border-slate-900 font-medium shadow-xs"
+                              : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                          }`}
+                        >
+                          {quick}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Session Purpose Chips */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  What would you like to accomplish?
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {purposeOptions.map((purpose) => (
+                    <button
+                      key={purpose}
+                      type="button"
+                      onClick={() => setSessionPurpose(purpose)}
+                      className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
+                        sessionPurpose === purpose
+                          ? "bg-slate-900 text-white border-slate-900 font-medium"
+                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      {purpose}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Current Stage */}
+              <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  Current Stage (Optional)
                 </label>
                 <select
-                  value={gradeLevel}
-                  onChange={(e) => setGradeLevel(e.target.value)}
-                  className="w-full border rounded-md p-3 text-sm text-[#4B4C4E] bg-white"
+                  value={currentStage}
+                  onChange={(e) => setCurrentStage(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 bg-white focus:ring-2 focus:ring-indigo-600 focus:outline-none"
                 >
-                  <option value="">Select Grade Level</option>
-                  {gradeLevels.map((grade) => (
-                    <option key={grade} value={grade}>
-                      {grade}
+                  <option value="">Select your stage...</option>
+                  {stageOptions.map((stg) => (
+                    <option key={stg} value={stg}>
+                      {stg}
                     </option>
                   ))}
                 </select>
               </div>
 
-              <label className="block text-sm font-medium text-[#4B4C4E] mb-2">
-                Select Subject
-              </label>
-              {isLoadingSubjects ? (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="animate-spin text-gray-400" />
-                </div>
-              ) : (
-                <div className="grid gap-3">
-                  {dbSubjects.map((sub) => (
-                    <button
-                      key={sub.id}
-                      disabled={!gradeLevel}
-                      onClick={() => {
-                        if (sub.name.trim().toLowerCase() === "languages") {
-                          setShowLanguageAlert(true);
-                          return;
-                        }
-                        setSelectedSubject(sub.name);
-                        next();
-                      }}
-                      className="border border-gray-200 rounded-md p-4 text-left hover:bg-gray-100 disabled:opacity-50 transition-colors"
-                    >
-                      <span className="font-semibold text-sm text-[#4B4C4E]">
-                        {sub.name}
-                      </span>
-                      {sub.description && (
-                        <span className="text-xs text-gray-500 mt-1 line-clamp-1 overflow-hidden block">
-                          {sub.description.replace(/<[^>]*>/g, "").trim()}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <button
+                onClick={next}
+                disabled={!areaOfInterest.trim() || !sessionPurpose}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-lg font-semibold text-xs sm:text-sm disabled:opacity-40 transition-all shadow-sm flex items-center justify-center gap-2"
+              >
+                Continue to Session Selection <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
           )}
 
-          {/* STEP 2: PROGRAM SELECTION */}
+          {/* STEP 2: SELECT YOUR SESSION */}
           {step === 1 && (
-            <div>
-              <h2 className="text-xl font-bold mb-2 text-[#4B4C4E]">
-                Join Our Math Success Program
-              </h2>
-              <p className="text-sm text-gray-500 mb-6">
-                Most learners make faster progress with a structured plan.
-              </p>
-              <div className="space-y-4">
-                <button
-                  onClick={() => setEnrollmentType("monthly")}
-                  className={`relative w-full border rounded-md p-5 text-left ${enrollmentType === "monthly" ? "border-black bg-gray-50" : "border-gray-200"}`}
-                >
-                  <span className="absolute top-4 right-5 text-right">
-                    <div className="text-2xl font-bold text-[#4B4C4E]">
-                      ${currentPricing.monthly}
-                      <span className="text-sm font-medium">/mo</span>
-                    </div>
-
-                    <div className="mt-1 text-xs font-medium text-green-600">
-                      {currentPricing.perks}
-                    </div>
-                  </span>
-
-                  <span className="absolute top-18 right-5 text-[10px] font-bold uppercase bg-green-100 text-green-700 px-2 py-1 rounded">
-                    Most Popular
-                  </span>
-                  <div className="font-semibold text-lg pr-28 text-[#4B4C4E]">
-                    Weekly Learning Plan
-                  </div>
-                  <ul className="space-y-1 text-xs text-gray-600 mt-3">
-                    <li>✓ 8 sessions, twice a week each month</li>
-                    <li>✓ Homework support between lessons</li>
-                    <li>✓ Progress tracking & Priority scheduling</li>
-                  </ul>
-                </button>
-
-                <button
-                  onClick={() => setEnrollmentType("hourly")}
-                  className={`relative w-full border rounded-md p-5 text-left ${enrollmentType === "hourly" ? "border-black bg-gray-50" : "border-gray-200"}`}
-                >
-                  <span className="absolute top-4 right-5 text-2xl font-bold text-[#4B4C4E]">
-                    ${currentPricing.hourly}
-                    <span className="text-sm font-medium">/hr</span>
-                  </span>
-                  <div className="font-semibold text-lg pr-24 text-[#4B4C4E]">
-                    Hourly Session
-                  </div>
-                  <ul className="space-y-1 text-xs text-gray-600 mt-3">
-                    <li>✓ Flexible scheduling</li>
-                    <li>✓ Ideal for exam preparation</li>
-                    <li>✓ No long-term commitment</li>
-                  </ul>
-                </button>
-
-                <button
-                  onClick={next}
-                  disabled={!enrollmentType}
-                  className="w-full bg-black text-white py-3 rounded-md disabled:opacity-50 mt-4"
-                >
-                  Continue
-                </button>
-
-                <div className="text-left mt-0">
-                  <button
-                    type="button"
-                    onClick={back}
-                    className="text-xs font-semibold text-gray-500 hover:text-gray-800 transition-colors hover:underline"
-                  >
-                    Go Back
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3: SCHEDULE DETAILS (REDESIGNED TIME PICKER) */}
-          {step === 2 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-bold text-gray-900 tracking-tight">
-                  {enrollmentType === "monthly"
-                    ? "Schedule Your Weekly Plan"
-                    : "Schedule Your Session"}
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                  Choose Your Session Format
                 </h2>
-                <p className="text-xs text-gray-500 mt-1">
-                  Pick your preferred date and continuous time slot below.
+                <p className="text-xs text-slate-500 mt-1">
+                  Select flexible single sessions or structured recurring
+                  mentorship.
                 </p>
               </div>
 
-              <div className="space-y-4">
-                {/* Modern Date Picker Field */}
-                <div className="flex flex-col space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Select Date
-                  </label>
-                  <Popover
-                    open={openDatePicker}
-                    onOpenChange={setOpenDatePicker}
-                  >
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className="flex w-full items-center justify-between rounded-md border border-gray-200 bg-white px-3.5 py-2.5 text-left text-sm text-gray-900 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-black"
-                      >
-                        <span
-                          className={
-                            dateInputValue
-                              ? "text-gray-900 font-medium"
-                              : "text-gray-400"
-                          }
-                        >
-                          {dateInputValue || "Choose a date..."}
-                        </span>
-                        <CalendarIcon className="h-4 w-4 text-gray-400" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto p-0 bg-background border border-background rounded-md shadow-lg"
-                      align="start"
-                    >
-                      <Calendar
-                        mode="single"
-                        selected={sessionDate}
-                        month={month}
-                        onMonthChange={setMonth}
-                        disabled={(date) =>
-                          date < new Date(new Date().setHours(0, 0, 0, 0))
-                        }
-                        onSelect={(date) => {
-                          setSessionDate(date);
-                          setDateInputValue(formatDate(date));
-                          setOpenDatePicker(false);
-                        }}
-                        className="bg-amber-100 rounded-md p-3"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                {/* Modern & Professional Shadcn-Style Time Pickers */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Start Time Container */}
-                  <div className="flex flex-col space-y-1.5">
-                    <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 text-gray-400" /> Start Time
-                    </label>
-                    <div className="flex items-center space-x-1.5 bg-white px-3 py-2.5 rounded-md border border-gray-300 shadow-sm focus-within:ring-1 focus-within:ring-black focus-within:border-black transition-all">
-                      <select
-                        value={startHour}
-                        onChange={(e) => setStartHour(e.target.value)}
-                        className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer w-7 appearance-none text-center text-gray-900"
-                      >
-                        {Array.from({ length: 12 }, (_, i) =>
-                          String(i + 1).padStart(2, "0"),
-                        ).map((h) => (
-                          <option key={h} value={h}>
-                            {h}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="text-gray-400 font-medium select-none">
-                        :
-                      </span>
-                      <select
-                        value={startMinute}
-                        onChange={(e) => setStartMinute(e.target.value)}
-                        className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer w-7 appearance-none text-center text-gray-900"
-                      >
-                        {Array.from({ length: 60 }, (_, i) =>
-                          String(i).padStart(2, "0"),
-                        ).map((m) => (
-                          <option key={m} value={m}>
-                            {m}
-                          </option>
-                        ))}
-                      </select>
-
-                      {/* AM / PM Segmented Controller */}
-                      <div className="flex rounded-md border border-gray-200 p-0.5 bg-gray-50 ml-auto select-none">
-                        <button
-                          type="button"
-                          onClick={() => setStartPeriod("AM")}
-                          className={`px-2 py-1 text-[10px] font-bold rounded transition-all ${startPeriod === "AM" ? "bg-white text-black shadow-sm" : "text-gray-400 hover:text-gray-900"}`}
-                        >
-                          AM
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setStartPeriod("PM")}
-                          className={`px-2 py-1 text-[10px] font-bold rounded transition-all ${startPeriod === "PM" ? "bg-white text-black shadow-sm" : "text-gray-400 hover:text-gray-900"}`}
-                        >
-                          PM
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* End Time Container */}
-                  <div className="flex flex-col space-y-1.5">
-                    <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 text-gray-400" /> End Time
-                    </label>
-                    <div className="flex items-center space-x-1.5 bg-white px-3 py-2.5 rounded-md border border-gray-300 shadow-sm focus-within:ring-1 focus-within:ring-black focus-within:border-black transition-all">
-                      <select
-                        value={endHour}
-                        onChange={(e) => setEndHour(e.target.value)}
-                        className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer w-7 appearance-none text-center text-gray-900"
-                      >
-                        {Array.from({ length: 12 }, (_, i) =>
-                          String(i + 1).padStart(2, "0"),
-                        ).map((h) => (
-                          <option key={h} value={h}>
-                            {h}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="text-gray-400 font-medium select-none">
-                        :
-                      </span>
-                      <select
-                        value={endMinute}
-                        onChange={(e) => setEndMinute(e.target.value)}
-                        className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer w-7 appearance-none text-center text-gray-900"
-                      >
-                        {Array.from({ length: 60 }, (_, i) =>
-                          String(i).padStart(2, "0"),
-                        ).map((m) => (
-                          <option key={m} value={m}>
-                            {m}
-                          </option>
-                        ))}
-                      </select>
-
-                      {/* AM / PM Segmented Controller */}
-                      <div className="flex rounded-md border border-gray-200 p-0.5 bg-gray-50 ml-auto select-none">
-                        <button
-                          type="button"
-                          onClick={() => setEndPeriod("AM")}
-                          className={`px-2 py-1 text-[10px] font-bold rounded transition-all ${endPeriod === "AM" ? "bg-white text-black shadow-sm" : "text-gray-400 hover:text-gray-900"}`}
-                        >
-                          AM
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEndPeriod("PM")}
-                          className={`px-2 py-1 text-[10px] font-bold rounded transition-all ${endPeriod === "PM" ? "bg-white text-black shadow-sm" : "text-gray-400 hover:text-gray-900"}`}
-                        >
-                          PM
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Validation Banners */}
-                {isDateTimeInPast() && (
-                  <div className="p-3 rounded-md bg-red-50 border border-red-100 text-xs font-medium text-red-600">
-                    ⚠️ The selected time window has already passed.
-                  </div>
-                )}
-                {isTimeRangeInvalid() && (
-                  <div className="p-3 rounded-md bg-red-50 border border-red-100 text-xs font-medium text-red-600">
-                    ⚠️ Invalid duration: End time must be set after the start
-                    time.
-                  </div>
-                )}
-
-                {/* Additional Details */}
-                <div className="flex flex-col space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Additional Learning Details
-                  </label>
-                  <textarea
-                    rows={3}
-                    placeholder="Tell us about specific concepts, exam deadlines, or homework goals to focus on..."
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                    className="w-full border border-gray-200 rounded-md p-3 text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-black resize-none shadow-sm"
-                  />
-                </div>
-
+              {/* Toggle Switch */}
+              <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl select-none">
                 <button
-                  onClick={next}
-                  disabled={
-                    !dateInputValue ||
-                    isDateTimeInPast() ||
-                    isTimeRangeInvalid() ||
-                    !topic.trim()
-                  }
-                  className="w-full bg-black text-white py-3.5 rounded-md disabled:opacity-40 text-sm font-semibold hover:bg-black/90 tracking-wide shadow-sm transition-all mt-2"
+                  type="button"
+                  onClick={() => setSessionType("one-time")}
+                  className={`py-2.5 text-xs font-semibold rounded-lg transition-all ${
+                    sessionType === "one-time"
+                      ? "bg-white text-slate-900 shadow-xs"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
                 >
-                  Review Booking Details
+                  One-Time Session
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setSessionType("coaching")}
+                  className={`py-2.5 text-xs font-semibold rounded-lg transition-all ${
+                    sessionType === "coaching"
+                      ? "bg-white text-slate-900 shadow-xs"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  Ongoing Coaching
+                </button>
+              </div>
 
-                <div className="text-left mt-0">
-                  <button
-                    type="button"
-                    onClick={back}
-                    className="text-xs font-semibold text-gray-500 hover:text-gray-800 transition-colors hover:underline"
-                  >
-                    Go Back
-                  </button>
+              {/* One-Time Duration Cards */}
+              {sessionType === "one-time" && (
+                <div className="space-y-3">
+                  {(
+                    Object.keys(durationPricing) as Array<
+                      keyof typeof durationPricing
+                    >
+                  ).map((dur) => {
+                    const item = durationPricing[dur];
+                    return (
+                      <button
+                        key={dur}
+                        type="button"
+                        onClick={() => setSelectedDuration(dur)}
+                        className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between ${
+                          selectedDuration === dur
+                            ? "border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-600/20"
+                            : "border-slate-200 hover:border-slate-300"
+                        }`}
+                      >
+                        <div>
+                          <div className="font-bold text-sm text-slate-900">
+                            {item.name}
+                          </div>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            {item.desc}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-lg font-black text-slate-900">
+                            ${item.price}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
+              )}
+
+              {/* Recurring Coaching Cards */}
+              {sessionType === "coaching" && (
+                <div className="space-y-3">
+                  {(
+                    Object.keys(recurringPricing) as Array<
+                      keyof typeof recurringPricing
+                    >
+                  ).map((freq) => {
+                    const item = recurringPricing[freq];
+                    return (
+                      <button
+                        key={freq}
+                        type="button"
+                        onClick={() => setRecurringFrequency(freq)}
+                        className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between ${
+                          recurringFrequency === freq
+                            ? "border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-600/20"
+                            : "border-slate-200 hover:border-slate-300"
+                        }`}
+                      >
+                        <div>
+                          <div className="font-bold text-sm text-slate-900">
+                            {item.name}
+                          </div>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            {item.desc}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-lg font-black text-slate-900">
+                            ${item.price}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block">
+                            /month
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              <button
+                onClick={next}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-lg font-semibold text-xs sm:text-sm transition-all shadow-sm"
+              >
+                Continue to Schedule
+              </button>
+
+              <div className="text-left">
+                <button
+                  type="button"
+                  onClick={back}
+                  className="text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
+                >
+                  ← Go Back
+                </button>
               </div>
             </div>
           )}
 
-          {/* STEP 4: REVIEW BOOKING DETAILS WITH EDUCATOR SUMMARY */}
-          {step === 3 && (
+          {/* STEP 3: SCHEDULE & GOALS */}
+          {step === 2 && (
             <div className="space-y-5">
-              <h2 className="text-xl font-bold text-[#4B4C4E]">
-                Review Your Selection
-              </h2>
-
-              <div className="border border-gray-200 rounded-md p-5 bg-gray-50 space-y-3 text-sm text-[#4B4C4E]">
-                <div className="flex justify-between border-b pb-2 border-gray-200">
-                  <span className="text-gray-500 font-medium">Grade Level</span>
-                  <span className="font-bold text-right max-w-62.5 truncate">
-                    {gradeLevel}
-                  </span>
-                </div>
-                <div className="flex justify-between border-b pb-2 border-gray-200">
-                  <span className="text-gray-500 font-medium">Subject</span>
-                  <span className="font-bold">{selectedSubject}</span>
-                </div>
-                <div className="flex justify-between border-b pb-2 border-gray-200">
-                  <span className="text-gray-500 font-medium">
-                    Program Type
-                  </span>
-                  <span className="font-bold uppercase text-xs bg-gray-200 px-2 py-0.5 rounded tracking-wider">
-                    {enrollmentType === "monthly"
-                      ? "📅 Monthly Plan"
-                      : "⏱️ Hourly Session"}
-                  </span>
-                </div>
-                <div className="flex justify-between border-b pb-2 border-gray-200">
-                  <span className="text-gray-500 font-medium">
-                    Date Selected
-                  </span>
-                  <span className="font-bold">{dateInputValue}</span>
-                </div>
-                <div className="flex justify-between border-b pb-2 border-gray-200">
-                  <span className="text-gray-500 font-medium">Time Window</span>
-                  <span className="font-bold">
-                    {startHour}:{startMinute} {startPeriod} - {endHour}:
-                    {endMinute} {endPeriod}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center pt-3 bg-white p-3 rounded-md border border-gray-200 shadow-sm">
-                  <span className="font-bold text-gray-700">
-                    Total Amount Due
-                  </span>
-                  <span className="text-2xl font-extrabold text-black">
-                    ${calculatePrice().toFixed(2)}
-                  </span>
-                </div>
-
-                {/* Dynamically calculated duration row for hourly track */}
-                {enrollmentType === "hourly" && (
-                  <div className="flex justify-between text-xs text-gray-500 px-3 pt-1 italic">
-                    <span>Calculated Duration</span>
-                    <span>
-                      {(
-                        (getTimeInMinutes(endHour, endMinute, endPeriod) -
-                          getTimeInMinutes(
-                            startHour,
-                            startMinute,
-                            startPeriod,
-                          )) /
-                        60
-                      ).toFixed(2)}{" "}
-                      hours
-                    </span>
-                  </div>
-                )}
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                  Schedule & Set Your Goals
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Pick your preferred booking window and let your expert know
+                  what to expect.
+                </p>
               </div>
 
-              {/* Educator Information Sub-Card */}
-              <div className="border border-gray-200 rounded-md p-5 space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                  Your Assigned Expert
-                </h3>
-                {isLoadingEducators ? (
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <Loader2 size={14} className="animate-spin" /> Matching
-                    perfect educator...
+              {/* Date Selection */}
+              <div className="flex flex-col space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  Preferred Date
+                </label>
+                <Popover open={openDatePicker} onOpenChange={setOpenDatePicker}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-left text-xs sm:text-sm text-slate-900 shadow-xs hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                    >
+                      <span
+                        className={
+                          dateInputValue ? "font-medium" : "text-slate-400"
+                        }
+                      >
+                        {dateInputValue || "Choose session date..."}
+                      </span>
+                      <CalendarIcon className="h-4 w-4 text-slate-400" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-auto p-0 bg-white border border-slate-200 rounded-lg shadow-xl"
+                    align="start"
+                  >
+                    <Calendar
+                      mode="single"
+                      selected={sessionDate}
+                      month={month}
+                      onMonthChange={setMonth}
+                      disabled={(date) =>
+                        date < new Date(new Date().setHours(0, 0, 0, 0))
+                      }
+                      onSelect={(date) => {
+                        setSessionDate(date);
+                        setDateInputValue(formatDate(date));
+                        setOpenDatePicker(false);
+                      }}
+                      className="p-3"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Time Picker */}
+              <div className="flex flex-col space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-slate-400" /> Preferred
+                  Start Time
+                </label>
+                <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg border border-slate-300 shadow-xs focus-within:ring-2 focus-within:ring-indigo-600 max-w-xs">
+                  <select
+                    value={startHour}
+                    onChange={(e) => setStartHour(e.target.value)}
+                    className="bg-transparent text-xs sm:text-sm font-semibold focus:outline-none cursor-pointer text-slate-900"
+                  >
+                    {Array.from({ length: 12 }, (_, i) =>
+                      String(i + 1).padStart(2, "0"),
+                    ).map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-slate-400 font-bold">:</span>
+                  <select
+                    value={startMinute}
+                    onChange={(e) => setStartMinute(e.target.value)}
+                    className="bg-transparent text-xs sm:text-sm font-semibold focus:outline-none cursor-pointer text-slate-900"
+                  >
+                    {["00", "15", "30", "45"].map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="flex rounded-md border border-slate-200 p-0.5 bg-slate-100 ml-auto select-none">
+                    <button
+                      type="button"
+                      onClick={() => setStartPeriod("AM")}
+                      className={`px-2 py-0.5 text-[10px] font-bold rounded ${
+                        startPeriod === "AM"
+                          ? "bg-white text-slate-900 shadow-xs"
+                          : "text-slate-500"
+                      }`}
+                    >
+                      AM
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStartPeriod("PM")}
+                      className={`px-2 py-0.5 text-[10px] font-bold rounded ${
+                        startPeriod === "PM"
+                          ? "bg-white text-slate-900 shadow-xs"
+                          : "text-slate-500"
+                      }`}
+                    >
+                      PM
+                    </button>
                   </div>
-                ) : matchedEducator ? (
-                  <div className="flex items-start gap-4">
-                    {matchedEducator.imageUrl ? (
-                      <Image
-                        src={matchedEducator.imageUrl}
-                        alt={matchedEducator.name}
-                        className="w-14 h-14 rounded-full object-cover border border-gray-100 shrink-0"
-                      />
-                    ) : (
-                      <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center border border-gray-100 text-gray-400 shrink-0">
-                        <User size={24} />
-                      </div>
-                    )}
-                    <div className="space-y-1 min-w-0">
-                      <h4 className="font-bold text-sm text-[#4B4C4E]">
-                        {matchedEducator.name}
-                      </h4>
-                      <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
-                        {matchedEducator.specialty && (
-                          <span className="flex items-center gap-1">
-                            <GraduationCap size={14} />{" "}
-                            {matchedEducator.specialty}
-                          </span>
-                        )}
-                        {matchedEducator.experience && (
-                          <span className="flex items-center gap-1">
-                            <Award size={14} /> {matchedEducator.experience} yrs
-                            exp
-                          </span>
-                        )}
-                      </div>
-                      {matchedEducator.description && (
-                        <p className="text-xs text-gray-500 line-clamp-2 mt-1 italic pt-1 border-t border-gray-50">
-                          &quot;
-                          {matchedEducator.description
-                            .replace(/<[^>]*>/g, "")
-                            .trim()}
-                          &quot;
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-400 italic">
-                    An elite mathematics expert will be matched to your track
-                    upon confirmation.
-                  </p>
-                )}
+                </div>
+              </div>
+
+              {/* Tell us about your goals */}
+              <div className="flex flex-col space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  Tell us about your goals
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Describe what you'd like to achieve during this session. Include any topics, assignments, projects, questions, or specific challenges you'd like to work on."
+                  value={goalsNotes}
+                  onChange={(e) => setGoalsNotes(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg p-3 text-xs sm:text-sm text-slate-900 bg-white placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-600 focus:outline-none resize-none shadow-xs"
+                />
               </div>
 
               <button
                 onClick={next}
-                className="w-full bg-black text-white py-3 rounded-md text-sm font-medium hover:bg-black/90 transition-colors"
+                disabled={!dateInputValue || !goalsNotes.trim()}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-lg font-semibold text-xs sm:text-sm disabled:opacity-40 transition-all shadow-sm"
               >
-                Proceed to Payment
+                Review Booking Details
               </button>
 
-              <div className="text-left mt-0">
+              <div className="text-left">
                 <button
                   type="button"
                   onClick={back}
-                  className="text-xs font-semibold text-gray-500 hover:text-gray-800 transition-colors hover:underline"
+                  className="text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
                 >
-                  Go Back
+                  ← Go Back
                 </button>
               </div>
             </div>
           )}
 
-          {/* STEP 5: PAYMENT */}
-          {step === 4 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-bold text-[#4B4C4E]">
-                  Complete Payment
-                </h2>
-                <p className="text-xs text-gray-500 mt-1">
-                  Please provide your billing contact info. All checkout
-                  sessions are encrypted.
-                </p>
-              </div>
+          {/* STEP 4: REVIEW PAGE */}
+          {step === 3 && (
+            <div className="space-y-5">
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                Review Details
+              </h2>
 
-              {/* Dynamic Compact Plan Summary Banner */}
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-150 flex items-center justify-between text-sm text-[#4B4C4E]">
-                <div className="space-y-0.5">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
-                    Selected Plan
-                  </span>
-                  <span className="font-bold truncate max-w-60 block">
-                    {selectedSubject} (
-                    {enrollmentType === "monthly" ? "Monthly" : "Hourly"})
+              <div className="border border-slate-200 rounded-xl p-5 bg-slate-50 space-y-3 text-xs sm:text-sm text-slate-700">
+                <div className="flex justify-between border-b border-slate-200/80 pb-2">
+                  <span className="text-slate-500">Area of Interest</span>
+                  <span className="font-semibold text-slate-900">
+                    {areaOfInterest}
                   </span>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
-                    Due Now
+                {currentStage && (
+                  <div className="flex justify-between border-b border-slate-200/80 pb-2">
+                    <span className="text-slate-500">Current Stage</span>
+                    <span className="font-semibold text-slate-900">
+                      {currentStage}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between border-b border-slate-200/80 pb-2">
+                  <span className="text-slate-500">Session Type</span>
+                  <span className="font-semibold uppercase text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded tracking-wide">
+                    {sessionType === "one-time"
+                      ? `${durationPricing[selectedDuration].name} Session`
+                      : recurringPricing[recurringFrequency].name}
                   </span>
-                  <span className="text-lg font-black text-black">
+                </div>
+                <div className="flex justify-between border-b border-slate-200/80 pb-2">
+                  <span className="text-slate-500">Primary Goal</span>
+                  <span className="font-semibold text-slate-900">
+                    {sessionPurpose}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200/80 pb-2">
+                  <span className="text-slate-500">Date & Start Time</span>
+                  <span className="font-semibold text-slate-900">
+                    {dateInputValue} at {startHour}:{startMinute} {startPeriod}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center pt-3 bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs">
+                  <span className="font-bold text-slate-900">
+                    Total Investment
+                  </span>
+                  <span className="text-2xl font-extrabold text-slate-900">
                     ${calculatePrice().toFixed(2)}
                   </span>
                 </div>
               </div>
 
-              {/* Form Input Groups */}
-              <div className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="billingName"
-                    className="flex items-center text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5"
-                  >
-                    Full Name{" "}
-                    <span className="text-red-500 ml-1 font-sans">*</span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                      <User size={16} />
-                    </div>
-                    <input
-                      id="billingName"
-                      type="text"
-                      required
-                      placeholder="e.g. Jane Doe"
-                      value={billingName}
-                      onChange={(e) => setBillingName(e.target.value)}
-                      className="w-full border border-gray-250 bg-white rounded-md pl-10 pr-4 py-3 text-sm text-[#4B4C4E] placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-black focus:border-black transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="billingEmail"
-                    className="flex items-center text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5"
-                  >
-                    Email Address{" "}
-                    <span className="text-red-500 ml-1 font-sans">*</span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                      <Mail size={16} />
-                    </div>
-                    <input
-                      id="billingEmail"
-                      type="email"
-                      required
-                      placeholder="e.g. learner@example.com"
-                      value={billingEmail}
-                      onChange={(e) => setBillingEmail(e.target.value)}
-                      className="w-full border border-gray-250 bg-white rounded-md pl-10 pr-4 py-3 text-sm text-[#4B4C4E] placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-black focus:border-black transition-all"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Secure Transaction Notice */}
-              <div className="bg-emerald-50/60 border border-emerald-100 rounded-lg p-3.5 flex items-start gap-3">
-                <Lock size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <div className="space-y-0.5">
-                  <p className="text-xs font-bold text-emerald-800">
-                    Secure Checkout Guarantee
-                  </p>
-                  <p className="text-[11px] text-emerald-700/90 leading-normal">
-                    We secure your data via Stripe. No raw financial credentials
-                    or credit card numbers are collected on our local platform
-                    servers.
-                  </p>
-                </div>
-              </div>
-
-              {/* Action Button */}
               <button
-                onClick={handleStripeCheckout}
-                disabled={
-                  !billingName.trim() ||
-                  !billingEmail.trim() ||
-                  isProcessingPayment
-                }
-                className="w-full bg-black text-white py-3.5 rounded-md text-sm font-semibold hover:bg-black/90 disabled:opacity-40 disabled:hover:bg-black transition-all flex items-center justify-center gap-2 shadow-sm"
+                onClick={next}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-lg font-semibold text-xs sm:text-sm transition-all shadow-sm"
               >
-                {isProcessingPayment ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Initializing Checkout Gateway...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard size={16} />
-                    {enrollmentType === "monthly"
-                      ? "Authorize Subscription & Checkout"
-                      : "Confirm & Launch Secure Checkout"}
-                  </>
-                )}
+                Proceed to Checkout
               </button>
 
-              <div className="text-left mt-0">
+              <div className="text-left">
                 <button
                   type="button"
                   onClick={back}
-                  disabled={isProcessingPayment}
-                  className="text-xs font-semibold text-gray-500 hover:text-gray-800 disabled:opacity-40 transition-colors hover:underline"
+                  className="text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
                 >
-                  Back
+                  ← Go Back
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 5: CHECKOUT & PAYMENT */}
+          {step === 4 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                  Checkout & Confirm
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Enter contact information to receive your meeting invitation.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Full Name
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Jane Doe"
+                      value={billingName}
+                      onChange={(e) => setBillingName(e.target.value)}
+                      className="w-full pl-9 border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm text-slate-900 bg-white focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                    <input
+                      type="email"
+                      placeholder="jane@example.com"
+                      value={billingEmail}
+                      onChange={(e) => setBillingEmail(e.target.value)}
+                      className="w-full pl-9 border border-slate-300 rounded-lg p-2.5 text-xs sm:text-sm text-slate-900 bg-white focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-emerald-600" />
+                    <span className="text-xs font-medium text-slate-600">
+                      Encrypted Checkout via Stripe
+                    </span>
+                  </div>
+                  <span className="text-sm font-extrabold text-slate-900">
+                    ${calculatePrice().toFixed(2)}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleStripeCheckout}
+                  disabled={
+                    !billingName || !billingEmail || isProcessingPayment
+                  }
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3.5 rounded-lg font-semibold text-xs sm:text-sm disabled:opacity-40 transition-all shadow-sm flex items-center justify-center gap-2 mt-2"
+                >
+                  {isProcessingPayment ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4" /> Complete Payment
+                    </>
+                  )}
+                </button>
+
+                <div className="text-left">
+                  <button
+                    type="button"
+                    onClick={back}
+                    className="text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
+                  >
+                    ← Go Back
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -987,3 +904,917 @@ export default function LearnerOnboarding() {
     </div>
   );
 }
+
+// "use client";
+
+// import { useState, useEffect } from "react";
+// import { motion, AnimatePresence } from "framer-motion";
+// import {
+//   Calendar as CalendarIcon,
+//   CreditCard,
+//   Loader2,
+//   User,
+//   Lock,
+//   Mail,
+//   Clock,
+//   Sparkles,
+//   ArrowRight,
+//   CheckCircle2,
+// } from "lucide-react";
+// import { getActiveOnboardingSubjects } from "@/app/actions/admin-subjects";
+// import { getOnboardingEducators } from "../actions/educator";
+
+// // Custom UI Component Imports
+// import { Calendar } from "@/components/ui/calendar";
+// import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+
+// const steps = ["Target Level", "Program", "Schedule", "Review", "Payment"];
+
+// const stepColors = Array(6).fill("bg-slate-900");
+
+// // Expanded & inclusive learner categories
+// const learnerLevels = [
+//   "Foundational (Grades 1–5)",
+//   "Intermediate (Grades 6–8)",
+//   "Advanced & AP (Grades 9–12)",
+//   "College & Higher Education",
+//   "Professional & Adult Learner",
+// ] as const;
+
+// // Inclusive, non-grade-bound pricing tiers
+// const pricing = {
+//   "Foundational (Grades 1–5)": {
+//     hourly: 35,
+//     monthly: 230,
+//     perks: "8 sessions/mo (Save $50)",
+//   },
+//   "Intermediate (Grades 6–8)": {
+//     hourly: 35,
+//     monthly: 230,
+//     perks: "8 sessions/mo (Save $50)",
+//   },
+//   "Advanced & AP (Grades 9–12)": {
+//     hourly: 40,
+//     monthly: 260,
+//     perks: "8 sessions/mo (Save $60)",
+//   },
+//   "College & Higher Education": {
+//     hourly: 45,
+//     monthly: 290,
+//     perks: "8 sessions/mo (Save $70)",
+//   },
+//   "Professional & Adult Learner": {
+//     hourly: 50,
+//     monthly: 320,
+//     perks: "8 sessions/mo (Save $80)",
+//   },
+// };
+
+// interface SubjectDbItem {
+//   id: string;
+//   name: string;
+//   description: string | null;
+// }
+
+// interface EducatorDbItem {
+//   id: string;
+//   name: string;
+//   imageUrl: string | null;
+//   specialty: string | null;
+//   experience: number | null;
+//   description: string | null;
+// }
+
+// function formatDate(date: Date | undefined) {
+//   if (!date) return "";
+//   return date.toLocaleDateString("en-US", {
+//     day: "2-digit",
+//     month: "long",
+//     year: "numeric",
+//   });
+// }
+
+// export default function LearnerOnboarding() {
+//   const [step, setStep] = useState(0);
+//   const [selectedSubject, setSelectedSubject] = useState("");
+//   const [learnerLevel, setLearnerLevel] = useState("");
+//   const [enrollmentType, setEnrollmentType] = useState<
+//     "hourly" | "monthly" | ""
+//   >("");
+
+//   const [showLanguageAlert, setShowLanguageAlert] = useState(false);
+
+//   // Scheduling states
+//   const [openDatePicker, setOpenDatePicker] = useState(false);
+//   const [sessionDate, setSessionDate] = useState<Date | undefined>(undefined);
+//   const [month, setMonth] = useState<Date | undefined>(new Date());
+//   const [dateInputValue, setDateInputValue] = useState("");
+
+//   const [startHour, setStartHour] = useState("10");
+//   const [startMinute, setStartMinute] = useState("30");
+//   const [startPeriod, setStartPeriod] = useState("AM");
+
+//   const [endHour, setEndHour] = useState("11");
+//   const [endMinute, setEndMinute] = useState("30");
+//   const [endPeriod, setEndPeriod] = useState("AM");
+
+//   const [topic, setTopic] = useState("");
+//   const [dbSubjects, setDbSubjects] = useState<SubjectDbItem[]>([]);
+//   const [isLoadingSubjects, setIsLoadingSubjects] = useState(true);
+
+//   // Educator states
+//   const [educators, setEducators] = useState<EducatorDbItem[]>([]);
+//   const [isLoadingEducators, setIsLoadingEducators] = useState(true);
+
+//   const [billingName, setBillingName] = useState("");
+//   const [billingEmail, setBillingEmail] = useState("");
+//   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+//   const currentPricing = pricing[learnerLevel as keyof typeof pricing] ?? {
+//     hourly: 35,
+//     monthly: 230,
+//     perks: "8 sessions/mo",
+//   };
+
+//   const getTimeInMinutes = (
+//     hourStr: string,
+//     minuteStr: string,
+//     period: string,
+//   ) => {
+//     let hours = parseInt(hourStr, 10);
+//     const minutes = parseInt(minuteStr, 10);
+//     if (period === "PM" && hours !== 12) hours += 12;
+//     if (period === "AM" && hours === 12) hours = 0;
+//     return hours * 60 + minutes;
+//   };
+
+//   const calculatePrice = () => {
+//     if (!learnerLevel) return 0;
+//     if (enrollmentType === "monthly") return currentPricing.monthly;
+
+//     const startMins = getTimeInMinutes(startHour, startMinute, startPeriod);
+//     const endMins = getTimeInMinutes(endHour, endMinute, endPeriod);
+//     const diffMins = endMins - startMins;
+//     if (diffMins <= 0) return 0;
+//     return parseFloat(((diffMins / 60) * currentPricing.hourly).toFixed(2));
+//   };
+
+//   const isDateTimeInPast = () => {
+//     if (!sessionDate) return false;
+//     const now = new Date();
+//     const selectedDateTime = new Date(sessionDate);
+//     let hours = parseInt(startHour, 10);
+//     const minutes = parseInt(startMinute, 10);
+//     if (startPeriod === "PM" && hours !== 12) hours += 12;
+//     if (startPeriod === "AM" && hours === 12) hours = 0;
+//     selectedDateTime.setHours(hours, minutes, 0, 0);
+//     return selectedDateTime < now;
+//   };
+
+//   const isTimeRangeInvalid = () => {
+//     const startMins = getTimeInMinutes(startHour, startMinute, startPeriod);
+//     const endMins = getTimeInMinutes(endHour, endMinute, endPeriod);
+//     return endMins <= startMins;
+//   };
+
+//   useEffect(() => {
+//     async function loadSubjects() {
+//       try {
+//         const data = await getActiveOnboardingSubjects();
+//         setDbSubjects(data);
+//       } catch (err) {
+//         console.error(err);
+//       } finally {
+//         setIsLoadingSubjects(false);
+//       }
+//     }
+
+//     async function loadEducators() {
+//       try {
+//         const data = await getOnboardingEducators();
+//         setEducators(data);
+//       } catch (error) {
+//         console.error("Error fetching educators:", error);
+//       } finally {
+//         setIsLoadingEducators(false);
+//       }
+//     }
+
+//     loadSubjects();
+//     loadEducators();
+//   }, []);
+
+//   const next = () => setStep((prev) => prev + 1);
+//   const back = () => setStep((prev) => prev - 1);
+
+//   const matchedEducator = educators[0] || null;
+
+//   const handleStripeCheckout = async () => {
+//     try {
+//       setIsProcessingPayment(true);
+//       const response = await fetch("/api/create-checkout-session", {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({
+//           name: billingName,
+//           email: billingEmail,
+//           subject: selectedSubject,
+//           enrollmentType,
+//           amount: calculatePrice(),
+//           sessionDate: dateInputValue,
+//           startTime: `${startHour}:${startMinute} ${startPeriod}`,
+//           endTime: `${endHour}:${endMinute} ${endPeriod}`,
+//           learnerLevel,
+//           topic,
+//           educatorId: matchedEducator?.id || null,
+//         }),
+//       });
+
+//       const data = await response.json();
+//       if (data.url) window.location.assign(data.url);
+//     } catch (error) {
+//       console.error("Stripe checkout error:", error);
+//     } finally {
+//       setIsProcessingPayment(false);
+//     }
+//   };
+
+//   return (
+//     <div className="grow h-full flex flex-col items-center justify-center bg-background px-6 py-10 relative text-slate-100">
+//       {/* LANGUAGE NOTIFICATION MODAL */}
+//       <AnimatePresence>
+//         {showLanguageAlert && (
+//           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+//             <motion.div
+//               initial={{ opacity: 0 }}
+//               animate={{ opacity: 1 }}
+//               exit={{ opacity: 0 }}
+//               onClick={() => setShowLanguageAlert(false)}
+//               className="absolute inset-0 bg-black/70 backdrop-blur-xs"
+//             />
+//             <motion.div
+//               initial={{ opacity: 0, scale: 0.95, y: 10 }}
+//               animate={{ opacity: 1, scale: 1, y: 0 }}
+//               exit={{ opacity: 0, scale: 0.95, y: 10 }}
+//               transition={{ duration: 0.15, ease: "easeOut" }}
+//               className="relative w-full max-w-sm rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-2xl z-10 text-center select-none"
+//             >
+//               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-500 mb-4">
+//                 <Sparkles className="h-6 w-6" />
+//               </div>
+//               <h3 className="text-lg font-bold text-white tracking-tight">
+//                 Language Mentorship Coming Soon!
+//               </h3>
+//               <p className="mt-2 text-sm text-slate-400 leading-relaxed">
+//                 Language tracks are currently in preparation. Select another
+//                 subject or check back soon!
+//               </p>
+//               <div className="mt-6">
+//                 <button
+//                   type="button"
+//                   onClick={() => setShowLanguageAlert(false)}
+//                   className="w-full inline-flex justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-all"
+//                 >
+//                   Got it, thanks
+//                 </button>
+//               </div>
+//             </motion.div>
+//           </div>
+//         )}
+//       </AnimatePresence>
+
+//       <div className="text-center mb-6 select-none">
+//         <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl pt-6">
+//           Schedule Your Customized Learning Session
+//         </h1>
+//         <p className="text-xs font-medium tracking-wider text-slate-400 mt-2">
+//           Step {step + 1} of {steps.length} — {steps[step]}
+//         </p>
+//       </div>
+
+//       {/* STEPPER BAR */}
+//       <div className="w-full max-w-4xl mb-8 overflow-x-auto no-scrollbar">
+//         <div className="flex items-center min-w-175 w-full select-none">
+//           {steps.map((item, index) => {
+//             const isActiveOrPassed = index <= step;
+//             return (
+//               <div
+//                 key={item}
+//                 className="relative flex-1 h-11 flex items-center justify-center transition-opacity duration-300"
+//                 style={{
+//                   clipPath:
+//                     "polygon(0% 0%, calc(100% - 12px) 0%, 100% 50%, calc(100% - 12px) 100%, 0% 100%, 12px 50%)",
+//                   marginLeft: index === 0 ? "0px" : "-10px",
+//                   zIndex: steps.length - index,
+//                 }}
+//               >
+//                 <div
+//                   className={`absolute inset-0 transition-colors duration-300 ${
+//                     isActiveOrPassed ? "bg-indigo-600" : "bg-slate-800"
+//                   }`}
+//                 />
+//                 <span
+//                   className={`relative z-10 text-[11px] font-semibold tracking-wider uppercase pl-2 ${
+//                     isActiveOrPassed ? "text-white" : "text-slate-400"
+//                   }`}
+//                 >
+//                   {item}
+//                 </span>
+//               </div>
+//             );
+//           })}
+//         </div>
+//       </div>
+
+//       {/* CONTENT BOX */}
+//       <div className="max-w-xl w-full bg-white rounded-xl shadow-xl p-8 text-slate-900 border border-slate-200">
+//         <motion.div
+//           key={step}
+//           initial={{ opacity: 0, x: 15 }}
+//           animate={{ opacity: 1, x: 0 }}
+//           transition={{ duration: 0.2 }}
+//         >
+//           {/* STEP 1: SUBJECT & LEARNER LEVEL */}
+//           {step === 0 && (
+//             <div className="space-y-5">
+//               <div>
+//                 <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+//                   Who is learning and what is the target focus?
+//                 </h2>
+//                 <p className="text-xs text-slate-500 mt-1">
+//                   Tailored for students, test takers, college scholars, and
+//                   working professionals.
+//                 </p>
+//               </div>
+
+//               <div>
+//                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+//                   Learner Level / Stage
+//                 </label>
+//                 <select
+//                   value={learnerLevel}
+//                   onChange={(e) => setLearnerLevel(e.target.value)}
+//                   className="w-full border border-slate-300 rounded-lg p-3 text-sm text-slate-900 bg-white focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+//                 >
+//                   <option value="">Select Level or Career Stage</option>
+//                   {learnerLevels.map((lvl) => (
+//                     <option key={lvl} value={lvl}>
+//                       {lvl}
+//                     </option>
+//                   ))}
+//                 </select>
+//               </div>
+
+//               <div>
+//                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+//                   Select Focus Subject
+//                 </label>
+//                 {isLoadingSubjects ? (
+//                   <div className="flex justify-center py-6">
+//                     <Loader2 className="animate-spin text-slate-400" />
+//                   </div>
+//                 ) : (
+//                   <div className="grid gap-3">
+//                     {dbSubjects.map((sub) => (
+//                       <button
+//                         key={sub.id}
+//                         disabled={!learnerLevel}
+//                         onClick={() => {
+//                           if (sub.name.trim().toLowerCase() === "languages") {
+//                             setShowLanguageAlert(true);
+//                             return;
+//                           }
+//                           setSelectedSubject(sub.name);
+//                           next();
+//                         }}
+//                         className="border border-slate-200 rounded-lg p-4 text-left hover:border-indigo-600 hover:bg-slate-50 disabled:opacity-40 transition-all flex items-center justify-between group"
+//                       >
+//                         <div>
+//                           <span className="font-semibold text-sm text-slate-900 group-hover:text-indigo-600 transition-colors">
+//                             {sub.name}
+//                           </span>
+//                           {sub.description && (
+//                             <span className="text-xs text-slate-500 mt-0.5 line-clamp-1 block">
+//                               {sub.description.replace(/<[^>]*>/g, "").trim()}
+//                             </span>
+//                           )}
+//                         </div>
+//                         <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 transition-colors" />
+//                       </button>
+//                     ))}
+//                   </div>
+//                 )}
+//               </div>
+//             </div>
+//           )}
+
+//           {/* STEP 2: PROGRAM SELECTION */}
+//           {step === 1 && (
+//             <div className="space-y-6">
+//               <div>
+//                 <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+//                   Choose Your Learning Format
+//                 </h2>
+//                 <p className="text-xs text-slate-500 mt-1">
+//                   Select between continuous regular coaching or quick on-demand
+//                   sessions.
+//                 </p>
+//               </div>
+
+//               <div className="space-y-4">
+//                 <button
+//                   type="button"
+//                   onClick={() => setEnrollmentType("monthly")}
+//                   className={`relative w-full border rounded-xl p-5 text-left transition-all ${
+//                     enrollmentType === "monthly"
+//                       ? "border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-600/20"
+//                       : "border-slate-200 hover:border-slate-300"
+//                   }`}
+//                 >
+//                   <div className="flex justify-between items-start mb-2">
+//                     <div>
+//                       <span className="inline-block text-[10px] font-bold uppercase bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded mb-1">
+//                         Best Value
+//                       </span>
+//                       <div className="font-bold text-base text-slate-900">
+//                         Monthly Dedicated Plan
+//                       </div>
+//                     </div>
+//                     <div className="text-right">
+//                       <div className="text-2xl font-black text-slate-900">
+//                         ${currentPricing.monthly}
+//                         <span className="text-xs font-normal text-slate-500">
+//                           /mo
+//                         </span>
+//                       </div>
+//                       <div className="text-[11px] font-semibold text-emerald-600">
+//                         {currentPricing.perks}
+//                       </div>
+//                     </div>
+//                   </div>
+
+//                   <ul className="space-y-1.5 text-xs text-slate-600 mt-3 pt-3 border-t border-slate-200/60">
+//                     <li className="flex items-center gap-1.5">
+//                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+//                       8 continuous sessions per month (2x weekly)
+//                     </li>
+//                     <li className="flex items-center gap-1.5">
+//                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+//                       Async support & session resource sharing
+//                     </li>
+//                     <li className="flex items-center gap-1.5">
+//                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+//                       Priority educator slot reservations
+//                     </li>
+//                   </ul>
+//                 </button>
+
+//                 <button
+//                   type="button"
+//                   onClick={() => setEnrollmentType("hourly")}
+//                   className={`relative w-full border rounded-xl p-5 text-left transition-all ${
+//                     enrollmentType === "hourly"
+//                       ? "border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-600/20"
+//                       : "border-slate-200 hover:border-slate-300"
+//                   }`}
+//                 >
+//                   <div className="flex justify-between items-start mb-2">
+//                     <div className="font-bold text-base text-slate-900">
+//                       Single Pay-As-You-Go Session
+//                     </div>
+//                     <div className="text-2xl font-black text-slate-900">
+//                       ${currentPricing.hourly}
+//                       <span className="text-xs font-normal text-slate-500">
+//                         /hr
+//                       </span>
+//                     </div>
+//                   </div>
+
+//                   <ul className="space-y-1.5 text-xs text-slate-600 mt-3 pt-3 border-t border-slate-200/60">
+//                     <li className="flex items-center gap-1.5">
+//                       <CheckCircle2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+//                       Flexible scheduling with no recurring commitment
+//                     </li>
+//                     <li className="flex items-center gap-1.5">
+//                       <CheckCircle2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+//                       Ideal for project reviews, exam prep & specific topics
+//                     </li>
+//                   </ul>
+//                 </button>
+
+//                 <button
+//                   onClick={next}
+//                   disabled={!enrollmentType}
+//                   className="w-full bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-lg font-semibold text-sm disabled:opacity-40 transition-all shadow-sm mt-2"
+//                 >
+//                   Continue to Schedule
+//                 </button>
+
+//                 <div className="text-left">
+//                   <button
+//                     type="button"
+//                     onClick={back}
+//                     className="text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
+//                   >
+//                     ← Go Back
+//                   </button>
+//                 </div>
+//               </div>
+//             </div>
+//           )}
+
+//           {/* STEP 3: SCHEDULE DETAILS */}
+//           {step === 2 && (
+//             <div className="space-y-6">
+//               <div>
+//                 <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+//                   {enrollmentType === "monthly"
+//                     ? "Select Recurring Slot"
+//                     : "Select Date & Time"}
+//                 </h2>
+//                 <p className="text-xs text-slate-500 mt-1">
+//                   Pick your preferred booking window below.
+//                 </p>
+//               </div>
+
+//               <div className="space-y-4">
+//                 <div className="flex flex-col space-y-1.5">
+//                   <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+//                     Target Start Date
+//                   </label>
+//                   <Popover
+//                     open={openDatePicker}
+//                     onOpenChange={setOpenDatePicker}
+//                   >
+//                     <PopoverTrigger asChild>
+//                       <button
+//                         type="button"
+//                         className="flex w-full items-center justify-between rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-left text-sm text-slate-900 shadow-xs hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+//                       >
+//                         <span
+//                           className={
+//                             dateInputValue ? "font-medium" : "text-slate-400"
+//                           }
+//                         >
+//                           {dateInputValue || "Choose session date..."}
+//                         </span>
+//                         <CalendarIcon className="h-4 w-4 text-slate-400" />
+//                       </button>
+//                     </PopoverTrigger>
+//                     <PopoverContent
+//                       className="w-auto p-0 bg-white border border-slate-200 rounded-lg shadow-xl"
+//                       align="start"
+//                     >
+//                       <Calendar
+//                         mode="single"
+//                         selected={sessionDate}
+//                         month={month}
+//                         onMonthChange={setMonth}
+//                         disabled={(date) =>
+//                           date < new Date(new Date().setHours(0, 0, 0, 0))
+//                         }
+//                         onSelect={(date) => {
+//                           setSessionDate(date);
+//                           setDateInputValue(formatDate(date));
+//                           setOpenDatePicker(false);
+//                         }}
+//                         className="p-3"
+//                       />
+//                     </PopoverContent>
+//                   </Popover>
+//                 </div>
+
+//                 {/* Time Pickers */}
+//                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+//                   <div className="flex flex-col space-y-1.5">
+//                     <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+//                       <Clock className="h-3.5 w-3.5 text-slate-400" /> Start
+//                       Time
+//                     </label>
+//                     <div className="flex items-center space-x-1.5 bg-white px-3 py-2 rounded-lg border border-slate-300 shadow-xs focus-within:ring-2 focus-within:ring-indigo-600">
+//                       <select
+//                         value={startHour}
+//                         onChange={(e) => setStartHour(e.target.value)}
+//                         className="bg-transparent text-sm font-semibold focus:outline-none cursor-pointer w-7 text-slate-900"
+//                       >
+//                         {Array.from({ length: 12 }, (_, i) =>
+//                           String(i + 1).padStart(2, "0"),
+//                         ).map((h) => (
+//                           <option key={h} value={h}>
+//                             {h}
+//                           </option>
+//                         ))}
+//                       </select>
+//                       <span className="text-slate-400 font-bold">:</span>
+//                       <select
+//                         value={startMinute}
+//                         onChange={(e) => setStartMinute(e.target.value)}
+//                         className="bg-transparent text-sm font-semibold focus:outline-none cursor-pointer w-7 text-slate-900"
+//                       >
+//                         {Array.from({ length: 60 }, (_, i) =>
+//                           String(i).padStart(2, "0"),
+//                         ).map((m) => (
+//                           <option key={m} value={m}>
+//                             {m}
+//                           </option>
+//                         ))}
+//                       </select>
+//                       <div className="flex rounded-md border border-slate-200 p-0.5 bg-slate-100 ml-auto select-none">
+//                         <button
+//                           type="button"
+//                           onClick={() => setStartPeriod("AM")}
+//                           className={`px-2 py-0.5 text-[10px] font-bold rounded ${
+//                             startPeriod === "AM"
+//                               ? "bg-white text-slate-900 shadow-xs"
+//                               : "text-slate-500"
+//                           }`}
+//                         >
+//                           AM
+//                         </button>
+//                         <button
+//                           type="button"
+//                           onClick={() => setStartPeriod("PM")}
+//                           className={`px-2 py-0.5 text-[10px] font-bold rounded ${
+//                             startPeriod === "PM"
+//                               ? "bg-white text-slate-900 shadow-xs"
+//                               : "text-slate-500"
+//                           }`}
+//                         >
+//                           PM
+//                         </button>
+//                       </div>
+//                     </div>
+//                   </div>
+
+//                   <div className="flex flex-col space-y-1.5">
+//                     <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+//                       <Clock className="h-3.5 w-3.5 text-slate-400" /> End Time
+//                     </label>
+//                     <div className="flex items-center space-x-1.5 bg-white px-3 py-2 rounded-lg border border-slate-300 shadow-xs focus-within:ring-2 focus-within:ring-indigo-600">
+//                       <select
+//                         value={endHour}
+//                         onChange={(e) => setEndHour(e.target.value)}
+//                         className="bg-transparent text-sm font-semibold focus:outline-none cursor-pointer w-7 text-slate-900"
+//                       >
+//                         {Array.from({ length: 12 }, (_, i) =>
+//                           String(i + 1).padStart(2, "0"),
+//                         ).map((h) => (
+//                           <option key={h} value={h}>
+//                             {h}
+//                           </option>
+//                         ))}
+//                       </select>
+//                       <span className="text-slate-400 font-bold">:</span>
+//                       <select
+//                         value={endMinute}
+//                         onChange={(e) => setEndMinute(e.target.value)}
+//                         className="bg-transparent text-sm font-semibold focus:outline-none cursor-pointer w-7 text-slate-900"
+//                       >
+//                         {Array.from({ length: 60 }, (_, i) =>
+//                           String(i).padStart(2, "0"),
+//                         ).map((m) => (
+//                           <option key={m} value={m}>
+//                             {m}
+//                           </option>
+//                         ))}
+//                       </select>
+//                       <div className="flex rounded-md border border-slate-200 p-0.5 bg-slate-100 ml-auto select-none">
+//                         <button
+//                           type="button"
+//                           onClick={() => setEndPeriod("AM")}
+//                           className={`px-2 py-0.5 text-[10px] font-bold rounded ${
+//                             endPeriod === "AM"
+//                               ? "bg-white text-slate-900 shadow-xs"
+//                               : "text-slate-500"
+//                           }`}
+//                         >
+//                           AM
+//                         </button>
+//                         <button
+//                           type="button"
+//                           onClick={() => setEndPeriod("PM")}
+//                           className={`px-2 py-0.5 text-[10px] font-bold rounded ${
+//                             endPeriod === "PM"
+//                               ? "bg-white text-slate-900 shadow-xs"
+//                               : "text-slate-500"
+//                           }`}
+//                         >
+//                           PM
+//                         </button>
+//                       </div>
+//                     </div>
+//                   </div>
+//                 </div>
+
+//                 {isDateTimeInPast() && (
+//                   <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-600 font-medium">
+//                     ⚠️ Selected session time occurs in the past.
+//                   </div>
+//                 )}
+//                 {isTimeRangeInvalid() && (
+//                   <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-600 font-medium">
+//                     ⚠️ Session end time must be after start time.
+//                   </div>
+//                 )}
+
+//                 <div className="flex flex-col space-y-1.5">
+//                   <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+//                     Learning Focus & Notes
+//                   </label>
+//                   <textarea
+//                     rows={3}
+//                     placeholder="Specific topics, chapters, career goals, or exam prep goals..."
+//                     value={topic}
+//                     onChange={(e) => setTopic(e.target.value)}
+//                     className="w-full border border-slate-300 rounded-lg p-3 text-sm text-slate-900 bg-white placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-600 focus:outline-none resize-none shadow-xs"
+//                   />
+//                 </div>
+
+//                 <button
+//                   onClick={next}
+//                   disabled={
+//                     !dateInputValue ||
+//                     isDateTimeInPast() ||
+//                     isTimeRangeInvalid() ||
+//                     !topic.trim()
+//                   }
+//                   className="w-full bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-lg font-semibold text-sm disabled:opacity-40 transition-all shadow-sm mt-2"
+//                 >
+//                   Review Booking Details
+//                 </button>
+
+//                 <div className="text-left">
+//                   <button
+//                     type="button"
+//                     onClick={back}
+//                     className="text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
+//                   >
+//                     ← Go Back
+//                   </button>
+//                 </div>
+//               </div>
+//             </div>
+//           )}
+
+//           {/* STEP 4: REVIEW BOOKING DETAILS */}
+//           {step === 3 && (
+//             <div className="space-y-5">
+//               <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+//                 Review Your Session
+//               </h2>
+
+//               <div className="border border-slate-200 rounded-xl p-5 bg-slate-50 space-y-3 text-sm text-slate-700">
+//                 <div className="flex justify-between border-b border-slate-200/80 pb-2">
+//                   <span className="text-slate-500">Learner Stage</span>
+//                   <span className="font-semibold text-slate-900">
+//                     {learnerLevel}
+//                   </span>
+//                 </div>
+//                 <div className="flex justify-between border-b border-slate-200/80 pb-2">
+//                   <span className="text-slate-500">Subject</span>
+//                   <span className="font-semibold text-slate-900">
+//                     {selectedSubject}
+//                   </span>
+//                 </div>
+//                 <div className="flex justify-between border-b border-slate-200/80 pb-2">
+//                   <span className="text-slate-500">Program Plan</span>
+//                   <span className="font-semibold uppercase text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">
+//                     {enrollmentType === "monthly"
+//                       ? "Monthly Plan"
+//                       : "Hourly Session"}
+//                   </span>
+//                 </div>
+//                 <div className="flex justify-between border-b border-slate-200/80 pb-2">
+//                   <span className="text-slate-500">Date</span>
+//                   <span className="font-semibold text-slate-900">
+//                     {dateInputValue}
+//                   </span>
+//                 </div>
+//                 <div className="flex justify-between border-b border-slate-200/80 pb-2">
+//                   <span className="text-slate-500">Time Window</span>
+//                   <span className="font-semibold text-slate-900">
+//                     {startHour}:{startMinute} {startPeriod} – {endHour}:
+//                     {endMinute} {endPeriod}
+//                   </span>
+//                 </div>
+
+//                 <div className="flex justify-between items-center pt-3 bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs">
+//                   <span className="font-bold text-slate-900">Total Due</span>
+//                   <span className="text-2xl font-extrabold text-slate-900">
+//                     ${calculatePrice().toFixed(2)}
+//                   </span>
+//                 </div>
+//               </div>
+
+//               <button
+//                 onClick={next}
+//                 className="w-full bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-lg font-semibold text-sm transition-all shadow-sm"
+//               >
+//                 Proceed to Checkout
+//               </button>
+
+//               <div className="text-left">
+//                 <button
+//                   type="button"
+//                   onClick={back}
+//                   className="text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
+//                 >
+//                   ← Go Back
+//                 </button>
+//               </div>
+//             </div>
+//           )}
+
+//           {/* STEP 5: PAYMENT & CHECKOUT */}
+//           {step === 4 && (
+//             <div className="space-y-5">
+//               <div>
+//                 <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+//                   Checkout & Confirm
+//                 </h2>
+//                 <p className="text-xs text-slate-500 mt-1">
+//                   Enter learner billing contact details to finalize checkout.
+//                 </p>
+//               </div>
+
+//               <div className="space-y-3">
+//                 <div>
+//                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+//                     Full Name
+//                   </label>
+//                   <div className="relative">
+//                     <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+//                     <input
+//                       type="text"
+//                       placeholder="Jane Doe"
+//                       value={billingName}
+//                       onChange={(e) => setBillingName(e.target.value)}
+//                       className="w-full pl-9 border border-slate-300 rounded-lg p-2.5 text-sm text-slate-900 bg-white focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+//                     />
+//                   </div>
+//                 </div>
+
+//                 <div>
+//                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+//                     Email Address
+//                   </label>
+//                   <div className="relative">
+//                     <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+//                     <input
+//                       type="email"
+//                       placeholder="jane@example.com"
+//                       value={billingEmail}
+//                       onChange={(e) => setBillingEmail(e.target.value)}
+//                       className="w-full pl-9 border border-slate-300 rounded-lg p-2.5 text-sm text-slate-900 bg-white focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+//                     />
+//                   </div>
+//                 </div>
+
+//                 <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between">
+//                   <div className="flex items-center gap-2">
+//                     <Lock className="w-4 h-4 text-emerald-600" />
+//                     <span className="text-xs font-medium text-slate-600">
+//                       Encrypted Checkout via Stripe
+//                     </span>
+//                   </div>
+//                   <span className="text-sm font-extrabold text-slate-900">
+//                     ${calculatePrice().toFixed(2)}
+//                   </span>
+//                 </div>
+
+//                 <button
+//                   type="button"
+//                   onClick={handleStripeCheckout}
+//                   disabled={
+//                     !billingName || !billingEmail || isProcessingPayment
+//                   }
+//                   className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3.5 rounded-lg font-semibold text-sm disabled:opacity-40 transition-all shadow-sm flex items-center justify-center gap-2 mt-2"
+//                 >
+//                   {isProcessingPayment ? (
+//                     <>
+//                       <Loader2 className="w-4 h-4 animate-spin" /> Processing...
+//                     </>
+//                   ) : (
+//                     <>
+//                       <CreditCard className="w-4 h-4" /> Complete Payment
+//                     </>
+//                   )}
+//                 </button>
+
+//                 <div className="text-left">
+//                   <button
+//                     type="button"
+//                     onClick={back}
+//                     className="text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
+//                   >
+//                     ← Go Back
+//                   </button>
+//                 </div>
+//               </div>
+//             </div>
+//           )}
+//         </motion.div>
+//       </div>
+//     </div>
+//   );
+// }

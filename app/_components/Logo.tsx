@@ -18,9 +18,7 @@ export default function MyLogo() {
       >
         {/* 2. Use the renamed variable here */}
         <Image src={LogoImg} alt="Logo" width={28} height={28} priority />
-        <span className="text-xl font-bold tracking-tight dark:text-white text-black">
-          Justdy
-        </span>
+        <span className="font-semibold text-lg">Justdy</span>
       </Link>
     </div>
   );

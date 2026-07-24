@@ -14,6 +14,7 @@ import {
 } from "@/app/_components/ui/alert-dialog";
 import { Button } from "@/app/_components/ui/button";
 import { deleteLesson } from "../actions/educator-edit-course";
+import { useRouter } from "next/navigation";
 
 export function DeleteLesson({
   chapterId,
@@ -24,6 +25,7 @@ export function DeleteLesson({
   courseId: string;
   lessonId: string;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -41,6 +43,7 @@ export function DeleteLesson({
       if (result.status === "success") {
         toast.success(result.message);
         setOpen(false);
+        router.refresh();
       } else if (result.status === "error") {
         toast.error(result.message);
       }

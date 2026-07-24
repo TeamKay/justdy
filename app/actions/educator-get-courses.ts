@@ -14,18 +14,18 @@ export async function educatorGetCourses() {
   await requireEducator();
   if (!userId) throw new Error("Unauthorized");
 
-  const data = await prisma.course.findMany({
+  const data = await prisma.product.findMany({
     where: { userId: userId },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
       title: true,
       smallDescription: true,
-      duration: true,
-      level: true,
+
+      category: true,
       status: true,
       price: true,
-      fileKey: true,
+
       slug: true,
       // 1. Select the related user's name
       user: {
