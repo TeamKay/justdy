@@ -18,10 +18,54 @@ import {
   TrendingUp,
   FileCode2,
   LayoutGrid,
+  ArrowUpRight,
 } from "lucide-react";
 import { Button } from "@/app/_components/ui/button";
+import Link from "next/link";
 
 export default function DashboardExperience() {
+  const infoCards = [
+    {
+      icon: BookOpen,
+      badge: "Structured Learning",
+      title: "Interactive Courses",
+      description:
+        "Step-by-step video curriculums designed by industry experts with hands-on exercises.",
+      link: "/products",
+      linkText: "Browse Courses",
+      accent: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+    },
+    {
+      icon: Calendar,
+      badge: "Real-time Coaching",
+      title: "HD Live Sessions",
+      description:
+        "Join weekly live workshops, Q&A sessions, and direct 1-on-1 mentorship calls.",
+      link: "/tutoring",
+      linkText: "View Schedule",
+      accent: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+    },
+    {
+      icon: Download,
+      badge: "Instant Access",
+      title: "Digital Resources",
+      description:
+        "Download premium project templates, cheat sheets, codebases, and design assets.",
+      link: "/products",
+      linkText: "Get Resources",
+      accent: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+    },
+    {
+      icon: Video,
+      badge: "100% Free",
+      title: "Video Tutorials",
+      description:
+        "Explore 20+ free video lessons on YouTube and our platform to kickstart your learning.",
+      link: "/videos",
+      linkText: "Watch Free Videos",
+      accent: "text-rose-400 bg-rose-500/10 border-rose-500/20",
+    },
+  ];
   const [activeTab, setActiveTab] = useState<
     "courses" | "vault" | "mentorship"
   >("courses");
@@ -41,8 +85,53 @@ export default function DashboardExperience() {
           </p>
         </div>
 
+        {/* 4 Cards Horizontal Grid Layout */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {infoCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <div
+                key={card.title}
+                className="group relative rounded-md bg-emerald-900/10 border border-slate-800 p-6 flex flex-col justify-between hover:border-slate-700 hover:bg-emerald-900/20 hover:shadow-xl hover:shadow-slate-950/50 transition-all duration-300"
+              >
+                {/* Top Card Content */}
+                <div>
+                  {/* Icon & Badge */}
+                  <div className="flex items-center justify-between mb-5">
+                    <div className={`p-3 rounded-xl border ${card.accent}`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-slate-300">
+                      {card.badge}
+                    </span>
+                  </div>
+
+                  {/* Title & Description */}
+                  <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors">
+                    {card.title}
+                  </h3>
+                  <p className="mt-2 text-xs md:text-sm text-slate-400 leading-relaxed">
+                    {card.description}
+                  </p>
+                </div>
+
+                {/* Card Action Link */}
+                <div className="mt-6 pt-4 border-t border-slate-800/60">
+                  <Link
+                    href={card.link}
+                    className="inline-flex items-center text-xs font-semibold text-slate-300 group-hover:text-white transition-colors"
+                  >
+                    <span>{card.linkText}</span>
+                    <ArrowUpRight className="w-3.5 h-3.5 ml-1 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
         {/* Outer Frame with Glow & Glass effect */}
-        <div className="relative rounded-2xl border border-border/60 bg-linear-to-b from-border/30 to-border/10 p-2 sm:p-3 shadow-2xl backdrop-blur-xl">
+        <div className="relative rounded-md border border-border/60 bg-linear-to-b from-border/30 to-border/10 p-2 sm:p-3 shadow-2xl backdrop-blur-xl mt-20">
           {/* Main App Container */}
           <div className="rounded-xl border border-border/80 bg-background overflow-hidden shadow-inner flex flex-col md:flex-row min-h-145">
             {/* Sidebar Navigation */}

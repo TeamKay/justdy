@@ -49,7 +49,6 @@ const gameItems = [
     icon: Swords,
   },
 ];
-
 interface UserProps {
   id: string;
   email: string;

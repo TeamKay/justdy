@@ -48,7 +48,7 @@ export default function LandingPage() {
         </div>
 
         {/* Headline */}
-        <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-400 max-w-4xl mx-auto leading-[1.08]">
+        <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-400 max-w-4xl mx-auto leading-[1.08] mt-5">
           Courses, Live Sessions &{" "}
           <span className="bg-linear-to-r from-slate-200 via-slate-700 to-slate-100 bg-clip-text text-transparent underline decoration-slate-300 decoration-2 underline-offset-8">
             Premium Resources
@@ -63,7 +63,7 @@ export default function LandingPage() {
         </p>
 
         {/* CTAs */}
-        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3.5">
+        <div className="mt-20 flex flex-col sm:flex-row items-center justify-center gap-3.5 ">
           <Button
             asChild
             size="lg"

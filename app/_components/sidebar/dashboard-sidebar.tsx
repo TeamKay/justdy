@@ -1,4 +1,3 @@
-// app/_components/sidebar/dashboard-sidebar.tsx
 "use client";
 
 import * as React from "react";
@@ -9,7 +8,6 @@ import {
   Users,
   BookOpen,
   Settings,
-  Search,
   Columns,
   CreditCard,
   CreditCard as BillingIcon,
@@ -37,7 +35,8 @@ import {
 
 import { authClient } from "@/lib/auth-client";
 import MyLogo from "../Logo";
-import { NavUser } from "./nav-user";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { IconCash } from "@tabler/icons-react";
 
 export interface NavItem {
   title: string;
@@ -50,11 +49,12 @@ const navigationData: Record<string, NavItem[]> = {
   admin: [
     { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
     { title: "Products & Courses", url: "/admin/products", icon: Columns },
-    { title: "Educators", url: "/admin/educators", icon: GraduationCap }, // Changed icon
-    { title: "Subjects", url: "/admin/subjects", icon: Library }, // Changed icon
+    { title: "Educators", url: "/admin/educators", icon: GraduationCap },
+    { title: "Subjects", url: "/admin/subjects", icon: Library },
     { title: "Student Roster", url: "/admin/roster", icon: Users },
     { title: "Payouts", url: "/admin/payouts", icon: CreditCard },
-    { title: "Transactions", url: "/admin/transactions", icon: Receipt }, // 🆕 ADDED (For Subscriptions & Stripe logs)
+    { title: "Transactions", url: "/admin/transactions", icon: Receipt },
+    { title: "My Portfolio", url: "/admin/myportfolio", icon: IconCash },
   ],
 
   educator: [
@@ -63,23 +63,29 @@ const navigationData: Record<string, NavItem[]> = {
     { title: "Sessions", url: "/educator/sessions", icon: Calendar },
     { title: "Student Roster", url: "/educator/roster", icon: Users },
     { title: "Earnings", url: "/educator/earnings", icon: CreditCard },
-    { title: "Availability", url: "/educator/availability", icon: Clock }, // Changed icon
+    { title: "Availability", url: "/educator/availability", icon: Clock },
     { title: "Profile Settings", url: "/educator/profile", icon: Settings },
   ],
 
   learner: [
     { title: "Dashboard", url: "/learner", icon: LayoutDashboard },
-    { title: "Explore Catalog", url: "/courses", icon: Compass }, // 🆕 ADDED (To buy/browse new courses)
+    { title: "Explore Catalog", url: "/courses", icon: Compass },
     { title: "My Courses", url: "/learner/enrolled", icon: BookOpen },
     { title: "My Sessions", url: "/learner/sessions", icon: Calendar },
-    { title: "Billing & Plan", url: "/learner/billing", icon: BillingIcon }, // 🆕 ADDED (Manage subscription/receipts)
+    { title: "Billing & Plan", url: "/learner/billing", icon: BillingIcon },
     { title: "Settings", url: "/learner/settings", icon: Settings },
   ],
 };
 
+const roleLabels: Record<string, string> = {
+  admin: "Admin",
+  educator: "Educator",
+  learner: "Learner",
+};
+
 const secondaryNav: NavItem[] = [
-  { title: "Support & Help", url: "#", icon: HelpCircleIcon },
-  { title: "Quick Search", url: "#", icon: Search },
+  { title: "Settings", url: "#", icon: Settings },
+  { title: "Send feedback", url: "#", icon: HelpCircleIcon },
 ];
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -87,11 +93,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   permissions?: string[];
 }
 
-export function AppSidebar({
-  userRoles = [],
-
-  ...props
-}: AppSidebarProps) {
+export function AppSidebar({ userRoles = [], ...props }: AppSidebarProps) {
   const pathname = usePathname();
   const mounted = React.useSyncExternalStore(
     () => () => {},
@@ -101,9 +103,21 @@ export function AppSidebar({
 
   const { data: session } = authClient.useSession();
 
+  const user = session?.user;
+  const userName = user?.name || "User";
+  const userImage = user?.image || "";
+  const userInitials = userName
+    ? userName
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : "U";
+
   const rolesList = [...userRoles];
-  if (session?.user) {
-    const userObj = session.user as { role?: string; roles?: string[] };
+  if (user) {
+    const userObj = user as { role?: string; roles?: string[] };
     if (userObj.role) rolesList.push(userObj.role);
     if (Array.isArray(userObj.roles)) rolesList.push(...userObj.roles);
   }
@@ -118,6 +132,7 @@ export function AppSidebar({
       : "learner";
 
   const navGroups = navigationData[activeRoleKey] ?? navigationData.learner;
+  const activeRoleLabel = roleLabels[activeRoleKey] ?? "Learner";
 
   if (!mounted) {
     return <Sidebar {...props} />;
@@ -126,36 +141,54 @@ export function AppSidebar({
   return (
     <Sidebar
       collapsible="offcanvas"
-      className="border-r border-zinc-800/60 bg-[#09090b] p-0"
+      className="border-r border-zinc-800/60 bg-[#0f0f0f] text-zinc-200 p-0"
       {...props}
     >
       {/* Brand Header */}
-      <SidebarHeader className="p-0">
+      <SidebarHeader className="px-4 py-3 border-b border-zinc-800/40">
         <SidebarMenu>
-          <SidebarMenuItem className="flex items-center justify-between">
-            <SidebarMenuButton asChild className="h-auto p-0">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-background w-full">
-                  <MyLogo />
-                </div>
-              </div>
-            </SidebarMenuButton>
+          <SidebarMenuItem>
+            <div className="flex items-center gap-2">
+              <MyLogo />
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
+      {/* Profile Card */}
+      <div className="flex flex-col items-center justify-center py-6 px-4 border-b border-zinc-800/40 space-y-2">
+        <Avatar className="w-20 h-20 border-2 border-zinc-700/50 shadow-md">
+          <AvatarImage
+            src={userImage}
+            alt={userName}
+            className="object-cover"
+          />
+          <AvatarFallback className="bg-zinc-800 text-zinc-300 font-semibold text-lg">
+            {userInitials}
+          </AvatarFallback>
+        </Avatar>
+
+        <div className="text-center pt-1">
+          <span className="block text-[11px] font-normal text-zinc-400 capitalize">
+            {activeRoleLabel}
+          </span>
+          <h3 className="text-sm font-medium text-zinc-100 truncate max-w-45">
+            {userName}
+          </h3>
+        </div>
+      </div>
+
       {/* Main Navigation */}
-      <SidebarContent className="px-2 py-3 space-y-4">
+      <SidebarContent className="px-2 py-3 space-y-1">
         <SidebarGroup className="p-0">
           <SidebarGroupContent>
-            <SidebarMenu className="space-y-0.5">
+            <SidebarMenu className="space-y-1">
               {navGroups.map((item, index) => {
                 const Icon = item.icon;
                 const isExact = pathname === item.url;
 
-                // Root path check that dynamically catches /admin, /educator, /learner, /dashboard, etc.
                 const isRootPath =
-                  index === 0 || // The first item ("Dashboard") in any group is a root entry point
+                  index === 0 ||
                   item.url === "/admin" ||
                   item.url === "/educator" ||
                   item.url === "/learner" ||
@@ -172,26 +205,26 @@ export function AppSidebar({
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      className={`h-9 px-3 rounded-lg text-xs font-medium transition-all ${
+                      className={`h-10 px-4 rounded-lg text-xs font-medium transition-colors ${
                         isActive
-                          ? "bg-indigo-600/15 text-indigo-400 border border-indigo-500/30 font-semibold"
-                          : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40"
+                          ? "bg-zinc-800 text-zinc-100 font-semibold border-l-4 border-red-600 rounded-l-none"
+                          : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
                       }`}
                     >
                       <Link
                         href={item.url}
                         className="flex items-center justify-between w-full"
                       >
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex items-center gap-4">
                           <Icon
-                            className={`w-4 h-4 shrink-0 ${
-                              isActive ? "text-indigo-400" : "text-zinc-400"
+                            className={`w-5 h-5 shrink-0 ${
+                              isActive ? "text-red-500" : "text-zinc-400"
                             }`}
                           />
-                          <span>{item.title}</span>
+                          <span className="text-sm">{item.title}</span>
                         </div>
                         {item.badge && (
-                          <span className="px-1.5 py-0.2 rounded text-[10px] bg-indigo-500/20 text-indigo-300 font-semibold">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-red-500/20 text-red-400 font-semibold">
                             {item.badge}
                           </span>
                         )}
@@ -203,42 +236,274 @@ export function AppSidebar({
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        {/* Secondary Help Links */}
-        <SidebarGroup className="mt-auto p-0 pt-4 border-t border-zinc-800/40">
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-0.5">
-              {secondaryNav.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      className="h-8 px-3 rounded-lg text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40"
-                    >
-                      <Link
-                        href={item.url}
-                        className="flex items-center gap-2.5"
-                      >
-                        <Icon className="w-3.5 h-3.5 shrink-0 text-zinc-500" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
 
-      {/* User Footer */}
-      <SidebarFooter className="p-3 border-t border-zinc-800/40 bg-zinc-950/50">
-        <NavUser />
+      {/* YouTube Studio Footer (Settings & Feedback) */}
+      <SidebarFooter className="p-2 border-t border-zinc-800/40 bg-background">
+        <SidebarMenu className="space-y-0.5">
+          {secondaryNav.map((item) => {
+            const Icon = item.icon;
+            return (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton
+                  asChild
+                  className="h-9 px-4 rounded-lg text-xs text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
+                >
+                  <Link href={item.url} className="flex items-center gap-4">
+                    <Icon className="w-5 h-5 shrink-0 text-zinc-400" />
+                    <span className="text-sm">{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   );
 }
+
+// // app/_components/sidebar/dashboard-sidebar.tsx
+// "use client";
+
+// import * as React from "react";
+// import Link from "next/link";
+// import { usePathname } from "next/navigation";
+// import {
+//   LayoutDashboard,
+//   Users,
+//   BookOpen,
+//   Settings,
+//   Search,
+//   Columns,
+//   CreditCard,
+//   CreditCard as BillingIcon,
+//   Calendar,
+//   HelpCircleIcon,
+//   LucideIcon,
+//   GraduationCap,
+//   Library,
+//   Receipt,
+//   Clock,
+//   Compass,
+// } from "lucide-react";
+
+// import {
+//   Sidebar,
+//   SidebarContent,
+//   SidebarFooter,
+//   SidebarHeader,
+//   SidebarMenu,
+//   SidebarMenuButton,
+//   SidebarMenuItem,
+//   SidebarGroup,
+//   SidebarGroupContent,
+// } from "../ui/sidebar";
+
+// import { authClient } from "@/lib/auth-client";
+// import MyLogo from "../Logo";
+// import { NavUser } from "./nav-user";
+
+// export interface NavItem {
+//   title: string;
+//   url: string;
+//   icon: LucideIcon;
+//   badge?: string;
+// }
+
+// const navigationData: Record<string, NavItem[]> = {
+//   admin: [
+//     { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
+//     { title: "Products & Courses", url: "/admin/products", icon: Columns },
+//     { title: "Educators", url: "/admin/educators", icon: GraduationCap }, // Changed icon
+//     { title: "Subjects", url: "/admin/subjects", icon: Library }, // Changed icon
+//     { title: "Student Roster", url: "/admin/roster", icon: Users },
+//     { title: "Payouts", url: "/admin/payouts", icon: CreditCard },
+//     { title: "Transactions", url: "/admin/transactions", icon: Receipt }, // 🆕 ADDED (For Subscriptions & Stripe logs)
+//   ],
+
+//   educator: [
+//     { title: "Dashboard", url: "/educator", icon: LayoutDashboard },
+//     { title: "My Products", url: "/educator/products", icon: BookOpen },
+//     { title: "Sessions", url: "/educator/sessions", icon: Calendar },
+//     { title: "Student Roster", url: "/educator/roster", icon: Users },
+//     { title: "Earnings", url: "/educator/earnings", icon: CreditCard },
+//     { title: "Availability", url: "/educator/availability", icon: Clock }, // Changed icon
+//     { title: "Profile Settings", url: "/educator/profile", icon: Settings },
+//   ],
+
+//   learner: [
+//     { title: "Dashboard", url: "/learner", icon: LayoutDashboard },
+//     { title: "Explore Catalog", url: "/courses", icon: Compass }, // 🆕 ADDED (To buy/browse new courses)
+//     { title: "My Courses", url: "/learner/enrolled", icon: BookOpen },
+//     { title: "My Sessions", url: "/learner/sessions", icon: Calendar },
+//     { title: "Billing & Plan", url: "/learner/billing", icon: BillingIcon }, // 🆕 ADDED (Manage subscription/receipts)
+//     { title: "Settings", url: "/learner/settings", icon: Settings },
+//   ],
+// };
+
+// const secondaryNav: NavItem[] = [
+//   { title: "Support & Help", url: "#", icon: HelpCircleIcon },
+//   { title: "Quick Search", url: "#", icon: Search },
+// ];
+
+// interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+//   userRoles?: string[];
+//   permissions?: string[];
+// }
+
+// export function AppSidebar({
+//   userRoles = [],
+
+//   ...props
+// }: AppSidebarProps) {
+//   const pathname = usePathname();
+//   const mounted = React.useSyncExternalStore(
+//     () => () => {},
+//     () => true,
+//     () => false,
+//   );
+
+//   const { data: session } = authClient.useSession();
+
+//   const rolesList = [...userRoles];
+//   if (session?.user) {
+//     const userObj = session.user as { role?: string; roles?: string[] };
+//     if (userObj.role) rolesList.push(userObj.role);
+//     if (Array.isArray(userObj.roles)) rolesList.push(...userObj.roles);
+//   }
+
+//   const normalizedRoles = rolesList.map((r) => r.toLowerCase());
+
+//   const activeRoleKey = normalizedRoles.includes("admin")
+//     ? "admin"
+//     : normalizedRoles.includes("educator") ||
+//         normalizedRoles.includes("facilitator")
+//       ? "educator"
+//       : "learner";
+
+//   const navGroups = navigationData[activeRoleKey] ?? navigationData.learner;
+
+//   if (!mounted) {
+//     return <Sidebar {...props} />;
+//   }
+
+//   return (
+//     <Sidebar
+//       collapsible="offcanvas"
+//       className="border-r border-zinc-800/60 bg-[#09090b] p-0"
+//       {...props}
+//     >
+//       {/* Brand Header */}
+//       <SidebarHeader className="p-0">
+//         <SidebarMenu>
+//           <SidebarMenuItem className="flex items-center justify-between">
+//             <SidebarMenuButton asChild className="h-auto p-0">
+//               <div className="flex items-center gap-3">
+//                 <div className="p-2 rounded-xl bg-background w-full">
+//                   <MyLogo />
+//                 </div>
+//               </div>
+//             </SidebarMenuButton>
+//           </SidebarMenuItem>
+//         </SidebarMenu>
+//       </SidebarHeader>
+
+//       {/* Main Navigation */}
+//       <SidebarContent className="px-2 py-3 space-y-4">
+//         <SidebarGroup className="p-0">
+//           <SidebarGroupContent>
+//             <SidebarMenu className="space-y-0.5">
+//               {navGroups.map((item, index) => {
+//                 const Icon = item.icon;
+//                 const isExact = pathname === item.url;
+
+//                 // Root path check that dynamically catches /admin, /educator, /learner, /dashboard, etc.
+//                 const isRootPath =
+//                   index === 0 || // The first item ("Dashboard") in any group is a root entry point
+//                   item.url === "/admin" ||
+//                   item.url === "/educator" ||
+//                   item.url === "/learner" ||
+//                   item.url === "/dashboard" ||
+//                   item.url === `/dashboard/${activeRoleKey}`;
+
+//                 const isNested =
+//                   !isRootPath && pathname?.startsWith(`${item.url}/`);
+
+//                 const isActive = isExact || isNested;
+
+//                 return (
+//                   <SidebarMenuItem key={item.title}>
+//                     <SidebarMenuButton
+//                       asChild
+//                       isActive={isActive}
+//                       className={`h-9 px-3 rounded-lg text-xs font-medium transition-all ${
+//                         isActive
+//                           ? "bg-indigo-600/15 text-indigo-400 border border-indigo-500/30 font-semibold"
+//                           : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40"
+//                       }`}
+//                     >
+//                       <Link
+//                         href={item.url}
+//                         className="flex items-center justify-between w-full"
+//                       >
+//                         <div className="flex items-center gap-2.5">
+//                           <Icon
+//                             className={`w-4 h-4 shrink-0 ${
+//                               isActive ? "text-indigo-400" : "text-zinc-400"
+//                             }`}
+//                           />
+//                           <span>{item.title}</span>
+//                         </div>
+//                         {item.badge && (
+//                           <span className="px-1.5 py-0.2 rounded text-[10px] bg-indigo-500/20 text-indigo-300 font-semibold">
+//                             {item.badge}
+//                           </span>
+//                         )}
+//                       </Link>
+//                     </SidebarMenuButton>
+//                   </SidebarMenuItem>
+//                 );
+//               })}
+//             </SidebarMenu>
+//           </SidebarGroupContent>
+//         </SidebarGroup>
+
+//         {/* Secondary Help Links */}
+//         <SidebarGroup className="mt-auto p-0 pt-4 border-t border-zinc-800/40">
+//           <SidebarGroupContent>
+//             <SidebarMenu className="space-y-0.5">
+//               {secondaryNav.map((item) => {
+//                 const Icon = item.icon;
+//                 return (
+//                   <SidebarMenuItem key={item.title}>
+//                     <SidebarMenuButton
+//                       asChild
+//                       className="h-8 px-3 rounded-lg text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40"
+//                     >
+//                       <Link
+//                         href={item.url}
+//                         className="flex items-center gap-2.5"
+//                       >
+//                         <Icon className="w-3.5 h-3.5 shrink-0 text-zinc-500" />
+//                         <span>{item.title}</span>
+//                       </Link>
+//                     </SidebarMenuButton>
+//                   </SidebarMenuItem>
+//                 );
+//               })}
+//             </SidebarMenu>
+//           </SidebarGroupContent>
+//         </SidebarGroup>
+//       </SidebarContent>
+
+//       {/* User Footer */}
+//       <SidebarFooter className="p-3 border-t border-zinc-800/40 bg-zinc-950/50">
+//         <NavUser />
+//       </SidebarFooter>
+//     </Sidebar>
+//   );
+// }
 
 // // app/_components/sidebar/dashboard-sidebar.tsx
 // "use client";

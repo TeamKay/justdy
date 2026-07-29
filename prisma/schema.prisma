@@ -378,6 +378,35 @@ model Transaction {
   @@index([status])
 }
 
+
+// ==========================================
+// MY PORTFOLIO MODELS
+// ==========================================
+
+
+model Investment {
+  id             String          @id @default(cuid())
+  name           String
+  tickerOrSymbol String?
+  assetClass     AssetType
+  region         RegionType
+  currency       CurrencyType
+  type           TransactionType
+  shares         Float?
+  pricePerShare  Float?
+  amount         Float
+  exchangeRate   Float           @default(1.0)
+  amountUSD      Float
+  date           DateTime        @default(now()) // <--- Add or check this line
+  status         StatusType      @default(ACTIVE)
+  returnRate     String          @default("0%")
+  isPositive     Boolean         @default(true)
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+
 // ==========================================
 // ENUMS
 // ==========================================
@@ -467,3 +496,36 @@ enum EnrollmentTrack {
   Hourly
   Monthly
 }
+enum AssetType {
+  ETF
+  STOCK
+  CRYPTO
+  REAL_ESTATE
+  BOND
+  CASH_EQUIVALENT
+}
+
+enum RegionType {
+  USA
+  GHANA
+  GLOBAL
+}
+
+enum CurrencyType {
+  USD
+  GHS
+}
+
+enum StatusType {
+  ACTIVE
+  PENDING
+  EXITED
+}
+
+enum TransactionType {
+  BUY
+  SELL
+  DRIP
+  CASH
+}
+

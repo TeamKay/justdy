@@ -1,6 +1,5 @@
-// app/dashboard/layout.tsx
 import { ReactNode } from "react";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers"; // Added cookies
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
@@ -14,6 +13,10 @@ export default async function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
+  // Read sidebar cookie state for seamless hydration
+  const cookieStore = await cookies();
+  const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
+
   // 1. Get session on the server
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -23,7 +26,7 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  // 2. Fetch user's roles & permissions using `include`
+  // 2. Fetch user's roles & permissions
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     include: {
@@ -79,6 +82,7 @@ export default async function DashboardLayout({
 
   return (
     <SidebarProvider
+      defaultOpen={defaultOpen}
       style={
         {
           "--sidebar-width": "16rem",
@@ -95,12 +99,12 @@ export default async function DashboardLayout({
         {/* Fixed Site Header */}
         <SiteHeader userName={user.name ?? undefined} />
 
-        {/* Main Full-Bleed Container */}
-        <main className="flex-1 flex flex-col overflow-y-auto w-full h-full">
+        {/* ✅ FIXED: Changed <main> to <div> to prevent nested <main> elements */}
+        <div className="flex-1 flex flex-col overflow-y-auto w-full h-full">
           <div className="flex-1 flex flex-col w-full h-full p-0 sm:p-0">
             {children}
           </div>
-        </main>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

@@ -129,6 +129,7 @@
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.0",
     "@types/opentok": "^2.14.4",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
