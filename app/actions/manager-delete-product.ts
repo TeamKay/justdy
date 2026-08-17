@@ -33,9 +33,7 @@ function getRawFileKey(key: string): string {
   return key;
 }
 
-export async function managerDeleteProduct(
-  productId: string,
-): Promise<ApiResponse> {
+export async function deleteProduct(productId: string): Promise<ApiResponse> {
   const session = await requireManager();
 
   try {
