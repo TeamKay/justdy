@@ -1,10 +1,10 @@
 import "server-only";
 
-import { requireAdmin } from "./require-manager";
 import prisma from "@/lib/prisma";
+import { requireManager } from "./require-manager";
 
 export async function adminGetEnrollmentStats() {
-  await requireAdmin();
+  await requireManager();
 
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);

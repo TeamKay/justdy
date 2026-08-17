@@ -1,11 +1,12 @@
 import "server-only";
 
 import prisma from "@/lib/prisma";
-import { requireAdmin } from "./require-manager";
+
 import { notFound } from "next/navigation";
+import { requireManager } from "./require-manager";
 
 export async function adminGetLesson(id: string) {
-  await requireAdmin();
+  await requireManager();
 
   const data = await prisma.lesson.findUnique({
     where: {

@@ -1,12 +1,12 @@
 import "server-only";
 
-import { requireAdmin } from "./require-manager";
 import prisma from "@/lib/prisma";
+import { requireManager } from "./require-manager";
 
 export async function adminGetRecentCourses() {
-  await requireAdmin();
+  await requireManager();
 
-  const data = await prisma.course.findMany({
+  const data = await prisma.product.findMany({
     orderBy: {
       createdAt: "desc",
     },

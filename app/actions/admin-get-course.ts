@@ -14,7 +14,6 @@ export async function adminGetCourse(id: string) {
     select: {
       id: true,
       title: true,
-      smallDescription: true,
       description: true,
       duration: true,
       level: true,
