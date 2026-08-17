@@ -32,7 +32,6 @@ export async function setUserRole(formData: FormData) {
         where: {
           id: session.user.id,
         },
-
         data: {
           role: "Learner",
           onboardingCompleted: true,
@@ -59,13 +58,17 @@ export async function setUserRole(formData: FormData) {
 
     if (role === "Educator") {
       const experience = formData.get("experience") as string;
+
       const credentialUrl = formData.get("credentialUrl") as string;
+
       const description = formData.get("description") as string;
 
       if (!experience || !credentialUrl || !description) {
         throw new Error("Educator information required");
       }
 
+      // Validate experience even though it is not currently
+      // stored on the User model.
       const experienceNumber = Number(experience);
 
       if (!Number.isFinite(experienceNumber) || experienceNumber < 0) {
@@ -76,16 +79,10 @@ export async function setUserRole(formData: FormData) {
         where: {
           id: session.user.id,
         },
-
         data: {
           role: "Educator",
-
-          credentialUrl,
-
           description,
-
           verificationStatus: "Pending",
-
           onboardingCompleted: true,
         },
       });
