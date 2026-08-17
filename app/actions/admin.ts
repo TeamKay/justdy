@@ -21,8 +21,12 @@ export async function verifyAdmin(): Promise<boolean> {
 
   try {
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
+      where: {
+        id: session.user.id,
+      },
+      select: {
+        role: true,
+      },
     });
 
     return user?.role === "Admin";
@@ -37,16 +41,25 @@ export async function verifyAdmin(): Promise<boolean> {
  */
 export async function getPendingEducators() {
   const isAdmin = await verifyAdmin();
+
   if (!isAdmin) {
     throw new Error("Unauthorized");
   }
 
   try {
     const pendingEducators = await prisma.user.findMany({
-      where: { verificationStatus: "Pending", role: "Educator" },
-      orderBy: { createdAt: "desc" },
+      where: {
+        verificationStatus: "Pending",
+        role: "Educator",
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
-    return { educators: pendingEducators };
+
+    return {
+      educators: pendingEducators,
+    };
   } catch (error) {
     console.error("Error fetching pending educators:", error);
     throw new Error("Failed to fetch pending educators");
@@ -58,16 +71,25 @@ export async function getPendingEducators() {
  */
 export async function getVerifiedEducators() {
   const isAdmin = await verifyAdmin();
+
   if (!isAdmin) {
     throw new Error("Unauthorized");
   }
 
   try {
     const verifiedEducators = await prisma.user.findMany({
-      where: { verificationStatus: "Verified", role: "Educator" },
-      orderBy: { createdAt: "asc" },
+      where: {
+        verificationStatus: "Verified",
+        role: "Educator",
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
     });
-    return { educators: verifiedEducators };
+
+    return {
+      educators: verifiedEducators,
+    };
   } catch (error) {
     console.error("Error fetching verified educators:", error);
     throw new Error("Failed to fetch verified educators");
@@ -79,6 +101,7 @@ export async function getVerifiedEducators() {
  */
 export async function updateEducatorStatus(formData: FormData) {
   const isAdmin = await verifyAdmin();
+
   if (!isAdmin) {
     throw new Error("Unauthorized");
   }
@@ -96,7 +119,9 @@ export async function updateEducatorStatus(formData: FormData) {
 
   try {
     const educator = await prisma.user.update({
-      where: { id: educatorId },
+      where: {
+        id: educatorId,
+      },
       data: {
         verificationStatus: status as VerificationStatus,
       },
@@ -108,7 +133,10 @@ export async function updateEducatorStatus(formData: FormData) {
     }
 
     revalidatePath("/admin");
-    return { success: true };
+
+    return {
+      success: true,
+    };
   } catch (error) {
     console.error("Error updating educator status:", error);
     throw new Error("Failed to update educator status");
@@ -136,6 +164,7 @@ async function sendEducatorApprovalEmail(email: string): Promise<void> {
  */
 export async function updateEducatorActiveStatus(formData: FormData) {
   const isAdmin = await verifyAdmin();
+
   if (!isAdmin) {
     throw new Error("Unauthorized");
   }
@@ -151,14 +180,22 @@ export async function updateEducatorActiveStatus(formData: FormData) {
     const status: VerificationStatus = suspend ? "Pending" : "Verified";
 
     await prisma.user.update({
-      where: { id: educatorId },
-      data: { verificationStatus: status },
+      where: {
+        id: educatorId,
+      },
+      data: {
+        verificationStatus: status,
+      },
     });
 
     revalidatePath("/admin");
-    return { success: true };
+
+    return {
+      success: true,
+    };
   } catch (error) {
     console.error("Error updating educator active status:", error);
+
     throw new Error("Failed to update educator active status");
   }
 }
@@ -168,7 +205,10 @@ export async function updateEducatorActiveStatus(formData: FormData) {
  */
 export async function getPendingPayouts() {
   const isAdmin = await verifyAdmin();
-  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isAdmin) {
+    throw new Error("Unauthorized");
+  }
 
   try {
     const pendingPayouts = await prisma.payout.findMany({
@@ -181,7 +221,6 @@ export async function getPendingPayouts() {
             id: true,
             name: true,
             email: true,
-            specialty: true,
           },
         },
       },
@@ -190,9 +229,12 @@ export async function getPendingPayouts() {
       },
     });
 
-    return { payouts: pendingPayouts };
+    return {
+      payouts: pendingPayouts,
+    };
   } catch (error) {
     console.error("Failed to fetch pending payouts:", error);
+
     throw new Error("Failed to fetch pending payouts");
   }
 }
@@ -202,7 +244,10 @@ export async function getPendingPayouts() {
  */
 export async function approvePayout(formData: FormData) {
   const isAdmin = await verifyAdmin();
-  if (!isAdmin) throw new Error("Unauthorized");
+
+  if (!isAdmin) {
+    throw new Error("Unauthorized");
+  }
 
   const payoutId = formData.get("payoutId");
 
@@ -216,7 +261,11 @@ export async function approvePayout(formData: FormData) {
     });
 
     const admin = session?.user?.id
-      ? await prisma.user.findUnique({ where: { id: session.user.id } })
+      ? await prisma.user.findUnique({
+          where: {
+            id: session.user.id,
+          },
+        })
       : null;
 
     const payout = await prisma.payout.findUnique({
@@ -235,7 +284,9 @@ export async function approvePayout(formData: FormData) {
 
     await prisma.$transaction(async (tx) => {
       await tx.payout.update({
-        where: { id: payoutId },
+        where: {
+          id: payoutId,
+        },
         data: {
           status: "Paid",
           processedAt: new Date(),
@@ -245,11 +296,17 @@ export async function approvePayout(formData: FormData) {
     });
 
     revalidatePath("/admin");
-    return { success: true };
+
+    return {
+      success: true,
+    };
   } catch (error) {
     console.error("Failed to approve payout:", error);
+
     throw new Error(
-      `Failed to approve payout: ${error instanceof Error ? error.message : "Unknown error"}`,
+      `Failed to approve payout: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
     );
   }
 }
