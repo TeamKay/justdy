@@ -8,24 +8,29 @@ export async function managerGetDashboardStats() {
 
   const [totallearners, totalEducators, totalCourses, totalLessons] =
     await Promise.all([
-      //total students
+      // Total learners
       prisma.user.count({
         where: {
           role: "Learner",
         },
       }),
 
-      //total educators
+      // Total educators
       prisma.user.count({
         where: {
           role: "Educator",
         },
       }),
 
-      //total courses
-      prisma.course.count(),
+      // Total courses
+      // Courses are Products with type = "Course"
+      prisma.product.count({
+        where: {
+          type: "Course",
+        },
+      }),
 
-      //total lessos
+      // Total lessons
       prisma.lesson.count(),
     ]);
 

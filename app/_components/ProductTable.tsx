@@ -66,7 +66,7 @@ import { ProductTableType } from "../actions/manage-get-all-products";
 import { updateProductStatus } from "../actions/admin-publish-product";
 
 import Link from "next/link";
-import { deleteProduct } from "../actions/manager-delete-product";
+import { deleteProduct } from "../actions/manage-delete-product";
 
 interface ProductTableProps {
   data: ProductTableType;

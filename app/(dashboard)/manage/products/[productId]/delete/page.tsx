@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/app/_components/ui/card";
 import { Button, buttonVariants } from "@/app/_components/ui/button";
-import { deleteProduct } from "@/app/actions/manager-delete-product";
+import { deleteProduct } from "@/app/actions/manage-delete-product";
 
 export default function DeleteCourse() {
   const [pending, startTransition] = useTransition();

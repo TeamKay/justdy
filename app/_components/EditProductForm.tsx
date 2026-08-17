@@ -70,7 +70,7 @@ import {
   reorderChapters,
   reorderLessons,
   editCourse,
-} from "../actions/manager-edit-course";
+} from "../actions/manage-edit-course";
 import { ProductStatus, ProductType } from "@/lib/generated/prisma/enums";
 import {
   courseCategories,
@@ -513,7 +513,7 @@ export interface DigitalImageItem {
 interface LessonItem {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   createdAt: Date;
   updatedAt: Date;
   position: number;

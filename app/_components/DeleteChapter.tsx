@@ -14,7 +14,7 @@ import {
   AlertDialogTrigger,
 } from "@/app/_components/ui/alert-dialog";
 import { Button } from "@/app/_components/ui/button";
-import { deleteChapter } from "../actions/manager-edit-course";
+import { deleteChapter } from "../actions/manage-edit-course";
 import { useRouter } from "next/navigation";
 
 export function DeleteChapter({

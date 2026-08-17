@@ -24,7 +24,7 @@ import {
   FormMessage,
 } from "@/app/_components/ui/form";
 import { Input } from "@/app/_components/ui/input";
-import { createChapter } from "../actions/manager-edit-course";
+import { createChapter } from "../actions/manage-edit-course";
 import { useRouter } from "next/navigation";
 
 export function NewChapterModal({ productId }: { productId: string }) {

@@ -21,7 +21,7 @@ import {
   productType,
 } from "@/lib/zodSchemas";
 import { tryCatch } from "@/hooks/try-catch";
-import { CreateProduct } from "@/app/actions/manager-create-product";
+import { CreateProduct } from "@/app/actions/manage-create-product";
 
 import { Button, buttonVariants } from "@/app/_components/ui/button";
 import { Input } from "@/app/_components/ui/input";
