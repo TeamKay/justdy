@@ -7,13 +7,24 @@ export default async function CourseProgressCard({
   userId: string;
 }) {
   const activeEnrollments = await prisma.enrollmentProgress.findMany({
-    where: { userId },
+    where: {
+      userId,
+      product: {
+        type: "Course",
+      },
+      progress: {
+        lt: 100,
+      },
+    },
     take: 3,
-    orderBy: { updatedAt: "desc" },
+    orderBy: {
+      updatedAt: "desc",
+    },
     include: {
-      course: {
-        include: {
-          product: { select: { title: true, slug: true } },
+      product: {
+        select: {
+          title: true,
+          slug: true,
         },
       },
     },
@@ -24,6 +35,7 @@ export default async function CourseProgressCard({
       <div>
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-semibold text-lg">Continue Learning</h3>
+
           <Link
             href="/dashboard/courses"
             className="text-xs text-primary hover:underline font-medium"
@@ -38,24 +50,37 @@ export default async function CourseProgressCard({
           </p>
         ) : (
           <div className="space-y-4">
-            {activeEnrollments.map((item) => (
-              <div key={item.id} className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium truncate max-w-50">
-                    {item.course.product.title}
-                  </span>
-                  <span className="text-xs text-muted-foreground font-semibold">
-                    {Math.round(item.progress)}%
-                  </span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div
-                    className="bg-primary h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${item.progress}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+            {activeEnrollments.map((item) => {
+              const progress = Math.min(
+                100,
+                Math.max(0, Math.round(item.progress)),
+              );
+
+              return (
+                <Link
+                  key={item.id}
+                  href={`/courses/${item.product.slug}`}
+                  className="block space-y-2 hover:opacity-80 transition-opacity"
+                >
+                  <div className="flex justify-between text-sm gap-3">
+                    <span className="font-medium truncate">
+                      {item.product.title}
+                    </span>
+
+                    <span className="text-xs text-muted-foreground font-semibold shrink-0">
+                      {progress}%
+                    </span>
+                  </div>
+
+                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-primary h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
