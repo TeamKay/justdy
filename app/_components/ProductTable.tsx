@@ -64,8 +64,9 @@ import { toast } from "sonner";
 
 import { ProductTableType } from "../actions/manage-get-all-products";
 import { updateProductStatus } from "../actions/admin-publish-product";
-import { managerDeleteProduct } from "../actions/manager-delete-product";
+
 import Link from "next/link";
+import { deleteProduct } from "../actions/manager-delete-product";
 
 interface ProductTableProps {
   data: ProductTableType;
@@ -137,7 +138,7 @@ export function ProductTable({ data }: ProductTableProps) {
 
   const handleDeleteProduct = () => {
     startDeleteTransition(async () => {
-      const result = await managerDeleteProduct(data.id);
+      const result = await deleteProduct(data.id);
 
       if (result.status === "success") {
         toast.success(
