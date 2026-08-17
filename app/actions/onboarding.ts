@@ -58,15 +58,13 @@ export async function setUserRole(formData: FormData) {
      */
 
     if (role === "Educator") {
-      const specialty = formData.get("specialty") as string;
-
       const experience = formData.get("experience") as string;
 
       const credentialUrl = formData.get("credentialUrl") as string;
 
       const description = formData.get("description") as string;
 
-      if (!specialty || !experience || !credentialUrl || !description) {
+      if (!experience || !credentialUrl || !description) {
         throw new Error("Educator information required");
       }
 
@@ -77,8 +75,6 @@ export async function setUserRole(formData: FormData) {
 
         data: {
           role: "Educator",
-
-          specialty,
 
           experience: Number(experience),
 
