@@ -9,10 +9,8 @@ export interface EducatorProfileData {
   name: string;
   email: string;
   imageUrl: string | null;
-  specialty: string | null;
   experience: number | null;
   description: string | null;
-  credentialUrl: string | null;
   verificationStatus: string | null;
 }
 
@@ -34,10 +32,8 @@ export async function getEducator(): Promise<EducatorProfileData> {
       name: true,
       email: true,
       imageUrl: true,
-      specialty: true,
       experience: true,
       description: true,
-      credentialUrl: true,
       verificationStatus: true,
     },
   });
@@ -58,10 +54,8 @@ export async function getEducator(): Promise<EducatorProfileData> {
 export async function updateEducatorProfile(data: {
   name: string;
   imageUrl: string;
-  specialty: string;
   experience: number;
   description: string;
-  credentialUrl: string;
 }) {
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -78,10 +72,9 @@ export async function updateEducatorProfile(data: {
     data: {
       name: data.name,
       imageUrl: data.imageUrl,
-      specialty: data.specialty,
+
       experience: data.experience,
       description: data.description,
-      credentialUrl: data.credentialUrl,
     },
   });
 
