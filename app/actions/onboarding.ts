@@ -59,13 +59,17 @@ export async function setUserRole(formData: FormData) {
 
     if (role === "Educator") {
       const experience = formData.get("experience") as string;
-
       const credentialUrl = formData.get("credentialUrl") as string;
-
       const description = formData.get("description") as string;
 
       if (!experience || !credentialUrl || !description) {
         throw new Error("Educator information required");
+      }
+
+      const experienceNumber = Number(experience);
+
+      if (!Number.isFinite(experienceNumber) || experienceNumber < 0) {
+        throw new Error("Please provide a valid number of years of experience");
       }
 
       await prisma.user.update({
@@ -75,8 +79,6 @@ export async function setUserRole(formData: FormData) {
 
         data: {
           role: "Educator",
-
-          experience: Number(experience),
 
           credentialUrl,
 
@@ -96,7 +98,6 @@ export async function setUserRole(formData: FormData) {
 
       return {
         success: true,
-
         redirect: "/educator/verification",
       };
     }
