@@ -12,16 +12,17 @@ export async function educatorGetCourse(productId: string) {
     where: {
       id: productId,
       userId: user.user.id,
+      type: "Course",
     },
     include: {
-      course: {
+      chapters: {
+        orderBy: {
+          position: "asc",
+        },
         include: {
-          chapter: {
-            orderBy: { position: "asc" },
-            include: {
-              lessons: {
-                orderBy: { position: "asc" },
-              },
+          lessons: {
+            orderBy: {
+              position: "asc",
             },
           },
         },
@@ -29,12 +30,14 @@ export async function educatorGetCourse(productId: string) {
     },
   });
 
-  if (!product) notFound();
+  if (!product) {
+    notFound();
+  }
 
   let imageUrl = "/images/no-image.jpeg";
 
-  if (product.course?.imageKey) {
-    const key = product.course.imageKey;
+  if (product.imageKey) {
+    const key = product.imageKey;
 
     // Check if the key stored in DB is already a full URL
     if (key.startsWith("http://") || key.startsWith("https://")) {
@@ -45,6 +48,7 @@ export async function educatorGetCourse(productId: string) {
         imageUrl = result.data[0]?.url ?? `https://utfs.io/f/${key}`;
       } catch (error) {
         console.error("Failed to fetch image URL from UploadThing:", error);
+
         imageUrl = `https://utfs.io/f/${key}`;
       }
     }
@@ -58,16 +62,23 @@ export async function educatorGetCourse(productId: string) {
     slug: product.slug,
     status: product.status,
     type: product.type,
-    fileKey: product.course?.imageKey ?? "",
+
+    // Course-specific fields are directly on Product
+    fileKey: product.imageKey ?? "",
     imageUrl,
-    duration: product.course?.duration ?? 0,
-    category: product.course?.category ?? "",
-    hasCourseRelation: !!product.course,
-    chapter: product.course?.chapter ?? [],
+    duration: product.duration ?? 0,
+    category: product.category ?? "",
+
+    // Product itself is the course
+    hasCourseRelation: product.type === "Course",
+
+    // Chapters belong directly to Product
+    chapters: product.chapters,
   };
 }
 
 export type EducatorCourseType = Awaited<ReturnType<typeof educatorGetCourse>>;
+
 export type AdminCourseSingularType = Awaited<
   ReturnType<typeof educatorGetCourse>
 >;
