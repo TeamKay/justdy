@@ -1,13 +1,13 @@
 import "server-only";
 
-import { requireAdmin } from "./require-manager";
 import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
+import { requireManager } from "./require-manager";
 
 export async function adminGetCourse(id: string) {
-  await requireAdmin();
+  await requireManager();
 
-  const data = await prisma.course.findUnique({
+  const data = await prisma.product.findUnique({
     where: {
       id: id,
     },
