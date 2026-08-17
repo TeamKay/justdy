@@ -32,14 +32,33 @@ export async function getEducatorById(id: string) {
         id,
         role: "Educator",
         verificationStatus: "Verified",
+        status: "Active",
       },
+
       select: {
         id: true,
         name: true,
-        image: true,
-        specialty: true,
-        experience: true,
-        description: true,
+        email: true,
+        imageUrl: true,
+        role: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        emailVerified: true,
+        phoneNumber: true,
+        onboardingCompleted: true,
+        lastLoginAt: true,
+        verificationStatus: true,
+
+        facilitatorProfile: {
+          select: {
+            specialty: true,
+            experience: true,
+            description: true,
+            credentialUrl: true,
+            verificationStatus: true,
+          },
+        },
       },
     });
 
@@ -51,16 +70,42 @@ export async function getEducatorById(id: string) {
       educator: {
         id: educator.id,
         name: educator.name,
-        imageUrl: educator.image ?? undefined,
-        specialty: educator.specialty,
-        experience: educator.experience,
-        description: educator.description,
+        email: educator.email,
+        imageUrl: educator.imageUrl,
+
+        role: educator.role,
+        status: educator.status,
+
+        createdAt: educator.createdAt,
+        updatedAt: educator.updatedAt,
+
+        emailVerified: educator.emailVerified,
+
+        phoneNumber: educator.phoneNumber,
+
+        onboardingCompleted: educator.onboardingCompleted,
+
+        lastLoginAt: educator.lastLoginAt,
+
+        verificationStatus: educator.verificationStatus,
+
+        specialty: educator.facilitatorProfile?.specialty ?? null,
+
+        experience: educator.facilitatorProfile?.experience ?? null,
+
+        description: educator.facilitatorProfile?.description ?? null,
+
+        credentialUrl: educator.facilitatorProfile?.credentialUrl ?? null,
       },
     };
   } catch (error) {
-    console.error("Failed to fetch educator details:", error);
+    console.error("GET EDUCATOR BY ID ERROR:", error);
 
-    throw new Error("Failed to fetch educator details");
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : "Failed to fetch educator details.",
+    );
   }
 }
 
