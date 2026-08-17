@@ -57,18 +57,29 @@ export async function setUserRole(formData: FormData) {
      */
 
     if (role === "Educator") {
-      const experience = formData.get("experience") as string;
+      const experience = formData.get("experience");
+      const credentialUrl = formData.get("credentialUrl");
+      const description = formData.get("description");
 
-      const credentialUrl = formData.get("credentialUrl") as string;
+      /*
+       * These fields are currently collected from the form, but
+       * they are NOT stored on User because they do not exist in
+       * the current Prisma User model.
+       *
+       * We still validate that the educator submitted them.
+       */
 
-      const description = formData.get("description") as string;
-
-      if (!experience || !credentialUrl || !description) {
+      if (
+        typeof experience !== "string" ||
+        typeof credentialUrl !== "string" ||
+        typeof description !== "string" ||
+        !experience ||
+        !credentialUrl ||
+        !description
+      ) {
         throw new Error("Educator information required");
       }
 
-      // Validate experience even though it is not currently
-      // stored on the User model.
       const experienceNumber = Number(experience);
 
       if (!Number.isFinite(experienceNumber) || experienceNumber < 0) {
@@ -81,7 +92,6 @@ export async function setUserRole(formData: FormData) {
         },
         data: {
           role: "Educator",
-          description,
           verificationStatus: "Pending",
           onboardingCompleted: true,
         },
