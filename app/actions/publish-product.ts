@@ -7,87 +7,136 @@ import { revalidatePath } from "next/cache";
 
 export async function PublishProduct(productId: string) {
   try {
-    // 1. Authenticate user session
+    // ============================================================
+    // 1. AUTHENTICATE USER
+    // ============================================================
+
     const session = await auth.api.getSession({
       headers: await headers(),
     });
 
     if (!session?.user?.id) {
-      return { success: false, error: "Unauthorized. Please log in." };
+      return {
+        success: false,
+        error: "Unauthorized. Please log in.",
+      };
     }
 
-    // 2. Fetch the product and verify ownership & course relations
+    // ============================================================
+    // 2. FETCH PRODUCT
+    // ============================================================
+    //
+    // A Course is now a Product with type = "Course".
+    // Chapters belong directly to Product.
+    // Lessons belong to Chapters.
+    //
+    // ============================================================
+
     const product = await prisma.product.findUnique({
       where: {
         id: productId,
         userId: session.user.id,
       },
       include: {
-        course: {
+        chapters: {
           include: {
-            chapter: {
-              include: {
-                lessons: true,
-              },
-            },
+            lessons: true,
           },
         },
       },
     });
 
     if (!product) {
-      return { success: false, error: "Product not found or access denied." };
+      return {
+        success: false,
+        error: "Product not found or access denied.",
+      };
     }
 
-    // 3. Server-side validation check
+    // ============================================================
+    // 3. BASIC PRODUCT VALIDATION
+    // ============================================================
+
     if (!product.title || product.title.trim() === "") {
-      return { success: false, error: "Course title is required." };
+      return {
+        success: false,
+        error: "Course title is required.",
+      };
     }
+
+    // ============================================================
+    // 4. COURSE VALIDATION
+    // ============================================================
 
     if (product.type === "Course") {
-      const chapters = product.course?.chapter || [];
+      const chapters = product.chapters ?? [];
+
       const totalLessons = chapters.reduce(
-        (acc, ch) => acc + (ch.lessons?.length || 0),
+        (total, chapter) => total + (chapter.lessons?.length ?? 0),
         0,
       );
+
+      // ----------------------------------------------------------
+      // At least one chapter
+      // ----------------------------------------------------------
 
       if (chapters.length === 0) {
         return {
           success: false,
-          error: "Course must have at least one chapter before submitting.",
+          error: "Course must have at least one chapter before publishing.",
         };
       }
+
+      // ----------------------------------------------------------
+      // At least one lesson
+      // ----------------------------------------------------------
 
       if (totalLessons === 0) {
         return {
           success: false,
-          error: "Course must have at least one lesson before submitting.",
+          error: "Course must have at least one lesson before publishing.",
         };
       }
     }
 
-    // 4. Update the status in Prisma
-    // Ensure "Pending" matches your Prisma Schema type (e.g. "Pending" or "PENDING")
+    // ============================================================
+    // 5. UPDATE PRODUCT STATUS
+    // ============================================================
+
     await prisma.product.update({
-      where: { id: productId },
+      where: {
+        id: productId,
+      },
       data: {
-        status: "Published", // Adjust capitalization to match your Prisma enum/string type
+        status: "Published",
       },
     });
 
-    // 5. Revalidate cache for the page
+    // ============================================================
+    // 6. REVALIDATE CACHE
+    // ============================================================
+
     revalidatePath(`/manage/products/${productId}/edit`);
+
     revalidatePath("/manage/products");
 
-    return { success: true };
-  } catch (err: unknown) {
-    console.error("Error publishing product for review:", err);
+    return {
+      success: true,
+    };
+  } catch (error: unknown) {
+    console.error("Error publishing product:", error);
 
-    if (err instanceof Error) {
-      return { success: false, error: err.message };
+    if (error instanceof Error) {
+      return {
+        success: false,
+        error: error.message,
+      };
     }
 
-    return { success: false, error: "An unexpected database error occurred." };
+    return {
+      success: false,
+      error: "An unexpected database error occurred.",
+    };
   }
 }
 
