@@ -1,10 +1,12 @@
-import { ReactNode } from "react";
-import { headers, cookies } from "next/headers"; // Added cookies
+import type { CSSProperties, ReactNode } from "react";
+import { headers, cookies } from "next/headers";
 import { redirect } from "next/navigation";
+
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
 import { SidebarInset, SidebarProvider } from "@/app/_components/ui/sidebar";
+
 import { AppSidebar } from "../_components/sidebar/dashboard-sidebar";
 import { SiteHeader } from "../_components/sidebar/header-welcome";
 
@@ -13,11 +15,18 @@ export default async function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
-  // Read sidebar cookie state for seamless hydration
+  // ============================================================
+  // SIDEBAR STATE
+  // ============================================================
+
   const cookieStore = await cookies();
+
   const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
 
-  // 1. Get session on the server
+  // ============================================================
+  // SERVER-SIDE AUTHENTICATION
+  // ============================================================
+
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -26,11 +35,17 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  // 2. Fetch user's roles & permissions
+  // ============================================================
+  // FETCH USER + ROLES + PERMISSIONS
+  // ============================================================
+
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: {
+      id: session.user.id,
+    },
     include: {
       facilitatorProfile: true,
+
       roles: {
         include: {
           role: {
@@ -51,57 +66,118 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  // 3. Extract roles safely
+  // ============================================================
+  // EXTRACT USER ROLES
+  // ============================================================
+
   const extractedRoles: string[] = [];
 
   if (user.role) {
     extractedRoles.push(user.role);
   }
 
+  // A user with a facilitator profile is also treated as an educator
   if (user.facilitatorProfile) {
     extractedRoles.push("educator");
   }
 
-  user.roles?.forEach((ur) => {
-    if (ur.role?.name) {
-      extractedRoles.push(ur.role.name);
+  user.roles?.forEach((userRole) => {
+    if (userRole.role?.name) {
+      extractedRoles.push(userRole.role.name);
     }
   });
 
+  // Normalize and remove duplicate roles
   const userRoles = Array.from(
-    new Set(extractedRoles.map((r) => r.toLowerCase())),
+    new Set(extractedRoles.map((role) => role.toLowerCase())),
   );
+
+  // ============================================================
+  // EXTRACT USER PERMISSIONS
+  // ============================================================
 
   const permissions = Array.from(
     new Set(
-      (user.roles ?? []).flatMap((ur) =>
-        (ur.role?.permissions ?? []).map((rp) => rp.permission.name),
+      (user.roles ?? []).flatMap((userRole) =>
+        (userRole.role?.permissions ?? []).map(
+          (rolePermission) => rolePermission.permission.name,
+        ),
       ),
     ),
   );
 
+  // ============================================================
+  // DASHBOARD LAYOUT
+  // ============================================================
+
   return (
     <SidebarProvider
       defaultOpen={defaultOpen}
+      className="min-h-svh bg-white text-gray-900"
       style={
         {
           "--sidebar-width": "16rem",
           "--header-height": "3.5rem",
-        } as React.CSSProperties
+        } as CSSProperties
       }
     >
+      {/* ========================================================
+          SIDEBAR
+      ======================================================== */}
+
       <AppSidebar
         variant="inset"
         userRoles={userRoles}
         permissions={permissions}
       />
-      <SidebarInset className="bg-[#0c0c0e] text-zinc-100 flex flex-col h-screen overflow-hidden">
-        {/* Fixed Site Header */}
+
+      {/* ========================================================
+          MAIN APPLICATION AREA
+      ======================================================== */}
+
+      <SidebarInset
+        className="
+          min-h-svh
+          bg-white
+          text-gray-900
+          flex
+          flex-col
+          overflow-hidden
+        "
+      >
+        {/* ======================================================
+            SITE HEADER
+        ====================================================== */}
+
         <SiteHeader userName={user.name ?? undefined} />
 
-        {/* ✅ FIXED: Changed <main> to <div> to prevent nested <main> elements */}
-        <div className="flex-1 flex flex-col overflow-y-auto w-full h-full">
-          <div className="flex-1 flex flex-col w-full h-full p-0 sm:p-0">
+        {/* ======================================================
+            SCROLLABLE CONTENT AREA
+        ====================================================== */}
+
+        <div
+          className="
+            flex-1
+            min-h-0
+            flex
+            flex-col
+            overflow-y-auto
+            overflow-x-hidden
+            w-full
+            bg-white
+          "
+        >
+          <div
+            className="
+              flex-1
+              flex
+              flex-col
+              w-full
+              min-h-full
+              bg-white
+              p-0
+            "
+          >
             {children}
           </div>
         </div>

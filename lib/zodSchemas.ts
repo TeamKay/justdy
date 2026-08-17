@@ -6,7 +6,18 @@ export const productStatus = [
   "Pending",
 ] as const;
 
-export const productType = ["Course", "Downloadable"] as const;
+export const productType = [
+  "Course",
+  "Worksheets",
+  "Workbooks",
+  "Planners",
+  "Journals",
+  "Templates",
+  "Checklists",
+  "Trackers",
+  "Guides",
+  "Bundles",
+] as const;
 export const courseCategories = ["Mathematics", "Writing", "Reading"] as const;
 
 export const loginSchema = z.object({
@@ -37,43 +48,15 @@ export const productSchema = z.object({
   price: z.coerce
     .number()
     .min(1, { message: "Price must be a positive number" }),
+  printedPrice: z.number().nonnegative().optional(),
   type: z.enum(productType, { message: "Type is required" }),
-  smallDescription: z
-    .string()
-    .min(3, { message: "Small description must be at least 3 characters long" })
-    .max(200, {
-      message: "Small description must be at most 200 characters long",
-    }),
   slug: z
     .string()
     .min(3, { message: "Slug must be at least 3 characters long" }),
   status: z.enum(productStatus, { message: "Status is required" }),
-});
-
-export const courseSchema = z.object({
-  title: z
-    .string()
-    .min(3, { message: "Title must be at least 3 characters long" })
-    .max(100, { message: "Title must be at most 100 characters long" }),
-  description: z
-    .string()
-    .min(3, { message: "Description must be at least 3 characters long" }),
   fileKey: z.string().optional(),
-
-  price: z.coerce
-    .number()
-    .min(1, { message: "Price must be a positive number" }),
-  duration: z.coerce.number().positive().nullable().optional(),
-  category: z.enum(courseCategories, { message: "Category is required" }),
-  smallDescription: z
-    .string()
-    .min(3, { message: "Small description must be at least 3 characters long" })
-    .max(200, {
-      message: "Small description must be at most 200 characters long",
-    }),
-  slug: z
-    .string()
-    .min(3, { message: "Slug must be at least 3 characters long" }),
+  duration: z.coerce.number().optional().nullable(),
+  category: z.enum(courseCategories).optional().or(z.literal("")),
 });
 
 export const chapterSchema = z.object({
@@ -127,7 +110,6 @@ export const packagesSchema = z.object({
 });
 
 export type ProductSchemaType = z.output<typeof productSchema>;
-export type CourseSchemaType = z.output<typeof courseSchema>;
 export type ChapterSchemaType = z.infer<typeof chapterSchema>;
 export type LessonSchemaType = z.infer<typeof lessonSchema>;
 export type SettingsSchemaType = z.infer<typeof settingsSchema>;

@@ -1,31 +1,31 @@
 import "server-only";
 
 import prisma from "@/lib/prisma";
-import { requireAdmin } from "./require-admin";
+import { requireAdmin } from "./require-manager";
 import { notFound } from "next/navigation";
 
-export async function adminGetLesson(id: string){
-    await requireAdmin();
+export async function adminGetLesson(id: string) {
+  await requireAdmin();
 
-    const data = await prisma.lesson.findUnique({
-        where: {
-            id: id,
-        },
-        select: {
-            title: true,
-            videoKey: true,
-            thumbnailKey: true,
-            description: true,
-            id: true,
-            position: true,
-        },
-    });
+  const data = await prisma.lesson.findUnique({
+    where: {
+      id: id,
+    },
+    select: {
+      title: true,
+      videoKey: true,
+      thumbnailKey: true,
+      description: true,
+      id: true,
+      position: true,
+    },
+  });
 
-    if(!data){
-        return notFound();
-    }
+  if (!data) {
+    return notFound();
+  }
 
-    return data;
+  return data;
 }
 
 export type AdminLessonType = Awaited<ReturnType<typeof adminGetLesson>>;

@@ -13,7 +13,7 @@ export default function MyLogo() {
         className={clsx(
           "flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-md transition-all duration-300 ease-in-out border border-transparent",
           "active:scale-95",
-          "hover:bg-accent/40 hover:backdrop-blur-sm hover:border-accent/50 hover:shadow-sm",
+          "",
         )}
       >
         {/* 2. Use the renamed variable here */}

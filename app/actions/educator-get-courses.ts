@@ -1,9 +1,9 @@
 import "server-only";
 
 import prisma from "@/lib/prisma";
-import { requireEducator } from "./require-educator";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { requireManager } from "./require-manager";
 
 export async function educatorGetCourses() {
   const session = await auth.api.getSession({
@@ -11,7 +11,7 @@ export async function educatorGetCourses() {
   });
   const userId = session?.user?.id;
 
-  await requireEducator();
+  await requireManager();
   if (!userId) throw new Error("Unauthorized");
 
   const data = await prisma.product.findMany({
@@ -20,8 +20,6 @@ export async function educatorGetCourses() {
     select: {
       id: true,
       title: true,
-      smallDescription: true,
-
       category: true,
       status: true,
       price: true,

@@ -19,12 +19,13 @@ import {
 } from "@/app/_components/ui/form";
 import { Input } from "@/app/_components/ui/input";
 import { RichTextEditor } from "@/app/_components/rich-text-editor/Editor";
-import { updateLesson } from "../actions/update-lesson";
+
 import { ImageUploader, VideoUploader } from "./file-uploader/Uploader";
-import { EducatorLessonType } from "../actions/educator-get-lesson";
+import { EducatorLessonType } from "../actions/manage-get-lesson";
 import { Separator } from "@/app/_components/ui/separator";
 import { tryCatch } from "@/hooks/try-catch";
 import { useRouter } from "next/navigation";
+import { updateLesson } from "../actions/manage-update-lesson";
 
 interface iAppProps {
   data: EducatorLessonType;
@@ -74,7 +75,7 @@ export function LessonForm({ productId, chapterId, data }: iAppProps) {
         <div className="flex items-center gap-3">
           <Link
             className={buttonVariants({ variant: "ghost", size: "icon" })}
-            href={`/dashboard/educator/products/${productId}/edit`}
+            href={`/manage/products/${productId}/edit`}
           >
             <ArrowLeft className="size-5" />
           </Link>

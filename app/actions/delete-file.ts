@@ -1,12 +1,12 @@
 "use server";
 
 import { UTApi } from "uploadthing/server";
-import { requireEducator } from "./require-educator";
+import { requireManager } from "./require-manager";
 
 const utapi = new UTApi();
 
 export async function deleteUTFile(fileKey: string) {
-  await requireEducator();
+  await requireManager();
   try {
     await utapi.deleteFiles(fileKey);
     return { success: true };

@@ -1,46 +1,112 @@
 "use client";
 
-import { CourseSidebarDataType } from "@/app/actions/get-course-sidebar-data";
 import { useMemo } from "react";
 
-interface iAppProps {
-    courseData: CourseSidebarDataType["course"]
+interface LessonProgress {
+  id: string;
+  completed: boolean;
+  lessonId: string;
+}
+
+interface Lesson {
+  id: string;
+  title?: string | null;
+  description?: string | null;
+  thumbnailKey?: string | null;
+  videoKey?: string | null;
+  position?: number;
+  lessonProgress: LessonProgress[];
+}
+
+interface Chapter {
+  id: string;
+  title?: string | null;
+  position?: number;
+  lessons: Lesson[];
+}
+
+interface CourseData {
+  id: string;
+  title: string;
+  description?: string | null;
+  fileKey?: string | null;
+  category?: string | null;
+  duration?: number | null;
+  slug: string;
+  imageKey?: string | null;
+  chapters: Chapter[];
 }
 
 interface CourseProgressResult {
-    totalLessons: number;
-    completedLessons: number;
-    progressPercentage: number;
+  totalLessons: number;
+  completedLessons: number;
+  progressPercentage: number;
 }
 
-export function useCourseProgress({courseData}: iAppProps): CourseProgressResult{
-    return useMemo(() => {
-        let totalLessons = 0;
-        let completedLessons = 0;
+interface IAppProps {
+  courseData: CourseData;
+}
 
+export function useCourseProgress({
+  courseData,
+}: IAppProps): CourseProgressResult {
+  return useMemo(() => {
+    let totalLessons = 0;
+    let completedLessons = 0;
 
-        courseData.chapter.forEach((chapter) => {
-            chapter.lessons.forEach((lesson) => {
-                totalLessons++;
+    // ----------------------------------------------------------
+    // SAFETY CHECK
+    // ----------------------------------------------------------
 
-                //check if lesson is completed
-                const isCompleted = lesson.lessonProgress.some(
-                    (progress) => progress.lessonId === lesson.id && progress.completed
+    if (!courseData?.chapters) {
+      return {
+        totalLessons: 0,
+        completedLessons: 0,
+        progressPercentage: 0,
+      };
+    }
 
-                );
+    // ----------------------------------------------------------
+    // CALCULATE LESSON PROGRESS
+    // ----------------------------------------------------------
 
-                if(isCompleted){
-                    completedLessons++;
-                }
-            });
-        });
+    courseData.chapters.forEach((chapter) => {
+      if (!chapter?.lessons) {
+        return;
+      }
 
-        const progressPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+      chapter.lessons.forEach((lesson) => {
+        totalLessons++;
 
-        return {
-            totalLessons,
-            completedLessons,
-            progressPercentage,
+        const isCompleted =
+          lesson.lessonProgress?.some(
+            (progress) =>
+              progress.lessonId === lesson.id && progress.completed === true,
+          ) ?? false;
+
+        if (isCompleted) {
+          completedLessons++;
         }
-    }, [courseData]);
+      });
+    });
+
+    // ----------------------------------------------------------
+    // CALCULATE PERCENTAGE
+    // ----------------------------------------------------------
+
+    const progressPercentage =
+      totalLessons > 0
+        ? Math.round((completedLessons / totalLessons) * 100)
+        : 0;
+
+    // ----------------------------------------------------------
+    // RETURN
+    // ----------------------------------------------------------
+
+    return {
+      totalLessons,
+      completedLessons,
+      progressPercentage,
+    };
+  }, [courseData]);
 }

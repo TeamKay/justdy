@@ -1,12 +1,12 @@
 import prisma from "@/lib/prisma";
-import { requireEducator } from "./require-educator";
 import { notFound } from "next/navigation";
 import { UTApi } from "uploadthing/server";
+import { requireManager } from "./require-manager";
 
 const utapi = new UTApi();
 
 export async function educatorGetCourse(productId: string) {
-  const user = await requireEducator();
+  const user = await requireManager();
 
   const product = await prisma.product.findFirst({
     where: {
@@ -54,7 +54,6 @@ export async function educatorGetCourse(productId: string) {
     id: product.id,
     title: product.title,
     description: product.description,
-    smallDescription: product.smallDescription,
     price: product.price,
     slug: product.slug,
     status: product.status,

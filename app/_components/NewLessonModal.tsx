@@ -25,7 +25,7 @@ import {
   FormMessage,
 } from "@/app/_components/ui/form";
 import { Input } from "@/app/_components/ui/input";
-import { createLesson } from "../actions/educator-edit-course";
+import { createLesson } from "../actions/manager-edit-course";
 import { useRouter } from "next/navigation";
 
 export function NewLessonModal({

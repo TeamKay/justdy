@@ -1,122 +1,173 @@
 import { PublicProductCard } from "./PublicProductCard";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 
 export default async function FeaturedProducts() {
-  // Query top 5 latest published digital products from the main Product table
-  const products = await prisma.product.findMany({
+  const productTypes = await prisma.product.groupBy({
+    by: ["type"],
     where: {
-      type: "Downloadable",
       status: "Published",
     },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: 5,
-    select: {
-      id: true,
-      title: true,
-      smallDescription: true,
-      price: true,
-      type: true,
-      slug: true,
-      status: true,
-      user: {
-        select: {
-          name: true,
+  });
+
+  const productsByType = await Promise.all(
+    productTypes.map(async ({ type }) => {
+      const products = await prisma.product.findMany({
+        where: {
+          type,
+          status: "Published",
         },
-      },
-      digitalProduct: {
+
+        orderBy: {
+          createdAt: "desc",
+        },
+
+        take: 7,
+
         select: {
+          id: true,
+          title: true,
+          description: true,
+          price: true,
+          type: true,
+          slug: true,
+          status: true,
+
+          // IMPORTANT:
+          // Course products store their main image here.
+          imageKey: true,
+
+          // Digital products store their images here.
           images: {
-            orderBy: { position: "asc" },
+            orderBy: {
+              position: "asc",
+            },
             select: {
               imageKey: true,
             },
           },
+
+          user: {
+            select: {
+              name: true,
+            },
+          },
         },
-      },
-    },
-  });
+      });
 
-  // Map the DB response into the shape PublicProductCard expects
-  const digitalproducts = products.map((product) => {
-    const primaryImageKey = product.digitalProduct?.images?.[0]?.imageKey;
+      return {
+        type,
+        products,
+      };
+    }),
+  );
 
-    return {
-      id: product.id,
-      imageKey: primaryImageKey || null,
-      duration: null, // Digital products don't have course duration
-      category: "Digital Product", // Hardcoded fallback since category isn't on Product
-      product: {
-        title: product.title,
-        smallDescription: product.smallDescription ?? "",
-        price: product.price ?? 0,
-        slug: product.slug,
-        status: product.status,
-      },
-    };
-  });
+  const sections = productsByType.filter(
+    (section) => section.products.length > 0,
+  );
 
   return (
-    <section className="py-0 mb-5 mt-10">
-      <div className="max-w-8xl mx-auto px-4 md:px-6 lg:px-20 w-full">
-        {/* Header containing Title & Navigation Button */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-3">
-          <div>
-            <h2 className="text-2xl sm:text-xl font-bold tracking-tight text-white/70">
-              Featured Products
-            </h2>
-          </div>
+    <section className="py-0 bg-background pb-20">
+      <div className="max-w-8xl mx-auto px-6 sm:px-6 md:px-28 lg:px-28">
+        <div className="space-y-10">
+          {sections.map(({ type, products }) => {
+            const formattedProducts = products.map((product) => {
+              /*
+               * ============================================================
+               * DETERMINE PRODUCT IMAGE
+               * ============================================================
+               *
+               * COURSE:
+               *   Product.imageKey
+               *
+               * DIGITAL PRODUCT:
+               *   Product.images[0].imageKey
+               *
+               * We normalize both into digitalProductImages so the
+               * PublicProductCard can use the same property for every
+               * product type.
+               */
 
-          <Link href="/digital-products">
-            <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-purple-400 hover:text-purple-300 border border-purple-500/20 hover:border-purple-500/40 bg-purple-500/5 hover:bg-purple-500/10 rounded-xl transition-all active:scale-95 cursor-pointer whitespace-nowrap">
-              All Digital Products
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </Link>
+              const productImages =
+                product.type === "Course"
+                  ? product.imageKey
+                    ? [product.imageKey]
+                    : []
+                  : (product.images ?? []).map((image) => image.imageKey);
+
+              return {
+                id: product.id,
+                title: product.title,
+                description: product.description ?? "",
+                status: product.status,
+                type: product.type,
+                price: (product.price ?? 0) / 100,
+                slug: product.slug,
+
+                duration: 0,
+                fileKey: "",
+
+                educatorName: product.user?.name || "Unknown Educator",
+
+                mainVideoUrl: null,
+
+                /*
+                 * For courses this contains exactly ONE image.
+                 * For workbooks/digital products this contains
+                 * the gallery images in position order.
+                 */
+                digitalProductImages: productImages,
+              };
+            });
+
+            return (
+              <div key={type}>
+                {/* ==========================================================
+                    SECTION HEADER
+                ========================================================== */}
+
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-xl sm:text-xl font-semibold tracking-tight text-blue-500">
+                    {type}
+                  </h2>
+
+                  <Link
+                    href={`/products?type=${encodeURIComponent(type)}`}
+                    className="px-5 py-1.5 text-sm font-medium bg-[#857938] text-white hover:bg-blue-500 hover:text-white rounded-md transition-all cursor-pointer"
+                  >
+                    View all
+                  </Link>
+                </div>
+
+                {/* ==========================================================
+                    PRODUCT GRID
+                ========================================================== */}
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                  {formattedProducts.map((product) => (
+                    <div key={product.id} className="min-w-0">
+                      <PublicProductCard data={product} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        {/* Cards Grid / Empty State */}
-        {digitalproducts.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 auto-cols-fr">
-            {digitalproducts.map((product) => (
-              <PublicProductCard key={product.id} data={product} />
-            ))}
-          </div>
-        ) : (
-          <div className="max-w-2xl mx-auto mt-8 py-12 md:py-16 rounded-2xl border border-purple-500/10 bg-slate-950/20 text-center shadow-sm backdrop-blur-md">
-            <div className="relative z-10 flex flex-col items-center px-6">
-              {/* Icon */}
-              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/10 border border-purple-500/20">
-                <svg
-                  className="h-6 w-6 text-purple-400"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 6v6l4 2"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
+        {/* ================================================================
+            EMPTY STATE
+        ================================================================ */}
 
-              <h3 className="text-xl font-semibold text-white">
-                No digital products published yet
+        {sections.length === 0 && (
+          <div className="max-w-2xl mx-auto py-12 rounded-md border border-slate-200 bg-white text-center shadow-sm">
+            <div className="flex flex-col items-center px-6">
+              <h3 className="text-lg font-semibold text-slate-900">
+                No products published yet
               </h3>
 
-              <p className="mt-2 text-sm text-slate-400 max-w-md leading-relaxed">
-                New digital products are on the way. Check back soon or explore
-                our other available resources.
+              <p className="mt-1 text-sm text-slate-500">
+                New products are on the way. Check back soon.
               </p>
             </div>
           </div>
@@ -129,75 +180,126 @@ export default async function FeaturedProducts() {
 // import { PublicProductCard } from "./PublicProductCard";
 // import prisma from "@/lib/prisma";
 // import Link from "next/link";
-// import { ArrowRight } from "lucide-react";
 
-// export default async function LatestDigitalProducts() {
-//   const digitalproducts = await prisma.digitalProduct.findMany({
+// export default async function FeaturedProducts() {
+//   const productTypes = await prisma.product.groupBy({
+//     by: ["type"],
 //     where: {
 //       status: "Published",
 //     },
-//     orderBy: [{ createdAt: "desc" }],
-//     take: 5,
 //   });
 
-//   return (
-//     <section className="py-0 mb-5 mt-10">
-//       <div className="max-w-8xl mx-auto px-4  md:px-6 lg:px-20 w-full">
-//         {/* Header containing Title & Navigation Button */}
-//         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-3">
-//           <div>
-//             <h2 className="text-2xl sm:text-2xl font-bold tracking-tight text-white">
-//               Digital Products
-//             </h2>
-//           </div>
+//   const productsByType = await Promise.all(
+//     productTypes.map(async ({ type }) => {
+//       const products = await prisma.product.findMany({
+//         where: {
+//           type,
+//           status: "Published",
+//         },
 
-//           <Link href="/courses">
-//             <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-purple-400 hover:text-purple-300 border border-purple-500/20 hover:border-purple-500/40 bg-purple-500/5 hover:bg-purple-500/10 rounded-xl transition-all active:scale-95 cursor-pointer whitespace-nowrap">
-//               All Digital Products
-//               <ArrowRight className="w-4 h-4" />
-//             </button>
-//           </Link>
+//         orderBy: {
+//           createdAt: "desc",
+//         },
+
+//         take: 7,
+
+//         select: {
+//           id: true,
+//           title: true,
+//           description: true,
+//           price: true,
+//           type: true,
+//           slug: true,
+//           status: true,
+//           user: {
+//             select: {
+//               name: true,
+//             },
+//           },
+//           images: {
+//             orderBy: {
+//               position: "asc",
+//             },
+//             select: {
+//               imageKey: true,
+//             },
+//           },
+//         },
+//       });
+
+//       return {
+//         type,
+//         products,
+//       };
+//     }),
+//   );
+
+//   const sections = productsByType.filter(
+//     (section) => section.products.length > 0,
+//   );
+
+//   return (
+//     <section className="py-0 bg-background pb-20">
+//       <div className="max-w-8xl mx-auto px-6 sm:px-6 md:px-28 lg:px-28">
+//         <div className="space-y-10">
+//           {sections.map(({ type, products }) => {
+//             const formattedProducts = products.map((product) => ({
+//               id: product.id,
+//               title: product.title,
+//               description: product.description ?? "",
+//               status: product.status,
+//               type: product.type,
+//               price: (product.price ?? 0) / 100,
+//               slug: product.slug,
+//               duration: 0,
+//               fileKey: "",
+//               educatorName: product.user?.name || "Unknown Educator",
+//               mainVideoUrl: null,
+//               digitalProductImages:
+//                 product.images.map(
+//                   (image: { imageKey: string }) => image.imageKey,
+//                 ) ?? [],
+//             }));
+
+//             return (
+//               <div key={type}>
+//                 {/* Section Header */}
+//                 <div className="flex items-center justify-between mb-3">
+//                   <h2 className="text-xl sm:text-xl font-semibold tracking-tight text-blue-500">
+//                     {type}
+//                   </h2>
+
+//                   <Link
+//                     href={`/products?type=${encodeURIComponent(type)}`}
+//                     className="px-5 py-1.5 text-sm font-medium bg-[#857938] text-white hover:bg-blue-500 hover:text-white rounded-md transition-all cursor-pointer"
+//                   >
+//                     View all
+//                   </Link>
+//                 </div>
+
+//                 {/* 7 Products Per Row */}
+//                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
+//                   {formattedProducts.map((product) => (
+//                     <div key={product.id} className="min-w-0">
+//                       <PublicProductCard data={product} />
+//                     </div>
+//                   ))}
+//                 </div>
+//               </div>
+//             );
+//           })}
 //         </div>
 
-//         {/* Cards Grid / Empty State */}
-//         {digitalproducts.length > 0 ? (
-//           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 auto-cols-fr">
-//             {digitalproducts.map((product) => (
-//               <PublicProductCard key={product.id} data={product} />
-//             ))}
-//           </div>
-//         ) : (
-//           <div className="max-w-2xl mx-auto mt-8 py-12 md:py-16 rounded-2xl border border-purple-500/10 bg-slate-950/20 text-center shadow-sm backdrop-blur-md">
-//             <div className="relative z-10 flex flex-col items-center px-6">
-//               {/* Icon */}
-//               <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/10 border border-purple-500/20">
-//                 <svg
-//                   className="h-6 w-6 text-purple-400"
-//                   fill="none"
-//                   stroke="currentColor"
-//                   strokeWidth="1.5"
-//                   viewBox="0 0 24 24"
-//                 >
-//                   <path
-//                     strokeLinecap="round"
-//                     strokeLinejoin="round"
-//                     d="M12 6v6l4 2"
-//                   />
-//                   <path
-//                     strokeLinecap="round"
-//                     strokeLinejoin="round"
-//                     d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-//                   />
-//                 </svg>
-//               </div>
-
-//               <h3 className="text-xl font-semibold text-white">
-//                 No courses published yet
+//         {/* Empty State */}
+//         {sections.length === 0 && (
+//           <div className="max-w-2xl mx-auto py-12 rounded-md border border-slate-200 bg-white text-center shadow-sm">
+//             <div className="flex flex-col items-center px-6">
+//               <h3 className="text-lg font-semibold text-slate-900">
+//                 No products published yet
 //               </h3>
 
-//               <p className="mt-2 text-sm text-slate-400 max-w-md leading-relaxed">
-//                 New learning content is on the way. Check back soon or explore
-//                 all available categories.
+//               <p className="mt-1 text-sm text-slate-500">
+//                 New products are on the way. Check back soon.
 //               </p>
 //             </div>
 //           </div>

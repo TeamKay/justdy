@@ -30,6 +30,7 @@ interface YouTubeApiItem {
     publishedAt: string;
     thumbnails: {
       maxres?: YouTubeThumbnail;
+      standard?: YouTubeThumbnail;
       high?: YouTubeThumbnail;
       medium?: YouTubeThumbnail;
     };
@@ -62,10 +63,9 @@ async function getLatestVideos(): Promise<YouTubeVideo[]> {
   }
 
   try {
-    // Search endpoint gets the 3 latest public videos from the channel
     const searchRes = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${CHANNEL_ID}&part=snippet,id&order=date&type=video&maxResults=3`,
-      { next: { revalidate: 3600 } }, // Cache results for 1 hour
+      `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${CHANNEL_ID}&part=snippet,id&order=date&type=video&maxResults=5`,
+      { next: { revalidate: 3600 } },
     );
 
     if (!searchRes.ok) {
@@ -78,7 +78,6 @@ async function getLatestVideos(): Promise<YouTubeVideo[]> {
 
     if (videoItems.length === 0) return [];
 
-    // Fetch view statistics for the 3 videos in a single request
     const videoIds = videoItems.map((item) => item.id.videoId).join(",");
     const statsRes = await fetch(
       `https://www.googleapis.com/youtube/v3/videos?key=${YOUTUBE_API_KEY}&id=${videoIds}&part=statistics`,
@@ -97,15 +96,18 @@ async function getLatestVideos(): Promise<YouTubeVideo[]> {
 
     return videoItems.map((item: YouTubeApiItem) => {
       const vId = item.id.videoId;
+
+      // Fallback directly to maxresdefault URL or standard/high to ensure 16:9 ratio without built-in YouTube letterboxing
+      const thumbnailUrl =
+        item.snippet.thumbnails.maxres?.url ||
+        item.snippet.thumbnails.standard?.url ||
+        `https://i.ytimg.com/vi/${vId}/maxresdefault.jpg`;
+
       return {
         id: vId,
         title: decodeHtmlEntities(item.snippet.title),
         description: decodeHtmlEntities(item.snippet.description),
-        thumbnail:
-          item.snippet.thumbnails.maxres?.url ||
-          item.snippet.thumbnails.high?.url ||
-          item.snippet.thumbnails.medium?.url ||
-          "",
+        thumbnail: thumbnailUrl,
         publishedAt: new Date(item.snippet.publishedAt).toLocaleDateString(
           "en-US",
           {
@@ -125,7 +127,6 @@ async function getLatestVideos(): Promise<YouTubeVideo[]> {
 export default async function FreeVideos() {
   const tutorials = await getLatestVideos();
 
-  // Hide the section completely if no videos are returned
   if (!tutorials || tutorials.length === 0) {
     return null;
   }
@@ -133,13 +134,13 @@ export default async function FreeVideos() {
   return (
     <section
       id="free-tutorials"
-      className="py-12 bg-background relative overflow-hidden "
+      className="py-12 bg-background relative overflow-hidden"
     >
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
+      <div className="max-w-8xl mx-auto px-6 lg:px-28 relative z-10">
         {/* Header Row */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-3 gap-6">
           <div>
-            <h2 className="text-2xl md:text-3xl font-extrabold text-slate-400 tracking-tight">
+            <h2 className="text-xl sm:text-xl font-semibold tracking-tight text-slate-400">
               Latest Video Lessons
             </h2>
           </div>
@@ -153,17 +154,17 @@ export default async function FreeVideos() {
           </Link>
         </div>
 
-        {/* Video Cards Grid - 3 Columns */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Video Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
           {tutorials.map((video) => (
             <Link
               key={video.id}
               href={`/videos/${video.id}`}
-              className="group relative rounded-2xl bg-emerald-900/10 border border-slate-800 p-3 shadow-sm hover:border-slate-700 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
+              className="group relative rounded-md bg-emerald-900/10 border border-slate-600 shadow-sm hover:border-slate-700 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between overflow-hidden"
             >
               <div>
-                {/* Video Thumbnail Container */}
-                <div className="relative rounded-xl bg-slate-950 h-44 w-full flex items-center justify-center overflow-hidden border border-slate-800/80">
+                {/* Fixed Video Thumbnail Container (Aspect-Video instead of h-44) */}
+                <div className="relative rounded-t-md bg-slate-950 aspect-video w-full flex items-center justify-center overflow-hidden border-b border-slate-800/80">
                   {video.thumbnail ? (
                     <Image
                       src={video.thumbnail}
@@ -191,10 +192,10 @@ export default async function FreeVideos() {
 
                 {/* Content */}
                 <div className="p-3 pt-4">
-                  <h3 className="font-bold text-white text-sm leading-snug group-hover:text-emerald-400 transition-colors line-clamp-2">
+                  <h3 className="font-bold text-white text-sm leading-snug group-hover:text-emerald-400 transition-colors line-clamp-1">
                     {video.title}
                   </h3>
-                  <p className="mt-1.5 text-slate-400 text-xs leading-relaxed font-normal line-clamp-2">
+                  <p className="mt-1.5 text-slate-400 text-xs leading-relaxed font-normal line-clamp-1">
                     {video.description || "Watch full tutorial."}
                   </p>
                 </div>

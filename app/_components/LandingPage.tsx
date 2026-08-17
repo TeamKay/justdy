@@ -1,119 +1,199 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import {
-  ArrowRight,
-  Calendar,
-  BookOpen,
-  Download,
-  Youtube,
-  ChevronRight,
-  Video,
-} from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowRight, Sparkles, Compass, Check } from "lucide-react";
 import Link from "next/link";
-import React from "react";
+import Image from "next/image";
 
-export default function LandingPage() {
-  const features = [
-    {
-      icon: BookOpen,
-      text: "HD Live Sessions",
-    },
-    {
-      icon: Calendar,
-      text: "10+ Interactive Courses",
-    },
-    {
-      icon: Download,
-      text: "Downloadable Digital Resources",
-    },
-    {
-      icon: Video,
-      text: "20+ Free Video Lessons",
-    },
-  ];
+interface LandingPageProps {
+  uploadthingImages?: string[];
+}
+
+const CAROUSEL_IMAGES = [
+  {
+    url: "https://images.unsplash.com/photo-1509228468518-180dd4864904?q=80&w=1200&auto=format&fit=crop",
+    alt: "Online math tutoring and digital workspace products",
+  },
+  {
+    url: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=1200&auto=format&fit=crop",
+    alt: "Printable workbooks and study planners for students",
+  },
+  {
+    url: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200&auto=format&fit=crop",
+    alt: "Interactive digital learning sessions and online tutoring",
+  },
+];
+
+export default function LandingPageClient({}: LandingPageProps) {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentImageIndex(
+        (prevIndex) => (prevIndex + 1) % CAROUSEL_IMAGES.length,
+      );
+    }, 4500);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
-    <section className="relative pt-24 pb-20 md:pt-32 md:pb-17 bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-slate-100/80 via-slate-50/50 to-white overflow-hidden">
-      {/* Background Decorative Grid */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px] mask-[radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
+    <div className="text-slate-900 font-sans antialiased overflow-x-hidden relative selection:bg-emerald-500 selection:text-white">
+      {/* SaaS Background Ambient Light & Fine Dot Grid */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Crisp Dot Pattern */}
+        <div
+          className="absolute inset-0 bg-[radial-gradient(#000_0px,transparent_1px)] bg-size-[15px_15px]"
+          style={{
+            maskImage:
+              "radial-gradient(ellipse 60% 50% at 50% 0%, #000 70%, transparent 100%)",
+            WebkitMaskImage:
+              "radial-gradient(ellipse 60% 50% at 50% 0%, #000 70%, transparent 100%)",
+          }}
+        />
+      </div>
 
-      <div className="max-w-7xl mx-auto px-6 relative z-10 text-center">
-        {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md border border-slate-200/80 bg-white/80 backdrop-blur-md text-slate-700 text-xs font-semibold shadow-xs mb-8 transition-colors hover:border-slate-300">
-          <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-slate-800">
-            All-in-One Educational Platform
-          </span>
-          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-        </div>
+      {/* Main Container - Dual Banner Layout maintaining exact dimensions */}
+      <main className="relative z-10 max-w-8xl mx-auto px-4 sm:px-6 lg:px-28 pt-5 pb-5">
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-8 items-stretch">
+          <div className="relative rounded-md bg-linear-to-br bg-emerald-900/20 border border-emerald-500/20 text-white p-0 sm:p-8 overflow-hidden shadow-2xl shadow-emerald-950/20 flex flex-col justify-between">
+            {/* SaaS Ambient Glow Effects */}
+            <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-emerald-500/10 pointer-events-none blur-3xl" />
+            <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-teal-500/10 pointer-events-none blur-3xl" />
 
-        {/* Headline */}
-        <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-400 max-w-4xl mx-auto leading-[1.08] mt-5">
-          Courses, Live Sessions &{" "}
-          <span className="bg-linear-to-r from-slate-200 via-slate-700 to-slate-100 bg-clip-text text-transparent underline decoration-slate-300 decoration-2 underline-offset-8">
-            Premium Resources
-          </span>
-        </h1>
+            {/* Right Side: Enhanced Beautiful Slanted Diagonal Image Carousel Filling the Right Edge */}
+            <div className="absolute right-0 top-0 bottom-0 w-[55%] z-20 hidden sm:flex items-center justify-end pointer-events-none">
+              <div
+                className="relative w-full h-full overflow-hidden shadow-2xl bg-slate-900"
+                style={{
+                  clipPath: "polygon(30% 0%, 100% 0%, 100% 100%, 0% 100%)",
+                }}
+              >
+                {/* Image overlay gradient for depth and clarity */}
+                <div className="absolute inset-0 bg-linear-to-r from-slate-950/95 via-slate-950/30 to-transparent z-10" />
 
-        {/* Subheadline */}
-        <p className="mt-6 text-base md:text-xl text-slate-600 max-w-2xl mx-auto font-normal leading-relaxed">
-          From structured online courses and 1-on-1 expert consultations to
-          downloadable digital assets and free video tutorials—everything you
-          need in one place.
-        </p>
+                {CAROUSEL_IMAGES.map((img, index) => (
+                  <div
+                    key={img.url}
+                    className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                      index === currentImageIndex
+                        ? "opacity-100 z-1"
+                        : "opacity-0 z-0"
+                    }`}
+                  >
+                    <Image
+                      src={img.url}
+                      alt={img.alt}
+                      fill
+                      priority={index === 0}
+                      className="object-cover object-center transform scale-105"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
 
-        {/* CTAs */}
-        <div className="mt-20 flex flex-col sm:flex-row items-center justify-center gap-3.5 ">
-          <Button
-            asChild
-            size="lg"
-            className="h-12 px-14 py-2 text-sm font-semibold text-white bg-[#857938] rounded-md hover:bg-blue-700 transition shadow-sm"
-          >
-            <Link href="/products" className="flex items-center gap-2">
-              Explore Products <ArrowRight className="w-4 h-4" />
-            </Link>
-          </Button>
-          <Button
-            asChild
-            variant="outline"
-            size="lg"
-            className="h-12 px-10 rounded-md text-xs font-semibold border-slate-200 bg-white hover:bg-slate-50 text-yellow-200 transition-all shadow-xs"
-          >
-            <Link href="/videos" className="flex items-center gap-2">
-              <Youtube className="w-4 h-4 text-red-600 fill-red-600/10" />
-              Watch Free Lessons
-            </Link>
-          </Button>
-        </div>
+            {/* Floating Badges Aligned Horizontally on Top of the Right-Side Slanted Image */}
+            <div className="absolute right-8 lg:right-30 bottom-6 z-30 hidden lg:flex items-center gap-3 pointer-events-auto">
+              <div className="bg-slate-900/60 backdrop-blur-2xl border border-emerald-500/40 px-6 py-3 rounded-xl shadow-2xl text-white flex items-center gap-3 transition-transform hover:scale-105 duration-300">
+                <div className="p-2 rounded-lg bg-emerald-500/25 text-emerald-400 shadow-inner">
+                  <Sparkles className="size-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white tracking-wide">
+                    Top Rated
+                  </div>
+                  <p className="text-[11px] text-slate-300 font-medium">
+                    Expert-led paths
+                  </p>
+                </div>
+              </div>
 
-        {/* Feature Badges Banner */}
-        <div className="mt-12 pt-8 max-w-5xl mx-auto px-4">
-          <div className="w-full rounded-2xl bg-neutral-900/50 border border-slate-800/80 backdrop-blur-md p-4 md:px-8 md:py-4 shadow-xl shadow-slate-950/20">
-            <div className="flex flex-wrap items-center justify-center md:justify-between gap-4 md:gap-6 text-xs text-slate-400 font-medium">
-              {features.map((feature, index) => {
-                const Icon = feature.icon;
-                return (
-                  <React.Fragment key={feature.text}>
-                    <div className="group flex items-center gap-2.5 transition-colors hover:text-slate-200">
-                      <div className="p-1.5 rounded-lg bg-slate-800/60 border border-slate-700/50 text-slate-300 group-hover:text-white group-hover:border-slate-600 transition-all">
-                        <Icon className="w-3.5 h-3.5" />
-                      </div>
-                      <span className="tracking-wide">{feature.text}</span>
-                    </div>
+              <div className="bg-slate-900/60 backdrop-blur-2xl border border-emerald-500/40 px-6 py-3 rounded-xl shadow-2xl text-white flex items-center gap-3 transition-transform hover:scale-105 duration-300">
+                <div className="p-2 rounded-lg bg-emerald-500/25 text-emerald-400 shadow-inner">
+                  <Sparkles className="size-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white tracking-wide">
+                    Printables
+                  </div>
+                  <p className="text-[11px] text-slate-300 font-medium">
+                    Workbooks, planners, and more
+                  </p>
+                </div>
+              </div>
+            </div>
 
-                    {/* Divider between items (hidden on mobile or last item) */}
-                    {index < features.length - 1 && (
-                      <span className="hidden md:inline text-slate-800 text-sm select-none">
-                        •
-                      </span>
-                    )}
-                  </React.Fragment>
-                );
-              })}
+            {/* Left Content */}
+            <div className="relative z-10 max-w-4xl pr-0 sm:pr-80 lg:pr-96">
+              <h1 className="text-2xl sm:text-3xl lg:text-5xl font-extrabold tracking-tight leading-[1.1] mb-6 text-blue-600">
+                Learn. Create. Grow.
+              </h1>
+
+              <p className="text-slate-700 text-base sm:text-[16px] mb-5 font-normal leading-relaxed">
+                Discover quality learning materials that makes learning
+                engaging, fun, and productive, as well as quality one-on-one
+                tutoring from experts.
+              </p>
+
+              {/* Action Buttons with Redesigned Beautiful Styling */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-start gap-4 w-full sm:w-auto mb-6">
+                <Link
+                  href="/free-assessment"
+                  className="inline-flex h-12 items-center justify-center gap-2.5 px-6 rounded-md bg-[#857938] hover:bg-blue-500 hover:to-teal-400 text-white font-extrabold text-base transition-all duration-300 shadow-xl shadow-emerald-500/30 hover:-translate-y-0.5 active:translate-y-0 border border-emerald-400/40"
+                >
+                  <Sparkles className="size-4 text-white" />
+                  <span>Free Assessment</span>
+                  <ArrowRight className="size-4 ml-0.5 text-white" />
+                </Link>
+
+                <Link
+                  href="/videos"
+                  className="inline-flex h-12 items-center justify-center gap-2.5 px-6 rounded-md hover:bg-blue-500 text-blue-600 hover:to-teal-400 hover:text-white font-semibold text-base transition-all duration-300 shadow-lg border border-[#857938] hover:border-emerald-400/60 hover:-translate-y-0.5 active:translate-y-0"
+                >
+                  <Compass className="size-4 text-blue-500 hover:to-teal-400" />
+                  <span>Free Lesson Videos</span>
+                </Link>
+              </div>
+
+              {/* Feature Tags */}
+              <div className="flex flex-wrap items-start gap-3">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs text-slate-800 backdrop-blur-sm">
+                  <div className="size-4 rounded-full bg-[#857938] flex items-center justify-center">
+                    <Check className="size-3 text-white shrink-0" />
+                  </div>
+                  <span>Instant Downloads</span>
+                </div>
+
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs text-slate-800 backdrop-blur-sm">
+                  <div className="size-4 rounded-full bg-[#857938] flex items-center justify-center">
+                    <Check className="size-3 text-white shrink-0" />
+                  </div>
+                  <span>Secured Payments</span>
+                </div>
+
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs text-slate-800 backdrop-blur-sm">
+                  <div className="size-4 rounded-full bg-[#857938] flex items-center justify-center">
+                    <Check className="size-3 text-white shrink-0" />
+                  </div>
+                  <span>Learn Anywhere</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile / Fallback Image layout view */}
+            <div className="relative mt-8 flex sm:hidden justify-center z-10">
+              <div className="relative w-full h-48 rounded-xl border border-emerald-500/30 overflow-hidden shadow-2xl bg-slate-900">
+                <Image
+                  src={CAROUSEL_IMAGES[currentImageIndex].url}
+                  alt={CAROUSEL_IMAGES[currentImageIndex].alt}
+                  fill
+                  className="object-cover object-center transition-opacity duration-500"
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </main>
+    </div>
   );
 }

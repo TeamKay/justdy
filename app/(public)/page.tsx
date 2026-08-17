@@ -1,26 +1,27 @@
-import LandingPage from "../_components/LandingPage";
-import Testimonials from "../_components/Testimonials";
-import CTASectionSplit from "../_components/CTASectionSplit";
-import DashboardExperience from "../_components/DashboardExperience";
-import FreeVideos from "../_components/FreeVideos";
+import prisma from "@/lib/prisma";
+import LandingPageClient from "../_components/LandingPage";
+import FeaturedProducts from "../_components/FeaturedProducts";
 
-export default function HomePage() {
+export default async function LandingPage() {
+  // Query product images from your Prisma database schema
+  const productImages = await prisma.productImage.findMany({
+    take: 8,
+    select: {
+      imageKey: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  // Extract the keys array
+  const imageKeys = productImages.map((img) => img.imageKey);
+
   return (
     <>
-      <LandingPage />
-
-      <DashboardExperience />
-      <FreeVideos />
-      <Testimonials />
-      <CTASectionSplit />
-      {/* <DashboardExperience />
-      <TutoringConsultingAISection /> */}
-      {/* <LatestCourses />
-      <FeaturedProducts /> */}
-      {/* <OnlineCoursesBanner />
-      <DigitalProductsCatalog />
-     
-      <CTASectionSplit /> */}
+      {" "}
+      <LandingPageClient uploadthingImages={imageKeys} />
+      <FeaturedProducts />
     </>
   );
 }

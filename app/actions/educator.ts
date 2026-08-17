@@ -41,7 +41,7 @@ export async function getEducatorAppointments() {
       appointments,
     };
   } catch (error) {
-    throw new Error("Failed to fect appointments " + error);
+    throw new Error("Failed to fetch appointments " + error);
   }
 }
 
@@ -107,46 +107,6 @@ export async function cancelAppointment(formData: FormData) {
           status: "Cancelled",
         },
       });
-
-      // await tx.creditTransaction.create({
-      //   data: {
-      //     userId: appointment.studentId,
-      //     amount: 2,
-      //     type: "Appointment_Deduction",
-      //     description: `Refund for cancelled appointment successful`,
-      //   },
-      // });
-
-      // await tx.creditTransaction.create({
-      //   data: {
-      //     userId: appointment.educatorId,
-      //     amount: -2,
-      //     type: "Appointment_Deduction",
-      //     description: `Refund for cancelled appointment successful`,
-      //   },
-      // });
-
-      // await tx.user.update({
-      //   where: {
-      //     id: appointment.studentId,
-      //   },
-      //   data: {
-      //     credits: {
-      //       increment: 2,
-      //     },
-      //   },
-      // });
-
-      // await tx.user.update({
-      //   where: {
-      //     id: appointment.educatorId,
-      //   },
-      //   data: {
-      //     credits: {
-      //       decrement: 2,
-      //     },
-      //   },
-      // });
     });
 
     if (user.role === "Educator") {
@@ -157,7 +117,7 @@ export async function cancelAppointment(formData: FormData) {
 
     return { success: true };
   } catch (error) {
-    throw new Error("Failed to create appointment: " + error);
+    throw new Error("Failed to cancel appointment: " + error);
   }
 }
 
@@ -266,7 +226,7 @@ export async function markAppointmentCompleted(formData: FormData) {
 
     if (now < appointmentEndTime) {
       throw new Error(
-        "Cannot matk appointment as completed before the scheduled end time",
+        "Cannot mark appointment as completed before the scheduled end time",
       );
     }
 
@@ -297,9 +257,13 @@ export async function getOnboardingEducators() {
         id: true,
         name: true,
         imageUrl: true,
-        specialty: true,
-        experience: true,
-        description: true,
+        facilitatorProfile: {
+          select: {
+            specialty: true,
+            experience: true,
+            description: true,
+          },
+        },
       },
       orderBy: {
         name: "asc",

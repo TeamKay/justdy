@@ -42,6 +42,7 @@ model User {
   transaction          Transaction[]
   pendingEnrollments   PendingEnrollment[]
   roles                UserRole[]
+  purchases            Purchase[]
 
   @@map("user")
 }
@@ -143,6 +144,7 @@ model PendingEnrollment {
   id             String                  @id @default(cuid())
   name           String
   email          String
+  phoneNumber    String?
   gradeLevel     String
   subject        String
   enrollmentType EnrollmentTrack
@@ -201,49 +203,52 @@ model Appointment {
 // ==========================================
 
 model Product {
-  id               String          @id @default(cuid())
-  title            String
-  description      String          @db.Text
-  smallDescription String          @db.Text
-  price            Int             // Stored in cents
-  stripePriceId    String?         @unique
-  slug             String          @unique
-  userId           String
-  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type             ProductType
-  course           Course?
-  digitalProduct   DigitalProduct?
-  status           ProductStatus   @default(Draft)
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-}
-
-model Course {
   id                 String               @id @default(cuid())
+  title              String
+  description        String               @db.Text
+  price              Int                  // Stored in cents
+  printedPrice       Int?
+  stripePriceId      String?              @unique
+  slug               String               @unique
+  userId             String
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type               ProductType
+  status             ProductStatus        @default(Draft)
+
+  // Course-specific fields (Optional - used if type is Course)
   duration           Int?
   adminFeedback      String?              @db.Text
-  category           String
-  imageKey           String?
-  productId          String               @unique
-  product            Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category           String?
+  imageKey           String?              // Course thumbnail image key
+
+  // Digital Product-specific fields (Optional - used if type is DigitalProduct)
+  fileKey            String?
+  fileType           String?
+  fileSize           Int?
+  downloadCount      Int                  @default(0)
+
+  // Relations
+  chapters           Chapter[]
+  enrollments        Enrollment[]
+  enrollmentProgress EnrollmentProgress[]
+  images             ProductImage[] 
+  purchases          Purchase[]
+
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
-  chapter            Chapter[]
-  enrollment         Enrollment[]
-  enrollmentProgress EnrollmentProgress[]
 }
 
 model Chapter {
   id        String   @id @default(cuid())
   title     String
   position  Int
-  courseId  String
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   lessons   Lesson[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([courseId])
+  @@index([productId])
 }
 
 model Lesson {
@@ -262,56 +267,61 @@ model Lesson {
   @@index([chapterId])
 }
 
-model DigitalProduct {
-  id            String                @id @default(cuid())
-  fileKey       String
-  fileType      String
-  fileSize      Int
-  downloadCount Int                   @default(0)
-  productId     String                @unique
-  product       Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
-  images        DigitalProductImage[]
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
+model ProductImage {
+  id        String   @id @default(cuid())
+  imageKey  String
+  position  Int      @default(0)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([productId])
 }
 
-model DigitalProductImage {
-  id               String         @id @default(cuid())
-  imageKey         String
-  position         Int            @default(0)
-  digitalProductId String
-  digitalProduct   DigitalProduct @relation(fields: [digitalProductId], references: [id], onDelete: Cascade)
-  createdAt        DateTime       @default(now())
+model Purchase {
+  id                    String   @id @default(cuid())
+  userId                String
+  productId             String
+  amount                Int
+  quantity              Int      @default(1)
+  stripeSessionId       String
+  stripePaymentIntentId String?
+  status                String   @default("Paid")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product               Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  @@index([digitalProductId])
+  @@unique([stripeSessionId, productId])
+  @@index([userId])
+  @@index([productId])
 }
 
 model Enrollment {
   id        String           @id @default(cuid())
   amount    Int              // Stored in cents
   status    EnrollmentStatus @default(Pending)
-  courseId  String
-  course    Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
   userId    String
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
-  @@unique([userId, courseId])
-  
+  @@unique([userId, productId])
 }
 
 model EnrollmentProgress {
   id           String   @id @default(cuid())
   userId       String
-  courseId     String
+  productId    String
   progress     Float    @default(0)
   lastLessonId String?
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   updatedAt    DateTime @updatedAt
 
-  @@unique([userId, courseId])
+  @@unique([userId, productId])
 }
 
 model LessonProgress {
@@ -378,11 +388,9 @@ model Transaction {
   @@index([status])
 }
 
-
 // ==========================================
 // MY PORTFOLIO MODELS
 // ==========================================
-
 
 model Investment {
   id             String          @id @default(cuid())
@@ -397,7 +405,7 @@ model Investment {
   amount         Float
   exchangeRate   Float           @default(1.0)
   amountUSD      Float
-  date           DateTime        @default(now()) // <--- Add or check this line
+  date           DateTime        @default(now())
   status         StatusType      @default(ACTIVE)
   returnRate     String          @default("0%")
   isPositive     Boolean         @default(true)
@@ -405,7 +413,6 @@ model Investment {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 }
-
 
 // ==========================================
 // ENUMS
@@ -439,7 +446,15 @@ enum AppointmentStatus {
 
 enum ProductType {
   Course
-  Downloadable
+  Worksheets
+  Workbooks
+  Planners
+  Journals
+  Templates
+  Checklists
+  Trackers
+  Guides
+  Bundles
 }
 
 enum ProductStatus {
@@ -487,8 +502,7 @@ enum PlanType {
 
 enum PendingEnrollmentStatus {
   Pending
-  Completed
-  Expired
+  Enrolled
   Cancelled
 }
 
@@ -496,6 +510,7 @@ enum EnrollmentTrack {
   Hourly
   Monthly
 }
+
 enum AssetType {
   ETF
   STOCK

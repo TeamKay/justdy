@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "utfs.io",
         port: "",
-        pathname: "/f/**",
+        pathname: "/**", // <--- Changed from /f/** to /** to allow all UploadThing paths
       },
       {
         protocol: "https",
@@ -18,6 +18,8 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "*.ufs.sh",
+        port: "",
+        pathname: "/**",
       },
       {
         protocol: "https",
@@ -57,6 +59,12 @@ export default nextConfig;
 //       {
 //         protocol: "https",
 //         hostname: "*.ufs.sh",
+//       },
+//       {
+//         protocol: "https",
+//         hostname: "i.ytimg.com",
+//         port: "",
+//         pathname: "/vi/**",
 //       },
 //     ],
 //   },

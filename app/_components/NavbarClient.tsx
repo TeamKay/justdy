@@ -2,241 +2,1645 @@
 
 import * as React from "react";
 import Link from "next/link";
-
+import { useSearchParams } from "next/navigation";
 import {
   Menu,
   X,
   Search,
   ChevronDown,
-  Gamepad2,
-  Zap,
-  Swords,
+  ShoppingBag,
+  Trash2,
+  ArrowRight,
+  ShoppingCartIcon,
+  Loader2,
+  MenuIcon,
+  ShoppingBasket,
+  MessageSquare,
+  Settings,
+  LogOut,
+  LayoutDashboard,
+  ChevronRight,
 } from "lucide-react";
-import { ThemeToggle } from "@/app/_components/themeToggle";
+
 import { authClient } from "@/lib/auth-client";
-import { UserDropdown } from "./UserDropdown";
-import { buttonVariants } from "./ui/button";
+import { Button, buttonVariants } from "./ui/button";
 import { cn } from "@/lib/utils";
 import MyLogo from "./Logo";
-import { useEffect, useState } from "react";
+
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 
-import {
-  NavigationMenu,
-  NavigationMenuItem,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-  NavigationMenuContent,
-} from "./ui/navigation-menu";
+import { SignupModal } from "./SignupModal";
+import { SigninModal } from "./SigninModal";
+import { Separator } from "./ui/separator";
+import Image from "next/image";
 
-const gameItems = [
+import { ProductSearchInput } from "./ProductSearchInput";
+import { ProductMegaMenu, ProductMobileMenu } from "./ProductMegaMenu";
+
+import { createCheckoutSessionAction } from "../actions/manage-checkout-session";
+import { toast } from "sonner";
+
+// ============================================================
+// TYPES
+// ============================================================
+
+const serviceItems = [
   {
-    title: "Mathle (Daily Wordle)",
-    description: "Guess today's 6-character math puzzle.",
-    href: "/games/mathle",
-    icon: Gamepad2,
+    title: "Tutoring",
+    href: "/free-assessment",
   },
   {
-    title: "Prodigy Math",
-    description: "Fast-paced arcade runner for core math facts.",
-    href: "/games/prodigy-math",
-    icon: Zap,
-  },
-  {
-    title: "Math Duel (1v1)",
-    description: "Real-time 60-second multiplayer showdown.",
-    href: "/games/duel",
-    icon: Swords,
+    title: "About Me",
+    href: "/about",
   },
 ];
-interface UserProps {
+
+interface CartItem {
   id: string;
-  email: string;
-  name: string | null;
-  image: string | null;
-  role: string | null;
+  title: string;
+  price: number;
+  image?: string;
+  quantity?: number;
 }
 
-export function NavbarClient({}: { user: UserProps | null }) {
+interface AccountMenuItemProps {
+  href?: string;
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  onClick?: () => void;
+}
+
+// ============================================================
+// ACCOUNT MENU ITEM
+// ============================================================
+
+function AccountMenuItem({
+  href,
+  icon,
+  title,
+  subtitle,
+  onClick,
+}: AccountMenuItemProps) {
+  const content = (
+    <div
+      className="
+        group
+        flex
+        items-center
+        gap-3
+        rounded-xl
+        px-3
+        py-2.5
+        transition-all
+        duration-200
+        hover:bg-slate-50
+      "
+    >
+      <div
+        className="
+          flex
+          size-10
+          shrink-0
+          items-center
+          justify-center
+          rounded-xl
+          bg-slate-100
+          text-slate-700
+          transition-colors
+          group-hover:bg-[#857938]/10
+          group-hover:text-[#857938]
+        "
+      >
+        {icon}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-slate-800">{title}</p>
+
+        {subtitle && (
+          <p className="mt-0.5 truncate text-xs text-slate-400">{subtitle}</p>
+        )}
+      </div>
+
+      <ChevronRight
+        className="
+          size-4
+          text-slate-300
+          opacity-0
+          transition-all
+          group-hover:translate-x-0.5
+          group-hover:opacity-100
+        "
+      />
+    </div>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} onClick={onClick}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onClick} className="block w-full text-left">
+      {content}
+    </button>
+  );
+}
+
+// ============================================================
+// COMPONENT
+// ============================================================
+
+export function NavbarClient() {
   const { data: session, isPending } = authClient.useSession();
+
+  // ============================================================
+  // URL SEARCH PARAMS
+  // ============================================================
+
+  const searchParams = useSearchParams();
+
+  // ============================================================
+  // STATE
+  // ============================================================
+
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [mobileGamesOpen, setMobileGamesOpen] = useState(false);
+  const [servicesOpen, setServicesOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+
+  // Account dropdown
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+
   const [mounted, setMounted] = useState(false);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  // ============================================================
+  // LOAD CART
+  // ============================================================
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       setMounted(true);
+
+      const savedCart = localStorage.getItem("cart");
+
+      if (savedCart) {
+        try {
+          const parsed = JSON.parse(savedCart);
+
+          if (Array.isArray(parsed)) {
+            setCartItems(parsed);
+          }
+        } catch (error) {
+          console.error("Failed to parse cart:", error);
+        }
+      }
     });
-    return () => cancelAnimationFrame(frame);
+
+    const handleStorageChange = () => {
+      const savedCart = localStorage.getItem("cart");
+
+      if (savedCart) {
+        try {
+          const parsed = JSON.parse(savedCart);
+
+          if (Array.isArray(parsed)) {
+            setCartItems(parsed);
+          }
+        } catch (error) {
+          console.error("Failed to parse cart:", error);
+        }
+      } else {
+        setCartItems([]);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("cartUpdated", handleStorageChange);
+
+    return () => {
+      cancelAnimationFrame(frame);
+
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("cartUpdated", handleStorageChange);
+    };
   }, []);
 
-  // Determine user role(s) safely from session
+  useEffect(() => {
+    if (!mounted || isPending || session) {
+      return;
+    }
+
+    const shouldOpenLogin = searchParams.get("login") === "true";
+
+    if (!shouldOpenLogin) {
+      return;
+    }
+
+    // Allow the navbar and SigninModal trigger to render first.
+    const timer = window.setTimeout(() => {
+      const loginTrigger = document.querySelector(
+        '[data-login-trigger="true"]',
+      ) as HTMLButtonElement | null;
+
+      if (!loginTrigger) {
+        console.warn("SigninModal trigger was not found.");
+        return;
+      }
+
+      loginTrigger.click();
+      const url = new URL(window.location.href);
+
+      url.searchParams.delete("login");
+
+      window.history.replaceState(
+        {},
+        "",
+        `${url.pathname}${url.search}${url.hash}`,
+      );
+    }, 100);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [mounted, isPending, session, searchParams]);
+
+  // ============================================================
+  // CLOSE ACCOUNT MENU WHEN CLICKING OUTSIDE
+  // ============================================================
+
+  useEffect(() => {
+    if (!accountOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (
+        accountRef.current &&
+        !accountRef.current.contains(event.target as Node)
+      ) {
+        setAccountOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setAccountOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [accountOpen]);
+
+  // ============================================================
+  // CART
+  // ============================================================
+
+  const updateCartStorage = (updatedItems: CartItem[]) => {
+    setCartItems(updatedItems);
+
+    localStorage.setItem("cart", JSON.stringify(updatedItems));
+
+    window.dispatchEvent(new Event("cartUpdated"));
+  };
+
+  const removeItem = (id: string) => {
+    const updated = cartItems.filter((item) => item.id !== id);
+
+    updateCartStorage(updated);
+  };
+
+  const updateQuantity = (id: string, delta: number) => {
+    const updated = cartItems.map((item) => {
+      if (item.id === id) {
+        const currentQty = item.quantity || 1;
+
+        const newQty = Math.max(1, currentQty + delta);
+
+        return {
+          ...item,
+          quantity: newQty,
+        };
+      }
+
+      return item;
+    });
+
+    updateCartStorage(updated);
+  };
+
+  // ============================================================
+  // CHECKOUT
+  // ============================================================
+
+  const handleCheckout = async () => {
+    if (cartItems.length === 0) {
+      toast.error("Your cart is empty.");
+      return;
+    }
+
+    setIsCheckoutLoading(true);
+    setIsLoading(true);
+
+    try {
+      const checkoutItems = cartItems.map((item) => ({
+        productId: item.id,
+        quantity: item.quantity || 1,
+      }));
+
+      const res = await createCheckoutSessionAction(checkoutItems);
+
+      if (res.status === "error") {
+        toast.error(res.message || "Checkout failed.");
+        return;
+      }
+
+      if (res.checkoutUrl) {
+        window.location.href = res.checkoutUrl;
+      }
+    } catch (error) {
+      console.error("Checkout error:", error);
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to proceed to checkout.",
+      );
+    } finally {
+      setIsCheckoutLoading(false);
+      setIsLoading(false);
+    }
+  };
+
+  // ============================================================
+  // CART TOTALS
+  // ============================================================
+
+  const subtotal = cartItems.reduce(
+    (acc, item) => acc + item.price * (item.quantity || 1),
+    0,
+  );
+
+  const totalCount = cartItems.reduce(
+    (acc, item) => acc + (item.quantity || 1),
+    0,
+  );
+
+  // ============================================================
+  // USER ROLE
+  // ============================================================
+
   const rolesList: string[] = [];
+
   if (session?.user) {
-    const userObj = session.user as { role?: string; roles?: string[] };
-    if (userObj.role) rolesList.push(userObj.role);
-    if (Array.isArray(userObj.roles)) rolesList.push(...userObj.roles);
+    const userObj = session.user as {
+      role?: string;
+      roles?: string[];
+    };
+
+    if (userObj.role) {
+      rolesList.push(userObj.role);
+    }
+
+    if (Array.isArray(userObj.roles)) {
+      rolesList.push(...userObj.roles);
+    }
   }
 
-  const normalizedRoles = rolesList.map((r) => r.toLowerCase());
+  const normalizedRoles = rolesList.map((role) => role.toLowerCase());
 
-  const dashboardUrl = normalizedRoles.includes("admin")
-    ? "/admin"
-    : normalizedRoles.includes("educator") ||
-        normalizedRoles.includes("facilitator")
-      ? "/educator"
+  const dashboardUrl =
+    normalizedRoles.includes("admin") || normalizedRoles.includes("educator")
+      ? "/manage"
       : "/learner";
 
   const userRole = session?.user?.role?.toLowerCase() ?? "learner";
+
+  // ============================================================
+  // USER INFORMATION
+  // ============================================================
+
+  const userName = session?.user?.name?.trim() || "User";
+
+  const userEmail = session?.user?.email ?? "";
+
+  const userImage = session?.user?.image ?? "";
+
+  const userInitials = userName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+
+  // ============================================================
+  // SIGN OUT
+  // ============================================================
+
+  const handleSignOut = async () => {
+    if (isSigningOut) {
+      return;
+    }
+
+    setIsSigningOut(true);
+    setAccountOpen(false);
+
+    try {
+      await authClient.signOut();
+
+      toast.success("You have been signed out.");
+
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Sign out error:", error);
+
+      toast.error("Unable to sign out. Please try again.");
+
+      setIsSigningOut(false);
+    }
+  };
+
+  // ============================================================
+  // ANIMATIONS
+  // ============================================================
 
   const menuVariants: Variants = {
     hidden: {
       opacity: 0,
       y: -15,
-      transition: { duration: 0.2, ease: "easeInOut" },
+      transition: {
+        duration: 0.2,
+        ease: "easeInOut",
+      },
     },
+
     visible: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.3, ease: "easeOut" },
+      transition: {
+        duration: 0.3,
+        ease: "easeOut",
+      },
     },
   };
 
+  const accountMenuVariants: Variants = {
+    hidden: {
+      opacity: 0,
+      y: -8,
+      scale: 0.98,
+      transformOrigin: "top right",
+    },
+
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transformOrigin: "top right",
+      transition: {
+        duration: 0.2,
+        ease: "easeOut",
+      },
+    },
+  };
+
+  const cartDrawerVariants: Variants = {
+    hidden: {
+      x: "100%",
+      transition: {
+        duration: 0.3,
+        ease: "easeInOut",
+      },
+    },
+
+    visible: {
+      x: "0%",
+      transition: {
+        duration: 0.3,
+        ease: "easeOut",
+      },
+    },
+  };
+
+  // ============================================================
+  // SEARCH
+  // ============================================================
+
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    const formData = new FormData(e.currentTarget);
+
+    const query = formData.get("search")?.toString().trim();
+
+    if (!query) {
+      return;
+    }
+
+    window.location.href = `/products?search=${encodeURIComponent(query)}`;
+  };
+
+  const closeMobileMenu = () => {
+    setMobileOpen(false);
+  };
+
+  // ============================================================
+  // RENDER
+  // ============================================================
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-100 dark:border-slate-800/50 bg-background/80 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-5 h-16 flex items-center justify-between">
-        {/* Left Side: Logo */}
-        <div className="shrink-0">
-          <MyLogo />
-        </div>
+    <header
+      className="
+        sticky
+        top-0
+        z-50
+        w-full
+        border-b
+        border-slate-200
+        bg-background/95
+        backdrop-blur-xl
+        dark:border-slate-300
+      "
+    >
+      <div
+        className="
+          mx-auto
+          flex
+          h-19
+          max-w-8xl
+          items-center
+          px-4
+          sm:px-6
+          lg:px-28
+        "
+      >
+        {/* ======================================================
+            DESKTOP HEADER
+        ====================================================== */}
 
-        {/* Center: Navigation Links */}
-        <div className="hidden md:flex items-center justify-start gap-6 flex-1 pl-6">
-          <nav>
-            <NavigationMenu>
-              <NavigationMenuList className="gap-1">
-                <NavigationMenuItem>
-                  <Link
-                    href="/tutoring"
-                    className="px-3 py-2 font-semibold text-slate-600 hover:text-purple-600 dark:text-muted-foreground dark:hover:text-purple-400 transition text-[13px] whitespace-nowrap"
-                  >
-                    Tutoring
-                  </Link>
-                </NavigationMenuItem>
+        <div
+          className="
+            hidden
+            w-full
+            items-center
+            gap-6
+            md:grid
+            md:grid-cols-[auto_minmax(360px,1fr)_auto]
+          "
+        >
+          {/* LOGO + NAVIGATION */}
 
-                <NavigationMenuItem>
-                  <Link
-                    href="/products"
-                    className="px-3 py-2 font-semibold text-slate-600 hover:text-purple-600 dark:text-muted-foreground dark:hover:text-purple-400 transition text-[13px] whitespace-nowrap"
-                  >
-                    Products
-                  </Link>
-                </NavigationMenuItem>
+          <div className="flex min-w-0 items-center gap-0">
+            <div className="shrink-0">
+              <MyLogo />
+            </div>
 
-                {/* Games Dropdown Item */}
-                <NavigationMenuItem>
-                  <NavigationMenuTrigger className="px-3 py-2 font-semibold text-slate-600 hover:text-purple-600 dark:text-muted-foreground dark:hover:text-purple-400 transition text-[13px] whitespace-nowrap bg-transparent hover:bg-transparent data-[state=open]:bg-transparent">
-                    Games
-                  </NavigationMenuTrigger>
-                  <NavigationMenuContent>
-                    <ul className="grid w-[320px] gap-2 p-3 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-100 dark:border-slate-800">
-                      {gameItems.map((game, idx) => {
-                        const Icon = game.icon;
-                        return (
-                          <li key={idx}>
-                            <Link
-                              href={game.href}
-                              className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/80 transition"
-                            >
-                              <div className="p-2 rounded-md bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 shrink-0">
-                                <Icon size={18} />
-                              </div>
-                              <div>
-                                <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                                  {game.title}
-                                </div>
-                                <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
-                                  {game.description}
-                                </div>
-                              </div>
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
+            <nav className="flex shrink-0 items-center gap-1">
+              <div
+                className="relative"
+                onMouseEnter={() => setServicesOpen(true)}
+                onMouseLeave={() => setServicesOpen(false)}
+              >
+                <button
+                  type="button"
+                  onClick={() => setServicesOpen((previous) => !previous)}
+                  aria-expanded={servicesOpen}
+                  aria-haspopup="true"
+                  className="
+                    flex
+                    cursor-pointer
+                    items-center
+                    gap-1.5
+                    rounded-lg
+                    px-5
+                    py-2
+                    text-sm
+                    font-bold
+                    text-slate-800
+                    transition-all
+                    duration-200
+                    hover:bg-[#857938]
+                    hover:text-white
+                    focus:outline-none
+                    focus:ring-2
+                    focus:ring-[#857938]/30
+                  "
+                >
+                  <MenuIcon className="size-5" />
 
-                <NavigationMenuItem>
-                  <Link
-                    href="/videos"
-                    className="px-3 py-2 font-semibold text-slate-600 hover:text-purple-600 dark:text-muted-foreground dark:hover:text-purple-400 transition text-[13px] whitespace-nowrap"
-                  >
-                    Free Content
-                  </Link>
-                </NavigationMenuItem>
+                  <span>Categories</span>
 
-                <NavigationMenuItem>
-                  <Link
-                    href="/about"
-                    className="px-3 py-2 font-semibold text-slate-600 hover:text-purple-600 dark:text-muted-foreground dark:hover:text-purple-400 transition text-[13px] whitespace-nowrap"
-                  >
-                    About
-                  </Link>
-                </NavigationMenuItem>
-              </NavigationMenuList>
-            </NavigationMenu>
-          </nav>
-        </div>
+                  <ChevronDown
+                    className={cn(
+                      "size-4 transition-transform duration-200",
+                      servicesOpen && "rotate-180",
+                    )}
+                  />
+                </button>
 
-        {/* Right Side: Actions */}
-        <div className="flex items-center space-x-3 justify-end shrink-0">
-          <div className="flex items-center justify-center h-9 w-9 border border-border rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-            <ThemeToggle />
+                <AnimatePresence>
+                  {servicesOpen && (
+                    <ProductMegaMenu onClose={() => setServicesOpen(false)} />
+                  )}
+                </AnimatePresence>
+              </div>
+            </nav>
           </div>
 
-          {!isPending &&
-            mounted &&
-            (session ? (
-              <div className="flex items-center gap-3">
-                <Link
-                  href={dashboardUrl}
-                  className="hidden sm:inline-flex px-4 py-2 text-sm font-semibold text-white bg-[#857938] rounded-md hover:bg-blue-700 transition shadow-sm"
-                >
-                  Go to Dashboard &rarr;
-                </Link>
+          {/* SEARCH */}
 
-                <UserDropdown
-                  email={session.user.email ?? ""}
-                  image={session.user.image ?? ""}
-                  name={session.user.name ?? "User"}
-                  role={userRole}
-                />
-              </div>
-            ) : (
-              <div className="hidden sm:flex items-center">
-                <Link
-                  href="/login"
-                  className={cn(
-                    buttonVariants({ variant: "default", size: "sm" }),
-                    "h-9 bg-[#857938] hover:bg-blue-700 px-6 text-[12px] text-white active:scale-95 transition-all rounded-md border-0",
-                  )}
-                >
-                  Get Started
-                </Link>
-              </div>
-            ))}
+          <div className="w-full min-w-0 justify-self-center">
+            <ProductSearchInput />
+          </div>
 
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden p-2 text-slate-600 hover:text-purple-600 dark:text-slate-400 dark:hover:text-purple-400 focus:outline-none active:scale-90 transition-transform"
-          >
-            {mobileOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          {/* ====================================================
+              RIGHT — ACCOUNT + CART
+          ==================================================== */}
+
+          <div className="flex min-w-0 items-center justify-end gap-3">
+            {!isPending &&
+              mounted &&
+              (session ? (
+                <div className="flex items-center gap-3">
+                  {/* ==================================================
+                      ACCOUNT DROPDOWN
+                  ================================================== */}
+
+                  <div ref={accountRef} className="relative">
+                    {/* ACCOUNT TRIGGER */}
+
+                    <button
+                      type="button"
+                      onClick={() => setAccountOpen((previous) => !previous)}
+                      aria-expanded={accountOpen}
+                      aria-haspopup="menu"
+                      aria-label="Open account menu"
+                      className={cn(
+                        `
+                        group
+                        flex
+                        h-11
+                        items-center
+                        gap-2
+                        rounded-full
+                        border
+                        px-1.5
+                        pr-2.5
+                        transition-all
+                        duration-200
+                        focus:outline-none
+                        focus:ring-2
+                        focus:ring-[#857938]/20
+                        `,
+                        accountOpen
+                          ? "border-[#857938]/30 bg-[#857938]/10 shadow-sm"
+                          : "border-transparent hover:border-slate-200 hover:bg-slate-50",
+                      )}
+                    >
+                      {/* AVATAR */}
+
+                      <div
+                        className="
+                          relative
+                          flex
+                          size-9
+                          shrink-0
+                          items-center
+                          justify-center
+                          overflow-hidden
+                          rounded-full
+                          bg-[#857938]
+                          text-xs
+                          font-bold
+                          text-white
+                          ring-2
+                          ring-white
+                          shadow-sm
+                        "
+                      >
+                        {userImage ? (
+                          <Image
+                            src={userImage}
+                            alt={userName}
+                            fill
+                            sizes="36px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          userInitials
+                        )}
+                      </div>
+
+                      {/* USER NAME */}
+
+                      <span className="hidden max-w-28 truncate text-sm font-semibold text-slate-800 xl:block">
+                        {userName}
+                      </span>
+
+                      <ChevronDown
+                        className={cn(
+                          "size-4 text-slate-500 transition-transform duration-200",
+                          accountOpen && "rotate-180",
+                        )}
+                      />
+                    </button>
+
+                    {/* =================================================
+                        DROPDOWN
+                    ================================================= */}
+
+                    <AnimatePresence>
+                      {accountOpen && (
+                        <motion.div
+                          variants={accountMenuVariants}
+                          initial="hidden"
+                          animate="visible"
+                          exit="hidden"
+                          className="
+                            absolute
+                            right-0
+                            top-[calc(100%+10px)]
+                            z-100
+                            w-80
+                            overflow-hidden
+                            rounded-2xl
+                            border
+                            border-slate-200
+                            bg-white
+                            shadow-[0_20px_60px_rgba(15,23,42,0.16)]
+                          "
+                        >
+                          {/* PROFILE HEADER */}
+
+                          <div
+                            className="
+    border-b
+    border-slate-100
+    bg-linear-to-br
+    from-[#857938]/10
+    via-white
+    to-slate-50
+    p-4
+  "
+                          >
+                            <Link
+                              href={dashboardUrl}
+                              onClick={() => setAccountOpen(false)}
+                              className="
+      group
+      flex
+      items-center
+      gap-3
+      rounded-xl
+      p-2
+      transition-colors
+      hover:bg-white
+      cursor-pointer
+    "
+                            >
+                              <div
+                                className="
+        relative
+        flex
+        size-12
+        shrink-0
+        items-center
+        justify-center
+        overflow-hidden
+        rounded-full
+        bg-[#857938]
+        text-sm
+        font-bold
+        text-white
+        ring-2
+        ring-white
+        shadow-md
+      "
+                              >
+                                {userImage ? (
+                                  <Image
+                                    src={userImage}
+                                    alt={userName}
+                                    fill
+                                    sizes="48px"
+                                    className="object-cover"
+                                  />
+                                ) : (
+                                  userInitials
+                                )}
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-base font-bold text-slate-900">
+                                  {userName}
+                                </p>
+
+                                <p className="truncate text-sm text-slate-500">
+                                  Go to dashboard
+                                </p>
+                              </div>
+
+                              <ChevronRight
+                                className="
+        size-4
+        text-slate-300
+        transition-transform
+        group-hover:translate-x-0.5
+      "
+                              />
+                            </Link>
+                          </div>
+
+                          {/* MAIN ACCOUNT LINKS */}
+
+                          <div className="mx-4 border-t border-slate-100" />
+
+                          <div className="mx-4 border-t border-slate-100" />
+
+                          {/* ACCOUNT SETTINGS */}
+
+                          <div className="p-2">
+                            <AccountMenuItem
+                              href="/settings"
+                              icon={<Settings className="size-5" />}
+                              title="Account Settings"
+                              onClick={() => setAccountOpen(false)}
+                              subtitle="Manage your account"
+                            />
+
+                            {/* SIGN OUT */}
+
+                            <button
+                              type="button"
+                              disabled={isSigningOut}
+                              onClick={handleSignOut}
+                              className="
+                                group
+                                flex
+                                w-full
+                                items-center
+                                gap-3
+                                rounded-xl
+                                px-3
+                                py-2.5
+                                text-left
+                                transition-all
+                                hover:bg-red-50
+                              "
+                            >
+                              <div
+                                className="
+                                  flex
+                                  size-10
+                                  shrink-0
+                                  items-center
+                                  justify-center
+                                  rounded-xl
+                                  bg-red-50
+                                  text-red-500
+                                  transition-colors
+                                  group-hover:bg-red-100
+                                "
+                              >
+                                {isSigningOut ? (
+                                  <Loader2 className="size-5 animate-spin" />
+                                ) : (
+                                  <LogOut className="size-5" />
+                                )}
+                              </div>
+
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-red-600">
+                                  {isSigningOut ? "Signing out..." : "Sign out"}
+                                </p>
+                              </div>
+                            </button>
+                          </div>
+
+                          {/* ACCOUNT FOOTER */}
+
+                          <div
+                            className="
+                              border-t
+                              border-slate-100
+                              bg-slate-50/80
+                              px-5
+                              py-3
+                            "
+                          >
+                            <p className="truncate text-[11px] text-slate-400">
+                              {userEmail}
+                            </p>
+
+                            <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                              {userRole}
+                            </p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              ) : (
+                <SigninModal>
+                  <button
+                    type="button"
+                    data-login-trigger="true"
+                    className={cn(
+                      buttonVariants({
+                        variant: "default",
+                        size: "sm",
+                      }),
+                      `
+                        h-9
+                        cursor-pointer
+                        rounded-md
+                        border-0
+                        bg-[#857938]
+                        px-5
+                        text-sm
+                        font-medium
+                        text-white
+                        shadow-md
+                        shadow-[#857938]/20
+                        transition-all
+                        hover:bg-blue-500
+                        active:scale-95
+                        whitespace-nowrap
+                      `,
+                    )}
+                  >
+                    Sign In
+                  </button>
+                </SigninModal>
+              ))}
+
+            {/* CART */}
+
+            <button
+              type="button"
+              onClick={() => setCartOpen(true)}
+              className="
+                relative
+                shrink-0
+                cursor-pointer
+                rounded-lg
+                p-2
+                text-slate-700
+                transition-colors
+                hover:bg-slate-100
+                hover:text-[#857938]
+                dark:text-slate-300
+                dark:hover:bg-slate-800/60
+              "
+              aria-label="Shopping Cart"
+            >
+              <ShoppingCartIcon className="size-5 text-black" />
+
+              {mounted && totalCount > 0 && (
+                <span
+                  className="
+                    absolute
+                    -right-1
+                    -top-1
+                    flex
+                    h-4
+                    min-w-4
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-[#857938]
+                    px-1
+                    text-[10px]
+                    font-bold
+                    text-white
+                  "
+                >
+                  {totalCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* ======================================================
+            MOBILE HEADER
+        ====================================================== */}
+
+        <div className="flex w-full items-center md:hidden">
+          <div className="shrink-0">
+            <MyLogo />
+          </div>
+
+          <div className="ml-auto flex items-center gap-2">
+            {/* MOBILE ACCOUNT */}
+
+            {session && (
+              <button
+                type="button"
+                onClick={() => setAccountOpen((previous) => !previous)}
+                className="
+                  relative
+                  flex
+                  size-10
+                  items-center
+                  justify-center
+                  overflow-hidden
+                  rounded-full
+                  bg-[#857938]
+                  text-xs
+                  font-bold
+                  text-white
+                  ring-2
+                  ring-white
+                  shadow-sm
+                "
+                aria-label="Account"
+              >
+                {userImage ? (
+                  <Image
+                    src={userImage}
+                    alt={userName}
+                    fill
+                    sizes="40px"
+                    className="object-cover"
+                  />
+                ) : (
+                  userInitials
+                )}
+              </button>
+            )}
+
+            {/* MOBILE CART */}
+
+            <button
+              type="button"
+              onClick={() => setCartOpen(true)}
+              className="
+                relative
+                cursor-pointer
+                rounded-lg
+                p-2
+                text-slate-700
+                transition-colors
+                hover:bg-slate-100
+                hover:text-[#857938]
+                dark:text-slate-300
+              "
+              aria-label="Shopping Cart"
+            >
+              <ShoppingCartIcon className="size-5" />
+
+              {mounted && totalCount > 0 && (
+                <span
+                  className="
+                    absolute
+                    -right-1
+                    -top-1
+                    flex
+                    h-4
+                    min-w-4
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-[#857938]
+                    px-1
+                    text-[10px]
+                    font-bold
+                    text-white
+                  "
+                >
+                  {totalCount}
+                </span>
+              )}
+            </button>
+
+            {/* MOBILE MENU */}
+
+            <button
+              type="button"
+              onClick={() => setMobileOpen((previous) => !previous)}
+              className="
+                cursor-pointer
+                rounded-lg
+                p-2
+                text-slate-600
+                transition-colors
+                hover:text-[#857938]
+              "
+              aria-label="Toggle navigation menu"
+              aria-expanded={mobileOpen}
+            >
+              {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* ========================================================
+          MOBILE ACCOUNT DROPDOWN
+      ======================================================== */}
+
+      <AnimatePresence>
+        {accountOpen && session && mounted && (
+          <motion.div
+            variants={accountMenuVariants}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            className="
+              fixed
+              left-3
+              right-3
+              top-21
+              z-100
+              max-h-[calc(100vh-6rem)]
+              overflow-y-auto
+              rounded-2xl
+              border
+              border-slate-200
+              bg-white
+              shadow-2xl
+              md:hidden
+            "
+          >
+            {/* PROFILE */}
+
+            <div className="border-b border-slate-100 bg-linear-to-br from-[#857938]/10 via-white to-slate-50 p-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className="
+                    relative
+                    flex
+                    size-12
+                    shrink-0
+                    items-center
+                    justify-center
+                    overflow-hidden
+                    rounded-full
+                    bg-[#857938]
+                    text-sm
+                    font-bold
+                    text-white
+                  "
+                >
+                  {userImage ? (
+                    <Image
+                      src={userImage}
+                      alt={userName}
+                      fill
+                      sizes="48px"
+                      className="object-cover"
+                    />
+                  ) : (
+                    userInitials
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <p className="truncate text-base font-bold text-slate-900">
+                    {userName}
+                  </p>
+
+                  <p className="truncate text-sm text-slate-500">{userEmail}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-2">
+              <AccountMenuItem
+                href={dashboardUrl}
+                icon={<LayoutDashboard className="size-5" />}
+                title="Dashboard"
+                onClick={() => setAccountOpen(false)}
+              />
+
+              <AccountMenuItem
+                href="/purchases"
+                icon={<ShoppingBasket className="size-5" />}
+                title="Purchases & Downloads"
+                onClick={() => setAccountOpen(false)}
+              />
+
+              <AccountMenuItem
+                href="/messages"
+                icon={<MessageSquare className="size-5" />}
+                title="Messages"
+                onClick={() => setAccountOpen(false)}
+              />
+
+              <AccountMenuItem
+                href="/settings"
+                icon={<Settings className="size-5" />}
+                title="Account Settings"
+                onClick={() => setAccountOpen(false)}
+              />
+
+              <button
+                type="button"
+                disabled={isSigningOut}
+                onClick={handleSignOut}
+                className="
+                  flex
+                  w-full
+                  items-center
+                  gap-3
+                  rounded-xl
+                  px-3
+                  py-3
+                  text-left
+                  text-red-600
+                  hover:bg-red-50
+                "
+              >
+                {isSigningOut ? (
+                  <Loader2 className="size-5 animate-spin" />
+                ) : (
+                  <LogOut className="size-5" />
+                )}
+
+                <span className="text-sm font-medium">
+                  {isSigningOut ? "Signing out..." : "Sign out"}
+                </span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================
+          CART DRAWER
+      ======================================================== */}
+
+      <AnimatePresence>
+        {cartOpen && (
+          <div className="fixed inset-0 z-200 flex justify-end">
+            {/* BACKDROP */}
+
+            <motion.div
+              initial={{
+                opacity: 0,
+              }}
+              animate={{
+                opacity: 0.5,
+              }}
+              exit={{
+                opacity: 0,
+              }}
+              onClick={() => setCartOpen(false)}
+              className="
+                absolute
+                inset-0
+                bg-black/60
+                backdrop-blur-xs
+              "
+            />
+
+            {/* DRAWER */}
+
+            <motion.div
+              variants={cartDrawerVariants}
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              className="
+                relative
+                z-10
+                flex
+                h-screen
+                w-full
+                max-w-md
+                flex-col
+                border-l
+                border-slate-200
+                bg-background
+                shadow-2xl
+              "
+            >
+              {/* DRAWER HEADER */}
+
+              <div
+                className="
+                  flex
+                  shrink-0
+                  items-center
+                  justify-between
+                  border-b
+                  border-slate-200
+                  p-4
+                  sm:p-6
+                "
+              >
+                <div className="flex items-center gap-2">
+                  <ShoppingBag className="size-5 text-[#857938]" />
+
+                  <h2 className="text-lg font-semibold">Your Cart</h2>
+
+                  <span
+                    className="
+                      rounded-full
+                      bg-muted
+                      px-2
+                      py-0.5
+                      text-xs
+                      font-medium
+                    "
+                  >
+                    {totalCount}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setCartOpen(false)}
+                  className="
+                    cursor-pointer
+                    rounded-md
+                    p-1
+                    text-slate-500
+                    transition-colors
+                    hover:bg-muted
+                    hover:text-foreground
+                  "
+                  aria-label="Close cart"
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
+
+              {/* CART ITEMS */}
+
+              <div
+                className="
+                  flex-1
+                  space-y-4
+                  overflow-y-auto
+                  bg-emerald-900/30
+                  p-4
+                  sm:p-6
+                "
+              >
+                {cartItems.length === 0 ? (
+                  <div
+                    className="
+                      flex
+                      h-full
+                      flex-col
+                      items-center
+                      justify-center
+                      space-y-3
+                      py-12
+                      text-center
+                    "
+                  >
+                    <div
+                      className="
+                        flex
+                        size-14
+                        items-center
+                        justify-center
+                        rounded-full
+                        bg-muted
+                        text-muted-foreground
+                      "
+                    >
+                      <ShoppingBag className="size-6" />
+                    </div>
+
+                    <p className="text-base font-medium">Your cart is empty</p>
+
+                    <p className="max-w-xs text-xs text-muted-foreground">
+                      Explore our products and add items to your cart to get
+                      started.
+                    </p>
+
+                    <Button
+                      onClick={() => setCartOpen(false)}
+                      asChild
+                      className="
+                        mt-2
+                        cursor-pointer
+                        bg-[#857938]
+                        text-white
+                        hover:bg-[#857000]
+                      "
+                    >
+                      <Link href="/products">Browse Products</Link>
+                    </Button>
+                  </div>
+                ) : (
+                  cartItems.map((item) => {
+                    const qty = item.quantity || 1;
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="
+                          flex
+                          items-center
+                          justify-between
+                          gap-3
+                          rounded-lg
+                          border
+                          border-slate-200
+                          bg-card
+                          p-3
+                        "
+                      >
+                        {/* IMAGE */}
+
+                        {item.image ? (
+                          <Image
+                            src={item.image}
+                            alt={item.title}
+                            width={64}
+                            height={64}
+                            className="
+                              size-16
+                              shrink-0
+                              rounded-md
+                              border
+                              object-cover
+                            "
+                          />
+                        ) : (
+                          <div
+                            className="
+                              flex
+                              size-16
+                              shrink-0
+                              items-center
+                              justify-center
+                              rounded-md
+                              bg-muted
+                              font-bold
+                              text-muted-foreground
+                            "
+                          >
+                            {item.title.charAt(0)}
+                          </div>
+                        )}
+
+                        {/* DETAILS */}
+
+                        <div className="min-w-0 flex-1">
+                          <h4 className="truncate text-sm font-medium">
+                            {item.title}
+                          </h4>
+
+                          <p className="mt-0.5 text-xs font-bold text-primary">
+                            {new Intl.NumberFormat("en-US", {
+                              style: "currency",
+                              currency: "USD",
+                            }).format(item.price / 100)}
+                          </p>
+
+                          <div className="mt-2 flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.id, -1)}
+                              className="
+                                flex
+                                size-5
+                                cursor-pointer
+                                items-center
+                                justify-center
+                                rounded
+                                bg-muted
+                                text-xs
+                                hover:bg-slate-200
+                              "
+                            >
+                              -
+                            </button>
+
+                            <span className="w-4 text-center text-xs font-medium">
+                              {qty}
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.id, 1)}
+                              className="
+                                flex
+                                size-5
+                                cursor-pointer
+                                items-center
+                                justify-center
+                                rounded
+                                bg-muted
+                                text-xs
+                                hover:bg-slate-200
+                              "
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* REMOVE */}
+
+                        <button
+                          type="button"
+                          onClick={() => removeItem(item.id)}
+                          className="
+                            cursor-pointer
+                            p-1.5
+                            text-muted-foreground
+                            transition-colors
+                            hover:text-red-500
+                          "
+                          aria-label={`Remove ${item.title} from cart`}
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* CART FOOTER */}
+
+              {cartItems.length > 0 && (
+                <div
+                  className="
+                    shrink-0
+                    space-y-3
+                    border-t
+                    border-slate-200
+                    bg-muted/20
+                    p-4
+                    sm:p-6
+                  "
+                >
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+
+                    <span className="text-base font-semibold">
+                      {new Intl.NumberFormat("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                      }).format(subtotal / 100)}
+                    </span>
+                  </div>
+
+                  <Separator />
+
+                  <Button
+                    disabled={isCheckoutLoading}
+                    className="
+                      flex
+                      w-full
+                      cursor-pointer
+                      items-center
+                      justify-center
+                      gap-2
+                      bg-[#857938]
+                      text-white
+                      hover:bg-[#857000]
+                    "
+                    onClick={handleCheckout}
+                  >
+                    {isCheckoutLoading ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        <span>Redirecting to Checkout...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Proceed to Checkout</span>
+
+                        <ArrowRight className="size-4" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================
+          MOBILE NAVIGATION
+      ======================================================== */}
+
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
@@ -244,977 +1648,237 @@ export function NavbarClient({}: { user: UserProps | null }) {
             initial="hidden"
             animate="visible"
             exit="hidden"
-            className="px-4 py-4 space-y-4 border-t border-slate-100 dark:border-slate-800 md:hidden bg-white/95 dark:bg-slate-950/95 backdrop-blur-md overflow-hidden"
+            className="
+              overflow-hidden
+              border-t
+              border-slate-100
+              bg-white/95
+              px-4
+              py-4
+              backdrop-blur-md
+              md:hidden
+            "
           >
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search..."
-                className="w-full h-9 rounded-xl border border-input bg-background pl-9 pr-4 text-sm outline-none"
-              />
-            </div>
+            {/* SEARCH */}
 
-            <div className="space-y-1">
-              <Link
-                href="/tutoring"
-                className="block py-2 text-sm font-medium text-slate-700 hover:text-purple-600 dark:text-slate-200 dark:hover:text-purple-400 transition-colors"
-                onClick={() => setMobileOpen(false)}
-              >
-                Tutoring
-              </Link>
+            <form
+              onSubmit={(e) => {
+                handleSearch(e);
+                closeMobileMenu();
+              }}
+              className="
+                border-b
+                border-slate-100
+                pb-3
+              "
+            >
+              <div className="relative w-full">
+                <input
+                  type="search"
+                  name="search"
+                  placeholder="Search for anything"
+                  aria-label="Search products"
+                  className="
+                    h-11
+                    w-full
+                    rounded-full
+                    border
+                    border-slate-300
+                    bg-white
+                    pl-4
+                    pr-12
+                    text-sm
+                    outline-none
+                    focus:border-[#857938]
+                    focus:ring-2
+                    focus:ring-[#857938]/20
+                  "
+                />
 
-              <Link
-                href="/products"
-                className="block py-2 text-sm font-medium text-slate-700 hover:text-purple-600 dark:text-slate-200 dark:hover:text-purple-400 transition-colors"
-                onClick={() => setMobileOpen(false)}
-              >
-                Products
-              </Link>
-
-              {/* Mobile Games Collapsible Accordion */}
-              <div>
                 <button
-                  onClick={() => setMobileGamesOpen(!mobileGamesOpen)}
-                  className="flex items-center justify-between w-full py-2 text-sm font-medium text-slate-700 hover:text-purple-600 dark:text-slate-200 dark:hover:text-purple-400 transition-colors"
+                  type="submit"
+                  aria-label="Search"
+                  className="
+                    absolute
+                    right-1
+                    top-1/2
+                    flex
+                    size-9
+                    -translate-y-1/2
+                    cursor-pointer
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-[#857938]
+                    text-white
+                  "
                 >
-                  <span>Games</span>
-                  <ChevronDown
-                    size={16}
-                    className={cn(
-                      "transition-transform duration-200",
-                      mobileGamesOpen && "rotate-180",
-                    )}
-                  />
+                  <Search className="size-4" />
                 </button>
-                {mobileGamesOpen && (
-                  <div className="pl-3 pr-1 py-1 space-y-1 border-l-2 border-slate-200 dark:border-slate-800 ml-1">
-                    {gameItems.map((game, idx) => (
-                      <Link
-                        key={idx}
-                        href={game.href}
-                        className="block py-1.5 text-xs font-medium text-slate-600 hover:text-purple-600 dark:text-slate-400 dark:hover:text-purple-400 transition-colors"
-                        onClick={() => setMobileOpen(false)}
-                      >
-                        {game.title}
-                      </Link>
-                    ))}
-                  </div>
-                )}
+              </div>
+            </form>
+
+            {/* PRODUCTS */}
+
+            <div className="mt-4">
+              <div
+                className="
+                  px-3
+                  pb-2
+                  text-xs
+                  font-semibold
+                  uppercase
+                  tracking-wider
+                  text-slate-400
+                "
+              >
+                Explore Products
               </div>
 
-              <Link
-                href="/videos"
-                className="block py-2 text-sm font-medium text-slate-700 hover:text-purple-600 dark:text-slate-200 dark:hover:text-purple-400 transition-colors"
-                onClick={() => setMobileOpen(false)}
-              >
-                Free Content
-              </Link>
+              <ProductMobileMenu onClose={closeMobileMenu} />
+            </div>
 
-              <Link
-                href="/about"
-                className="block py-2 text-sm font-medium text-slate-700 hover:text-purple-600 dark:text-slate-200 dark:hover:text-purple-400 transition-colors"
-                onClick={() => setMobileOpen(false)}
-              >
-                About
-              </Link>
+            {/* SERVICES */}
 
-              {session && (
+            <div
+              className="
+                mt-4
+                flex
+                flex-col
+                space-y-1
+                border-t
+                border-slate-100
+                pt-3
+              "
+            >
+              <div
+                className="
+                  px-3
+                  pb-2
+                  text-xs
+                  font-semibold
+                  uppercase
+                  tracking-wider
+                  text-slate-400
+                "
+              >
+                Services
+              </div>
+
+              {serviceItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="
+                    rounded-lg
+                    px-3
+                    py-2.5
+                    text-sm
+                    font-medium
+                    text-slate-800
+                    transition-colors
+                    hover:bg-slate-100
+                    hover:text-[#857938]
+                  "
+                  onClick={closeMobileMenu}
+                >
+                  {item.title}
+                </Link>
+              ))}
+            </div>
+
+            {/* MOBILE AUTH */}
+
+            {session ? (
+              <div
+                className="
+                  mt-3
+                  border-t
+                  border-slate-100
+                  pt-3
+                "
+              >
                 <Link
                   href={dashboardUrl}
-                  className="block py-2 text-sm font-semibold text-blue-600 dark:text-blue-400 transition-colors pt-2 border-t mt-2"
-                  onClick={() => setMobileOpen(false)}
+                  className="
+                    block
+                    rounded-lg
+                    bg-[#857938]
+                    px-3
+                    py-2.5
+                    text-center
+                    text-sm
+                    font-medium
+                    text-white
+                    transition-colors
+                    hover:bg-[#70662e]
+                  "
+                  onClick={closeMobileMenu}
                 >
-                  Go to Dashboard &rarr;
+                  Go to Dashboard →
                 </Link>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div
+                className="
+                  mt-3
+                  flex
+                  flex-col
+                  gap-2
+                  border-t
+                  border-slate-100
+                  pt-3
+                "
+              >
+                <SigninModal>
+                  <button
+                    type="button"
+                    data-login-trigger="true"
+                    className="
+                      block
+                      w-full
+                      cursor-pointer
+                      py-2
+                      text-center
+                      text-sm
+                      font-medium
+                      text-slate-700
+                      transition-colors
+                      hover:text-[#857938]
+                    "
+                    onClick={closeMobileMenu}
+                  >
+                    Log in
+                  </button>
+                </SigninModal>
+
+                <SignupModal>
+                  <button
+                    type="button"
+                    className="
+                      block
+                      w-full
+                      cursor-pointer
+                      rounded-lg
+                      bg-[#857938]
+                      py-2
+                      text-center
+                      text-sm
+                      font-medium
+                      text-white
+                      transition-colors
+                      hover:bg-[#70662e]
+                    "
+                    onClick={closeMobileMenu}
+                  >
+                    Get Started
+                  </button>
+                </SignupModal>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
     </header>
   );
 }
-
-// "use client";
-
-// import * as React from "react";
-// import Link from "next/link";
-
-// import { Menu, X, Search } from "lucide-react";
-// import { ThemeToggle } from "@/app/_components/themeToggle";
-// import { authClient } from "@/lib/auth-client";
-// import { UserDropdown } from "./UserDropdown";
-// import { buttonVariants } from "./ui/button";
-// import { cn } from "@/lib/utils";
-// import MyLogo from "./Logo";
-// import { useEffect, useState } from "react";
-// import { motion, AnimatePresence, Variants } from "framer-motion";
-
-// import {
-//   NavigationMenu,
-//   NavigationMenuItem,
-//   NavigationMenuList,
-// } from "./ui/navigation-menu";
-
-// const productItems = [
-//   {
-//     title: "Tutoring",
-//     href: "/tutoring",
-//   },
-//   {
-//     title: "Products",
-//     href: "/products",
-//   },
-//   {
-//     title: "Games",
-//     href: "/games",
-//   },
-//   {
-//     title: "Free Content",
-//     href: "/videos",
-//   },
-//   {
-//     title: "About",
-//     href: "/about",
-//   },
-// ];
-
-// interface UserProps {
-//   id: string;
-//   email: string;
-//   name: string | null;
-//   image: string | null;
-//   role: string | null;
-// }
-
-// export function NavbarClient({}: { user: UserProps | null }) {
-//   const { data: session, isPending } = authClient.useSession();
-//   const [mobileOpen, setMobileOpen] = useState(false);
-//   const [mounted, setMounted] = useState(false);
-
-//   useEffect(() => {
-//     const frame = requestAnimationFrame(() => {
-//       setMounted(true);
-//     });
-//     return () => cancelAnimationFrame(frame);
-//   }, []);
-
-//   // 1. Determine user role(s) safely from session
-//   const rolesList: string[] = [];
-//   if (session?.user) {
-//     const userObj = session.user as { role?: string; roles?: string[] };
-//     if (userObj.role) rolesList.push(userObj.role);
-//     if (Array.isArray(userObj.roles)) rolesList.push(...userObj.roles);
-//   }
-
-//   const normalizedRoles = rolesList.map((r) => r.toLowerCase());
-
-//   // 2. Resolve destination path based on role hierarchy
-//   const dashboardUrl = normalizedRoles.includes("admin")
-//     ? "/admin"
-//     : normalizedRoles.includes("educator") ||
-//         normalizedRoles.includes("facilitator")
-//       ? "/educator"
-//       : "/learner";
-
-//   const userRole = session?.user?.role?.toLowerCase() ?? "learner";
-
-//   // Menu Animation Variants
-//   const menuVariants: Variants = {
-//     hidden: {
-//       opacity: 0,
-//       y: -15,
-//       transition: { duration: 0.2, ease: "easeInOut" },
-//     },
-//     visible: {
-//       opacity: 1,
-//       y: 0,
-//       transition: { duration: 0.3, ease: "easeOut" },
-//     },
-//   };
-
-//   return (
-//     <header className="sticky top-0 z-50 w-full border-b border-slate-100 dark:border-slate-800/50 bg-background/80 backdrop-blur-md">
-//       <div className="max-w-7xl mx-auto px-4 sm:px-5 h-16 flex items-center justify-between">
-//         {/* Left Side: Logo only */}
-//         <div className="shrink-0">
-//           <MyLogo />
-//         </div>
-
-//         {/* Center: Navigation Links */}
-//         <div className="hidden md:flex items-center justify-start gap-6 flex-1 pl-6">
-//           <nav>
-//             <NavigationMenu>
-//               <NavigationMenuList className="gap-1">
-//                 {productItems.map((item, index) => (
-//                   <NavigationMenuItem key={index}>
-//                     <Link
-//                       href={item.href}
-//                       className="px-3 py-2 font-semibold text-slate-600 hover:text-purple-600 dark:text-muted-foreground dark:hover:text-purple-400 transition text-[13px] whitespace-nowrap"
-//                     >
-//                       {item.title}
-//                     </Link>
-//                   </NavigationMenuItem>
-//                 ))}
-//               </NavigationMenuList>
-//             </NavigationMenu>
-//           </nav>
-//         </div>
-
-//         {/* Right Side: Actions (Theme, Dashboard CTA, User Dropdown / Sign-In) */}
-//         <div className="flex items-center space-x-3 justify-end shrink-0">
-//           <div className="flex items-center justify-center h-9 w-9 border border-border rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-//             <ThemeToggle />
-//           </div>
-
-//           {!isPending &&
-//             mounted &&
-//             (session ? (
-//               <div className="flex items-center gap-3">
-//                 {/* Desktop Go to Dashboard CTA Button */}
-//                 <Link
-//                   href={dashboardUrl}
-//                   className="hidden sm:inline-flex px-4 py-2 text-sm font-semibold text-white bg-[#857938] rounded-md hover:bg-blue-700 transition shadow-sm"
-//                 >
-//                   Go to Dashboard &rarr;
-//                 </Link>
-
-//                 <UserDropdown
-//                   email={session.user.email ?? ""}
-//                   image={session.user.image ?? ""}
-//                   name={session.user.name ?? "User"}
-//                   role={userRole}
-//                 />
-//               </div>
-//             ) : (
-//               <div className="hidden sm:flex items-center">
-//                 <Link
-//                   href="/login"
-//                   className={cn(
-//                     buttonVariants({ variant: "default", size: "sm" }),
-//                     "h-9 bg-[#857938] hover:bg-blue-700 px-6 text-[12px] text-white active:scale-95 transition-all rounded-md border-0",
-//                   )}
-//                 >
-//                   Get Started
-//                 </Link>
-//               </div>
-//             ))}
-
-//           <button
-//             onClick={() => setMobileOpen(!mobileOpen)}
-//             className="md:hidden p-2 text-slate-600 hover:text-purple-600 dark:text-slate-400 dark:hover:text-purple-400 focus:outline-none active:scale-90 transition-transform"
-//           >
-//             {mobileOpen ? <X size={24} /> : <Menu size={24} />}
-//           </button>
-//         </div>
-//       </div>
-
-//       {/* Mobile Drawer Menu */}
-//       <AnimatePresence>
-//         {mobileOpen && (
-//           <motion.div
-//             variants={menuVariants}
-//             initial="hidden"
-//             animate="visible"
-//             exit="hidden"
-//             className="px-4 py-4 space-y-4 border-t border-slate-100 dark:border-slate-800 md:hidden bg-white/95 dark:bg-slate-950/95 backdrop-blur-md overflow-hidden"
-//           >
-//             {/* Mobile Search Bar inside menu */}
-//             <div className="relative w-full">
-//               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-//               <input
-//                 type="text"
-//                 placeholder="Search..."
-//                 className="w-full h-9 rounded-xl border border-input bg-background pl-9 pr-4 text-sm outline-none"
-//               />
-//             </div>
-
-//             <div className="space-y-1">
-//               {productItems.map((item, index) => (
-//                 <Link
-//                   key={index}
-//                   href={item.href}
-//                   className="block py-2 text-sm font-medium text-slate-700 hover:text-purple-600 dark:text-slate-200 dark:hover:text-purple-400 transition-colors"
-//                   onClick={() => setMobileOpen(false)}
-//                 >
-//                   {item.title}
-//                 </Link>
-//               ))}
-
-//               {/* Mobile version of Dashboard button */}
-//               {session && (
-//                 <Link
-//                   href={dashboardUrl}
-//                   className="block py-2 text-sm font-semibold text-blue-600 dark:text-blue-400 transition-colors pt-2 border-t mt-2"
-//                   onClick={() => setMobileOpen(false)}
-//                 >
-//                   Go to Dashboard &rarr;
-//                 </Link>
-//               )}
-//             </div>
-//           </motion.div>
-//         )}
-//       </AnimatePresence>
-//     </header>
-//   );
-// }
-
-// "use client";
-
-// import * as React from "react";
-// import Link from "next/link";
-
-// import { Menu, X, Search } from "lucide-react";
-// import { ThemeToggle } from "@/app/_components/themeToggle";
-// import { authClient } from "@/lib/auth-client";
-// import { UserDropdown } from "./UserDropdown";
-// import { buttonVariants } from "./ui/button";
-// import { cn } from "@/lib/utils";
-// import MyLogo from "./Logo";
-// import { useEffect, useState } from "react";
-// import { motion, AnimatePresence, Variants } from "framer-motion";
-
-// import {
-//   NavigationMenu,
-//   NavigationMenuItem,
-//   NavigationMenuList,
-// } from "./ui/navigation-menu";
-
-// const productItems = [
-//   {
-//     title: "Tutoring",
-//     href: "/tutoring",
-//   },
-//   {
-//     title: "Products",
-//     href: "/products",
-//   },
-//   {
-//     title: "Games",
-//     href: "/games",
-//   },
-//   {
-//     title: "Free Content",
-//     href: "/games",
-//   },
-//   {
-//     title: "About",
-//     href: "/about",
-//   },
-// ];
-
-// interface UserProps {
-//   id: string;
-//   email: string;
-//   name: string | null;
-//   image: string | null;
-//   role: string | null;
-// }
-
-// export function NavbarClient({}: { user: UserProps | null }) {
-//   const { data: session, isPending } = authClient.useSession();
-//   const [mobileOpen, setMobileOpen] = useState(false);
-//   const [mounted, setMounted] = useState(false);
-
-//   const userRole = session?.user?.role?.toLowerCase() ?? "Learner";
-
-//   useEffect(() => {
-//     const frame = requestAnimationFrame(() => {
-//       setMounted(true);
-//     });
-//     return () => cancelAnimationFrame(frame);
-//   }, []);
-
-//   // Menu Animation Variants
-//   const menuVariants: Variants = {
-//     hidden: {
-//       opacity: 0,
-//       y: -15,
-//       transition: { duration: 0.2, ease: "easeInOut" },
-//     },
-//     visible: {
-//       opacity: 1,
-//       y: 0,
-//       transition: { duration: 0.3, ease: "easeOut" },
-//     },
-//   };
-
-//   return (
-//     <header className="sticky top-0 z-50 w-full border-b border-slate-100 dark:border-slate-800/50 bg-background/80 backdrop-blur-md">
-//       <div className="max-w-7xl mx-auto px-4 sm:px-5 h-16 flex items-center justify-between">
-//         {/* Left Side: Logo only */}
-//         <div className="shrink-0">
-//           <MyLogo />
-//         </div>
-
-//         {/* Center: Navigation Links */}
-//         <div className="hidden md:flex items-center justify-start gap-6 flex-1 pl-6">
-//           <nav>
-//             <NavigationMenu>
-//               <NavigationMenuList className="gap-1">
-//                 {productItems.map((item, index) => (
-//                   <NavigationMenuItem key={index}>
-//                     <Link
-//                       href={item.href}
-//                       className="px-3 py-2 font-semibold text-slate-600 hover:text-purple-600 dark:text-muted-foreground dark:hover:text-purple-400 transition text-[13px] whitespace-nowrap"
-//                     >
-//                       {item.title}
-//                     </Link>
-//                   </NavigationMenuItem>
-//                 ))}
-//               </NavigationMenuList>
-//             </NavigationMenu>
-//           </nav>
-//         </div>
-
-//         {/* Right Side: Actions (Theme, Dashboard CTA, User Dropdown / Sign-In) */}
-//         <div className="flex items-center space-x-3 justify-end shrink-0">
-//           <div className="flex items-center justify-center h-9 w-9 border border-border rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-//             <ThemeToggle />
-//           </div>
-
-//           {!isPending &&
-//             mounted &&
-//             (session ? (
-//               <div className="flex items-center gap-3">
-//                 {/* Go to Dashboard CTA Button */}
-//                 <Link
-//                   href="/admin"
-//                   className="hidden sm:inline-flex px-4 py-2 text-sm font-semibold text-white bg-[#857938] rounded-lg hover:bg-blue-700 transition shadow-sm"
-//                 >
-//                   Go to Dashboard &rarr;
-//                 </Link>
-
-//                 <UserDropdown
-//                   email={session.user.email ?? ""}
-//                   image={session.user.image ?? ""}
-//                   name={session.user.name ?? "User"}
-//                   role={userRole}
-//                 />
-//               </div>
-//             ) : (
-//               <div className="hidden sm:flex items-center">
-//                 <Link
-//                   href="/login"
-//                   className={cn(
-//                     buttonVariants({ variant: "default", size: "sm" }),
-//                     "h-9 bg-[#857938] hover:bg-blue-700 px-6 text-[12px] text-white active:scale-95 transition-all rounded-md border-0",
-//                   )}
-//                 >
-//                   Get Started
-//                 </Link>
-//               </div>
-//             ))}
-
-//           <button
-//             onClick={() => setMobileOpen(!mobileOpen)}
-//             className="md:hidden p-2 text-slate-600 hover:text-purple-600 dark:text-slate-400 dark:hover:text-purple-400 focus:outline-none active:scale-90 transition-transform"
-//           >
-//             {mobileOpen ? <X size={24} /> : <Menu size={24} />}
-//           </button>
-//         </div>
-//       </div>
-
-//       {/* Mobile Drawer Menu */}
-//       <AnimatePresence>
-//         {mobileOpen && (
-//           <motion.div
-//             variants={menuVariants}
-//             initial="hidden"
-//             animate="visible"
-//             exit="hidden"
-//             className="px-4 py-4 space-y-4 border-t border-slate-100 dark:border-slate-800 md:hidden bg-white/95 dark:bg-slate-950/95 backdrop-blur-md overflow-hidden"
-//           >
-//             {/* Mobile Search Bar inside menu */}
-//             <div className="relative w-full">
-//               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-//               <input
-//                 type="text"
-//                 placeholder="Search..."
-//                 className="w-full h-9 rounded-xl border border-input bg-background pl-9 pr-4 text-sm outline-none"
-//               />
-//             </div>
-
-//             <div className="space-y-1">
-//               {productItems.map((item, index) => (
-//                 <Link
-//                   key={index}
-//                   href={item.href}
-//                   className="block py-2 text-sm font-medium text-slate-700 hover:text-purple-600 dark:text-slate-200 dark:hover:text-purple-400 transition-colors"
-//                   onClick={() => setMobileOpen(false)}
-//                 >
-//                   {item.title}
-//                 </Link>
-//               ))}
-
-//               {/* Mobile version of Dashboard button if logged in */}
-//               {session && (
-//                 <Link
-//                   href="/dashboard"
-//                   className="block py-2 text-sm font-semibold text-blue-600 dark:text-blue-400 transition-colors pt-2 border-t mt-2"
-//                   onClick={() => setMobileOpen(false)}
-//                 >
-//                   Go to Dashboard &rarr;
-//                 </Link>
-//               )}
-//             </div>
-//           </motion.div>
-//         )}
-//       </AnimatePresence>
-//     </header>
-//   );
-// }
-
-// "use client";
-
-// import * as React from "react";
-// import Link from "next/link";
-
-// import { Menu, X, LayoutDashboard, LogInIcon, Search } from "lucide-react";
-// import clsx from "clsx";
-// import { ThemeToggle } from "@/app/_components/themeToggle";
-// import { authClient } from "@/lib/auth-client";
-// import { UserDropdown } from "./UserDropdown";
-// import { buttonVariants } from "./ui/button";
-// import { cn } from "@/lib/utils";
-// import MyLogo from "./Logo";
-// import { useEffect, useState } from "react";
-// import { motion, AnimatePresence, Variants } from "framer-motion";
-
-// import {
-//   NavigationMenu,
-//   NavigationMenuItem,
-//   NavigationMenuList,
-// } from "./ui/navigation-menu";
-
-// const productItems = [
-//   {
-//     title: "Tutoring",
-//     href: "/tutoring",
-//   },
-//   {
-//     title: "Products",
-//     href: "/products",
-//   },
-//   {
-//     title: "Games",
-//     href: "/games",
-//   },
-
-//   {
-//     title: "About",
-//     href: "/about",
-//   },
-// ];
-
-// interface UserProps {
-//   id: string;
-//   email: string;
-//   name?: string;
-//   image?: string;
-//   role?: string;
-// }
-
-// export function NavbarClient({}: { user: UserProps | null }) {
-//   const { data: session, isPending } = authClient.useSession();
-//   const [mobileOpen, setMobileOpen] = useState(false);
-//   const [mounted, setMounted] = useState(false);
-
-//   const userRole = session?.user?.role?.toLowerCase() ?? "unassigned";
-//   // const navConfig = ROLE_NAV_CONFIG[userRole] ?? ROLE_NAV_CONFIG["unassigned"];
-
-//   useEffect(() => {
-//     const frame = requestAnimationFrame(() => {
-//       setMounted(true);
-//     });
-//     return () => cancelAnimationFrame(frame);
-//   }, []);
-
-//   // Menu Animation Variants
-//   const menuVariants: Variants = {
-//     hidden: {
-//       opacity: 0,
-//       y: -15,
-//       transition: { duration: 0.2, ease: "easeInOut" },
-//     },
-//     visible: {
-//       opacity: 1,
-//       y: 0,
-//       transition: { duration: 0.3, ease: "easeOut" },
-//     },
-//   };
-
-//   return (
-//     <header className="sticky top-0 z-50 w-full border-b border-slate-100 dark:border-slate-800/50 bg-background/80 backdrop-blur-md">
-//       <div className="max-w-8xl mx-auto px-4 md:px-6 lg:px-16 flex min-h-16 items-center gap-4 justify-between relative">
-//         {/* Left Side: Logo only */}
-//         <div className="shrink-0">
-//           <MyLogo />
-//         </div>
-
-//         {/* Center: Navigation Links followed by Desktop Search Bar */}
-//         <div className="hidden md:flex items-center justify-center gap-6 flex-1">
-//           <nav>
-//             <NavigationMenu>
-//               <NavigationMenuList className="gap-1">
-//                 {productItems.map((item, index) => (
-//                   <NavigationMenuItem key={index}>
-//                     <Link
-//                       href={item.href}
-//                       className="px-3 py-2 font-semibold text-slate-600 hover:text-purple-600 dark:text-slate-300 dark:hover:text-purple-400 transition text-sm whitespace-nowrap"
-//                     >
-//                       {item.title}
-//                     </Link>
-//                   </NavigationMenuItem>
-//                 ))}
-//               </NavigationMenuList>
-//             </NavigationMenu>
-//           </nav>
-//         </div>
-
-//         {/* Right Side: Actions (Theme, Sign-In, and Profile dropdown) */}
-//         <div className="flex items-center space-x-3 justify-end shrink-0">
-//           <div className="flex items-center justify-center h-9 w-9 border border-border rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-//             <ThemeToggle />
-//           </div>
-
-//           {!isPending &&
-//             mounted &&
-//             (session ? (
-//               <div className="flex items-center gap-3">
-//                 {/* <Link
-//                   href={navConfig.href}
-//                   className={clsx(
-//                     buttonVariants({ variant: "outline", size: "sm" }),
-//                     "hidden sm:flex h-9 items-center gap-2 border-purple-200 hover:bg-purple-50 hover:text-purple-700 dark:border-purple-900/50 dark:hover:bg-purple-900/20 dark:hover:text-purple-300 active:scale-95 transition-all rounded-xl",
-//                   )}
-//                 >
-//                   <LayoutDashboard className="h-4 w-4" />
-//                   <span className="font-semibold">{navConfig.label}</span>
-//                 </Link> */}
-
-//                 <UserDropdown
-//                   email={session.user.email ?? ""}
-//                   image={session.user.image ?? ""}
-//                   name={session.user.name ?? "User"}
-//                   role={userRole}
-//                 />
-//               </div>
-//             ) : (
-//               <div className="hidden sm:flex items-center">
-//                 <Link
-//                   href="/login"
-//                   className={cn(
-//                     buttonVariants({ variant: "default", size: "sm" }),
-//                     "h-9 bg-[#857938] hover:bg-[#857938]/90 px-6 text-white active:scale-95 transition-all rounded-md border-0",
-//                   )}
-//                 >
-//                   <LogInIcon className="size-4 mr-2" />
-//                   Sign In
-//                 </Link>
-//               </div>
-//             ))}
-
-//           <button
-//             onClick={() => setMobileOpen(!mobileOpen)}
-//             className="md:hidden p-2 text-slate-600 hover:text-purple-600 dark:text-slate-400 dark:hover:text-purple-400 focus:outline-none active:scale-90 transition-transform"
-//           >
-//             {mobileOpen ? <X size={24} /> : <Menu size={24} />}
-//           </button>
-//         </div>
-//       </div>
-
-//       {/* Mobile Drawer Menu */}
-//       <AnimatePresence>
-//         {mobileOpen && (
-//           <motion.div
-//             variants={menuVariants}
-//             initial="hidden"
-//             animate="visible"
-//             exit="hidden"
-//             className="px-4 py-4 space-y-4 border-t border-slate-100 dark:border-slate-800 md:hidden bg-white/95 dark:bg-slate-950/95 backdrop-blur-md overflow-hidden"
-//           >
-//             {/* Mobile Search Bar inside menu */}
-//             <div className="relative w-full">
-//               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-//               <input
-//                 type="text"
-//                 placeholder="Search..."
-//                 className="w-full h-9 rounded-xl border border-input bg-background pl-9 pr-4 text-sm outline-none"
-//               />
-//             </div>
-
-//             <div className="space-y-1">
-//               {productItems.map((item, index) => (
-//                 <Link
-//                   key={index}
-//                   href={item.href}
-//                   className="block py-2 text-sm font-medium text-slate-700 hover:text-purple-600 dark:text-slate-200 dark:hover:text-purple-400 transition-colors"
-//                   onClick={() => setMobileOpen(false)}
-//                 >
-//                   {item.title}
-//                 </Link>
-//               ))}
-//             </div>
-//           </motion.div>
-//         )}
-//       </AnimatePresence>
-//     </header>
-//   );
-// }
-
-// "use client";
-
-// import * as React from "react";
-// import Link from "next/link";
-
-// import { Menu, X, LayoutDashboard, LogInIcon } from "lucide-react";
-// import clsx from "clsx";
-// import { ThemeToggle } from "@/app/_components/themeToggle";
-// import { authClient } from "@/lib/auth-client";
-// import { UserDropdown } from "./UserDropdown";
-// import { buttonVariants } from "./ui/button";
-// import { cn } from "@/lib/utils";
-// import MyLogo from "./Logo";
-// import { useEffect, useState } from "react";
-// import { motion, AnimatePresence, Variants } from "framer-motion";
-// import { ChevronDown } from "lucide-react";
-// import { ROLE_NAV_CONFIG } from "@/lib/role-config";
-// import {
-//   NavigationMenu,
-//   NavigationMenuItem,
-//   NavigationMenuList,
-// } from "./ui/navigation-menu";
-
-// const productItems = [
-//   {
-//     title: "Programs",
-//     children: [
-//       {
-//         title: "Mathematics",
-//         href: "/programs/math",
-//       },
-//     ],
-//   },
-//   {
-//     title: "Marketplace",
-//     href: "/marketplace",
-//   },
-//   {
-//     title: "Services",
-//     href: "/aitutor",
-//   },
-//   {
-//     title: "Resources",
-//     href: "/aitutor",
-//   },
-//   {
-//     title: "About",
-//     href: "/aitutor",
-//   },
-// ];
-
-// interface UserProps {
-//   id: string;
-//   email: string;
-//   name?: string;
-//   image?: string;
-//   role?: string;
-// }
-
-// export function NavbarClient({}: { user: UserProps | null }) {
-//   const { data: session, isPending } = authClient.useSession();
-//   const [mobileOpen, setMobileOpen] = useState(false);
-//   const [mounted, setMounted] = useState(false);
-//   const [programOpen, setProgramOpen] = useState(false);
-
-//   const userRole = session?.user?.role?.toLowerCase() ?? "unassigned";
-//   const navConfig = ROLE_NAV_CONFIG[userRole] ?? ROLE_NAV_CONFIG["unassigned"];
-
-//   useEffect(() => {
-//     const frame = requestAnimationFrame(() => {
-//       setMounted(true);
-//     });
-//     return () => cancelAnimationFrame(frame);
-//   }, []);
-
-//   // Menu Animation Variants
-//   const menuVariants: Variants = {
-//     hidden: {
-//       opacity: 0,
-//       y: -15,
-//       transition: { duration: 0.2, ease: "easeInOut" },
-//     },
-//     visible: {
-//       opacity: 1,
-//       y: 0,
-//       transition: { duration: 0.3, ease: "easeOut" },
-//     },
-//   };
-
-//   const dropdownVariants: Variants = {
-//     hidden: { opacity: 0, height: 0 },
-//     visible: { opacity: 1, height: "auto", transition: { duration: 0.2 } },
-//   };
-
-//   return (
-//     <header className="sticky top-0 z-50 w-full border-b border-slate-100 dark:border-slate-800/50 bg-background/80 backdrop-blur-md">
-//       <div className="max-w-8xl mx-auto flex min-h-16 items-center px-4 md:px-8 lg:px-15 relative">
-//         <MyLogo />
-
-//         {/* Center Navigation */}
-//         <nav className="hidden md:flex absolute left-1/2 -translate-x-1/2">
-//           <NavigationMenu>
-//             <NavigationMenuList>
-//               <NavigationMenuItem>
-//                 <Link
-//                   href="/onboarding"
-//                   className="px-4 py-2 font-semibold text-slate-600 hover:text-purple-600 dark:text-slate-300 dark:hover:text-purple-400 transition"
-//                 >
-//                   Session
-//                 </Link>
-//               </NavigationMenuItem>
-//               <NavigationMenuItem>
-//                 <Link
-//                   href="/products"
-//                   className="px-4 py-2 font-semibold text-slate-600 hover:text-purple-600 dark:text-slate-300 dark:hover:text-purple-400 transition"
-//                 >
-//                   Digital Store
-//                 </Link>
-//               </NavigationMenuItem>
-//               <NavigationMenuItem>
-//                 <Link
-//                   href="/about"
-//                   className="px-4 py-2 font-semibold text-slate-600 hover:text-purple-600 dark:text-slate-300 dark:hover:text-purple-400 transition"
-//                 >
-//                   About
-//                 </Link>
-//               </NavigationMenuItem>
-//             </NavigationMenuList>
-//           </NavigationMenu>
-//         </nav>
-
-//         {/* Right Side */}
-//         <div className="ml-auto flex items-center space-x-4">
-//           <div className="flex items-center justify-center h-9 w-9 border border-border rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-//             <ThemeToggle />
-//           </div>
-
-//           {!isPending &&
-//             mounted &&
-//             (session ? (
-//               <div className="flex items-center gap-3">
-//                 <Link
-//                   href={navConfig.href}
-//                   className={clsx(
-//                     buttonVariants({ variant: "outline", size: "sm" }),
-//                     "hidden sm:flex h-9 items-center gap-2 border-purple-200 hover:bg-purple-50 hover:text-purple-700 dark:border-purple-900/50 dark:hover:bg-purple-900/20 dark:hover:text-purple-300 active:scale-95 transition-all rounded-xl",
-//                   )}
-//                 >
-//                   <LayoutDashboard className="h-4 w-4" />
-//                   <span className="font-semibold">{navConfig.label}</span>
-//                 </Link>
-
-//                 <UserDropdown
-//                   email={session.user.email ?? ""}
-//                   image={session.user.image ?? ""}
-//                   name={session.user.name ?? "User"}
-//                   role={userRole}
-//                 />
-//               </div>
-//             ) : (
-//               <div className="hidden sm:flex items-center space-x-2">
-//                 <Link
-//                   href="/login"
-//                   className={cn(
-//                     buttonVariants({ variant: "default", size: "sm" }),
-//                     "h-9 bg-[#857938] from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 px-8 text-white active:scale-95 transition-all shadow-md shadow-purple-600/10 rounded-md border-0",
-//                   )}
-//                 >
-//                   <LogInIcon className="size-4 mr-2" />
-//                   Sign In
-//                 </Link>
-//               </div>
-//             ))}
-
-//           <button
-//             onClick={() => setMobileOpen(!mobileOpen)}
-//             className="md:hidden p-2 text-slate-600 hover:text-purple-600 dark:text-slate-400 dark:hover:text-purple-400 focus:outline-none active:scale-90 transition-transform"
-//           >
-//             {mobileOpen ? <X size={24} /> : <Menu size={24} />}
-//           </button>
-//         </div>
-//       </div>
-
-//       {/* 2. WRAP MOBILE MENU IN ANIMATEPRESENCE FOR EXIT ANIMATIONS */}
-//       <AnimatePresence>
-//         {mobileOpen && (
-//           <motion.div
-//             variants={menuVariants}
-//             initial="hidden"
-//             animate="visible"
-//             exit="hidden"
-//             className="px-4 py-3 space-y-2 border-t border-slate-100 dark:border-slate-800 md:hidden bg-white/95 dark:bg-slate-950/95 backdrop-blur-md overflow-hidden"
-//           >
-//             {productItems.map((item, index) => {
-//               if (item.children) {
-//                 return (
-//                   <div key={index} className="space-y-1">
-//                     <button
-//                       onClick={() => setProgramOpen(!programOpen)}
-//                       className="w-full flex items-center justify-between py-2 text-sm font-medium text-slate-700 dark:text-slate-200"
-//                     >
-//                       <span>{item.title}</span>
-//                       <ChevronDown
-//                         className={cn(
-//                           "h-4 w-4 transition-transform duration-200 text-slate-500",
-//                           programOpen && "rotate-180",
-//                         )}
-//                       />
-//                     </button>
-
-//                     {/* 3. OPTIONAL: ANIMATE THE INSIDE NESTED DROPDOWN TOO */}
-//                     <AnimatePresence initial={false}>
-//                       {programOpen && (
-//                         <motion.div
-//                           variants={dropdownVariants}
-//                           initial="hidden"
-//                           animate="visible"
-//                           exit="hidden"
-//                           className="pl-4 space-y-1 border-l-2 border-purple-100 dark:border-slate-800 ml-2 overflow-hidden"
-//                         >
-//                           {item.children.map((child, childIndex) => (
-//                             <Link
-//                               key={childIndex}
-//                               href={child.href}
-//                               className="block py-2 pl-2 text-sm text-slate-500 hover:text-purple-600 dark:text-slate-400 dark:hover:text-purple-400 transition-colors"
-//                               onClick={() => setMobileOpen(false)}
-//                             >
-//                               {child.title}
-//                             </Link>
-//                           ))}
-//                         </motion.div>
-//                       )}
-//                     </AnimatePresence>
-//                   </div>
-//                 );
-//               }
-
-//               return (
-//                 <Link
-//                   key={index}
-//                   href={item.href || "#"}
-//                   className="block py-2 text-sm font-medium text-slate-700 hover:text-purple-600 dark:text-slate-200 dark:hover:text-purple-400 transition-colors"
-//                   onClick={() => setMobileOpen(false)}
-//                 >
-//                   {item.title}
-//                 </Link>
-//               );
-//             })}
-//           </motion.div>
-//         )}
-//       </AnimatePresence>
-//     </header>
-//   );
-// }

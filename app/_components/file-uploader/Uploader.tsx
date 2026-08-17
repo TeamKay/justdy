@@ -5,7 +5,7 @@ import { Card, CardContent } from "../ui/card"; // Adjust paths as necessary
 import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { X, UploadCloud } from "lucide-react";
+import { X, Plus } from "lucide-react";
 import { uploadFiles } from "@/lib/uploadthing";
 import { Upload, FileCheck } from "lucide-react";
 import { Input } from "@/app/_components/ui/input";
@@ -32,11 +32,6 @@ export type PreviewItem = {
   url: string;
   origin: File | string;
 };
-
-interface SingleFileUploaderProps {
-  value: string;
-  onChange: (details: FileDetails) => void;
-}
 
 export function ImageUploader({ onChange, value }: UploaderProps) {
   // 1. Keep track of the last value we rendered to detect prop changes inline
@@ -228,7 +223,7 @@ export function MultiImageUploader({
   const formatImageUrl = (item: string): string => {
     if (!item) return "";
 
-    // Absolute URLs, local blobs, or inline base64
+    // Already a complete URL, blob URL, or base64 image
     if (
       item.startsWith("http://") ||
       item.startsWith("https://") ||
@@ -238,23 +233,30 @@ export function MultiImageUploader({
       return item;
     }
 
-    // UploadThing public CDN handling (if using UploadThing keys)
-    if (item.startsWith("utfs.io") || item.startsWith("uploadthing")) {
+    // UploadThing key
+    //
+    // Database values such as:
+    // abc123xyz456
+    //
+    // should become:
+    // https://utfs.io/f/abc123xyz456
+    if (!item.startsWith("/")) {
       return `https://utfs.io/f/${item}`;
     }
 
-    // Local public folder assets
-    return item.startsWith("/") ? item : `/${item}`;
+    // Local public-folder asset
+    return item;
   };
 
-  // Compute previews with explicit PreviewItem return types inside flatMap
   const previews = useMemo<PreviewItem[]>(() => {
     return value.flatMap((item, index): PreviewItem[] => {
       if (!item) return [];
 
       if (typeof item === "string") {
         const url = formatImageUrl(item);
+
         if (!url) return [];
+
         return [
           {
             id: `url-${index}-${item}`,
@@ -278,79 +280,67 @@ export function MultiImageUploader({
     });
   }, [value]);
 
-  // Memory cleanup for local blob URLs
+  // Clean up temporary blob URLs
   useEffect(() => {
     return () => {
-      previews.forEach((p) => {
-        if (p.url.startsWith("blob:")) {
-          URL.revokeObjectURL(p.url);
+      previews.forEach((preview) => {
+        if (preview.url.startsWith("blob:")) {
+          URL.revokeObjectURL(preview.url);
         }
       });
     };
   }, [previews]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    accept: { "image/*": [] },
-    maxFiles: maxFiles - value.length,
+    accept: {
+      "image/*": [],
+    },
+    maxFiles: Math.max(0, maxFiles - value.length),
     disabled: value.length >= maxFiles,
+
     onDrop: (acceptedFiles) => {
       if (acceptedFiles.length === 0) return;
 
       const updatedList = [...value, ...acceptedFiles].slice(0, maxFiles);
+
       onChange(updatedList);
     },
   });
 
   const removeImage = (idToRemove: string) => {
-    const itemToFilter = previews.find((p) => p.id === idToRemove);
-    if (!itemToFilter) return;
+    const itemToRemove = previews.find((preview) => preview.id === idToRemove);
 
-    const nextValue = value.filter((item) => item !== itemToFilter.origin);
+    if (!itemToRemove) return;
+
+    const nextValue = value.filter((item) => item !== itemToRemove.origin);
+
     onChange(nextValue);
   };
 
   return (
     <div className="space-y-4 w-full">
-      {value.length < maxFiles && (
-        <Card
-          {...getRootProps()}
-          className={cn(
-            "relative border-2 border-dashed w-full h-40 cursor-pointer transition-colors overflow-hidden",
-            isDragActive
-              ? "border-primary bg-primary/10"
-              : "border-border hover:border-primary",
-          )}
-        >
-          <CardContent className="flex flex-col items-center justify-center h-full w-full p-4 text-center">
-            <input {...getInputProps()} />
-            <UploadCloud className="size-8 text-muted-foreground mb-2" />
-            <p className="text-sm font-medium text-muted-foreground">
-              Drag Showcase Images Here
-            </p>
-            <p className="text-xs text-muted-foreground/60 mt-1">
-              Supports PNG, JPG, WebP (Up to {maxFiles - value.length} more)
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
+        {previews.map((previewItem) => {
+          const isRemoteImage =
+            previewItem.url.startsWith("https://") ||
+            previewItem.url.startsWith("http://");
 
-      {previews.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {previews.map((previewItem) => (
+          const isBlobImage = previewItem.url.startsWith("blob:");
+
+          const isDataImage = previewItem.url.startsWith("data:");
+
+          return (
             <div
               key={previewItem.id}
-              className="relative group aspect-square rounded-lg border border-border/80 overflow-hidden bg-muted"
+              className="relative group aspect-square rounded-xl border border-border/80 overflow-hidden bg-muted shadow-2xs transition-all hover:border-primary/50"
             >
               {previewItem.url ? (
                 <Image
                   src={previewItem.url}
                   alt="Product Preview Element"
                   fill
-                  className="object-cover transition-transform group-hover:scale-105"
-                  unoptimized={
-                    previewItem.url.startsWith("blob:") ||
-                    previewItem.url.startsWith("data:")
-                  }
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  unoptimized={isRemoteImage || isBlobImage || isDataImage}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-muted text-xs text-muted-foreground">
@@ -361,14 +351,41 @@ export function MultiImageUploader({
               <button
                 type="button"
                 onClick={() => removeImage(previewItem.id)}
-                className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/70 text-white hover:bg-black transition-colors shadow-md"
+                className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 backdrop-blur-xs text-foreground hover:bg-destructive hover:text-destructive-foreground transition-all shadow-md opacity-0 group-hover:opacity-100 focus:opacity-100"
+                aria-label="Remove image"
               >
                 <X className="size-3.5" />
               </button>
             </div>
-          ))}
-        </div>
-      )}
+          );
+        })}
+
+        {value.length < maxFiles && (
+          <div
+            {...getRootProps()}
+            className={cn(
+              "relative group aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all bg-muted/30 overflow-hidden",
+              isDragActive
+                ? "border-primary bg-primary/5 scale-[0.99]"
+                : "border-border/80 hover:border-primary hover:bg-muted/60",
+            )}
+          >
+            <input {...getInputProps()} />
+
+            <div className="size-10 rounded-full bg-background border border-border/80 flex items-center justify-center shadow-2xs mb-2 transition-transform group-hover:scale-110">
+              <Plus className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
+            </div>
+
+            <p className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+              Add Image
+            </p>
+
+            <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+              {maxFiles - value.length} left
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -376,20 +393,41 @@ export function MultiImageUploader({
 export function SingleFileUploader({
   value,
   onChange,
-}: SingleFileUploaderProps) {
+}: {
+  value: string;
+  onChange: (
+    fileInfo: {
+      key: string;
+      type: string;
+      size: number;
+      name: string;
+    } | null,
+    rawFile?: File | null,
+  ) => void;
+}) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
 
-    // TODO: Connect this to your actual file upload logic (Uploadthing, S3, Cloudflare R2, etc.)
-    // For now, this captures metadata and simulates returning a file key:
-    const mockKey = `uploads/${Date.now()}-${file.name}`;
+    if (!file) {
+      return;
+    }
 
-    onChange({
-      key: mockKey,
-      type: file.type || file.name.split(".").pop() || "unknown",
+    console.log("Selected deliverable:", {
+      name: file.name,
+      type: file.type,
       size: file.size,
+      sizeMB: (file.size / 1024 / 1024).toFixed(2),
     });
+
+    onChange(
+      {
+        key: file.name,
+        name: file.name,
+        type: file.type || "application/octet-stream",
+        size: file.size,
+      },
+      file,
+    );
   };
 
   return (
@@ -400,6 +438,7 @@ export function SingleFileUploader({
         className="hidden"
         onChange={handleFileChange}
       />
+
       <label
         htmlFor="digital-file-upload"
         className="cursor-pointer flex flex-col items-center justify-center gap-2"
@@ -407,12 +446,15 @@ export function SingleFileUploader({
         {value ? (
           <>
             <FileCheck className="size-8 text-green-500" />
+
             <span className="text-sm font-medium text-foreground">
-              File Selected / Uploaded
+              File Selected
             </span>
+
             <span className="text-xs text-muted-foreground truncate max-w-xs">
               {value}
             </span>
+
             <span className="text-xs text-primary underline mt-1">
               Click to replace file
             </span>
@@ -420,11 +462,13 @@ export function SingleFileUploader({
         ) : (
           <>
             <Upload className="size-8 text-muted-foreground" />
+
             <span className="text-sm font-medium">
               Click to upload product file
             </span>
+
             <span className="text-xs text-muted-foreground">
-              ZIP, PDF, MP4, RAR up to 500MB
+              ZIP, PDF, MP4, RAR up to 512MB
             </span>
           </>
         )}

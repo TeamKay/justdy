@@ -6,7 +6,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 
-import { adminGetDashboardStats } from "@/app/actions/admin-get-dashboard-stats";
+import { adminGetDashboardStats } from "@/app/actions/manager-get-dashboard-stats";
 import { Card, CardDescription, CardHeader, CardTitle } from "../ui/card";
 
 export async function AdminDashboardSectionCards() {
