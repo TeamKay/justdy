@@ -44,7 +44,7 @@ export async function signupUser(formData: unknown) {
         name,
         email,
         password,
-        role,
+
         callbackURL: `/onboarding?role=${role.toLowerCase()}`,
       },
     });
