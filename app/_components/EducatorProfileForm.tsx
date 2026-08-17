@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import Image from "next/image";
-import { updateEducatorProfile } from "../actions/user";
+import { updateEducatorProfile } from "@/app/actions/user";
 
 interface Props {
   educator: {
@@ -10,10 +10,6 @@ interface Props {
     name: string;
     email: string;
     imageUrl: string | null;
-    specialty: string | null;
-    experience: number | null;
-    description: string | null;
-    credentialUrl: string | null;
     verificationStatus: string | null;
   };
 }
@@ -26,53 +22,80 @@ export function EducatorProfileForm({ educator }: Props) {
   const [form, setForm] = useState({
     name: educator.name || "",
     imageUrl: educator.imageUrl || "",
-    specialty: educator.specialty || "",
-    experience: educator.experience || 0,
-    description: educator.description || "",
-    credentialUrl: educator.credentialUrl || "",
   });
+
+  // ============================================================
+  // IMAGE SELECT
+  // ============================================================
 
   const handleImageClick = () => {
     fileRef.current?.click();
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
 
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
+    /*
+     * This creates a temporary browser preview.
+     *
+     * IMPORTANT:
+     * A blob URL should eventually be replaced by an
+     * UploadThing URL/key if you want the image to persist
+     * permanently.
+     */
     const imageUrl = URL.createObjectURL(file);
 
-    setForm({
-      ...form,
+    setForm((previous) => ({
+      ...previous,
       imageUrl,
-    });
+    }));
   };
+
+  // ============================================================
+  // SUBMIT
+  // ============================================================
 
   const handleSubmit = () => {
     startTransition(async () => {
-      await updateEducatorProfile(form);
+      try {
+        await updateEducatorProfile(form);
+      } catch (error) {
+        console.error("Failed to update educator profile:", error);
+      }
     });
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* ========================================================
+          HEADER
+      ========================================================= */}
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-white">
             My Profile
           </h2>
-          <p className="text-muted-foreground text-sm">
+
+          <p className="text-sm text-muted-foreground">
             Manage your profile and keep it up to date
           </p>
         </div>
       </div>
 
-      <div className="rounded-md border bg-card p-8 shadow-sm">
-        {/* Header */}
+      {/* ========================================================
+          PROFILE CARD
+      ========================================================= */}
 
+      <div className="rounded-md border bg-card p-8 shadow-sm">
         <div className="grid gap-10 md:grid-cols-[220px_1fr]">
-          {/* IMAGE SECTION */}
+          {/* ====================================================
+              IMAGE SECTION
+          ==================================================== */}
 
           <div className="flex flex-col items-center">
             <div
@@ -81,10 +104,14 @@ export function EducatorProfileForm({ educator }: Props) {
             >
               <Image
                 src={form.imageUrl || "/placeholder-avatar.png"}
-                alt="Educator"
+                alt={
+                  educator.name
+                    ? `${educator.name} profile photo`
+                    : "Educator profile"
+                }
                 width={160}
                 height={160}
-                className="h-60 w-60 rounded-mdn border-4 object-cover shadow-md"
+                className="h-60 w-60 rounded-md border-4 object-cover shadow-md"
               />
 
               <div className="absolute inset-0 flex items-center justify-center rounded-md bg-black/40 text-sm text-white opacity-0 transition group-hover:opacity-100">
@@ -100,130 +127,67 @@ export function EducatorProfileForm({ educator }: Props) {
               onChange={handleImageChange}
             />
 
-            <p
-              className="
-              mt-3
-              text-center
-              text-xs
-              text-muted-foreground
-            "
-            >
+            <p className="mt-3 text-center text-xs text-muted-foreground">
               Click image to upload
             </p>
 
-            <div className="mb-8 flex items-center pt-10 justify-between">
+            <div className="mb-8 flex items-center pt-10">
               <span className="rounded-md bg-emerald-900/40 px-4 py-1 text-[10px] text-white">
                 {educator.verificationStatus ?? "Pending"}
               </span>
             </div>
           </div>
 
-          {/* FORM */}
+          {/* ====================================================
+              FORM
+          ==================================================== */}
 
           <div className="space-y-6">
+            {/* NAME + EMAIL */}
+
             <div className="grid gap-5 md:grid-cols-2">
               <Input
                 label="Full Name"
                 value={form.name}
-                onChange={(v) =>
-                  setForm({
-                    ...form,
-                    name: v,
-                  })
+                onChange={(value) =>
+                  setForm((previous) => ({
+                    ...previous,
+                    name: value,
+                  }))
                 }
               />
 
-              <Input
-                label="Specialty"
-                placeholder="Mathematics"
-                value={form.specialty}
-                onChange={(v) =>
-                  setForm({
-                    ...form,
-                    specialty: v,
-                  })
-                }
-              />
-            </div>
-
-            <Input
-              label="Years of Experience"
-              type="number"
-              value={String(form.experience)}
-              onChange={(v) =>
-                setForm({
-                  ...form,
-                  experience: Number(v),
-                })
-              }
-            />
-
-            <div>
-              <label
-                className="
-                mb-2
-                block
-                text-sm
-                font-medium
-              "
-              >
-                Professional Bio
-              </label>
-
-              <textarea
-                rows={5}
-                value={form.description}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    description: e.target.value,
-                  })
-                }
-                className="
-                  w-full
-                  rounded-xl
-                  border
-                  bg-background
-                  px-4
-                  py-3
-                  outline-none
-                  focus:ring-2
-                "
-                placeholder="
-                Tell students about your teaching experience...
-                "
-              />
-            </div>
-
-            <Input
-              label="Credential URL"
-              placeholder="https://certificate.com"
-              value={form.credentialUrl}
-              onChange={(v) =>
-                setForm({
-                  ...form,
-                  credentialUrl: v,
-                })
-              }
-            />
-
-            <div
-              className="
-              grid
-              gap-5
-              md:grid-cols-2
-            "
-            >
               <Input label="Email" value={educator.email} disabled />
+            </div>
 
+            {/* ACCOUNT INFORMATION */}
+
+            <div className="grid gap-5 md:grid-cols-2">
               <Input
                 label="Account Status"
                 value={educator.verificationStatus ?? "Pending"}
                 disabled
               />
+
+              <Input label="User ID" value={educator.id} disabled />
             </div>
 
+            {/* PROFILE PHOTO */}
+
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                Profile Photo
+              </label>
+
+              <p className="text-sm text-muted-foreground">
+                Click your profile image to select a new photo.
+              </p>
+            </div>
+
+            {/* SAVE */}
+
             <button
+              type="button"
               disabled={pending}
               onClick={handleSubmit}
               className="
@@ -236,6 +200,7 @@ export function EducatorProfileForm({ educator }: Props) {
                 text-white
                 transition
                 hover:bg-neutral-800
+                disabled:cursor-not-allowed
                 disabled:opacity-50
               "
             >
@@ -248,6 +213,10 @@ export function EducatorProfileForm({ educator }: Props) {
   );
 }
 
+// ============================================================
+// INPUT COMPONENT
+// ============================================================
+
 function Input({
   label,
   value,
@@ -258,42 +227,33 @@ function Input({
 }: {
   label: string;
   value: string;
-  onChange?: (v: string) => void;
+  onChange?: (value: string) => void;
   placeholder?: string;
   type?: string;
   disabled?: boolean;
 }) {
   return (
     <div>
-      <label
-        className="
- mb-2
- block
- text-sm
- font-medium
-"
-      >
-        {label}
-      </label>
+      <label className="mb-2 block text-sm font-medium">{label}</label>
 
       <input
         type={type}
         value={value}
         disabled={disabled}
         placeholder={placeholder}
-        onChange={(e) => onChange?.(e.target.value)}
+        onChange={(event) => onChange?.(event.target.value)}
         className="
-w-full
-rounded-xl
-border
-bg-background
-px-4
-py-3
-outline-none
-transition
-focus:ring-2
-disabled:bg-muted
-"
+          w-full
+          rounded-xl
+          border
+          bg-background
+          px-4
+          py-3
+          outline-none
+          transition
+          focus:ring-2
+          disabled:bg-muted
+        "
       />
     </div>
   );
