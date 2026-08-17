@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 
 interface UpdateEducatorProfileData {
   name: string;
-  specialty?: string | null;
+
   experience?: string | number | null;
   description?: string | null;
   credentialUrl?: string | null;
@@ -20,7 +20,7 @@ export async function updateEducatorProfile(
       where: { id: userId },
       data: {
         name: data.name,
-        specialty: data.specialty,
+
         experience:
           data.experience !== "" && data.experience !== null
             ? Number(data.experience)

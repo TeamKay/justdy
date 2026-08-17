@@ -24,8 +24,14 @@ export async function enrollInCourseAction(
   const user = await requireUser();
 
   let checkoutUrl: string;
+
   try {
+    // ============================================================
+    // 1. ARCJET PROTECTION
+    // ============================================================
+
     const req = await request();
+
     const decision = await aj.protect(req, {
       fingerprint: user.id,
     });
@@ -37,7 +43,19 @@ export async function enrollInCourseAction(
       };
     }
 
-    // 1. Fetch Product along with its relation to Course
+    // ============================================================
+    // 2. GET PRODUCT
+    // ============================================================
+    //
+    // A course is now a Product with type = "Course".
+    //
+    // The database is the source of truth for:
+    // - product identity
+    // - price
+    // - Stripe Price ID
+    //
+    // ============================================================
+
     const product = await prisma.product.findUnique({
       where: {
         id: productId,
@@ -47,25 +65,110 @@ export async function enrollInCourseAction(
         title: true,
         price: true,
         type: true,
-        course: {
-          select: {
-            id: true,
-          },
-        },
+        status: true,
+        stripePriceId: true,
       },
     });
 
-    // 2. Validate product existence and make sure it's a Course
-    if (!product || product.type !== "Course" || !product.course) {
+    // ============================================================
+    // 3. VALIDATE PRODUCT
+    // ============================================================
+
+    if (!product) {
       return {
         status: "error",
-        message: "This product is not a course or does not exist",
+        message: "This product does not exist",
       };
     }
 
-    const courseId = product.course.id;
+    if (product.type !== "Course") {
+      return {
+        status: "error",
+        message: "This product is not a course",
+      };
+    }
+
+    if (product.status !== "Published") {
+      return {
+        status: "error",
+        message: "This course is not currently available",
+      };
+    }
+
+    if (product.price < 0) {
+      return {
+        status: "error",
+        message: "Invalid course price",
+      };
+    }
+
+    // ============================================================
+    // 4. FREE COURSE
+    // ============================================================
+    //
+    // Free courses don't need Stripe Checkout.
+    //
+    // ============================================================
+
+    if (product.price === 0) {
+      await prisma.enrollment.upsert({
+        where: {
+          userId_productId: {
+            userId: user.id,
+            productId: product.id,
+          },
+        },
+        update: {
+          amount: 0,
+          status: "Active",
+          updatedAt: new Date(),
+        },
+        create: {
+          userId: user.id,
+          productId: product.id,
+          amount: 0,
+          status: "Active",
+        },
+      });
+
+      return {
+        status: "success",
+        message: "You are now enrolled in this course",
+      };
+    }
+
+    // ============================================================
+    // 5. REQUIRE STRIPE PRICE
+    // ============================================================
+
+    if (!product.stripePriceId) {
+      console.error(`Course ${product.id} does not have a Stripe Price ID.`);
+
+      return {
+        status: "error",
+        message:
+          "This course is not currently configured for payment. Please try again later.",
+      };
+    }
+
+    // IMPORTANT:
+    //
+    // After the null check above, TypeScript knows that this
+    // local variable is a string.
+    //
+    // This avoids:
+    //
+    // Type 'string | null' is not assignable to type
+    // 'string | undefined'.
+    //
+    const stripePriceId = product.stripePriceId;
+
+    // ============================================================
+    // 6. GET OR CREATE STRIPE CUSTOMER
+    // ============================================================
 
     let stripeCustomerId: string;
+
     const userWithStripeCustomerId = await prisma.user.findUnique({
       where: {
         id: user.id,
@@ -93,32 +196,84 @@ export async function enrollInCourseAction(
           id: user.id,
         },
         data: {
-          stripeCustomerId: stripeCustomerId,
+          stripeCustomerId,
         },
       });
     }
 
+    // ============================================================
+    // 7. VERIFY STRIPE PRICE
+    // ============================================================
+    //
+    // The database remains authoritative for the amount.
+    //
+    // We only verify that the Stripe Price referenced by the
+    // database still exists and is active.
+    //
+    // We intentionally DO NOT use stripePrice.unit_amount as
+    // the course price.
+    //
+    // ============================================================
+
+    let stripePrice: Stripe.Price;
+
+    try {
+      stripePrice = await stripe.prices.retrieve(stripePriceId);
+    } catch (error) {
+      console.error(
+        `Stripe Price ${stripePriceId} could not be retrieved for product ${product.id}:`,
+        error,
+      );
+
+      return {
+        status: "error",
+        message:
+          "This course is temporarily unavailable for payment. Please try again later.",
+      };
+    }
+
+    if (!stripePrice.active) {
+      console.error(`Stripe Price ${stripePriceId} is inactive.`);
+
+      return {
+        status: "error",
+        message:
+          "This course is temporarily unavailable for payment. Please try again later.",
+      };
+    }
+
+    // ============================================================
+    // 8. CREATE / REUSE ENROLLMENT
+    // ============================================================
+
     const result = await prisma.$transaction(async (tx) => {
-      // 3. Query Enrollment using the correct compound index: userId_courseId
       const existingEnrollment = await tx.enrollment.findUnique({
         where: {
-          userId_courseId: {
+          userId_productId: {
             userId: user.id,
-            courseId: courseId,
+            productId: product.id,
           },
         },
         select: {
-          status: true,
           id: true,
+          status: true,
         },
       });
 
+      // --------------------------------------------------------
+      // Already enrolled
+      // --------------------------------------------------------
+
       if (existingEnrollment?.status === "Active") {
         return {
-          status: "success",
-          message: "You are already enrolled in this course",
+          alreadyEnrolled: true,
+          checkoutUrl: null,
         };
       }
+
+      // --------------------------------------------------------
+      // Reuse existing enrollment
+      // --------------------------------------------------------
 
       let enrollment;
 
@@ -129,60 +284,105 @@ export async function enrollInCourseAction(
           },
           data: {
             amount: product.price,
-            status: "Active",
+            status: "Pending",
             updatedAt: new Date(),
           },
         });
       } else {
-        // 4. Create Enrollment linked to courseId
         enrollment = await tx.enrollment.create({
           data: {
             userId: user.id,
-            courseId: courseId,
+            productId: product.id,
             amount: product.price,
             status: "Pending",
           },
         });
       }
 
+      // ========================================================
+      // 9. CREATE STRIPE CHECKOUT SESSION
+      // ========================================================
+
       const checkoutSession = await stripe.checkout.sessions.create({
         customer: stripeCustomerId,
+
         line_items: [
           {
-            price: "price_1Sw0aAF115MtVFXmLp59jfXF",
+            // Use the validated database Stripe Price ID.
+            price: stripePriceId,
             quantity: 1,
           },
         ],
+
         mode: "payment",
-        success_url: `${env.BETTER_AUTH_URL}/payment/success`,
+
+        success_url:
+          `${env.BETTER_AUTH_URL}/payment/success` +
+          "?session_id={CHECKOUT_SESSION_ID}",
+
         cancel_url: `${env.BETTER_AUTH_URL}/payment/cancel`,
+
         metadata: {
           userId: user.id,
           productId: product.id,
-          courseId: courseId,
           enrollmentId: enrollment.id,
         },
+
+        client_reference_id: enrollment.id,
       });
 
+      if (!checkoutSession.url) {
+        throw new Error("Stripe did not return a checkout URL.");
+      }
+
       return {
-        enrollment: enrollment,
+        alreadyEnrolled: false,
         checkoutUrl: checkoutSession.url,
       };
     });
 
-    checkoutUrl = result.checkoutUrl as string;
+    // ============================================================
+    // 10. ALREADY ENROLLED
+    // ============================================================
+
+    if (result.alreadyEnrolled) {
+      return {
+        status: "success",
+        message: "You are already enrolled in this course",
+      };
+    }
+
+    // ============================================================
+    // 11. VALIDATE CHECKOUT URL
+    // ============================================================
+
+    if (!result.checkoutUrl) {
+      return {
+        status: "error",
+        message: "Unable to create payment session",
+      };
+    }
+
+    checkoutUrl = result.checkoutUrl;
   } catch (error) {
+    console.error("ENROLLMENT / CHECKOUT ERROR:", error);
+
     if (error instanceof Stripe.errors.StripeError) {
       return {
         status: "error",
-        message: "Payment system error. Please try again",
+        message: "Payment system error. Please try again.",
       };
     }
+
     return {
       status: "error",
       message: "Failed to enroll in course",
     };
   }
+
+  // ============================================================
+  // 12. REDIRECT TO STRIPE
+  // ============================================================
 
   redirect(checkoutUrl);
 }
