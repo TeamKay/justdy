@@ -8,19 +8,15 @@ import {
   Compass,
   ArrowRight,
   Clock,
-  Sparkles,
   ChevronRight,
-  ShieldCheck,
   X,
 } from "lucide-react";
 
 export default function OurPrograms() {
-  const [activeTab, setActiveTab] = useState<
-    "all" | "foundation" | "growth" | "excellence"
-  >("all");
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">(
-    "monthly",
+  const [activeTab] = useState<"all" | "foundation" | "growth" | "excellence">(
+    "all",
   );
+  const [billingCycle] = useState<"monthly" | "annual">("monthly");
 
   const processSteps = [
     {
@@ -220,8 +216,8 @@ export default function OurPrograms() {
 
             {/* 2. Academic Growth Plan (Featured) */}
             {(activeTab === "all" || activeTab === "growth") && (
-              <div className="bg-gradient-to-b from-indigo-950/40 via-slate-900 to-slate-900 border-2 border-indigo-500/80 rounded-2xl p-8 flex flex-col justify-between relative shadow-2xl shadow-indigo-950/50 scale-[1.02] transition-all duration-300">
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-md">
+              <div className="bg-linear-to-b from-indigo-950/40 via-slate-900 to-slate-900 border-2 border-indigo-500/80 rounded-2xl p-8 flex flex-col justify-between relative shadow-2xl shadow-indigo-950/50 scale-[1.02] transition-all duration-300">
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-linear-to-r from-indigo-500 to-purple-500 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-md">
                   Most Popular Choice
                 </div>
 

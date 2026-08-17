@@ -3,9 +3,9 @@ import { Suspense } from "react";
 import { getPendingEducators, getVerifiedEducators } from "@/app/actions/admin";
 import { AdminEducatorTable } from "@/app/_components/AdminEducatorTable";
 
-import { Card, CardContent } from "@/app/_components/ui/card";
+import { Card } from "@/app/_components/ui/card";
 import { Skeleton } from "@/app/_components/ui/skeleton";
-import { Users, Clock, CheckCircle2, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { SearchInput } from "@/app/_components/EducatorSearch";
 
 type RawEducator = {

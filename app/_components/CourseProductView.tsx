@@ -53,5 +53,5 @@ export async function CourseProductView({ product }: CourseProductViewProps) {
   // OPEN FIRST LESSON
   // ==========================================================
 
-  redirect(`/learner/courses/${product.slug}/${firstLesson.id}`);
+  redirect(`/learner/products/${product.slug}/${firstLesson.id}`);
 }

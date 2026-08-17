@@ -1,94 +1,45 @@
-import { redirect, notFound } from "next/navigation";
+import { getCourseSidebarData } from "@/app/actions/manage-get-course-sidebar-data";
+import { redirect } from "next/navigation";
 
-import prisma from "@/lib/prisma";
-import { requireUser } from "@/app/actions/require-student";
-
-import { CourseProductView } from "@/app/_components/CourseProductView";
-import { DigitalProductView } from "@/app/_components/DigitalProductView";
-
-interface PageProps {
+interface CourseSlugRouteProps {
   params: Promise<{
     slug: string;
   }>;
 }
 
-export default async function ProductAccessPage({ params }: PageProps) {
+export default async function CourseSlugRoute({
+  params,
+}: CourseSlugRouteProps) {
   const { slug } = await params;
 
-  const session = await requireUser();
+  const data = await getCourseSidebarData(slug);
 
-  // ============================================================
-  // FIND PRODUCT
-  // ============================================================
+  const chapters = data.course.chapters ?? [];
 
-  const product = await prisma.product.findUnique({
-    where: {
-      slug,
-    },
+  const firstChapter = chapters[0];
 
-    include: {
-      images: {
-        orderBy: {
-          position: "asc",
-        },
-      },
+  const firstLesson = firstChapter?.lessons?.[0];
 
-      chapters: {
-        orderBy: {
-          position: "asc",
-        },
-
-        include: {
-          lessons: {
-            orderBy: {
-              position: "asc",
-            },
-          },
-        },
-      },
-    },
-  });
-
-  if (!product) {
-    notFound();
+  if (firstLesson) {
+    redirect(`/learner/products/${slug}/${firstLesson.id}`);
   }
 
-  // ============================================================
-  // COURSE
-  // ============================================================
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="max-w-md text-center">
+        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-primary/10">
+          <span className="text-2xl">📚</span>
+        </div>
 
-  if (product.type === "Course") {
-    const enrollment = await prisma.enrollment.findUnique({
-      where: {
-        userId_productId: {
-          userId: session.id,
-          productId: product.id,
-        },
-      },
-    });
+        <h2 className="text-2xl font-bold tracking-tight">
+          Course content is coming soon
+        </h2>
 
-    if (!enrollment || enrollment.status !== "Active") {
-      redirect(`/products/${product.slug}`);
-    }
-
-    return <CourseProductView product={product} />;
-  }
-
-  // ============================================================
-  // DIGITAL PRODUCT
-  // ============================================================
-
-  const purchase = await prisma.purchase.findFirst({
-    where: {
-      userId: session.id,
-      productId: product.id,
-      status: "Paid",
-    },
-  });
-
-  if (!purchase) {
-    redirect(`/products/${product.slug}`);
-  }
-
-  return <DigitalProductView product={product} purchase={purchase} />;
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          This course does not have any lessons available yet. Please check back
+          later.
+        </p>
+      </div>
+    </div>
+  );
 }
