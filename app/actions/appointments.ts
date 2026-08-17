@@ -33,15 +33,34 @@ export async function getEducatorById(id: string) {
         role: "Educator",
         verificationStatus: "Verified",
       },
+      select: {
+        id: true,
+        name: true,
+        image: true,
+        specialty: true,
+        experience: true,
+        description: true,
+      },
     });
 
     if (!educator) {
       throw new Error("Educator not found");
     }
 
-    return { educator };
+    return {
+      educator: {
+        id: educator.id,
+        name: educator.name,
+        imageUrl: educator.image ?? undefined,
+        specialty: educator.specialty,
+        experience: educator.experience,
+        description: educator.description,
+      },
+    };
   } catch (error) {
-    throw new Error("Failed to fetch educator details" + error);
+    console.error("Failed to fetch educator details:", error);
+
+    throw new Error("Failed to fetch educator details");
   }
 }
 
