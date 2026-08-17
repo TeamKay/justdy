@@ -9,37 +9,48 @@ export async function educatorGetCourses() {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
+
   const userId = session?.user?.id;
 
   await requireManager();
-  if (!userId) throw new Error("Unauthorized");
+
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
 
   const data = await prisma.product.findMany({
-    where: { userId: userId },
-    orderBy: { createdAt: "desc" },
+    where: {
+      userId,
+    },
+
+    orderBy: {
+      createdAt: "desc",
+    },
+
     select: {
       id: true,
       title: true,
       category: true,
       status: true,
       price: true,
-
       slug: true,
-      // 1. Select the related user's name
+
+      // Related educator
       user: {
         select: {
           name: true,
         },
       },
+
+      // Product -> enrollments
       _count: {
         select: {
-          enrollment: true,
+          enrollments: true,
         },
       },
     },
   });
 
-  // 2. Map the data to include "educatorName" at the top level
   return data.map((course) => ({
     ...course,
     educatorName: course.user.name,
