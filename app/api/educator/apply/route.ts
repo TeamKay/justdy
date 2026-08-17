@@ -8,9 +8,7 @@ export async function POST(req: Request) {
     const {
       name,
       email,
-      specialty,
-      experience,
-      credentialUrl,
+
       description,
       contactNumber,
     } = body;
@@ -40,9 +38,7 @@ export async function POST(req: Request) {
         email: email.toLowerCase(),
         role: "Educator",
         emailVerified: false,
-        specialty,
-        experience,
-        credentialUrl,
+
         description,
         contactNumber,
         verificationStatus: "Pending",
