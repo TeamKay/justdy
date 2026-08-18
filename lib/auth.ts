@@ -29,11 +29,10 @@ export interface User {
 // ============================================================
 // PURCHASE DATA HELPER
 // ============================================================
-//
+
 // Stripe checkout account setup uses Better Auth's password-reset
 // flow. Better Auth may wrap redirectTo inside callbackURL, so we
 // inspect both the generated reset URL and nested callback URLs.
-// ============================================================
 
 function getPurchaseDataFromResetUrl(resetUrl: string): {
   items?: Array<{
@@ -95,6 +94,7 @@ function getPurchaseDataFromResetUrl(resetUrl: string): {
           return JSON.parse(decodedData);
         } catch (error) {
           console.error("FAILED TO DECODE DIRECT PURCHASE DATA:", error);
+
           return null;
         }
       }
@@ -139,6 +139,42 @@ function getPurchaseDataFromResetUrl(resetUrl: string): {
 
 export const auth = betterAuth({
   appName: "Justdy",
+
+  // ==========================================================
+  // PRODUCTION URL
+  // ==========================================================
+
+  /*
+   * www.justdy.com is the canonical production domain.
+   *
+   * This prevents Better Auth from generating authentication
+   * URLs against justdy.com, which redirects to www.justdy.com.
+   *
+   * The redirect was causing browser CORS/preflight failures.
+   */
+
+  baseURL:
+    process.env.BETTER_AUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000",
+
+  // ==========================================================
+  // TRUSTED ORIGINS
+  // ==========================================================
+
+  /*
+   * Better Auth validates authentication request origins.
+   *
+   * www.justdy.com is the canonical production origin.
+   * justdy.com is included because the apex domain still exists
+   * and redirects to www.justdy.com.
+   */
+
+  trustedOrigins: [
+    "https://www.justdy.com",
+    "https://justdy.com",
+    "http://localhost:3000",
+  ],
 
   // ==========================================================
   // DATABASE
@@ -239,9 +275,7 @@ export const auth = betterAuth({
 
               console.log("EDUCATOR APPROVAL EMAIL SENT:", {
                 userId: dbUser.id,
-
                 email: dbUser.email,
-
                 emailId: result.data?.id,
               });
             }
@@ -289,12 +323,13 @@ export const auth = betterAuth({
         // ========================================================
         // DETECT STRIPE CHECKOUT ACCOUNT SETUP
         // ========================================================
+
+        // Do not depend on custom request headers here.
+        // Better Auth may not preserve those headers when this
+        // callback executes.
         //
-        // Do not depend on custom request headers here. Better Auth
-        // may not preserve those headers when this callback executes.
-        // Stripe instead places checkoutSetup=true and purchaseData
-        // inside redirectTo.
-        // ========================================================
+        // Stripe instead places checkoutSetup=true and
+        // purchaseData inside redirectTo.
 
         let isCheckoutAccountSetup = false;
 
@@ -405,6 +440,7 @@ export const auth = betterAuth({
               "PURCHASE + ACCOUNT SETUP EMAIL ERROR:",
               result.error,
             );
+
             return;
           }
 
@@ -450,6 +486,7 @@ export const auth = betterAuth({
 
         if (result.error) {
           console.error("PASSWORD RESET EMAIL ERROR:", result.error);
+
           return;
         }
 
@@ -514,7 +551,6 @@ export const auth = betterAuth({
 
         console.log("VERIFICATION EMAIL SENT:", {
           email: user.email,
-
           emailId: result.data?.id,
         });
       } catch (error) {
@@ -525,269 +561,3 @@ export const auth = betterAuth({
     autoSignInAfterVerification: false,
   },
 });
-
-// import { betterAuth } from "better-auth";
-// import { prismaAdapter } from "better-auth/adapters/prisma";
-// import prisma from "./prisma";
-// import { Resend } from "resend";
-
-// // ============================================================
-// // RESEND
-// // ============================================================
-
-// const resend = new Resend(process.env.RESEND_API_KEY);
-
-// // ============================================================
-// // USER TYPE
-// // ============================================================
-
-// export interface User {
-//   id: string;
-//   email: string;
-//   role?: string;
-//   verificationStatus?: string;
-// }
-
-// // ============================================================
-// // BETTER AUTH
-// // ============================================================
-
-// export const auth = betterAuth({
-//   appName: "Justdy",
-
-//   // ==========================================================
-//   // DATABASE
-//   // ==========================================================
-
-//   database: prismaAdapter(prisma, {
-//     provider: "postgresql",
-//   }),
-
-//   // ==========================================================
-//   // USER
-//   // ==========================================================
-
-//   user: {
-//     // --------------------------------------------------------
-//     // Prisma calls this imageUrl.
-//     // Better Auth calls it image.
-//     // --------------------------------------------------------
-
-//     fields: {
-//       image: "imageUrl",
-//     },
-
-//     // --------------------------------------------------------
-//     // APPLICATION FIELDS
-//     // --------------------------------------------------------
-
-//     additionalFields: {
-//       role: {
-//         type: "string",
-//         required: false,
-//         defaultValue: "Learner",
-//         input: false,
-//       },
-
-//       verificationStatus: {
-//         type: "string",
-//         required: false,
-//         defaultValue: "Pending",
-//         input: false,
-//       },
-//     },
-//   },
-
-//   // ==========================================================
-//   // DATABASE HOOKS
-//   // ==========================================================
-
-//   databaseHooks: {
-//     user: {
-//       update: {
-//         after: async (user) => {
-//           try {
-//             // --------------------------------------------------
-//             // Get application fields directly from Prisma.
-//             // --------------------------------------------------
-
-//             const dbUser = await prisma.user.findUnique({
-//               where: {
-//                 id: user.id,
-//               },
-
-//               select: {
-//                 id: true,
-//                 name: true,
-//                 email: true,
-//                 role: true,
-//                 verificationStatus: true,
-//                 emailVerified: true,
-//               },
-//             });
-
-//             if (!dbUser) {
-//               console.error("DATABASE HOOK: User not found:", user.id);
-
-//               return;
-//             }
-
-//             // --------------------------------------------------
-//             // EDUCATOR EMAIL VERIFIED
-//             // --------------------------------------------------
-
-//             if (dbUser.role === "Educator" && dbUser.emailVerified === true) {
-//               const { render } = await import("@react-email/render");
-
-//               const AwaitingApprovalEmail = (
-//                 await import("@/app/_components/AwaitingApprovalEmail")
-//               ).default;
-
-//               const emailHtml = await render(
-//                 AwaitingApprovalEmail({
-//                   username: dbUser.name ?? "Educator",
-//                 }),
-//               );
-
-//               const result = await resend.emails.send({
-//                 from: "Consultations <onboarding@justdy.com>",
-
-//                 to: [dbUser.email.trim().toLowerCase()],
-
-//                 subject: "Email Verified - Awaiting Admin Approval",
-
-//                 html: emailHtml,
-//               });
-
-//               if (result.error) {
-//                 console.error("EDUCATOR APPROVAL EMAIL ERROR:", result.error);
-
-//                 return;
-//               }
-
-//               console.log("EDUCATOR APPROVAL EMAIL SENT:", {
-//                 userId: dbUser.id,
-
-//                 email: dbUser.email,
-
-//                 emailId: result.data?.id,
-//               });
-//             }
-//           } catch (error) {
-//             console.error("DATABASE USER UPDATE HOOK FAILED:", error);
-//           }
-//         },
-//       },
-//     },
-//   },
-
-//   // ==========================================================
-//   // EMAIL + PASSWORD
-//   // ==========================================================
-
-//   emailAndPassword: {
-//     enabled: true,
-
-//     autoSignIn: false,
-
-//     minPasswordLength: 8,
-
-//     // Your temporary Stripe password is longer than 20.
-//     maxPasswordLength: 128,
-
-//     requireEmailVerification: true,
-
-//     // ========================================================
-//     // NORMAL PASSWORD RESET
-//     // ========================================================
-
-//     sendResetPassword: async ({ user, url }): Promise<void> => {
-//       try {
-//         const { render } = await import("@react-email/render");
-
-//         const ForgotPasswordEmail = (
-//           await import("@/app/_components/ForgotPasswordEmail")
-//         ).default;
-
-//         const emailHtml = await render(
-//           ForgotPasswordEmail({
-//             username: user.name ?? "User",
-
-//             userEmail: user.email,
-
-//             resetUrl: url,
-//           }),
-//         );
-
-//         const result = await resend.emails.send({
-//           from: "Consultations <onboarding@justdy.com>",
-
-//           to: [user.email.trim().toLowerCase()],
-
-//           subject: "Reset Your Justdy Password",
-
-//           html: emailHtml,
-//         });
-
-//         if (result.error) {
-//           console.error("PASSWORD RESET EMAIL ERROR:", result.error);
-
-//           return;
-//         }
-
-//         console.log("PASSWORD RESET EMAIL SENT:", {
-//           email: user.email,
-
-//           emailId: result.data?.id,
-//         });
-//       } catch (error) {
-//         console.error("PASSWORD RESET EMAIL FAILED:", error);
-//       }
-//     },
-
-//     revokeSessionsOnPasswordReset: true,
-//   },
-
-//   // ==========================================================
-//   // EMAIL VERIFICATION
-//   // ==========================================================
-
-//   emailVerification: {
-//     sendVerificationEmail: async ({ user, url }): Promise<void> => {
-//       try {
-//         const VerifyEmail = (await import("@/app/_components/VerifyEmail"))
-//           .default;
-
-//         const result = await resend.emails.send({
-//           from: "Consultations <onboarding@justdy.com>",
-
-//           to: [user.email.trim().toLowerCase()],
-
-//           subject: "Verify Your Justdy Account",
-
-//           react: VerifyEmail({
-//             username: user.name ?? "there",
-
-//             verifyUrl: url,
-//           }),
-//         });
-
-//         if (result.error) {
-//           console.error("VERIFICATION EMAIL ERROR:", result.error);
-
-//           return;
-//         }
-
-//         console.log("VERIFICATION EMAIL SENT:", {
-//           email: user.email,
-
-//           emailId: result.data?.id,
-//         });
-//       } catch (error) {
-//         console.error("VERIFICATION EMAIL FAILED:", error);
-//       }
-//     },
-
-//     autoSignInAfterVerification: false,
-//   },
-// });
