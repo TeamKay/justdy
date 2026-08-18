@@ -48,7 +48,7 @@ export default function FreeConsultationEmail({
         <div
           style={{
             backgroundColor: "#f3f4f6",
-            borderRadius: "8px",
+            borderRadius: "9px",
             padding: "16px",
             margin: "20px 0",
           }}
