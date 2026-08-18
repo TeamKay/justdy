@@ -18,9 +18,9 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Justdy | Interactive Tutoring and Video lessons",
+  title: "Justdy | Learn. Grow. Succeed",
   description:
-    "Master mathematics and data science through online courses and tutorials.",
+    "Justdy provides online courses, tutoring, educational resources, and learning opportunities for students and educators.",
   icons: {
     icon: "/logo.ico",
   },
