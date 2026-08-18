@@ -83,14 +83,6 @@ export function ProductPurchaseOptions({
 
     image,
 
-    /*
-     * VERY IMPORTANT:
-     *
-     * Course → course
-     * Digital → digital
-     * Printed → printed
-     */
-
     purchaseType: isCourse
       ? ("course" as const)
       : isPrinted
@@ -105,12 +97,11 @@ export function ProductPurchaseOptions({
           overflow-hidden
           rounded-md
           border
-          border-slate-200
           bg-white
           shadow-xl
           shadow-slate-200/40
-          dark:border-emerald-900/30
-          dark:bg-emerald-900/30
+          border-emerald-900/30
+         
           dark:shadow-none
         "
       >
@@ -121,14 +112,14 @@ export function ProductPurchaseOptions({
         <div
           className="
             border-b
-            border-[#857938]
+            border-emerald-900/30
             bg-linear-to-br
             from-white
             via-white
             to-slate-50
             px-6
             py-6
-            dark:border-white
+           
             dark:bg-emerald-900/30
           "
         >

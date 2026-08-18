@@ -18,8 +18,39 @@ interface PageProps {
   }>;
 }
 
+/* ========================================================================== */
+/* RESOURCE LABEL                                                             */
+/* ========================================================================== */
+
+function getResourceLabel(type?: ProductType) {
+  if (!type) {
+    return "resource";
+  }
+
+  const value = String(type).toLowerCase();
+
+  if (value.includes("course")) {
+    return "course";
+  }
+
+  if (value.includes("workbook")) {
+    return "workbook";
+  }
+
+  if (value.includes("digital") || value.includes("product")) {
+    return "digital product";
+  }
+
+  return value.replace(/[_-]/g, " ");
+}
+
+/* ========================================================================== */
+/* PAGE                                                                       */
+/* ========================================================================== */
+
 export default async function PublicProductsRoute({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams;
+
   const searchQuery = resolvedSearchParams.search?.trim() || undefined;
 
   const currentType =
@@ -50,7 +81,17 @@ export default async function PublicProductsRoute({ searchParams }: PageProps) {
   const isFiltered = isSearchActive || isTypeFilterActive;
 
   /* ---------------------------------------------------------------------- */
-  /* Render                                                                 */
+  /* Resource label                                                          */
+  /* ---------------------------------------------------------------------- */
+
+  const resourceLabel = getResourceLabel(currentType);
+
+  const resultCount = isFiltered ? filteredCount : totalCount;
+
+  const resultLabel = resultCount === 1 ? resourceLabel : `${resourceLabel}s`;
+
+  /* ---------------------------------------------------------------------- */
+  /* Render                                                                  */
   /* ---------------------------------------------------------------------- */
 
   return (
@@ -60,9 +101,9 @@ export default async function PublicProductsRoute({ searchParams }: PageProps) {
       {/* ================================================================== */}
 
       <section className="mx-auto max-w-8xl px-4 py-8 sm:px-6 md:py-10 lg:px-28">
-        <div className="mb-6 flex items-end justify-between gap-4">
+        <div className="mb-3 flex items-end justify-between gap-4">
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl dark:text-white">
+            <h2 className="text-xl font-bold tracking-tight text-emerald-900 sm:text-2xl">
               {isSearchActive
                 ? `Search results for "${searchQuery}"`
                 : isTypeFilterActive
@@ -74,16 +115,14 @@ export default async function PublicProductsRoute({ searchParams }: PageProps) {
             {/* Result Count                                                   */}
             {/* ------------------------------------------------------------ */}
 
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-slate-500">
               {isFiltered ? (
                 <>
-                  {filteredCount}{" "}
-                  {filteredCount === 1 ? "resource" : "resources"} found
+                  {filteredCount} {resultLabel} found
                 </>
               ) : (
                 <>
-                  {totalCount} {totalCount === 1 ? "resource" : "resources"}{" "}
-                  available
+                  {totalCount} {resultLabel} available
                 </>
               )}
             </p>
@@ -95,7 +134,7 @@ export default async function PublicProductsRoute({ searchParams }: PageProps) {
         {/* ================================================================= */}
 
         {isFiltered && (
-          <div className="mb-6 flex flex-wrap items-center gap-2">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
             {/* Search Filter */}
             {searchQuery && (
               <div
@@ -106,15 +145,14 @@ export default async function PublicProductsRoute({ searchParams }: PageProps) {
                   rounded-md
                   border
                   border-slate-200
-                  bg-white
                   px-3
                   py-1.5
                   text-xs
                   font-medium
                   text-slate-700
                   shadow-sm
+                  bg-emerald-900/30
                   dark:border-slate-700
-                  dark:bg-slate-900
                   dark:text-slate-200
                 "
               >
@@ -125,32 +163,6 @@ export default async function PublicProductsRoute({ searchParams }: PageProps) {
             )}
 
             {/* Product Type Filter */}
-            {currentType && (
-              <div
-                className="
-                  inline-flex
-                  items-center
-                  gap-2
-                  rounded-md
-                  border
-                  border-slate-200
-                  bg-white
-                  px-3
-                  py-1.5
-                  text-xs
-                  font-medium
-                  text-slate-700
-                  shadow-sm
-                  dark:border-slate-700
-                  dark:bg-slate-900
-                  dark:text-slate-200
-                "
-              >
-                <span className="text-slate-400">Type:</span>
-
-                <span className="font-semibold">{currentType}</span>
-              </div>
-            )}
           </div>
         )}
 
@@ -283,15 +295,15 @@ function LoadingSkeletonLayout() {
         <div
           key={index}
           className="
-            overflow-hidden
-            rounded-2xl
-            border
-            border-slate-200
-            bg-white
-            shadow-sm
-            dark:border-slate-800
-            dark:bg-slate-900
-          "
+              overflow-hidden
+              rounded-2xl
+              border
+              border-slate-200
+              bg-white
+              shadow-sm
+              dark:border-slate-800
+              dark:bg-slate-900
+            "
         >
           <PublicProductCardSkeleton />
         </div>

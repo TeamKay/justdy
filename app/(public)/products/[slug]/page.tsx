@@ -167,17 +167,7 @@ export default async function SlugPage({ params }: { params: Params }) {
             TWO COLUMN PRODUCT LAYOUT
         ================================================================== */}
 
-        <div
-          className="
-            grid
-            grid-cols-1
-            items-start
-            gap-8
-          lg:grid-cols-[17fr_8fr]
-            lg:gap-10
-            xl:gap-8
-          "
-        >
+        <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[17fr_8fr] lg:gap-10 xl:gap-8">
           {/* ==================================================================
               LEFT COLUMN
           ================================================================== */}
@@ -188,15 +178,7 @@ export default async function SlugPage({ params }: { params: Params }) {
             ================================================================= */}
 
             <div
-              className="
-    overflow-hidden
-    rounded-md
-    border
-    border-slate-200
-    bg-white
-    shadow-sm
-    dark:border-slate-400
-    dark:bg-background
+              className="overflow-hidden rounded-md shadow-sm bg-background
   "
             >
               {isCourse ? (
@@ -225,7 +207,10 @@ export default async function SlugPage({ params }: { params: Params }) {
             <div className="mt-8">
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 {product.category && (
-                  <Badge variant="secondary" className="rounded-full px-3 py-1">
+                  <Badge
+                    variant="secondary"
+                    className="rounded-md bg-[#857938] text-white px-3 py-1"
+                  >
                     {product.category}
                   </Badge>
                 )}
@@ -234,15 +219,12 @@ export default async function SlugPage({ params }: { params: Params }) {
                   <Badge
                     variant="outline"
                     className="
-                      rounded-full
+                      rounded-md
                       border-emerald-200
-                      bg-emerald-50
                       px-3
                       py-1
-                      text-emerald-700
-                      dark:border-emerald-900
-                      dark:bg-emerald-950/30
-                      dark:text-emerald-400
+                      text-white
+                    bg-[#857938]
                     "
                   >
                     Online Course
@@ -256,8 +238,8 @@ export default async function SlugPage({ params }: { params: Params }) {
                   text-3xl
                   font-bold
                   tracking-tight
-                  text-slate-900
-                  dark:text-white
+                  text-[#857938]
+                  
                   sm:text-4xl
                   lg:text-[2.0rem]
                   lg:leading-tight
@@ -282,7 +264,10 @@ export default async function SlugPage({ params }: { params: Params }) {
                 )}
 
                 <span className="flex items-center gap-1.5">
-                  <Badge variant="outline" className="rounded-md px-3 py-1">
+                  <Badge
+                    variant="outline"
+                    className="rounded-md px-3 py-1 bg-[#857938] text-white"
+                  >
                     {product.type}
                   </Badge>
                   <Star className="size-4 fill-amber-400 text-amber-400" />
@@ -299,7 +284,7 @@ export default async function SlugPage({ params }: { params: Params }) {
             ================================================================= */}
 
             <section>
-              <h2 className="mb-4 text-xl font-bold tracking-tight">
+              <h2 className="mb-4 text-xl font-bold tracking-tight text-[#857938]">
                 About this product
               </h2>
 
@@ -308,8 +293,7 @@ export default async function SlugPage({ params }: { params: Params }) {
       max-w-none
       text-sm
       leading-7
-      text-slate-600
-      dark:text-slate-300
+      text-black
 
       [&_p]:mb-5
       [&_p:last-child]:mb-0
@@ -319,25 +303,25 @@ export default async function SlugPage({ params }: { params: Params }) {
       [&_h1]:text-2xl
       [&_h1]:font-bold
       [&_h1]:text-slate-900
-      dark:[&_h1]:text-white
+      dark:[&_h1]:text-red-500
 
       [&_h2]:mb-4
       [&_h2]:mt-7
       [&_h2]:text-xl
       [&_h2]:font-bold
       [&_h2]:text-slate-900
-      dark:[&_h2]:text-white
+      dark:[&_h2]:text-red-500
 
       [&_h3]:mb-3
       [&_h3]:mt-6
       [&_h3]:text-lg
       [&_h3]:font-bold
       [&_h3]:text-slate-900
-      dark:[&_h3]:text-white
+      dark:[&_h3]:text-black
 
       [&_strong]:font-bold
       [&_strong]:text-slate-900
-      dark:[&_strong]:text-white
+      dark:[&_strong]:text-black
 
       [&_em]:italic
 
@@ -374,7 +358,7 @@ export default async function SlugPage({ params }: { params: Params }) {
             ================================================================= */}
 
             <section className="mt-10">
-              <h2 className="mb-5 text-xl font-bold tracking-tight">
+              <h2 className="mb-5 text-xl font-bold tracking-tight text-[#857938]">
                 What&apos;s included
               </h2>
 
@@ -418,7 +402,7 @@ export default async function SlugPage({ params }: { params: Params }) {
               <section className="mt-10">
                 <div className="mb-5 flex items-end justify-between gap-4">
                   <div>
-                    <h2 className="text-xl font-bold tracking-tight">
+                    <h2 className="text-xl font-bold tracking-tight text-[#857938]">
                       Course content
                     </h2>
 
@@ -427,7 +411,7 @@ export default async function SlugPage({ params }: { params: Params }) {
                     </p>
                   </div>
 
-                  <span className="shrink-0 rounded-full bg-muted px-3 py-1 text-xs font-medium">
+                  <span className="shrink-0 rounded-md bg-[#857938] text-white px-3 py-1 text-xs font-medium">
                     {totalLessons} {totalLessons === 1 ? "lesson" : "lessons"}
                   </span>
                 </div>
@@ -438,10 +422,10 @@ export default async function SlugPage({ params }: { params: Params }) {
                       <Card
                         className="
                             overflow-hidden
-                            border-slate-200
+                            border-[#857938]
                             py-0
                             shadow-sm
-                            dark:border-slate-800
+                            rounded-md
                           "
                       >
                         <CollapsibleTrigger className="w-full">
@@ -465,7 +449,7 @@ export default async function SlugPage({ params }: { params: Params }) {
                                     shrink-0
                                     items-center
                                     justify-center
-                                    rounded-lg
+                                    rounded-full
                                     bg-primary/10
                                     text-xs
                                     font-bold
@@ -524,14 +508,12 @@ export default async function SlugPage({ params }: { params: Params }) {
             <section
               className="
                 mt-10
-                rounded-2xl
+                rounded-md
                 border
-                border-slate-200
+                border-[#857938]
                 bg-white
                 p-5
                 shadow-sm
-                dark:border-slate-800
-                dark:bg-slate-950
                 sm:p-6
               "
             >
@@ -581,10 +563,9 @@ export default async function SlugPage({ params }: { params: Params }) {
                     <Badge
                       variant="secondary"
                       className="
-                        bg-purple-100
-                        text-purple-700
-                        dark:bg-purple-950/40
-                        dark:text-purple-300
+                        bg-[#857938]
+                        text-white
+                        rounded-md
                       "
                     >
                       Star Seller
@@ -633,15 +614,15 @@ export default async function SlugPage({ params }: { params: Params }) {
               flex
               items-center
               justify-between
-              rounded-xl
+              rounded-md
               border
-              border-slate-200
+              border-[#857938]
               bg-white
               px-4
               py-3
               shadow-sm
-              dark:border-slate-800
-              dark:bg-slate-950
+      
+             
               lg:sticky
               lg:top-[calc(1.5rem+100%)]
             "
@@ -680,14 +661,14 @@ function FeatureItem({
       className="
         flex
         gap-3
-        rounded-xl
+        rounded-md
         border
-        border-slate-200
+      
         bg-white
         p-4
         shadow-sm
-        dark:border-slate-800
-        dark:bg-slate-950
+      border-[#857938]
+     
       "
     >
       <div
