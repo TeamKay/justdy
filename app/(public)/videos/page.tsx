@@ -8,8 +8,8 @@ export default async function VideosPage() {
   ]);
 
   return (
-    <main className="w-full bg-background text-slate-50 py-6 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-[1600px] mx-auto px-12 space-y-6">
+    <main className="w-full bg-background px-3 py-4 text-slate-50 sm:px-4 sm:py-6 md:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1600px] space-y-6">
         <VideoList mathVideos={mathVideos} techVideos={techVideos} />
       </div>
     </main>

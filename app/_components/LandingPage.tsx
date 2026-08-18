@@ -33,14 +33,17 @@ export default function LandingPageClient({}: LandingPageProps) {
         (prevIndex) => (prevIndex + 1) % CAROUSEL_IMAGES.length,
       );
     }, 4500);
+
     return () => clearInterval(timer);
   }, []);
 
   return (
-    <div className="text-slate-900 font-sans antialiased overflow-x-hidden relative selection:bg-emerald-500 selection:text-white">
-      {/* SaaS Background Ambient Light & Fine Dot Grid */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {/* Crisp Dot Pattern */}
+    <div className="relative overflow-x-hidden font-sans antialiased text-slate-900 selection:bg-emerald-500 selection:text-white">
+      {/* ================================================================ */}
+      {/* BACKGROUND                                                       */}
+      {/* ================================================================ */}
+
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div
           className="absolute inset-0 bg-[radial-gradient(#000_0px,transparent_1px)] bg-size-[15px_15px]"
           style={{
@@ -52,32 +55,74 @@ export default function LandingPageClient({}: LandingPageProps) {
         />
       </div>
 
-      {/* Main Container - Dual Banner Layout maintaining exact dimensions */}
-      <main className="relative z-10 max-w-8xl mx-auto px-4 sm:px-6 lg:px-28 pt-5 pb-5">
-        <div className="grid grid-cols-1 lg:grid-cols-1 gap-8 items-stretch">
-          <div className="relative rounded-md bg-linear-to-br bg-emerald-900/20 border border-emerald-500/20 text-white p-0 sm:p-8 overflow-hidden shadow-2xl shadow-emerald-950/20 flex flex-col justify-between">
-            {/* SaaS Ambient Glow Effects */}
-            <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-emerald-500/10 pointer-events-none blur-3xl" />
-            <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-teal-500/10 pointer-events-none blur-3xl" />
+      {/* ================================================================ */}
+      {/* MAIN CONTAINER                                                   */}
+      {/* ================================================================ */}
 
-            {/* Right Side: Enhanced Beautiful Slanted Diagonal Image Carousel Filling the Right Edge */}
-            <div className="absolute right-0 top-0 bottom-0 w-[55%] z-20 hidden sm:flex items-center justify-end pointer-events-none">
+      <main
+        className="
+          relative
+          z-10
+          mx-auto
+          max-w-8xl
+          px-4
+          py-5
+          sm:px-6
+          lg:px-28
+        "
+      >
+        <div className="grid grid-cols-1 items-stretch gap-8">
+          {/* ============================================================ */}
+          {/* HERO CARD                                                     */}
+          {/* ============================================================ */}
+
+          <div
+            className="
+              relative
+              flex
+              flex-col
+              justify-between
+              overflow-hidden
+              rounded-md
+              border
+              border-emerald-500/20
+              bg-linear-to-br
+              bg-emerald-900/20
+              p-5
+              shadow-2xl
+              shadow-emerald-950/20
+              sm:p-8
+            "
+          >
+            {/* ========================================================== */}
+            {/* AMBIENT GLOW                                                */}
+            {/* ========================================================== */}
+
+            <div className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full bg-emerald-500/10 blur-3xl" />
+
+            <div className="pointer-events-none absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-teal-500/10 blur-3xl" />
+
+            {/* ========================================================== */}
+            {/* DESKTOP IMAGE CAROUSEL                                      */}
+            {/* ========================================================== */}
+
+            <div className="pointer-events-none absolute right-0 top-0 bottom-0 z-20 hidden w-[55%] items-center justify-end sm:flex">
               <div
-                className="relative w-full h-full overflow-hidden shadow-2xl bg-slate-900"
+                className="relative h-full w-full overflow-hidden bg-slate-900 shadow-2xl"
                 style={{
                   clipPath: "polygon(30% 0%, 100% 0%, 100% 100%, 0% 100%)",
                 }}
               >
-                {/* Image overlay gradient for depth and clarity */}
-                <div className="absolute inset-0 bg-linear-to-r from-slate-950/95 via-slate-950/30 to-transparent z-10" />
+                {/* Image overlay */}
+                <div className="absolute inset-0 z-10 bg-linear-to-r from-slate-950/95 via-slate-950/30 to-transparent" />
 
                 {CAROUSEL_IMAGES.map((img, index) => (
                   <div
                     key={img.url}
                     className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
                       index === currentImageIndex
-                        ? "opacity-100 z-1"
-                        : "opacity-0 z-0"
+                        ? "z-1 opacity-100"
+                        : "z-0 opacity-0"
                     }`}
                   >
                     <Image
@@ -85,104 +130,175 @@ export default function LandingPageClient({}: LandingPageProps) {
                       alt={img.alt}
                       fill
                       priority={index === 0}
-                      className="object-cover object-center transform scale-105"
+                      className="transform object-cover object-center scale-105"
                     />
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Floating Badges Aligned Horizontally on Top of the Right-Side Slanted Image */}
-            <div className="absolute right-8 lg:right-30 bottom-6 z-30 hidden lg:flex items-center gap-3 pointer-events-auto">
-              <div className="bg-slate-900/60 backdrop-blur-2xl border border-emerald-500/40 px-6 py-3 rounded-xl shadow-2xl text-white flex items-center gap-3 transition-transform hover:scale-105 duration-300">
-                <div className="p-2 rounded-lg bg-emerald-500/25 text-emerald-400 shadow-inner">
+            {/* ========================================================== */}
+            {/* FLOATING BADGES                                             */}
+            {/* ========================================================== */}
+
+            <div className="pointer-events-auto absolute bottom-6 right-8 z-30 hidden items-center gap-3 lg:right-30 lg:flex">
+              <div className="flex items-center gap-3 rounded-xl border border-emerald-500/40 bg-slate-900/60 px-6 py-3 text-white shadow-2xl backdrop-blur-2xl transition-transform duration-300 hover:scale-105">
+                <div className="rounded-lg bg-emerald-500/25 p-2 text-emerald-400 shadow-inner">
                   <Sparkles className="size-4" />
                 </div>
+
                 <div>
-                  <div className="text-xs font-bold text-white tracking-wide">
+                  <div className="text-xs font-bold tracking-wide text-white">
                     Top Rated
                   </div>
-                  <p className="text-[11px] text-slate-300 font-medium">
+
+                  <p className="text-[11px] font-medium text-slate-300">
                     Expert-led paths
                   </p>
                 </div>
               </div>
 
-              <div className="bg-slate-900/60 backdrop-blur-2xl border border-emerald-500/40 px-6 py-3 rounded-xl shadow-2xl text-white flex items-center gap-3 transition-transform hover:scale-105 duration-300">
-                <div className="p-2 rounded-lg bg-emerald-500/25 text-emerald-400 shadow-inner">
+              <div className="flex items-center gap-3 rounded-xl border border-emerald-500/40 bg-slate-900/60 px-6 py-3 text-white shadow-2xl backdrop-blur-2xl transition-transform duration-300 hover:scale-105">
+                <div className="rounded-lg bg-emerald-500/25 p-2 text-emerald-400 shadow-inner">
                   <Sparkles className="size-4" />
                 </div>
+
                 <div>
-                  <div className="text-xs font-bold text-white tracking-wide">
+                  <div className="text-xs font-bold tracking-wide text-white">
                     Printables
                   </div>
-                  <p className="text-[11px] text-slate-300 font-medium">
+
+                  <p className="text-[11px] font-medium text-slate-300">
                     Workbooks, planners, and more
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Left Content */}
+            {/* ========================================================== */}
+            {/* LEFT CONTENT                                                */}
+            {/* ========================================================== */}
+
             <div className="relative z-10 max-w-4xl pr-0 sm:pr-80 lg:pr-96">
-              <h1 className="text-2xl sm:text-3xl lg:text-5xl font-extrabold tracking-tight leading-[1.1] mb-6 text-blue-600">
+              <h1 className="mb-5 text-3xl font-extrabold leading-[1.1] tracking-tight text-blue-600 sm:mb-6 sm:text-3xl lg:text-5xl">
                 Learn. Create. Grow.
               </h1>
 
-              <p className="text-slate-700 text-base sm:text-[16px] mb-5 font-normal leading-relaxed">
+              <p className="mb-5 text-base font-normal leading-relaxed text-slate-700 sm:text-[16px]">
                 Discover quality learning materials that makes learning
                 engaging, fun, and productive, as well as quality one-on-one
                 tutoring from experts.
               </p>
 
-              {/* Action Buttons with Redesigned Beautiful Styling */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-start gap-4 w-full sm:w-auto mb-6">
+              {/* ======================================================== */}
+              {/* ACTION BUTTONS                                            */}
+              {/* ======================================================== */}
+
+              <div className="mb-6 flex w-full flex-col items-stretch justify-start gap-3 sm:w-auto sm:flex-row sm:items-center sm:gap-4">
                 <Link
                   href="/free-assessment"
-                  className="inline-flex h-12 items-center justify-center gap-2.5 px-6 rounded-md bg-[#857938] hover:bg-blue-500 hover:to-teal-400 text-white font-extrabold text-base transition-all duration-300 shadow-xl shadow-emerald-500/30 hover:-translate-y-0.5 active:translate-y-0 border border-emerald-400/40"
+                  className="
+                    inline-flex
+                    h-12
+                    w-full
+                    items-center
+                    justify-center
+                    gap-2.5
+                    rounded-md
+                    border
+                    border-emerald-400/40
+                    bg-[#857938]
+                    px-6
+                    text-base
+                    font-extrabold
+                    text-white
+                    shadow-xl
+                    shadow-emerald-500/30
+                    transition-all
+                    duration-300
+                    hover:-translate-y-0.5
+                    hover:bg-blue-500
+                    active:translate-y-0
+                    sm:w-auto
+                  "
                 >
                   <Sparkles className="size-4 text-white" />
+
                   <span>Free Assessment</span>
-                  <ArrowRight className="size-4 ml-0.5 text-white" />
+
+                  <ArrowRight className="ml-0.5 size-4 text-white" />
                 </Link>
 
                 <Link
                   href="/videos"
-                  className="inline-flex h-12 items-center justify-center gap-2.5 px-6 rounded-md hover:bg-blue-500 text-blue-600 hover:to-teal-400 hover:text-white font-semibold text-base transition-all duration-300 shadow-lg border border-[#857938] hover:border-emerald-400/60 hover:-translate-y-0.5 active:translate-y-0"
+                  className="
+                    inline-flex
+                    h-12
+                    w-full
+                    items-center
+                    justify-center
+                    gap-2.5
+                    rounded-md
+                    border
+                    border-[#857938]
+                    px-6
+                    text-base
+                    font-semibold
+                    text-blue-600
+                    shadow-lg
+                    transition-all
+                    duration-300
+                    hover:-translate-y-0.5
+                    hover:border-emerald-400/60
+                    hover:bg-blue-500
+                    hover:text-white
+                    active:translate-y-0
+                    sm:w-auto
+                  "
                 >
-                  <Compass className="size-4 text-blue-500 hover:to-teal-400" />
+                  <Compass className="size-4 text-blue-500" />
+
                   <span>Free Lesson Videos</span>
                 </Link>
               </div>
 
-              {/* Feature Tags */}
-              <div className="flex flex-wrap items-start gap-3">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs text-slate-800 backdrop-blur-sm">
-                  <div className="size-4 rounded-full bg-[#857938] flex items-center justify-center">
-                    <Check className="size-3 text-white shrink-0" />
+              {/* ======================================================== */}
+              {/* FEATURE TAGS                                             */}
+              {/* ======================================================== */}
+
+              <div className="flex flex-wrap items-start gap-0 sm:gap-1">
+                <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-slate-800 backdrop-blur-sm sm:px-3">
+                  <div className="flex size-4 shrink-0 items-center justify-center rounded-full bg-[#857938]">
+                    <Check className="size-3 text-white" />
                   </div>
+
                   <span>Instant Downloads</span>
                 </div>
 
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs text-slate-800 backdrop-blur-sm">
-                  <div className="size-4 rounded-full bg-[#857938] flex items-center justify-center">
-                    <Check className="size-3 text-white shrink-0" />
+                <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-slate-800 backdrop-blur-sm sm:px-3">
+                  <div className="flex size-4 shrink-0 items-center justify-center rounded-full bg-[#857938]">
+                    <Check className="size-3 text-white" />
                   </div>
+
                   <span>Secured Payments</span>
                 </div>
 
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs text-slate-800 backdrop-blur-sm">
-                  <div className="size-4 rounded-full bg-[#857938] flex items-center justify-center">
-                    <Check className="size-3 text-white shrink-0" />
+                <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-slate-800 backdrop-blur-sm sm:px-3">
+                  <div className="flex size-4 shrink-0 items-center justify-center rounded-full bg-[#857938]">
+                    <Check className="size-3 text-white" />
                   </div>
+
                   <span>Learn Anywhere</span>
                 </div>
               </div>
             </div>
 
-            {/* Mobile / Fallback Image layout view */}
-            <div className="relative mt-8 flex sm:hidden justify-center z-10">
-              <div className="relative w-full h-48 rounded-xl border border-emerald-500/30 overflow-hidden shadow-2xl bg-slate-900">
+            {/* ========================================================== */}
+            {/* MOBILE IMAGE                                                */}
+            {/* ========================================================== */}
+
+            <div className="relative z-10 mt-7 flex justify-center sm:hidden">
+              <div className="relative h-48 w-full overflow-hidden rounded-xl border border-emerald-500/30 bg-slate-900 shadow-2xl">
                 <Image
                   src={CAROUSEL_IMAGES[currentImageIndex].url}
                   alt={CAROUSEL_IMAGES[currentImageIndex].alt}

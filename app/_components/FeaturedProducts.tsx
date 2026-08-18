@@ -7,17 +7,6 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 export default async function FeaturedProducts() {
-  /*
-   * ================================================================
-   * FETCH ONLY CURRENTLY PUBLISHED PRODUCTS
-   * ================================================================
-   *
-   * The database is the source of truth.
-   *
-   * If a product is deleted, unpublished, or otherwise removed
-   * from the database, it should not appear here.
-   */
-
   const products = await prisma.product.findMany({
     where: {
       status: "Published",
