@@ -13,12 +13,12 @@ export default function MyLogo() {
         className={clsx(
           "flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-md transition-all duration-300 ease-in-out border border-transparent",
           "active:scale-95",
-          "",
         )}
       >
-        {/* 2. Use the renamed variable here */}
         <Image src={LogoImg} alt="Logo" width={28} height={28} priority />
-        <span className="font-semibold text-lg">Justdy</span>
+
+        {/* Hidden on mobile, visible from sm and above */}
+        <span className="hidden sm:inline font-semibold text-lg">Justdy</span>
       </Link>
     </div>
   );
