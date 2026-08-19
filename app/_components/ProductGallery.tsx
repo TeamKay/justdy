@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,17 +24,17 @@ export function ProductGallery({ images, title }: ProductGalleryProps) {
      NAVIGATION
   ========================================================================== */
 
-  const goToPrevious = () => {
+  const goToPrevious = useCallback(() => {
     setSelectedIndex((current) =>
       current === 0 ? galleryImages.length - 1 : current - 1,
     );
-  };
+  }, [galleryImages.length]);
 
-  const goToNext = () => {
+  const goToNext = useCallback(() => {
     setSelectedIndex((current) =>
       current === galleryImages.length - 1 ? 0 : current + 1,
     );
-  };
+  }, [galleryImages.length]);
 
   const goToImage = (index: number) => {
     setSelectedIndex(index);
@@ -75,7 +75,7 @@ export function ProductGallery({ images, title }: ProductGalleryProps) {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [hasMultipleImages, galleryImages.length]);
+  }, [hasMultipleImages, goToPrevious, goToNext]);
 
   /* ==========================================================================
      SINGLE IMAGE
@@ -164,7 +164,7 @@ export function ProductGallery({ images, title }: ProductGalleryProps) {
           className="
             flex
             max-h-[70vw]
-            min-h-[280px]
+            min-h-70
             flex-col
             gap-2
             overflow-y-auto
@@ -288,16 +288,16 @@ export function ProductGallery({ images, title }: ProductGalleryProps) {
           className="
             relative
             h-[70vw]
-            min-h-[280px]
-            max-h-[600px]
+            min-h-70
+            max-h-150
             w-full
             overflow-hidden
 
             sm:h-auto
-            sm:min-h-[430px]
+            sm:min-h-107.5
             sm:max-h-none
 
-            lg:min-h-[600px]
+            lg:min-h-150
           "
         >
           <Image

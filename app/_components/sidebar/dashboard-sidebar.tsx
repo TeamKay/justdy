@@ -107,8 +107,8 @@ const navigationData: Record<string, NavItem[]> = {
       roles: ["admin", "educator"],
     },
     {
-      title: "Profile Settings",
-      url: "/manage/profile",
+      title: "Settings",
+      url: "/manage/settings",
       icon: Settings,
       roles: ["admin", "educator"],
     },
