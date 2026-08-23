@@ -77,6 +77,7 @@ function StatusBadge({ status }: { status: AppointmentStatus }) {
 /* ============================================================
    PAGE
    ============================================================ */
+export const dynamic = "force-dynamic";
 
 export default async function SessionsPage() {
   const result = await getAppointments();

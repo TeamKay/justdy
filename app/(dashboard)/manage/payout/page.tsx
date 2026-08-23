@@ -1,6 +1,8 @@
 import { PendingPayouts } from "@/app/_components/PendingPayouts";
 import { getPendingPayouts } from "@/app/actions/manage-admin";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminPage() {
   const [pendingPayoutsData] = await Promise.all([getPendingPayouts()]);
 
