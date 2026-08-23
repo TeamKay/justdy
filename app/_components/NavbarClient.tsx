@@ -24,13 +24,11 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { Button, buttonVariants } from "./ui/button";
 import { cn } from "@/lib/utils";
-import MyLogo from "./Logo";
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 
-import { SignupModal } from "./SignupModal";
-import { SigninModal } from "./SigninModal";
+import { AuthModal } from "../(auth)/AuthModal";
 import { Separator } from "./ui/separator";
 import Image from "next/image";
 
@@ -39,6 +37,7 @@ import { ProductMegaMenu, ProductMobileMenu } from "./ProductMegaMenu";
 
 import { createCheckoutSessionAction } from "../actions/manage-checkout-session";
 import { toast } from "sonner";
+import MyLogo from "./Logo";
 
 // ============================================================
 // TYPES
@@ -575,7 +574,7 @@ export function NavbarClient() {
         w-full
         border-b
         border-slate-200
-        bg-background/95
+        bg-blue-100
         backdrop-blur-xl
         dark:border-slate-300
       "
@@ -584,7 +583,7 @@ export function NavbarClient() {
         className="
           mx-auto
           flex
-          h-19
+          h-14
           max-w-8xl
           items-center
           px-4
@@ -610,7 +609,7 @@ export function NavbarClient() {
 
           <div className="flex min-w-0 items-center gap-0">
             <div className="shrink-0">
-              <MyLogo />
+              <MyLogo showText={true} />
             </div>
 
             <nav className="flex shrink-0 items-center gap-1">
@@ -629,16 +628,16 @@ export function NavbarClient() {
                     cursor-pointer
                     items-center
                     gap-1.5
-                    rounded-lg
-                    px-5
+                    rounded-md
+                    px-4
                     py-2
-                    text-sm
+                    text-md
                     font-bold
-                    text-slate-800
+                    text-blue-500
                     transition-all
                     duration-200
-                    hover:bg-[#857938]
-                    hover:text-white
+                    hover: bg-blue-100 
+                    hover:text-blue-600
                     focus:outline-none
                     focus:ring-2
                     focus:ring-[#857938]/30
@@ -700,7 +699,7 @@ export function NavbarClient() {
                         h-11
                         items-center
                         gap-2
-                        rounded-full
+                        rounded-md
                         border
                         px-1.5
                         pr-2.5
@@ -712,7 +711,7 @@ export function NavbarClient() {
                         `,
                         accountOpen
                           ? "border-[#857938]/30 bg-[#857938]/10 shadow-sm"
-                          : "border-transparent hover:border-slate-200 hover:bg-slate-50",
+                          : "border-transparent hover:border-slate-200 hover:bg-blue-500",
                       )}
                     >
                       {/* AVATAR */}
@@ -727,7 +726,7 @@ export function NavbarClient() {
                           justify-center
                           overflow-hidden
                           rounded-full
-                          bg-[#857938]
+                          bg-blue-500
                           text-xs
                           font-bold
                           text-white
@@ -750,10 +749,6 @@ export function NavbarClient() {
                       </div>
 
                       {/* USER NAME */}
-
-                      <span className="hidden max-w-28 truncate text-sm font-semibold text-slate-800 xl:block">
-                        {userName}
-                      </span>
 
                       <ChevronDown
                         className={cn(
@@ -826,7 +821,7 @@ export function NavbarClient() {
                                   justify-center
                                   overflow-hidden
                                   rounded-full
-                                  bg-[#857938]
+                                  bg-blue-500
                                   text-sm
                                   font-bold
                                   text-white
@@ -954,7 +949,7 @@ export function NavbarClient() {
                   </div>
                 </div>
               ) : (
-                <SigninModal>
+                <AuthModal defaultMode="signin">
                   <button
                     type="button"
                     data-login-trigger="true"
@@ -968,7 +963,7 @@ export function NavbarClient() {
                         cursor-pointer
                         rounded-md
                         border-0
-                        bg-[#857938]
+                        bg-blue-500
                         px-5
                         text-sm
                         font-medium
@@ -976,7 +971,7 @@ export function NavbarClient() {
                         shadow-md
                         shadow-[#857938]/20
                         transition-all
-                        hover:bg-blue-500
+                        hover:bg-blue-600
                         active:scale-95
                         whitespace-nowrap
                       `,
@@ -984,7 +979,7 @@ export function NavbarClient() {
                   >
                     Sign In
                   </button>
-                </SigninModal>
+                </AuthModal>
               ))}
 
             {/* CART */}
@@ -996,18 +991,18 @@ export function NavbarClient() {
                 relative
                 shrink-0
                 cursor-pointer
-                rounded-lg
+                rounded-md
                 p-2
                 text-slate-700
                 transition-colors
-                hover:bg-slate-100
-                hover:text-[#857938]
-                dark:text-slate-300
-                dark:hover:bg-slate-800/60
+                hover:bg-blue-500
+                hover:text-white
+               
+               
               "
               aria-label="Shopping Cart"
             >
-              <ShoppingCartIcon className="size-5 text-black" />
+              <ShoppingCartIcon className="size-5 text-black hover:text-white" />
 
               {mounted && totalCount > 0 && (
                 <span
@@ -1045,7 +1040,7 @@ export function NavbarClient() {
           ==================================================== */}
 
           <div className="shrink-0">
-            <MyLogo />
+            <MyLogo showText={false} />
           </div>
 
           {/* ====================================================
@@ -1792,7 +1787,7 @@ export function NavbarClient() {
                   pt-3
                 "
               >
-                <SigninModal>
+                <AuthModal defaultMode="signin">
                   <button
                     type="button"
                     data-login-trigger="true"
@@ -1812,9 +1807,9 @@ export function NavbarClient() {
                   >
                     Log in
                   </button>
-                </SigninModal>
+                </AuthModal>
 
-                <SignupModal>
+                <AuthModal defaultMode="signup">
                   <button
                     type="button"
                     className="
@@ -1835,7 +1830,7 @@ export function NavbarClient() {
                   >
                     Get Started
                   </button>
-                </SignupModal>
+                </AuthModal>
               </div>
             )}
           </motion.div>

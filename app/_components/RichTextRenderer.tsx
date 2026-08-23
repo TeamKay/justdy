@@ -14,13 +14,7 @@ export function RichTextRenderer({ content }: { content: string | null }) {
 
   return (
     <div
-      className="
-        prose
-        prose-sm
-        dark:prose-invert
-        line-clamp-3
-        max-w-none
-      "
+      className="prose prose-sm dark:prose-invert line-clamp-3 max-w-none"
       dangerouslySetInnerHTML={{
         __html: sanitizedHTML,
       }}

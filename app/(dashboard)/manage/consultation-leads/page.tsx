@@ -101,10 +101,10 @@ export default async function AdminFreeConsultationsPage({
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Consultation Leads
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-slate-700 mt-1">
             Review consultation requests and either enroll the client as a
             full-time learner or drop the consultation.
           </p>
@@ -112,10 +112,10 @@ export default async function AdminFreeConsultationsPage({
       </div>
 
       {/* CONTROLS & FILTERS */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs space-y-4">
+      <div className=" bg-amber-100 rounded-md p-4 shadow-xs space-y-4">
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
           {/* Status Tabs */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg w-full md:w-auto overflow-x-auto">
+          <div className="flex items-center gap-1 bg-white p-1 rounded-md w-full md:w-auto overflow-x-auto">
             {TABS.map((tab) => {
               const active =
                 (!status && tab.value === "ALL") ||
@@ -127,8 +127,8 @@ export default async function AdminFreeConsultationsPage({
                   href={`/manage/consultation-leads?status=${tab.value}${search ? `&search=${encodeURIComponent(search)}` : ""}`}
                   className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all whitespace-nowrap ${
                     active
-                      ? "bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-xs font-semibold"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700/50"
+                      ? "bg-[#857938] text-white shadow-xs font-semibold"
+                      : "text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700/50"
                   }`}
                 >
                   {tab.label}
@@ -144,7 +144,7 @@ export default async function AdminFreeConsultationsPage({
         {/* --- MOBILE VIEW: VERTICAL STACKED CARDS --- */}
         <div className="block md:hidden space-y-3">
           {consultations.length === 0 ? (
-            <div className="text-center py-8 text-slate-500 dark:text-slate-400 border rounded-lg border-slate-200 dark:border-slate-800">
+            <div className="text-center py-8 text-slate-500 dark:text-slate-400 border rounded-md border-slate-200 dark:border-slate-800">
               No consultation onboardings found matching your filter.
             </div>
           ) : (
@@ -167,7 +167,7 @@ export default async function AdminFreeConsultationsPage({
               return (
                 <div
                   key={item.id}
-                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-3 shadow-2xs"
+                  className="bg-white border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-3 shadow-2xs"
                 >
                   {/* Top Bar: Name & Actions */}
                   <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">

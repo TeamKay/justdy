@@ -36,7 +36,7 @@ import {
 
 // Actions & Hooks
 import useFetch from "@/hooks/use-fetch";
-import { approvePayout } from "../actions/admin";
+import { approvePayout } from "../actions/manage-admin";
 
 // --- TypeScript Interfaces ---
 

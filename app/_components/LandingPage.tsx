@@ -142,8 +142,8 @@ export default function LandingPageClient({}: LandingPageProps) {
             {/* ========================================================== */}
 
             <div className="pointer-events-auto absolute bottom-6 right-8 z-30 hidden items-center gap-3 lg:right-30 lg:flex">
-              <div className="flex items-center gap-3 rounded-xl border border-emerald-500/40 bg-slate-900/60 px-6 py-3 text-white shadow-2xl backdrop-blur-2xl transition-transform duration-300 hover:scale-105">
-                <div className="rounded-lg bg-emerald-500/25 p-2 text-emerald-400 shadow-inner">
+              <div className="flex items-center gap-3 rounded-md border border-emerald-500/40 bg-blue-600 px-6 py-3 text-white shadow-2xl backdrop-blur-2xl transition-transform duration-300 hover:scale-105">
+                <div className="rounded-lg bg-blue-500 p-2 text-emerald-400 shadow-inner">
                   <Sparkles className="size-4" />
                 </div>
 
@@ -158,8 +158,8 @@ export default function LandingPageClient({}: LandingPageProps) {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 rounded-xl border border-emerald-500/40 bg-slate-900/60 px-6 py-3 text-white shadow-2xl backdrop-blur-2xl transition-transform duration-300 hover:scale-105">
-                <div className="rounded-lg bg-emerald-500/25 p-2 text-emerald-400 shadow-inner">
+              <div className="flex items-center gap-3 rounded-xl border border-emerald-500/40 bg-blue-600 px-6 py-3 text-white shadow-2xl backdrop-blur-2xl transition-transform duration-300 hover:scale-105">
+                <div className="rounded-lg bg-blue-500 p-2 text-emerald-400 shadow-inner">
                   <Sparkles className="size-4" />
                 </div>
 
@@ -207,7 +207,7 @@ export default function LandingPageClient({}: LandingPageProps) {
                     rounded-md
                     border
                     border-emerald-400/40
-                    bg-[#857938]
+                    bg-blue-500
                     px-6
                     text-base
                     font-extrabold
@@ -217,7 +217,7 @@ export default function LandingPageClient({}: LandingPageProps) {
                     transition-all
                     duration-300
                     hover:-translate-y-0.5
-                    hover:bg-blue-500
+                    hover:bg-blue-600
                     active:translate-y-0
                     sm:w-auto
                   "
@@ -240,7 +240,7 @@ export default function LandingPageClient({}: LandingPageProps) {
                     gap-2.5
                     rounded-md
                     border
-                    border-[#857938]
+                    border-blue-500
                     px-6
                     text-base
                     font-semibold
@@ -248,9 +248,7 @@ export default function LandingPageClient({}: LandingPageProps) {
                     shadow-lg
                     transition-all
                     duration-300
-                    hover:-translate-y-0.5
-                    hover:border-emerald-400/60
-                    hover:bg-blue-500
+                    hover:border-blue-600
                     hover:text-white
                     active:translate-y-0
                     sm:w-auto
@@ -268,7 +266,7 @@ export default function LandingPageClient({}: LandingPageProps) {
 
               <div className="flex flex-wrap items-start gap-0 sm:gap-1">
                 <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-slate-800 backdrop-blur-sm sm:px-3">
-                  <div className="flex size-4 shrink-0 items-center justify-center rounded-full bg-[#857938]">
+                  <div className="flex size-4 shrink-0 items-center justify-center rounded-full bg-blue-500">
                     <Check className="size-3 text-white" />
                   </div>
 
@@ -276,7 +274,7 @@ export default function LandingPageClient({}: LandingPageProps) {
                 </div>
 
                 <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-slate-800 backdrop-blur-sm sm:px-3">
-                  <div className="flex size-4 shrink-0 items-center justify-center rounded-full bg-[#857938]">
+                  <div className="flex size-4 shrink-0 items-center justify-center rounded-full bg-blue-500">
                     <Check className="size-3 text-white" />
                   </div>
 
@@ -284,7 +282,7 @@ export default function LandingPageClient({}: LandingPageProps) {
                 </div>
 
                 <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-slate-800 backdrop-blur-sm sm:px-3">
-                  <div className="flex size-4 shrink-0 items-center justify-center rounded-full bg-[#857938]">
+                  <div className="flex size-4 shrink-0 items-center justify-center rounded-full bg-blue-500">
                     <Check className="size-3 text-white" />
                   </div>
 

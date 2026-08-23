@@ -39,7 +39,7 @@ import {
 import {
   updateEducatorStatus,
   updateEducatorActiveStatus,
-} from "@/app/actions/admin";
+} from "@/app/actions/manage-admin";
 
 export interface Educator {
   id: string;

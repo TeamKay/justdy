@@ -1,5 +1,5 @@
 import { PendingPayouts } from "@/app/_components/PendingPayouts";
-import { getPendingPayouts } from "@/app/actions/admin";
+import { getPendingPayouts } from "@/app/actions/manage-admin";
 
 export default async function AdminPage() {
   const [pendingPayoutsData] = await Promise.all([getPendingPayouts()]);

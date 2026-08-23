@@ -161,14 +161,14 @@ export default async function FeaturedProducts() {
                     className="
                       cursor-pointer
                       rounded-md
-                      bg-[#857938]
+                      bg-blue-500
                       px-5
                       py-1.5
                       text-sm
                       font-medium
                       text-white
                       transition-all
-                      hover:bg-blue-500
+                      hover:bg-blue-600
                       hover:text-white
                     "
                   >

@@ -15,7 +15,6 @@ import {
   GraduationCap,
   Library,
   Receipt,
-  Clock,
 } from "lucide-react";
 
 import {
@@ -31,9 +30,10 @@ import {
 } from "../ui/sidebar";
 
 import { authClient } from "@/lib/auth-client";
-import MyLogo from "../Logo";
+
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { IconCash } from "@tabler/icons-react";
+import MyLogo from "../Logo";
 
 export interface NavItem {
   title: string;
@@ -94,12 +94,7 @@ const navigationData: Record<string, NavItem[]> = {
       icon: Receipt,
       roles: ["admin"],
     },
-    {
-      title: "Availability",
-      url: "/manage/availability",
-      icon: Clock,
-      roles: ["educator"],
-    },
+
     {
       title: "My Portfolio",
       url: "/manage/portfolio",
@@ -257,24 +252,6 @@ export function AppSidebar({ userRoles = [], ...props }: AppSidebarProps) {
       {/* ==================================================
           BRAND HEADER
       ================================================== */}
-
-      <SidebarHeader
-        className="
-          px-4
-          py-4
-          border-b
-          border-gray-200
-          bg-white
-        "
-      >
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <div className="flex items-center gap-2">
-              <MyLogo />
-            </div>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
 
       {/* ==================================================
           PROFILE CARD

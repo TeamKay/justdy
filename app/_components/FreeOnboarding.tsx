@@ -19,7 +19,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { createFreeConsultation } from "../actions/consultation";
-import { getOnboardingEducators } from "../actions/educator";
+import { getOnboardingEducators } from "../actions/manage-admin";
 
 const steps = [
   "Grade Level",
@@ -236,7 +236,7 @@ export default function FreeOnboarding() {
           </p>
           <button
             onClick={() => (window.location.href = "/")}
-            className="w-full mt-4 bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-lg font-semibold text-xs sm:text-sm transition-all shadow-sm"
+            className="w-full mt-4 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-semibold text-xs sm:text-sm transition-all shadow-sm"
           >
             Go Back Home
           </button>
@@ -248,7 +248,7 @@ export default function FreeOnboarding() {
   return (
     <div className="grow h-full flex flex-col items-center justify-center bg-background px-4 py-10 text-slate-800 relative">
       <div className="text-center mb-8 max-w-2xl select-none pt-4">
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-blue-500">
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-blue-600">
           Book Your 15-Minute Free Consultation
         </h1>
       </div>
@@ -314,7 +314,7 @@ export default function FreeOnboarding() {
                       key={stg}
                       type="button"
                       onClick={() => setCurrentStage(stg)}
-                      className={`w-full text-left px-4 py-3 rounded-lg border text-xs sm:text-sm font-medium transition-all flex items-center justify-between ${
+                      className={`w-full text-left px-4 py-3 rounded-md border text-xs sm:text-sm font-medium transition-all flex items-center justify-between ${
                         isSelected
                           ? "border-indigo-600 bg-indigo-50 text-indigo-950 ring-2 ring-indigo-600/20"
                           : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
@@ -332,7 +332,7 @@ export default function FreeOnboarding() {
               <button
                 onClick={next}
                 disabled={!currentStage}
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-lg font-semibold text-xs sm:text-sm disabled:opacity-40 transition-all shadow-sm flex items-center justify-center gap-2"
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3.5 rounded-md font-semibold text-xs sm:text-sm disabled:opacity-40 transition-all shadow-sm flex items-center justify-center gap-2"
               >
                 Continue to Area of Interest <ArrowRight className="w-4 h-4" />
               </button>
@@ -377,7 +377,7 @@ export default function FreeOnboarding() {
                   )}
 
                   {isDropdownOpen && filteredTopics.length > 0 && (
-                    <div className="absolute z-30 left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-xl py-1">
+                    <div className="absolute z-30 left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-md shadow-xl py-1">
                       {filteredTopics.map((topic) => (
                         <button
                           key={topic}
@@ -414,7 +414,7 @@ export default function FreeOnboarding() {
                           onClick={() => selectTopic(quick)}
                           className={`px-2.5 py-1 text-[11px] rounded-md border transition-all ${
                             isSelected
-                              ? "bg-slate-900 text-white border-slate-900 font-medium"
+                              ? "bg-blue-600 text-white border-blue-600 font-medium"
                               : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
                           }`}
                         >
@@ -430,14 +430,14 @@ export default function FreeOnboarding() {
                 <button
                   type="button"
                   onClick={back}
-                  className="w-1/3 border border-slate-300 text-slate-700 hover:bg-slate-50 py-3.5 rounded-lg font-semibold text-xs sm:text-sm"
+                  className="w-1/3 border border-slate-300 text-slate-700 hover:bg-slate-50 py-3.5 rounded-md font-semibold text-xs sm:text-sm"
                 >
                   ← Go Back
                 </button>
                 <button
                   onClick={next}
                   disabled={!areaOfInterest.trim()}
-                  className="w-2/3 bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-lg font-semibold text-xs sm:text-sm disabled:opacity-40"
+                  className="w-2/3 bg-blue-500 hover:bg-blue-600 text-white py-3.5 rounded-md font-semibold text-xs sm:text-sm disabled:opacity-40"
                 >
                   Continue
                 </button>
@@ -464,9 +464,9 @@ export default function FreeOnboarding() {
                       key={purpose}
                       type="button"
                       onClick={() => setSessionPurpose(purpose)}
-                      className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
+                      className={`px-3 py-1.5 text-xs rounded-md border transition-all ${
                         sessionPurpose === purpose
-                          ? "bg-slate-900 text-white border-slate-900 font-medium"
+                          ? "bg-blue-600 text-white border-blue-600 font-medium"
                           : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                       }`}
                     >
@@ -485,7 +485,7 @@ export default function FreeOnboarding() {
                   placeholder="Share specific questions or topics you want to cover..."
                   value={goalsNotes}
                   onChange={(e) => setGoalsNotes(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg p-3 text-xs sm:text-sm text-slate-900 bg-white placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-600 focus:outline-none resize-none"
+                  className="w-full border border-slate-300 rounded-md p-3 text-xs sm:text-sm text-slate-900 bg-white placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-600 focus:outline-none resize-none"
                 />
               </div>
 
@@ -500,7 +500,7 @@ export default function FreeOnboarding() {
                 <button
                   onClick={next}
                   disabled={!sessionPurpose}
-                  className="w-2/3 bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-lg font-semibold text-xs sm:text-sm disabled:opacity-40"
+                  className="w-2/3 bg-blue-500 hover:bg-blue-600 text-white py-3.5 rounded-md font-semibold text-xs sm:text-sm disabled:opacity-40"
                 >
                   Continue to Schedule
                 </button>
@@ -528,7 +528,7 @@ export default function FreeOnboarding() {
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="flex w-full items-center justify-between rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-left text-xs sm:text-sm text-slate-900 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                      className="flex w-full items-center justify-between rounded-md border border-slate-300 bg-white px-3.5 py-2.5 text-left text-xs sm:text-sm text-slate-900 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-600"
                     >
                       <span
                         className={
@@ -624,7 +624,7 @@ export default function FreeOnboarding() {
                 <button
                   onClick={next}
                   disabled={!dateInputValue}
-                  className="w-2/3 bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-lg font-semibold text-xs sm:text-sm disabled:opacity-40"
+                  className="w-2/3 bg-blue-500 hover:bg-blue-600 text-white py-3.5 rounded-lg font-semibold text-xs sm:text-sm disabled:opacity-40"
                 >
                   Review Details
                 </button>
@@ -639,7 +639,7 @@ export default function FreeOnboarding() {
                 Review Your Consultation Details
               </h2>
 
-              <div className="border border-slate-200 rounded-xl p-5 bg-slate-50 space-y-3 text-xs sm:text-sm text-slate-700">
+              <div className="border border-slate-200 rounded-md p-5 bg-slate-50 space-y-3 text-xs sm:text-sm text-slate-700">
                 <div className="flex justify-between border-b border-slate-200/80 pb-2">
                   <span className="text-slate-500">Stage</span>
                   <span className="font-semibold text-slate-900">
@@ -676,7 +676,7 @@ export default function FreeOnboarding() {
                 </button>
                 <button
                   onClick={next}
-                  className="w-2/3 bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-lg font-semibold text-xs sm:text-sm"
+                  className="w-2/3 bg-blue-500 hover:bg-blue-600 text-white py-3.5 rounded-md font-semibold text-xs sm:text-sm"
                 >
                   Enter Contact Details
                 </button>
@@ -710,7 +710,7 @@ export default function FreeOnboarding() {
                       placeholder="John Doe"
                       value={userName}
                       onChange={(e) => setUserName(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                      className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm border border-slate-300 rounded-md text-slate-900 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -727,7 +727,7 @@ export default function FreeOnboarding() {
                       placeholder="john@example.com"
                       value={userEmail}
                       onChange={(e) => setUserEmail(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                      className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm border border-slate-300 rounded-md text-slate-900 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -743,7 +743,7 @@ export default function FreeOnboarding() {
                       placeholder="+1 (555) 000-0000"
                       value={userPhone}
                       onChange={(e) => setUserPhone(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                      className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm border border-slate-300 rounded-md text-slate-900 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -761,7 +761,7 @@ export default function FreeOnboarding() {
                 <button
                   type="submit"
                   disabled={isSubmitting || !userName || !userEmail}
-                  className="w-2/3 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-lg font-semibold text-xs sm:text-sm disabled:opacity-40 transition-all flex items-center justify-center gap-2"
+                  className="w-2/3 bg-blue-500 hover:bg-blue-600 text-white py-3.5 rounded-md font-semibold text-xs sm:text-sm disabled:opacity-40 transition-all flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
                     <>

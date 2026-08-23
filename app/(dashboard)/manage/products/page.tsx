@@ -47,7 +47,7 @@ export default async function AllProducts() {
       </div>
 
       {/* ---------------- TABLE CONTAINER ---------------- */}
-      <div className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-xs">
+      <div className="rounded-md border border-border/80 bg-card overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>

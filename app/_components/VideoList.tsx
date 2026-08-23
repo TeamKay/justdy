@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
+  ChevronDown,
   Eye,
   Play,
   Search,
@@ -70,56 +71,49 @@ export default function VideoList({ mathVideos, techVideos }: VideoListProps) {
 
   return (
     <div className="w-full">
-      <div className="mx-auto max-w-8xl px-4 py-8 sm:px-6 lg:px-10">
+      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-0">
         {/* ======================================================
             PAGE HEADER
         ======================================================= */}
-
-        <div className="mb-8">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-            {/* Title */}
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
-                Learn. Explore. Grow.
-              </h1>
-
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500 sm:text-base">
-                Explore our collection of educational videos, tutorials, and
-                practical lessons designed to help you learn at your own pace.
-              </p>
-            </div>
-
-            {/* Video count */}
-            <div className="flex shrink-0 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-slate-200">
-                <Play className="h-4 w-4 fill-blue-600 text-blue-600" />
-              </div>
-
-              <div>
-                <p className="text-lg font-bold leading-none text-slate-900">
-                  {allVideos.length}
-                </p>
-
-                <p className="mt-1 text-[11px] font-medium text-slate-500">
-                  {allVideos.length === 1
-                    ? "Available video"
-                    : "Available videos"}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* ======================================================
             SEARCH / TOOLBAR
         ======================================================= */}
 
-        <div className="mb-7 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="mb-7">
+          {/* Search / Filter */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            {/* Search */}
-            <div className="relative flex-1">
+            {/* Search field */}
+            <div
+              className="
+        group
+        relative
+        flex-1
+        rounded-md
+        border border-slate-200
+        bg-white
+        shadow-sm
+        transition-all
+        duration-200
+        focus-within:border-blue-400
+        focus-within:shadow-md
+        focus-within:ring-4
+        focus-within:ring-blue-500/10
+      "
+            >
               <Search
-                className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                className="
+          absolute
+          left-4
+          top-1/2
+          h-4.5
+          w-4.5
+          -translate-y-1/2
+          text-slate-400
+          transition-colors
+          duration-200
+          group-focus-within:text-blue-500
+        "
                 aria-hidden="true"
               />
 
@@ -129,23 +123,18 @@ export default function VideoList({ mathVideos, techVideos }: VideoListProps) {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search videos by title or topic..."
                 className="
-                  h-11
-                  w-full
-                  rounded-lg
-                  border border-slate-200
-                  bg-slate-50
-                  pl-10
-                  pr-10
-                  text-sm
-                  text-slate-900
-                  outline-none
-                  placeholder:text-slate-400
-                  transition-all
-                  focus:border-blue-400
-                  focus:bg-white
-                  focus:ring-4
-                  focus:ring-blue-500/10
-                "
+          h-12
+          w-full
+          rounded-md
+          bg-transparent
+          pl-11
+          pr-11
+          text-sm
+          font-medium
+          text-slate-900
+          outline-none
+          placeholder:text-slate-400
+        "
               />
 
               {searchQuery && (
@@ -154,58 +143,81 @@ export default function VideoList({ mathVideos, techVideos }: VideoListProps) {
                   onClick={() => setSearchQuery("")}
                   aria-label="Clear search"
                   className="
-                    absolute
-                    right-3
-                    top-1/2
-                    flex
-                    h-6
-                    w-6
-                    -translate-y-1/2
-                    items-center
-                    justify-center
-                    rounded-md
-                    text-slate-400
-                    transition
-                    hover:bg-slate-100
-                    hover:text-slate-700
-                  "
+            absolute
+            right-3
+            top-1/2
+            flex
+            h-7
+            w-7
+            -translate-y-1/2
+            items-center
+            justify-center
+            rounded-md
+            text-slate-400
+            transition-all
+            hover:bg-slate-100
+            hover:text-slate-700
+            active:scale-95
+          "
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <X className="h-4 w-4" />
                 </button>
               )}
             </div>
 
-            {/* Filter label */}
-            <div className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5">
-              <SlidersHorizontal className="h-4 w-4 text-slate-400" />
+            {/* Filter */}
+            <button
+              type="button"
+              className="
+        flex
+        h-12
+        shrink-0
+        items-center
+        justify-center
+        gap-2
+        rounded-md
+        border border-slate-200
+        bg-white
+        px-4
+        text-sm
+        font-medium
+        text-slate-700
+        shadow-sm
+        transition-all
+        duration-200
+        hover:border-slate-300
+        hover:bg-slate-50
+        hover:shadow
+        active:scale-[0.98]
+      "
+            >
+              <SlidersHorizontal className="h-4 w-4 text-slate-500" />
 
-              <span className="text-xs font-medium text-slate-600">
-                All videos
-              </span>
-            </div>
+              <span>All videos</span>
+
+              <ChevronDown className="h-4 w-4 text-slate-400" />
+            </button>
           </div>
 
           {/* Results information */}
-          <div className="mt-3 flex items-center justify-between px-1">
+          <div className="mt-3 flex min-h-5 items-center px-1">
             <p className="text-xs text-slate-500">
               {searchQuery ? (
                 <>
-                  Showing{" "}
                   <span className="font-semibold text-slate-800">
                     {filteredVideos.length}
                   </span>{" "}
-                  results for{" "}
-                  <span className="font-semibold text-slate-800">
+                  {filteredVideos.length === 1 ? "result" : "results"} for{" "}
+                  <span className="font-medium text-slate-700">
                     &ldquo;{searchQuery}&rdquo;
                   </span>
                 </>
               ) : (
                 <>
-                  Showing all{" "}
                   <span className="font-semibold text-slate-800">
                     {allVideos.length}
                   </span>{" "}
-                  videos
+                  {allVideos.length === 1 ? "video" : "videos"} available
                 </>
               )}
             </p>

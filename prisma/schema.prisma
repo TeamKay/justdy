@@ -393,30 +393,79 @@ model Transaction {
 // ==========================================
 
 model Investment {
-  id             String          @id @default(cuid())
-  name           String
-  tickerOrSymbol String?
-  assetClass     AssetType
-  region         RegionType
-  currency       CurrencyType
-  type           TransactionType
-  shares         Float?
-  pricePerShare  Float?
-  amount         Float
-  exchangeRate   Float           @default(1.0)
-  amountUSD      Float
-  date           DateTime        @default(now())
-  status         StatusType      @default(ACTIVE)
-  returnRate     String          @default("0%")
-  isPositive     Boolean         @default(true)
-  notes          String?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id                    String   @id @default(cuid())
+  name                  String
+  tickerOrSymbol        String?
+  cusip                 String?
+  accountNumber         String?
+  accountName           String?
+  institution           String?  @default("Fidelity Investments")
+
+  assetClass            AssetType
+  region                RegionType
+  currency              CurrencyType
+  type                  InvestmentTransactionType
+
+  shares                Float?
+  pricePerShare         Float?
+  amount                Float
+  grossAmount           Float?
+  fees                  Float    @default(0)
+  taxes                 Float    @default(0)
+
+  costBasis             Float?
+  realizedGain          Float?
+  marketValue           Float?
+  unrealizedGain        Float?
+  unrealizedGainPercent Float?
+
+  cashBalance           Float?
+
+  exchangeRate          Float    @default(1)
+  amountUSD             Float
+
+  date                  DateTime
+  settlementDate        DateTime?
+
+  source                String?
+  sourceFile            String?
+  importBatchId         String?
+  fingerprint           String?  @unique
+
+  status                StatusType
+  notes                 String?
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([tickerOrSymbol])
+  @@index([accountNumber])
+  @@index([date])
+  @@index([type])
+  @@index([region])
+  @@index([importBatchId])
 }
 
 // ==========================================
 // ENUMS
 // ==========================================
+
+enum InvestmentTransactionType {
+  BUY
+  SELL
+  DIVIDEND
+  DRIP
+  INTEREST
+  FEE
+  TAX
+  CONTRIBUTION
+  WITHDRAWAL
+  TRANSFER_IN
+  TRANSFER_OUT
+  CASH
+  HOLDING_SNAPSHOT
+  OTHER
+}
 
 enum UserStatus {
   Active

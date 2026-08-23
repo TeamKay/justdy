@@ -92,6 +92,7 @@
     "nodemailer": "^8.0.10",
     "nylas": "^8.0.1",
     "openai": "^6.35.0",
+    "pdf-parse": "^2.4.5",
     "pg": "^8.17.1",
     "plaid": "^45.0.0",
     "radix-ui": "^1.4.3",
@@ -117,10 +118,12 @@
     "sonner": "^2.0.7",
     "stripe": "^22.1.1",
     "tailwind-merge": "^3.4.0",
+    "unpdf": "^1.8.1",
     "uploadthing": "^7.7.4",
     "use-debounce": "^10.1.0",
     "uuid": "^13.0.0",
     "vaul": "^1.1.2",
+    "xlsx": "^0.18.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {

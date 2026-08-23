@@ -1,14 +1,5 @@
 import { format } from "date-fns";
-import {
-  Calendar,
-  Clock,
-  ExternalLink,
-  GraduationCap,
-  Inbox,
-  Pencil,
-  User,
-} from "lucide-react";
-import Link from "next/link";
+import { Calendar, Clock, GraduationCap, Inbox, User } from "lucide-react";
 
 import { Badge } from "@/app/_components/ui/badge";
 import { getAppointments } from "@/app/actions/manage-admin";
@@ -79,24 +70,50 @@ function StatusBadge({ status }: { status: AppointmentStatus }) {
    ============================================================ */
 
 export default async function SessionsPage() {
+  /* ==========================================================
+     FETCH APPOINTMENTS
+     ========================================================== */
+
   const result = await getAppointments();
+
   const appointments = result.appointments ?? [];
+
+  /* ==========================================================
+     SORT APPOINTMENTS
+     ========================================================== */
 
   const sortedAppointments = [...appointments].sort(
     (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
   );
 
+  /* ==========================================================
+     NEXT SCHEDULED APPOINTMENT
+     ========================================================== */
+
+  /*
+   * Because the appointments above are already sorted
+   * chronologically, the first Scheduled appointment
+   * is the next scheduled session.
+   *
+   * We intentionally do NOT use Date.now() here because
+   * Date.now() is an impure function and should not be
+   * called during React rendering.
+   */
   const nextAppointment = sortedAppointments.find(
     (appointment) => appointment.status === "Scheduled",
   );
 
+  /* ==========================================================
+     RENDER
+     ========================================================== */
+
   return (
-    <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="space-y-6">
       {/* ======================================================
           HEADER
           ====================================================== */}
 
-      <div className=" flex flex-col gap-4 px-1  sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 px-1 sm:flex-row sm:items-center sm:justify-between">
         {/* TITLE */}
 
         <div className="flex items-center gap-3">
@@ -105,7 +122,7 @@ export default async function SessionsPage() {
           </div>
 
           <div>
-            <h2 className="text-xl font-bold text-black">Schedule</h2>
+            <h2 className="text-xl font-bold text-white">Schedule</h2>
 
             <p className="text-xs text-muted-foreground">
               You have {appointments.length} total sessions
@@ -113,7 +130,9 @@ export default async function SessionsPage() {
           </div>
         </div>
 
-        {/* NEXT APPOINTMENT */}
+        {/* ====================================================
+            NEXT APPOINTMENT
+            ==================================================== */}
 
         {nextAppointment && (
           <Badge
@@ -123,15 +142,11 @@ export default async function SessionsPage() {
             Next: {format(new Date(nextAppointment.startTime), "MMM d, h:mm a")}
           </Badge>
         )}
-
-        <Link
-          href="/manage/sessions/whiteboard"
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-400"
-        >
-          <Pencil className="size-4" />
-          Open Whiteboard
-        </Link>
       </div>
+
+      {/* ======================================================
+          APPOINTMENTS
+          ====================================================== */}
 
       {sortedAppointments.length > 0 ? (
         <div className="space-y-4">
@@ -169,24 +184,9 @@ export default async function SessionsPage() {
                   </div>
                 </div>
 
-                {/* STATUS + WHITEBOARD */}
+                {/* STATUS */}
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusBadge
-                    status={appointment.status as AppointmentStatus}
-                  />
-
-                  <Link
-                    href={`/manage/sessions/whiteboard?sessionId=${encodeURIComponent(
-                      appointment.id,
-                    )}`}
-                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-black transition hover:bg-emerald-400"
-                  >
-                    <Pencil className="size-4" />
-                    Open Whiteboard
-                    <ExternalLink className="size-3.5" />
-                  </Link>
-                </div>
+                <StatusBadge status={appointment.status as AppointmentStatus} />
               </div>
 
               {/* =================================================
@@ -300,16 +300,16 @@ export default async function SessionsPage() {
            EMPTY STATE
            ==================================================== */
 
-        <div className="flex flex-col items-center justify-center rounded-md border border-white/10 bg-white py-16 p-9 text-center">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-white/10 bg-zinc-950 py-16 text-center">
           <div className="relative mb-4">
-            <div className="absolute inset-0 rounded-md bg-emerald-500/20 blur-2xl" />
+            <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-2xl" />
 
-            <div className="relative rounded-md border border-white/10 bg-[#857938] p-5">
-              <Inbox className="size-10 text-white" />
+            <div className="relative rounded-2xl border border-white/10 bg-zinc-900 p-5">
+              <Inbox className="size-10 text-emerald-500/50" />
             </div>
           </div>
 
-          <h3 className="text-lg font-semibold text-black">
+          <h3 className="text-lg font-semibold text-white">
             No appointments yet
           </h3>
 

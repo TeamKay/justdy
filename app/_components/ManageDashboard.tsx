@@ -81,7 +81,7 @@ export default function ManageDashboard({
   if (!session) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center rounded-md border border-slate-200 bg-white p-6 text-center shadow-sm">
-        <div className="mb-4 flex size-12 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-600">
+        <div className="mb-4 flex size-12 items-center justify-center rounded-md border border-red-100 bg-red-50 text-red-600">
           <ShieldCheck className="size-6" />
         </div>
 
@@ -119,32 +119,9 @@ export default function ManageDashboard({
   const firstName = session.user?.name?.split(" ")[0] || "there";
 
   return (
-    <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      {/* ============================================================
-          WELCOME / PAGE HEADER
-      ============================================================ */}
-
-      <section
-        className="
-          flex
-          flex-col
-          gap-5
-          rounded-md
-          border
-          border-slate-200
-          bg-white
-          p-5
-          shadow-sm
-          sm:p-6
-          lg:flex-row
-          lg:items-center
-          lg:justify-between
-          lg:p-7
-        "
-      >
+    <div className="max-w-7xl w-full mx-auto px-4 sm:px-4 lg:px-4 py-5 space-y-4">
+      <section className="flex flex-col gap-5 rounded-md border border-slate-200 bg-card p-5 shadow-sm sm:p-0 lg:flex-row lg:items-center lg:justify-between lg:p-7">
         <div className="flex min-w-0 items-center gap-4">
-          {/* Avatar */}
-
           <div className="min-w-0">
             <div className="mb-1 flex flex-wrap items-center gap-2">
               <h1 className="truncate text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
@@ -159,8 +136,6 @@ export default function ManageDashboard({
             </p>
           </div>
         </div>
-
-        {/* Actions */}
 
         <div className="flex flex-wrap items-center gap-2">
           {isAdmin ? (
@@ -227,15 +202,7 @@ export default function ManageDashboard({
 
       <section>
         {needsAttention ? (
-          <div
-            className="
-              overflow-hidden
-              rounded-md
-              border
-              border-amber-200
-              bg-amber-50
-            "
-          >
+          <div className="overflow-hidden rounded-md border border-amber-200 bg-amber-50">
             <div className="flex items-center justify-between gap-3 border-b border-amber-200 px-5 py-4 sm:px-6">
               <div className="flex items-center gap-2 text-sm font-semibold text-amber-800">
                 <AlertCircle className="size-4" />
@@ -282,7 +249,7 @@ export default function ManageDashboard({
                       shrink-0
                       items-center
                       justify-center
-                      rounded-xl
+                      rounded-md
                       border
                       border-amber-100
                       bg-amber-50
@@ -327,34 +294,10 @@ export default function ManageDashboard({
             </div>
           </div>
         ) : (
-          <div
-            className="
-              rounded-2xl
-              border
-              border-emerald-200
-              bg-white
-              p-6
-              shadow-sm
-
-              sm:p-7
-            "
-          >
+          <div className="rounded-md border border-emerald-200 bg-amber-100 p-6 shadow-sm sm:p-7">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
-                <div
-                  className="
-                    flex
-                    size-11
-                    shrink-0
-                    items-center
-                    justify-center
-                    rounded-xl
-                    border
-                    border-emerald-100
-                    bg-emerald-50
-                    text-emerald-600
-                  "
-                >
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-md border border-emerald-100 bg-[#857938] text-white">
                   <CheckCircle className="size-5" />
                 </div>
 
@@ -375,16 +318,7 @@ export default function ManageDashboard({
                 size="sm"
                 variant="outline"
                 onClick={() => setIsStatsOpen(true)}
-                className="
-                  h-9
-                  shrink-0
-                  border-slate-200
-                  bg-white
-                  px-3
-                  text-xs
-                  text-slate-700
-                  hover:bg-slate-50
-                "
+                className="h-9 shrink-0 border-slate-200 bg-[#857938] px-3 text-xs text-slate-700 hover:bg-slate-50"
               >
                 <Sparkles className="mr-1.5 size-3.5 text-red-500" />
                 Explore Metrics
@@ -393,14 +327,6 @@ export default function ManageDashboard({
           </div>
         )}
       </section>
-
-      {/* ============================================================
-          LOWER DASHBOARD GRID
-      ============================================================ */}
-
-      {/* ============================================================
-          STATS MODAL
-      ============================================================ */}
 
       {isStatsOpen && (
         <div

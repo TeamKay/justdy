@@ -123,7 +123,7 @@ export function ProductSearchInput() {
             onFocus={() => setIsOpen(true)}
             placeholder="Search courses, workbooks, templates..."
             autoComplete="off"
-            className="h-12 w-full rounded-md border border-slate-700 bg-background pl-11 pr-24 text-sm text-slate-900 shadow-lg transition-all
+            className="h-10 w-full rounded-md border border-blue-100 bg-background pl-11 pr-24 text-sm text-slate-900 shadow-lg transition-all
               placeholder:text-slate-500 focus:border-[#857938] focus:outline-none focus:ring-2  focus:ring-[#857938]/30 dark:border-slate-400
               "
           />
@@ -144,8 +144,8 @@ export function ProductSearchInput() {
           <button
             type="submit"
             aria-label="Search"
-            className="absolute right-1.5 top-1/2 flex size-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md bg-[#857938]
-              text-white transition-all hover:scale-105 hover:bg-[#70662e] active:scale-95"
+            className="absolute right-1.5 top-1/2 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md bg-blue-500
+              text-white transition-all hover:scale-105 hover:bg-blue-600 hover:text-white active:scale-95"
           >
             {isPending ? (
               <Loader2 className="size-4 animate-spin" />

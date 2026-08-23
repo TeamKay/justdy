@@ -1,6 +1,9 @@
 // app/admin/educators/page.tsx
 import { Suspense } from "react";
-import { getPendingEducators, getVerifiedEducators } from "@/app/actions/admin";
+import {
+  getPendingEducators,
+  getVerifiedEducators,
+} from "@/app/actions/manage-admin";
 import { AdminEducatorTable } from "@/app/_components/AdminEducatorTable";
 
 import { Card } from "@/app/_components/ui/card";

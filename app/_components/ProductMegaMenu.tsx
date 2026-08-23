@@ -195,7 +195,7 @@ export function ProductMegaMenu({ onClose }: ProductMegaMenuProps) {
             h-97.5
             items-center
             justify-center
-            rounded-xl
+            rounded-md
             border
             border-slate-200
             bg-white
@@ -203,7 +203,7 @@ export function ProductMegaMenu({ onClose }: ProductMegaMenuProps) {
           "
         >
           <div className="flex items-center gap-2 text-sm text-slate-500">
-            <Loader2 className="size-4 animate-spin text-[#857938]" />
+            <Loader2 className="size-4 animate-spin text-blue-500" />
             <span>Loading products...</span>
           </div>
         </div>
@@ -405,13 +405,13 @@ export function ProductMegaMenu({ onClose }: ProductMegaMenuProps) {
                       active
                         ? `
                           bg-white
-                          text-[#857938]
+                          text-blue-500
                           shadow-sm
                         `
                         : `
                           text-slate-700
                           hover:bg-white
-                          hover:text-[#857938]
+                          hover:text-blue-600
                         `,
                     )}
                   >
@@ -430,7 +430,7 @@ export function ProductMegaMenu({ onClose }: ProductMegaMenuProps) {
                             font-medium
                           `,
                           active
-                            ? "bg-[#857938]/10 text-[#857938]"
+                            ? "bg-blue-600 text-white"
                             : "bg-slate-200 text-slate-500",
                         )}
                       >
@@ -447,7 +447,7 @@ export function ProductMegaMenu({ onClose }: ProductMegaMenuProps) {
                           duration-150
                         `,
                         active
-                          ? "translate-x-0.5 text-[#857938]"
+                          ? "translate-x-0.5 text-blue-600"
                           : "text-slate-400 group-hover:text-[#857938]",
                       )}
                     />
@@ -489,7 +489,7 @@ export function ProductMegaMenu({ onClose }: ProductMegaMenuProps) {
                     py-1.5
                     text-xs
                     font-semibold
-                    text-[#857938]
+                    text-blue-500
                     transition-colors
                     hover:bg-[#857938]/10
                   "
@@ -593,7 +593,7 @@ export function ProductMegaMenu({ onClose }: ProductMegaMenuProps) {
                         </h4>
 
                         <div className="mt-2 flex items-center justify-between">
-                          <span className="text-sm font-bold text-[#857938]">
+                          <span className="text-sm font-bold text-blue-600">
                             {formatPrice(product.price)}
                           </span>
 
