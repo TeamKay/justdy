@@ -20,6 +20,8 @@ import {
   Type,
   Undo2,
   Calculator,
+  ChevronLeft,
+  ChevronRight,
   Grid2X2,
   Layers3,
   Plus,
@@ -27,6 +29,7 @@ import {
   BookOpen,
   X,
   PanelRight,
+  Shapes,
   Crosshair,
   Trash2,
   FunctionSquare,
@@ -764,15 +767,29 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
   const [snapToGrid, setSnapToGrid] = useState(false);
   const [showMinorGrid] = useState(true);
   const [showToolsPanel, setShowToolsPanel] = useState(false);
+  const [showShapeToolsPopup, setShowShapeToolsPopup] = useState(false);
+  const shapeToolsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [showPagesPanel, setShowPagesPanel] = useState(false);
   const [showGraphSettings, setShowGraphSettings] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [calculatorValue, setCalculatorValue] = useState("");
   const [calculatorResult, setCalculatorResult] = useState("");
+  const [calculatorAngleMode, setCalculatorAngleMode] = useState<"DEG" | "RAD">(
+    "DEG",
+  );
+  const [calculatorMemory, setCalculatorMemory] = useState(0);
+  const [calculatorHistory, setCalculatorHistory] = useState<
+    Array<{ expression: string; result: string }>
+  >([]);
+  const [calculatorPosition, setCalculatorPosition] = useState({ x: 0, y: 0 });
+  const calculatorDraggingRef = useRef(false);
+  const calculatorDragOffsetRef = useRef({ x: 0, y: 0 });
   const [formulaCategory, setFormulaCategory] =
     useState<FormulaCategory>("algebra");
 
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showTeacherControls, setShowTeacherControls] = useState(false);
+  const [showTeacherControls, setShowTeacherControls] = useState(true);
+  const [toolbarHovered, setToolbarHovered] = useState(false);
   const [teacherControlDragging, setTeacherControlDragging] = useState(false);
 
   // Draggable teacher-control launcher position.
@@ -1963,6 +1980,22 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
     setCurrentPageIndex((c) => Math.max(0, Math.min(c, pages.length - 2)));
   };
 
+  const goToPreviousPage = useCallback(() => {
+    setCurrentPageIndex((current) => {
+      const next = Math.max(0, current - 1);
+      if (next !== current) setSelectedElementId(null);
+      return next;
+    });
+  }, []);
+
+  const goToNextPage = useCallback(() => {
+    setCurrentPageIndex((current) => {
+      const next = Math.min(pages.length - 1, current + 1);
+      if (next !== current) setSelectedElementId(null);
+      return next;
+    });
+  }, [pages.length]);
+
   const renamePage = (index: number) => {
     const page = pages[index];
     if (!page) return;
@@ -2314,6 +2347,7 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
         setShowGraphSettings(false);
         setShowCalculator(false);
         setShowToolsPanel(false);
+        setShowPagesPanel(false);
         setShowColorPopup(false);
         setColorPopupTarget(null);
       }
@@ -2450,23 +2484,149 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
     toggleTeacherControls();
   };
 
-  const runCalculator = useCallback(() => {
-    if (!calculatorValue.trim()) return;
-    try {
-      if (!/^[0-9+\-*/().%\s^√π]+$/.test(calculatorValue)) {
-        setCalculatorResult("Invalid expression");
-        return;
+  const appendCalculator = useCallback((value: string) => {
+    setCalculatorValue((current) => `${current}${value}`);
+  }, []);
+
+  const factorial = useCallback((n: number) => {
+    if (!Number.isFinite(n) || n < 0 || Math.floor(n) !== n || n > 170)
+      throw new Error("Invalid factorial");
+    let result = 1;
+    for (let i = 2; i <= n; i++) result *= i;
+    return result;
+  }, []);
+
+  const runCalculator = useCallback(
+    (expression = calculatorValue) => {
+      if (!expression.trim()) return;
+      try {
+        let norm = expression
+          .replace(/π/g, "Math.PI")
+          .replace(/e/g, "Math.E")
+          .replace(/×/g, "*")
+          .replace(/÷/g, "/")
+          .replace(/−/g, "-")
+          .replace(/√/g, "sqrt")
+          .replace(/\^/g, "**")
+          .replace(/(\d+(?:\.\d+)?)%/g, "($1/100)");
+
+        // Scientific functions. Angle mode applies to trigonometry.
+        const angle = calculatorAngleMode === "DEG" ? "Math.PI/180" : "1";
+        norm = norm
+          .replace(/asin\(/g, `Math.asin(`)
+          .replace(/acos\(/g, `Math.acos(`)
+          .replace(/atan\(/g, `Math.atan(`)
+          .replace(/sin\(/g, `Math.sin(`)
+          .replace(/cos\(/g, `Math.cos(`)
+          .replace(/tan\(/g, `Math.tan(`)
+          .replace(/sqrt\(/g, `Math.sqrt(`)
+          .replace(/ln\(/g, `Math.log(`)
+          .replace(/log\(/g, `Math.log10(`)
+          .replace(/abs\(/g, `Math.abs(`)
+          .replace(/floor\(/g, `Math.floor(`)
+          .replace(/ceil\(/g, `Math.ceil(`)
+          .replace(/round\(/g, `Math.round(`);
+
+        // Apply DEG/RAD conversion to trig arguments and inverse-trig results.
+        if (calculatorAngleMode === "DEG") {
+          norm = norm.replace(/Math\.(sin|cos|tan)\(/g, `Math.$1((`);
+          norm = norm.replace(
+            /Math\.(sin|cos|tan)\(\(([^()]*)\)/g,
+            `Math.$1(($2)*${angle})`,
+          );
+          norm = norm.replace(
+            /Math\.(asin|acos|atan)\(([^()]*)\)/g,
+            `(Math.$1($2)/${angle})`,
+          );
+        }
+
+        if (
+          !/^[0-9A-Za-z_+\-*/().,%\s*]+$/.test(norm) ||
+          /(constructor|prototype|window|document|globalThis|Function|eval)/i.test(
+            norm,
+          )
+        ) {
+          throw new Error("Invalid expression");
+        }
+
+        // Factorials are evaluated before the final expression.
+        while (/([0-9.]+)!/.test(norm))
+          norm = norm.replace(/([0-9.]+)!/g, (_, n) => `factorial(${n})`);
+
+        const res = Function(
+          "factorial",
+          `"use strict"; return (${norm})`,
+        )(factorial);
+        const formatted =
+          typeof res === "number" && Number.isFinite(res)
+            ? String(Number(res.toPrecision(12)))
+            : "Error";
+        setCalculatorResult(formatted);
+        setCalculatorHistory((history) =>
+          [{ expression, result: formatted }, ...history].slice(0, 12),
+        );
+      } catch {
+        setCalculatorResult("Error");
       }
-      const norm = calculatorValue
-        .replace(/\^/g, "**")
-        .replace(/π/g, "Math.PI")
-        .replace(/√/g, "Math.sqrt");
-      const res = Function(`"use strict"; return (${norm})`)();
-      setCalculatorResult(Number.isFinite(res) ? String(res) : "Error");
-    } catch {
-      setCalculatorResult("Error");
-    }
-  }, [calculatorValue]);
+    },
+    [calculatorAngleMode, calculatorValue, factorial],
+  );
+
+  const clearCalculator = useCallback(() => {
+    setCalculatorValue("");
+    setCalculatorResult("");
+  }, []);
+
+  const handleCalculatorPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLElement;
+      if (target.closest("button, input, select, textarea")) return;
+      const rect = event.currentTarget.getBoundingClientRect();
+      calculatorDraggingRef.current = true;
+      calculatorDragOffsetRef.current = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
+    },
+    [],
+  );
+
+  const handleCalculatorPointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!calculatorDraggingRef.current) return;
+      const parent = event.currentTarget.parentElement?.getBoundingClientRect();
+      if (!parent) return;
+      const width = event.currentTarget.offsetWidth;
+      const height = event.currentTarget.offsetHeight;
+      const x = Math.max(
+        8,
+        Math.min(
+          event.clientX - parent.left - calculatorDragOffsetRef.current.x,
+          parent.width - width - 8,
+        ),
+      );
+      const y = Math.max(
+        8,
+        Math.min(
+          event.clientY - parent.top - calculatorDragOffsetRef.current.y,
+          parent.height - height - 8,
+        ),
+      );
+      setCalculatorPosition({ x, y });
+    },
+    [],
+  );
+
+  const handleCalculatorPointerUp = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      calculatorDraggingRef.current = false;
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      } catch {}
+    },
+    [],
+  );
 
   const insertFormula = useCallback((val: string) => {
     setTool("equation");
@@ -2533,13 +2693,16 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
       <button
         key={name}
         type="button"
-        onClick={() => setTool(name)}
+        onClick={() => {
+          setTool(name);
+          setShowShapeToolsPopup(false);
+        }}
         title={shortcut ? `${label} (${shortcut})` : label}
         aria-label={label}
-        className={`group relative flex size-9 shrink-0 items-center justify-center rounded-lg transition-all ${
+        className={`group relative flex size-10 shrink-0 items-center justify-center rounded-2xl transition-all ${
           active
-            ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
-            : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+            ? "bg-blue-500 text-white shadow-lg shadow-blue-500/30"
+            : "text-white/65 hover:bg-white/10 hover:text-white"
         }`}
       >
         {icon}
@@ -2550,12 +2713,32 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
           </span>
         )}
 
-        <span className="pointer-events-none absolute right-full mr-3 hidden whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 lg:block">
+        <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-slate-950/90 px-2 py-1 text-[9px] font-semibold text-white shadow-xl backdrop-blur-xl opacity-0 transition-opacity group-hover:opacity-100 lg:block">
           {label}
         </span>
       </button>
     );
   };
+
+  const openToolbarTextEditor = useCallback(
+    (type: "text" | "equation") => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      setTool(type);
+      openTextEditor(
+        {
+          x: rect.width / 2,
+          y: Math.max(120, rect.height / 2 - 120),
+        },
+        type,
+        type === "equation" ? selectedEquation : "",
+      );
+      setSelectedEquation("");
+    },
+    [openTextEditor, selectedEquation],
+  );
 
   useEffect(() => {
     const handleFocusModeKeyDown = (event: KeyboardEvent) => {
@@ -2779,36 +2962,208 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
       )}
 
       {showTeacherControls && showCalculator && (
-        <div className="fixed right-[338px] top-1/2 z-[290] w-72 max-w-[calc(100vw-360px)] -translate-y-1/2 sm:right-[338px] max-sm:right-4 max-sm:top-4 max-sm:translate-y-0 max-sm:w-[calc(100vw-88px)] max-sm:max-w-none rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900">
-              Advanced Calculator
-            </h3>
-            <button
-              onClick={() => setShowCalculator(false)}
-              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
-          <input
-            value={calculatorValue}
-            onChange={(e) => setCalculatorValue(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && runCalculator()}
-            placeholder="e.g. √(16) + 5 * π"
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-mono outline-none"
-          />
-          <button
-            onClick={runCalculator}
-            className="mt-2 w-full rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700"
+        <div className="fixed inset-0 z-[500] pointer-events-none">
+          <div
+            className="pointer-events-auto absolute w-[min(430px,calc(100vw-24px))] overflow-hidden rounded-3xl border border-slate-200/80 bg-white/98 shadow-2xl shadow-slate-950/25 backdrop-blur-2xl"
+            style={{
+              left: calculatorPosition.x || undefined,
+              top: calculatorPosition.y || undefined,
+              right: calculatorPosition.x ? undefined : "360px",
+              bottom: calculatorPosition.y ? undefined : "96px",
+            }}
+            onPointerDown={handleCalculatorPointerDown}
+            onPointerMove={handleCalculatorPointerMove}
+            onPointerUp={handleCalculatorPointerUp}
           >
-            Calculate
-          </button>
-          {calculatorResult && (
-            <div className="mt-3 rounded-xl bg-blue-50 p-3 text-right text-lg font-bold text-blue-700">
-              {calculatorResult}
+            <div className="flex cursor-move items-center justify-between border-b border-slate-200 bg-slate-50/90 px-4 py-3 select-none">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Scientific Calculator
+                </h3>
+                <p className="text-[10px] text-slate-500">
+                  Drag the header to move • {calculatorAngleMode} mode
+                </p>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCalculatorAngleMode((m) => (m === "DEG" ? "RAD" : "DEG"))
+                  }
+                  className="rounded-lg bg-slate-200 px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-slate-300"
+                >
+                  {calculatorAngleMode}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCalculator(false)}
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
             </div>
-          )}
+
+            <div className="p-3">
+              <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-950 px-3 py-3 text-right">
+                <input
+                  value={calculatorValue}
+                  onChange={(e) => setCalculatorValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") runCalculator();
+                    if (e.key === "Escape") clearCalculator();
+                  }}
+                  placeholder="0"
+                  className="w-full bg-transparent text-right font-mono text-lg text-white outline-none placeholder:text-slate-500"
+                />
+                <div className="min-h-7 pt-1 font-mono text-2xl font-bold text-blue-300">
+                  {calculatorResult || "0"}
+                </div>
+              </div>
+
+              <div className="mb-2 grid grid-cols-4 gap-1.5">
+                {[
+                  {
+                    label: "MC",
+                    action: () => setCalculatorMemory(0),
+                  },
+                  {
+                    label: "MR",
+                    action: () =>
+                      setCalculatorValue(
+                        (value) => `${value}${calculatorMemory}`,
+                      ),
+                  },
+                  {
+                    label: "M+",
+                    action: () =>
+                      setCalculatorMemory(
+                        (memory) => memory + (Number(calculatorResult) || 0),
+                      ),
+                  },
+                  {
+                    label: "M−",
+                    action: () =>
+                      setCalculatorMemory(
+                        (memory) => memory - (Number(calculatorResult) || 0),
+                      ),
+                  },
+                ].map((button) => (
+                  <button
+                    key={button.label}
+                    type="button"
+                    onClick={button.action}
+                    className="rounded-xl bg-slate-100 px-2 py-2 text-[11px] font-bold text-slate-600 hover:bg-slate-200"
+                  >
+                    {button.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mb-2 grid grid-cols-4 gap-1.5">
+                {[
+                  ["sin", "sin("],
+                  ["cos", "cos("],
+                  ["tan", "tan("],
+                  ["√", "√("],
+                  ["sin⁻¹", "asin("],
+                  ["cos⁻¹", "acos("],
+                  ["tan⁻¹", "atan("],
+                  ["x²", "^2"],
+                  ["ln", "ln("],
+                  ["log", "log("],
+                  ["π", "π"],
+                  ["e", "e"],
+                ].map(([label, value]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => appendCalculator(value)}
+                    className="rounded-xl bg-blue-50 px-2 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-4 gap-1.5">
+                {[
+                  ["7", "7"],
+                  ["8", "8"],
+                  ["9", "9"],
+                  ["÷", "/"],
+                  ["4", "4"],
+                  ["5", "5"],
+                  ["6", "6"],
+                  ["×", "*"],
+                  ["1", "1"],
+                  ["2", "2"],
+                  ["3", "3"],
+                  ["−", "-"],
+                  ["0", "0"],
+                  [".", "."],
+                  ["(", "("],
+                  ["+", "+"],
+                  ["%", "%"],
+                  ["xʸ", "^"],
+                  ["!", "!"],
+                  ["⌫", "BACK"],
+                ].map(([label, value]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() =>
+                      value === "BACK"
+                        ? setCalculatorValue((v) => v.slice(0, -1))
+                        : appendCalculator(value)
+                    }
+                    className="rounded-xl bg-slate-100 px-2 py-2.5 text-sm font-bold text-slate-800 hover:bg-slate-200"
+                  >
+                    {label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={clearCalculator}
+                  className="rounded-xl bg-rose-50 px-2 py-2.5 text-sm font-bold text-rose-600 hover:bg-rose-100"
+                >
+                  AC
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runCalculator()}
+                  className="col-span-2 rounded-xl bg-blue-600 px-2 py-2.5 text-sm font-bold text-white hover:bg-blue-700"
+                >
+                  =
+                </button>
+              </div>
+
+              {calculatorHistory.length > 0 && (
+                <details className="mt-3 rounded-xl border border-slate-200 bg-slate-50">
+                  <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-slate-600">
+                    History ({calculatorHistory.length})
+                  </summary>
+                  <div className="max-h-32 overflow-auto border-t border-slate-200">
+                    {calculatorHistory.map((item, index) => (
+                      <button
+                        key={`${item.expression}-${index}`}
+                        type="button"
+                        onClick={() => setCalculatorValue(item.expression)}
+                        className="block w-full border-b border-slate-100 px-3 py-2 text-left hover:bg-white"
+                      >
+                        <div className="truncate font-mono text-[10px] text-slate-500">
+                          {item.expression}
+                        </div>
+                        <div className="font-mono text-xs font-bold text-slate-800">
+                          = {item.result}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -3320,390 +3675,556 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
           </div>
         </section>
 
-        {/* Teacher workspace controls — unified right-side rail */}
+        {/* Floating glass drawing dock — auto-reveals when the pointer enters the bottom hover zone */}
         {showTeacherControls && (
-          <aside className="pointer-events-none fixed inset-y-4 right-[76px] z-[300] flex w-[250px] max-w-[calc(100vw-32px)] max-sm:right-[68px] max-sm:w-[220px] flex-col">
-            <div className="pointer-events-auto flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-white/70 bg-white/95 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl">
-              <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white/90 px-3.5 py-3">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white ring-1 ring-slate-100">
-                    <MyLogo showText={false} clickable={false} />
+          <div
+            className="pointer-events-auto fixed inset-x-0 bottom-0 z-[400] flex h-[124px] items-end justify-center px-2 pb-3 sm:px-3 sm:pb-5"
+            onPointerEnter={() => setToolbarHovered(true)}
+            onPointerLeave={(event) => {
+              // Keep the toolbar open while the pointer moves toward the popup.
+              const next = event.relatedTarget as Node | null;
+              if (
+                next &&
+                (event.currentTarget.contains(next) ||
+                  (next instanceof Element && next.closest('[role="dialog"]')))
+              )
+                return;
+              setToolbarHovered(false);
+            }}
+          >
+            <div
+              className={`relative flex w-fit max-w-[calc(100vw-16px)] items-center gap-1 overflow-x-auto overflow-y-visible scrollbar-none rounded-[28px] sm:max-w-[calc(100vw-24px)] sm:gap-1.5 border border-white/20 bg-slate-950/45 px-2.5 py-2.5 shadow-[0_24px_80px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-3xl backdrop-saturate-150 transition-all duration-300 ease-out ${
+                toolbarHovered
+                  ? "translate-y-0 opacity-100 scale-100"
+                  : "translate-y-[88px] opacity-0 scale-[0.96]"
+              }`}
+            >
+              <span
+                className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent"
+                aria-hidden="true"
+              />
+
+              {/* Page navigation */}
+              <button
+                type="button"
+                onClick={goToPreviousPage}
+                disabled={currentPageIndex === 0}
+                title="Previous page"
+                aria-label="Previous page"
+                className="group flex size-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-white/75 shadow-inner shadow-white/5 transition-all hover:-translate-y-0.5 hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-25"
+              >
+                <ChevronLeft className="size-5" />
+              </button>
+
+              <div className="hidden shrink-0 items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-3 py-2 sm:flex">
+                <div className="flex size-7 items-center justify-center rounded-xl bg-white/10 text-[10px] font-extrabold text-white">
+                  {currentPageIndex + 1}
+                </div>
+                <div className="min-w-0 max-w-[125px]">
+                  <div className="truncate text-[10px] font-bold text-white">
+                    {currentPage?.name ?? "Page"}
                   </div>
-                  <div className="min-w-0">
-                    <div className="truncate text-[11px] font-extrabold tracking-tight text-slate-900">
-                      Teacher Controls
-                    </div>
-                    <div className="truncate text-[9px] text-slate-400">
-                      {currentPage?.name} · {elements.length}{" "}
-                      {elements.length === 1 ? "item" : "items"}
-                    </div>
+                  <div className="text-[8px] font-medium text-white/45">
+                    {currentPageIndex + 1} / {pages.length}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={toggleTeacherControls}
-                  title="Hide teacher controls"
-                  aria-label="Hide teacher controls"
-                  className="flex size-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-                >
-                  <X className="size-3.5" />
-                </button>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
-                <div className="mb-2 grid grid-cols-2 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={undo}
-                    title="Undo"
-                    className="flex h-9 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-[10px] font-bold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
-                  >
-                    <Undo2 className="size-3.5" /> Undo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={redo}
-                    title="Redo"
-                    className="flex h-9 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-[10px] font-bold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
-                  >
-                    <Redo2 className="size-3.5" /> Redo
-                  </button>
-                </div>
+              <button
+                type="button"
+                onClick={goToNextPage}
+                disabled={currentPageIndex >= pages.length - 1}
+                title="Next page"
+                aria-label="Next page"
+                className="group flex size-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-white/75 shadow-inner shadow-white/5 transition-all hover:-translate-y-0.5 hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-25"
+              >
+                <ChevronRight className="size-5" />
+              </button>
 
-                <div className="mb-2 grid grid-cols-3 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => saveBoard(true)}
-                    title="Save workspace"
-                    className={`flex h-9 items-center justify-center rounded-xl border text-[10px] font-bold transition ${saveStatus === "saved" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : saveStatus === "saving" ? "border-blue-200 bg-blue-50 text-blue-700" : saveStatus === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
-                  >
-                    <Save
-                      className={`size-3.5 ${saveStatus === "saving" ? "animate-pulse" : ""}`}
-                    />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={restoreBoard}
-                    title="Restore workspace"
-                    className="flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
-                  >
-                    <FolderOpen className="size-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={exportPNG}
-                    title="Export PNG"
-                    className="flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
-                  >
-                    <Download className="size-3.5" />
-                  </button>
-                </div>
+              <div className="mx-0.5 h-8 w-px shrink-0 bg-white/10" />
 
-                <div className="mb-2 rounded-2xl border border-slate-100 bg-slate-50/80 p-1.5">
-                  <div className="mb-1.5 px-1.5 text-[8px] font-extrabold uppercase tracking-wider text-slate-400">
-                    Drawing tools
-                  </div>
-                  <div className="grid grid-cols-4 gap-1">
-                    {toolButton(
-                      "select",
-                      "Select / Move",
-                      <MousePointer2 className="size-3.5" />,
-                      "V",
-                    )}
-                    {toolButton(
-                      "pen",
-                      "Pen",
-                      <PenLine className="size-3.5" />,
-                      "P",
-                    )}
-                    {toolButton(
-                      "eraser",
-                      "Eraser",
-                      <Eraser className="size-3.5" />,
-                      "E",
-                    )}
-                    {toolButton(
-                      "line",
-                      "Line",
-                      <Minus className="size-3.5" />,
-                      "L",
-                    )}
-                    {toolButton(
-                      "rectangle",
-                      "Rectangle",
-                      <Square className="size-3.5" />,
-                      "R",
-                    )}
-                    {toolButton(
-                      "circle",
-                      "Circle",
-                      <Circle className="size-3.5" />,
-                      "C",
-                    )}
-                    {toolButton(
-                      "triangle",
-                      "Triangle",
-                      <Triangle className="size-3.5" />,
-                    )}
-                    {toolButton(
-                      "ruler",
-                      "Ruler",
-                      <Ruler className="size-3.5" />,
-                      "U",
-                    )}
-                    {toolButton(
-                      "axes",
-                      "Coordinate Axes",
-                      <Crosshair className="size-3.5" />,
-                      "A",
-                    )}
-                    {toolButton(
-                      "equation",
-                      "Equation",
-                      <Sigma className="size-3.5" />,
-                      "Q",
-                    )}
-                    {toolButton(
-                      "text",
-                      "Text",
-                      <Type className="size-3.5" />,
-                      "T",
-                    )}
-                  </div>
-                </div>
+              {/* Core drawing tools — Select and Pen remain immediately available. */}
+              <div className="flex shrink-0 items-center gap-0.5">
+                {toolButton(
+                  "select",
+                  "Select / Move",
+                  <MousePointer2 className="size-4" />,
+                  "V",
+                )}
+                {toolButton(
+                  "pen",
+                  "Pen / Draw",
+                  <PenLine className="size-4" />,
+                  "P",
+                )}
+              </div>
 
-                <div className="mb-2 grid grid-cols-2 gap-1.5">
+              <div className="mx-0.5 h-8 w-px shrink-0 bg-white/10" />
+
+              {/* Shapes & math tools popup — replaces the horizontal-scrolling tool strip. */}
+              <button
+                ref={shapeToolsButtonRef}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setShowShapeToolsPopup((value) => !value);
+                }}
+                title="Shapes & math tools"
+                aria-label="Open shapes and math tools"
+                aria-expanded={showShapeToolsPopup}
+                className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-white/65 transition-colors hover:text-white"
+              >
+                <Shapes className="size-4" />
+              </button>
+
+              <div className="mx-0.5 h-8 w-px shrink-0 bg-white/10" />
+
+              {/* More board controls — kept compact so the dock remains a single surface */}
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  ref={colorButtonRef}
+                  type="button"
+                  onClick={() => {
+                    if (showColorPopup && colorPopupTarget === "pen") {
+                      setShowColorPopup(false);
+                      return;
+                    }
+                    positionColorPopup("pen");
+                  }}
+                  title="Pen color"
+                  aria-label="Pen color"
+                  className={`flex size-10 items-center justify-center rounded-2xl transition ${
+                    colorPopupTarget === "pen" && showColorPopup
+                      ? "bg-blue-500/20 text-blue-300"
+                      : "text-white/65 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  <span
+                    className="size-4 rounded-full border border-white/70 shadow-sm ring-1 ring-white/20"
+                    style={{ backgroundColor: color }}
+                  />
+                </button>
+
+                {selectedElement ? (
                   <button
-                    ref={colorButtonRef}
+                    ref={objectColorButtonRef}
                     type="button"
                     onClick={() => {
-                      if (showColorPopup && colorPopupTarget === "pen") {
+                      if (showColorPopup && colorPopupTarget === "object") {
                         setShowColorPopup(false);
+                        setColorPopupTarget(null);
                         return;
                       }
-                      positionColorPopup("pen");
+                      positionColorPopup("object");
                     }}
-                    title="Pen color"
-                    aria-label="Pen color"
-                    className={`flex h-9 items-center gap-2 rounded-xl border px-2.5 text-[9px] font-bold transition ${colorPopupTarget === "pen" && showColorPopup ? "border-blue-200 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+                    title="Selected object color"
+                    aria-label="Selected object color"
+                    className={`flex size-10 items-center justify-center rounded-2xl transition ${
+                      colorPopupTarget === "object" && showColorPopup
+                        ? "bg-blue-500/20 text-blue-300"
+                        : "text-white/65 hover:bg-white/10 hover:text-white"
+                    }`}
                   >
                     <span
-                      className="size-4 rounded-full border border-white shadow-sm ring-1 ring-slate-300"
-                      style={{ backgroundColor: color }}
-                    />{" "}
-                    Pen color
+                      className="size-4 rounded-md border border-white/70 shadow-sm ring-1 ring-white/20"
+                      style={{ backgroundColor: selectedElement.color }}
+                    />
                   </button>
-                  {selectedElement ? (
-                    <button
-                      ref={objectColorButtonRef}
-                      type="button"
-                      onClick={() => {
-                        if (showColorPopup && colorPopupTarget === "object") {
-                          setShowColorPopup(false);
-                          setColorPopupTarget(null);
-                          return;
-                        }
-                        positionColorPopup("object");
-                      }}
-                      title="Selected object color"
-                      aria-label="Selected object color"
-                      className={`flex h-9 items-center gap-2 rounded-xl border px-2.5 text-[9px] font-bold transition ${colorPopupTarget === "object" && showColorPopup ? "border-blue-200 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
-                    >
-                      <span
-                        className="size-4 rounded-md border border-white shadow-sm ring-1 ring-slate-300"
-                        style={{ backgroundColor: selectedElement.color }}
-                      />{" "}
-                      Object
-                    </button>
-                  ) : (
-                    <div className="flex h-9 items-center justify-center rounded-xl border border-slate-100 bg-slate-50 text-[9px] font-semibold text-slate-400">
-                      Select object
-                    </div>
-                  )}
-                </div>
+                ) : null}
 
-                <div className="mb-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2">
-                  <div className="mb-1 flex items-center justify-between text-[8px] font-bold uppercase tracking-wider text-slate-400">
-                    <span>Stroke width</span>
-                    <span className="text-slate-600">{width}px</span>
-                  </div>
+                <div
+                  className="hidden h-10 w-28 shrink-0 items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-2.5 sm:flex"
+                  title="Stroke width"
+                >
+                  <PenLine className="size-3.5 shrink-0 text-white/50" />
                   <input
                     type="range"
                     min="1"
                     max="20"
                     value={width}
                     onChange={(e) => setWidth(Number(e.target.value))}
-                    title="Stroke width"
                     aria-label="Stroke width"
-                    className="h-1.5 w-full cursor-pointer accent-blue-600"
+                    className="h-1 w-full cursor-pointer accent-blue-500"
                   />
+                  <span className="w-7 text-right text-[8px] font-bold text-white/45">
+                    {width}px
+                  </span>
                 </div>
 
-                <div className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => setShowGraphSettings((v) => !v)}
+                  title="Canvas & grid"
+                  aria-label="Canvas & grid"
+                  className={`flex size-10 items-center justify-center rounded-2xl transition ${
+                    showGraphSettings
+                      ? "bg-blue-500/20 text-blue-300"
+                      : "text-white/65 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  <Grid2X2 className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCalculator((v) => !v)}
+                  title="Calculator"
+                  aria-label="Calculator"
+                  className={`flex size-10 items-center justify-center rounded-2xl transition ${
+                    showCalculator
+                      ? "bg-blue-500/20 text-blue-300"
+                      : "text-white/65 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  <Calculator className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowToolsPanel((v) => !v)}
+                  title="Math toolkit"
+                  aria-label="Math toolkit"
+                  className={`flex size-10 items-center justify-center rounded-2xl transition ${
+                    showToolsPanel
+                      ? "bg-blue-500/20 text-blue-300"
+                      : "text-white/65 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  <PanelRight className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPagesPanel((v) => !v)}
+                  title="Manage pages"
+                  aria-label="Manage pages"
+                  className={`flex size-10 items-center justify-center rounded-2xl transition ${
+                    showPagesPanel
+                      ? "bg-blue-500/20 text-blue-300"
+                      : "text-white/65 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  <BookOpen className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={restoreBoard}
+                  title="Restore workspace"
+                  aria-label="Restore workspace"
+                  className="flex size-10 items-center justify-center rounded-2xl text-white/65 transition hover:bg-white/10 hover:text-white"
+                >
+                  <FolderOpen className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={exportPNG}
+                  title="Export PNG"
+                  aria-label="Export PNG"
+                  className="flex size-10 items-center justify-center rounded-2xl text-white/65 transition hover:bg-white/10 hover:text-white"
+                >
+                  <Download className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={clearPage}
+                  title="Clear page"
+                  aria-label="Clear page"
+                  className="flex size-10 items-center justify-center rounded-2xl text-white/65 transition hover:bg-red-500/15 hover:text-red-300"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+
+              <div className="mx-0.5 h-8 w-px shrink-0 bg-white/10" />
+
+              {/* Compact actions */}
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={undo}
+                  title="Undo"
+                  aria-label="Undo"
+                  className="flex size-10 items-center justify-center rounded-2xl text-white/65 transition hover:bg-white/10 hover:text-white"
+                >
+                  <Undo2 className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={redo}
+                  title="Redo"
+                  aria-label="Redo"
+                  className="flex size-10 items-center justify-center rounded-2xl text-white/65 transition hover:bg-white/10 hover:text-white"
+                >
+                  <Redo2 className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => saveBoard(true)}
+                  title="Save workspace"
+                  aria-label="Save workspace"
+                  className={`flex size-10 items-center justify-center rounded-2xl transition ${
+                    saveStatus === "saved"
+                      ? "bg-emerald-400/15 text-emerald-300"
+                      : saveStatus === "saving"
+                        ? "bg-blue-400/15 text-blue-300"
+                        : saveStatus === "error"
+                          ? "bg-red-400/15 text-red-300"
+                          : "text-white/65 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  <Save
+                    className={`size-4 ${saveStatus === "saving" ? "animate-pulse" : ""}`}
+                  />
+                </button>
+                <button
+                  type="button"
+                  onClick={addPage}
+                  title="Add page"
+                  aria-label="Add page"
+                  className="hidden size-10 items-center justify-center rounded-2xl text-white/65 transition hover:bg-white/10 hover:text-white sm:flex"
+                >
+                  <Plus className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                  aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                  className={`flex size-10 items-center justify-center rounded-2xl transition ${
+                    isFullscreen
+                      ? "bg-blue-500/20 text-blue-300"
+                      : "text-white/65 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  {isFullscreen ? (
+                    <Minimize2 className="size-4" />
+                  ) : (
+                    <Maximize2 className="size-4" />
+                  )}
+                </button>
+              </div>
+
+              {/* Tiny active-state indicator */}
+              <span
+                className="pointer-events-none absolute bottom-1 left-1/2 h-0.5 w-10 -translate-x-1/2 rounded-full bg-white/30"
+                aria-hidden="true"
+              />
+            </div>
+
+            {showShapeToolsPopup && (
+              <div
+                className="fixed bottom-[88px] left-1/2 z-[500] w-[min(390px,calc(100vw-20px))] -translate-x-1/2 rounded-2xl border border-white/15 bg-slate-950/95 p-2.5 shadow-2xl shadow-black/50 backdrop-blur-2xl"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
+                role="dialog"
+                aria-label="Shapes and math tools"
+              >
+                <div className="mb-2 flex items-center justify-between px-1">
+                  <div>
+                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-white/80">
+                      Shapes & Math Tools
+                    </div>
+                    <div className="text-[8px] text-white/40">
+                      Select a tool to use on the board
+                    </div>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setShowGraphSettings((v) => !v)}
-                    className={`flex h-10 w-full items-center gap-2.5 rounded-xl px-3 text-left text-[10px] font-bold transition ${showGraphSettings ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-100"}`}
+                    onClick={() => setShowShapeToolsPopup(false)}
+                    aria-label="Close shapes and math tools"
+                    className="flex size-7 items-center justify-center rounded-lg text-white/45 hover:bg-white/10 hover:text-white"
                   >
-                    <Grid2X2 className="size-4 text-blue-600" />
-                    <span className="flex-1">Canvas & Grid</span>
-                    {showGraphSettings && (
-                      <span className="size-1.5 rounded-full bg-blue-500" />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowCalculator((v) => !v)}
-                    className={`flex h-10 w-full items-center gap-2.5 rounded-xl px-3 text-left text-[10px] font-bold transition ${showCalculator ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-100"}`}
-                  >
-                    <Calculator className="size-4 text-blue-600" />
-                    <span className="flex-1">Calculator</span>
-                    {showCalculator && (
-                      <span className="size-1.5 rounded-full bg-blue-500" />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowToolsPanel((v) => !v)}
-                    className={`flex h-10 w-full items-center gap-2.5 rounded-xl px-3 text-left text-[10px] font-bold transition ${showToolsPanel ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-100"}`}
-                  >
-                    <PanelRight className="size-4 text-blue-600" />
-                    <span className="flex-1">Math Toolkit</span>
-                    {showToolsPanel && (
-                      <span className="size-1.5 rounded-full bg-blue-500" />
-                    )}
+                    <X className="size-3.5" />
                   </button>
                 </div>
 
-                <div className="my-2 border-t border-slate-100" />
+                <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5">
+                  {toolButton(
+                    "eraser",
+                    "Eraser",
+                    <Eraser className="size-4" />,
+                    "E",
+                  )}
+                  {toolButton(
+                    "line",
+                    "Line",
+                    <Minus className="size-4" />,
+                    "L",
+                  )}
+                  {toolButton(
+                    "rectangle",
+                    "Rectangle",
+                    <Square className="size-4" />,
+                    "R",
+                  )}
+                  {toolButton(
+                    "circle",
+                    "Circle",
+                    <Circle className="size-4" />,
+                    "C",
+                  )}
+                  {toolButton(
+                    "triangle",
+                    "Triangle",
+                    <Triangle className="size-4" />,
+                  )}
+                  {toolButton(
+                    "ruler",
+                    "Ruler",
+                    <Ruler className="size-4" />,
+                    "U",
+                  )}
+                  {toolButton(
+                    "axes",
+                    "Coordinate Axes",
+                    <Crosshair className="size-4" />,
+                    "A",
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTool("equation");
+                      setShowShapeToolsPopup(false);
+                      openToolbarTextEditor("equation");
+                    }}
+                    title="LaTeX equation (Q)"
+                    aria-label="Add LaTeX equation"
+                    className={`flex size-10 items-center justify-center rounded-xl transition-all ${
+                      tool === "equation"
+                        ? "bg-blue-500 text-white"
+                        : "text-white/65 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    <Sigma className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTool("text");
+                      setShowShapeToolsPopup(false);
+                      openToolbarTextEditor("text");
+                    }}
+                    title="Text entry (T)"
+                    aria-label="Add text"
+                    className={`flex size-10 items-center justify-center rounded-xl transition-all ${
+                      tool === "text"
+                        ? "bg-blue-500 text-white"
+                        : "text-white/65 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    <Type className="size-4" />
+                  </button>
+                </div>
+              </div>
+            )}
 
-                <div className="mb-2">
-                  <div className="mb-1.5 flex items-center justify-between px-1.5">
-                    <span className="text-[8px] font-extrabold uppercase tracking-wider text-slate-400">
-                      Pages
-                    </span>
+            {/* Invisible/low-profile hover runway: moving the pointer near the bottom
+                edge reveals the dock again without needing a permanent launcher. */}
+            {!toolbarHovered && (
+              <span
+                className="pointer-events-none absolute bottom-1 left-1/2 h-1.5 w-20 -translate-x-1/2 rounded-full bg-white/25 shadow-[0_0_18px_rgba(255,255,255,0.18)] blur-[0.2px]"
+                aria-hidden="true"
+              />
+            )}
+          </div>
+        )}
+
+        {/* Compact page manager — preserves duplicate / rename / delete page controls */}
+        {showTeacherControls && showPagesPanel && (
+          <aside
+            className="fixed bottom-[98px] left-1/2 z-[310] w-[min(360px,calc(100vw-24px))] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/15 bg-slate-950/80 shadow-2xl shadow-black/30 backdrop-blur-2xl"
+            onPointerEnter={() => setToolbarHovered(true)}
+            onPointerLeave={() => setToolbarHovered(false)}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 px-3 py-2.5">
+              <div>
+                <div className="text-[10px] font-extrabold uppercase tracking-wider text-white/80">
+                  Pages
+                </div>
+                <div className="text-[8px] text-white/40">
+                  {pages.length} {pages.length === 1 ? "page" : "pages"}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={addPage}
+                title="Add page"
+                aria-label="Add page"
+                className="flex size-8 items-center justify-center rounded-xl bg-blue-500 text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-400"
+              >
+                <Plus className="size-4" />
+              </button>
+            </div>
+            <div className="max-h-56 space-y-1 overflow-y-auto p-2">
+              {pages.map((page, index) => {
+                const isActive = currentPageIndex === index;
+                return (
+                  <div
+                    key={page.id}
+                    className={`group flex items-center gap-1 rounded-xl border px-1 transition ${
+                      isActive
+                        ? "border-blue-400/30 bg-blue-500/15"
+                        : "border-white/5 bg-white/5 hover:bg-white/10"
+                    }`}
+                  >
                     <button
                       type="button"
-                      onClick={addPage}
-                      title="Add page"
-                      className="flex size-6 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm transition hover:bg-blue-700"
+                      onClick={() => {
+                        setCurrentPageIndex(index);
+                        setSelectedElementId(null);
+                        setShowPagesPanel(false);
+                      }}
+                      className="flex min-w-0 flex-1 items-center gap-2 px-1.5 py-2 text-left"
+                      title={`Open ${page.name}`}
                     >
-                      <Plus className="size-3.5" />
+                      <span
+                        className={`flex size-6 shrink-0 items-center justify-center rounded-lg text-[8px] font-extrabold ${
+                          isActive
+                            ? "bg-blue-500 text-white"
+                            : "bg-white/10 text-white/55"
+                        }`}
+                      >
+                        {index + 1}
+                      </span>
+                      <span
+                        className={`min-w-0 flex-1 truncate text-[9px] font-bold ${
+                          isActive ? "text-blue-200" : "text-white/70"
+                        }`}
+                      >
+                        {page.name}
+                      </span>
+                      <span className="text-[8px] text-white/30">
+                        {page.elements.length}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => duplicatePage(index)}
+                      title="Duplicate page"
+                      aria-label={`Duplicate ${page.name}`}
+                      className="flex size-7 items-center justify-center rounded-lg text-white/35 transition hover:bg-white/10 hover:text-white"
+                    >
+                      <Copy className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => renamePage(index)}
+                      title="Rename page"
+                      aria-label={`Rename ${page.name}`}
+                      className="flex size-7 items-center justify-center rounded-lg text-white/35 transition hover:bg-white/10 hover:text-white"
+                    >
+                      <Settings2 className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deletePage(index)}
+                      title="Delete page"
+                      aria-label={`Delete ${page.name}`}
+                      className="flex size-7 items-center justify-center rounded-lg text-white/35 transition hover:bg-red-500/15 hover:text-red-300"
+                    >
+                      <Trash2 className="size-3.5" />
                     </button>
                   </div>
-                  <div className="space-y-1">
-                    {pages.map((page, index) => {
-                      const isActive = currentPageIndex === index;
-                      return (
-                        <div
-                          key={page.id}
-                          className={`group rounded-xl border transition ${isActive ? "border-blue-200 bg-blue-50" : "border-slate-100 bg-white hover:bg-slate-50"}`}
-                        >
-                          <div className="flex items-center">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCurrentPageIndex(index);
-                                setSelectedElementId(null);
-                              }}
-                              title={`Open ${page.name}`}
-                              className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left"
-                            >
-                              <span
-                                className={`flex size-5 shrink-0 items-center justify-center rounded-md text-[8px] font-extrabold ${isActive ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}
-                              >
-                                {index + 1}
-                              </span>
-                              <span
-                                className={`min-w-0 flex-1 truncate text-[9px] font-bold ${isActive ? "text-blue-800" : "text-slate-600"}`}
-                              >
-                                {page.name}
-                              </span>
-                              <span className="text-[8px] text-slate-400">
-                                {page.elements.length}
-                              </span>
-                            </button>
-                            <div className="flex items-center pr-1">
-                              <button
-                                type="button"
-                                onClick={() => duplicatePage(index)}
-                                title="Duplicate page"
-                                className="flex size-6 items-center justify-center rounded-md text-slate-400 hover:bg-white hover:text-blue-600"
-                              >
-                                <Copy className="size-3" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => renamePage(index)}
-                                title="Rename page"
-                                className="flex size-6 items-center justify-center rounded-md text-slate-400 hover:bg-white hover:text-slate-700"
-                              >
-                                <Settings2 className="size-3" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => deletePage(index)}
-                                title="Delete page"
-                                className="flex size-6 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600"
-                              >
-                                <Trash2 className="size-3" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={clearPage}
-                    title="Clear page"
-                    className="flex h-9 items-center justify-center gap-2 rounded-xl border border-red-100 bg-white text-[9px] font-bold text-red-600 transition hover:bg-red-50"
-                  >
-                    <Trash2 className="size-3.5" /> Clear
-                  </button>
-                  <button
-                    type="button"
-                    onClick={toggleFullscreen}
-                    title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-                    className="flex h-9 items-center justify-center gap-2 rounded-xl bg-slate-900 text-[9px] font-bold text-white transition hover:bg-slate-800"
-                  >
-                    {isFullscreen ? (
-                      <Minimize2 className="size-3.5" />
-                    ) : (
-                      <Maximize2 className="size-3.5" />
-                    )}
-                    {isFullscreen ? "Exit" : "Fullscreen"}
-                  </button>
-                </div>
-              </div>
-
-              <div className="shrink-0 border-t border-slate-100 bg-slate-50/80 px-3 py-2.5">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`size-1.5 shrink-0 rounded-full ${tool === "pen" ? "bg-blue-500" : "bg-slate-400"}`}
-                  />
-                  <span className="truncate text-[9px] font-semibold text-slate-500">
-                    {tool === "pen"
-                      ? `Pen · ${width}px`
-                      : tool.charAt(0).toUpperCase() + tool.slice(1)}
-                  </span>
-                  {saveStatus !== "idle" && (
-                    <span
-                      className={`ml-auto rounded-full px-2 py-0.5 text-[8px] font-bold ${saveStatus === "saved" ? "bg-emerald-50 text-emerald-600" : saveStatus === "saving" ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600"}`}
-                    >
-                      {saveStatus === "saving"
-                        ? "Saving"
-                        : saveStatus === "saved"
-                          ? "Saved"
-                          : "Error"}
-                    </span>
-                  )}
-                </div>
-              </div>
+                );
+              })}
             </div>
           </aside>
         )}
@@ -3910,41 +4431,36 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
           onClick={handleTeacherControlClick}
           title={
             showTeacherControls
-              ? "Hide teacher controls · drag to reposition"
-              : "Open teacher controls · drag to reposition"
+              ? "Hide toolbar · drag to reposition"
+              : "Show toolbar · drag to reposition"
           }
           aria-label={
             showTeacherControls
-              ? "Hide teacher controls. Drag to reposition."
-              : "Open teacher controls. Drag to reposition."
+              ? "Hide toolbar. Drag to reposition."
+              : "Show toolbar. Drag to reposition."
           }
           style={{
             left: teacherControlPosition.left,
             top: teacherControlPosition.top,
             touchAction: "none",
           }}
-          className={`pointer-events-auto fixed z-[321] flex size-[52px] select-none items-center justify-center overflow-hidden rounded-2xl border bg-white/95 shadow-xl backdrop-blur-xl transition-[transform,box-shadow,border-color] duration-200 hover:scale-105 active:scale-95 ${
-            showTeacherControls
-              ? "border-blue-200 shadow-blue-500/20"
-              : "border-white/80 shadow-slate-950/15"
+          className={`pointer-events-auto fixed z-[321] flex size-[50px] select-none items-center justify-center overflow-hidden rounded-[18px] border border-white/25 bg-slate-950/45 p-2 shadow-[0_16px_40px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-2xl transition-all duration-200 hover:scale-105 hover:border-white/40 hover:bg-slate-950/55 active:scale-95 ${
+            showTeacherControls ? "shadow-blue-500/25" : "shadow-black/30"
           } ${
             teacherControlDragging
               ? "cursor-grabbing shadow-2xl"
               : "cursor-grab"
           }`}
         >
-          {/* The logo is visual only. It can never navigate away from the board. */}
-          <span className="pointer-events-none flex items-center justify-center">
+          {/* Brand-only launcher: click to show/hide the auto-hide toolbar. */}
+          <span className="pointer-events-none flex size-full items-center justify-center">
             <MyLogo showText={false} clickable={false} />
           </span>
-
           <span
-            className={`pointer-events-none absolute -right-0.5 -top-0.5 size-3 rounded-full border-2 border-white transition-colors ${
-              showTeacherControls ? "bg-blue-500" : "bg-slate-300"
+            className={`pointer-events-none absolute inset-0 rounded-[18px] ring-1 ring-inset ${
+              showTeacherControls ? "ring-blue-400/30" : "ring-white/10"
             }`}
           />
-
-          <span className="pointer-events-none absolute inset-0 rounded-2xl bg-blue-500/0 transition group-hover:bg-blue-500/5" />
         </button>
       </div>
 
