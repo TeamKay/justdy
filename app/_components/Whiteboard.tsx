@@ -773,6 +773,22 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showTeacherControls, setShowTeacherControls] = useState(false);
+  const [teacherControlDragging, setTeacherControlDragging] = useState(false);
+
+  // Draggable teacher-control launcher position.
+  // The default position is the bottom-right corner, but the teacher can
+  // drag the logo anywhere on the whiteboard.
+  const [teacherControlPosition, setTeacherControlPosition] = useState({
+    left: 0,
+    top: 0,
+  });
+  const teacherControlInitializedRef = useRef(false);
+  const teacherControlDraggingRef = useRef(false);
+  const teacherControlDidDragRef = useRef(false);
+  const teacherControlDragOffsetRef = useRef({
+    x: 0,
+    y: 0,
+  });
 
   const [renamePageState, setRenamePageState] = useState<{
     open: boolean;
@@ -2306,6 +2322,134 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
     });
   };
 
+  const clampTeacherControlPosition = useCallback(
+    (left: number, top: number) => {
+      if (typeof window === "undefined") {
+        return { left, top };
+      }
+
+      const size = 52;
+      const margin = 12;
+
+      return {
+        left: Math.min(
+          Math.max(margin, left),
+          Math.max(margin, window.innerWidth - size - margin),
+        ),
+        top: Math.min(
+          Math.max(margin, top),
+          Math.max(margin, window.innerHeight - size - margin),
+        ),
+      };
+    },
+    [],
+  );
+
+  // Put the launcher in the bottom-right corner on first mount.
+  useEffect(() => {
+    if (teacherControlInitializedRef.current || typeof window === "undefined") {
+      return;
+    }
+
+    teacherControlInitializedRef.current = true;
+
+    const size = 52;
+    const margin = 20;
+
+    setTeacherControlPosition({
+      left: Math.max(margin, window.innerWidth - size - margin),
+      top: Math.max(margin, window.innerHeight - size - margin),
+    });
+  }, []);
+
+  // Keep a dragged launcher inside the visible board when the viewport changes.
+  useEffect(() => {
+    const handleResize = () => {
+      setTeacherControlPosition((current) =>
+        clampTeacherControlPosition(current.left, current.top),
+      );
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [clampTeacherControlPosition]);
+
+  const handleTeacherControlPointerDown = (
+    event: React.PointerEvent<HTMLButtonElement>,
+  ) => {
+    if (event.button !== 0) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const rect = event.currentTarget.getBoundingClientRect();
+
+    teacherControlDraggingRef.current = true;
+    setTeacherControlDragging(true);
+    teacherControlDidDragRef.current = false;
+    teacherControlDragOffsetRef.current = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleTeacherControlPointerMove = (
+    event: React.PointerEvent<HTMLButtonElement>,
+  ) => {
+    if (!teacherControlDraggingRef.current) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const offset = teacherControlDragOffsetRef.current;
+    const next = clampTeacherControlPosition(
+      event.clientX - offset.x,
+      event.clientY - offset.y,
+    );
+
+    if (
+      Math.abs(next.left - teacherControlPosition.left) > 2 ||
+      Math.abs(next.top - teacherControlPosition.top) > 2
+    ) {
+      teacherControlDidDragRef.current = true;
+    }
+
+    setTeacherControlPosition(next);
+  };
+
+  const handleTeacherControlPointerUp = (
+    event: React.PointerEvent<HTMLButtonElement>,
+  ) => {
+    if (!teacherControlDraggingRef.current) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    teacherControlDraggingRef.current = false;
+    setTeacherControlDragging(false);
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const handleTeacherControlClick = (
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // A drag should reposition the launcher without also opening/closing it.
+    if (teacherControlDidDragRef.current) {
+      teacherControlDidDragRef.current = false;
+      return;
+    }
+
+    toggleTeacherControls();
+  };
+
   const runCalculator = useCallback(() => {
     if (!calculatorValue.trim()) return;
     try {
@@ -2406,7 +2550,7 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
           </span>
         )}
 
-        <span className="pointer-events-none absolute left-full ml-3 hidden whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 lg:block">
+        <span className="pointer-events-none absolute right-full mr-3 hidden whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 lg:block">
           {label}
         </span>
       </button>
@@ -2489,188 +2633,8 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
       ref={rootRef}
       className="relative flex h-screen w-full flex-col overflow-hidden bg-slate-50 text-slate-900 antialiased"
     >
-      {/* Floating top command bar — teacher only */}
-      {showTeacherControls && (
-        <header className="pointer-events-none absolute inset-x-0 top-0 z-50 flex items-start justify-between px-4 pt-3">
-          <div className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/95 px-3 py-2 shadow-lg shadow-slate-900/5 backdrop-blur-xl">
-            <div className="flex size-8 items-center justify-center overflow-hidden rounded-xl bg-white">
-              <MyLogo showText={false} />
-            </div>
-
-            <div className="hidden sm:block">
-              <div className="flex items-center gap-2">
-                <h1 className="text-xs font-extrabold tracking-tight text-slate-900">
-                  Justdy Teaching Lab
-                </h1>
-                <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[8px] font-bold text-blue-600">
-                  WHITEBOARD
-                </span>
-              </div>
-              <p className="text-[9px] text-slate-400">
-                {currentPage?.name} · {elements.length}{" "}
-                {elements.length === 1 ? "item" : "items"}
-              </p>
-            </div>
-          </div>
-
-          <div className="pointer-events-auto flex items-center gap-0.5 rounded-2xl border border-slate-200/80 bg-white/95 p-1 shadow-lg shadow-slate-900/5 backdrop-blur-xl">
-            <button
-              type="button"
-              onClick={undo}
-              title="Undo"
-              aria-label="Undo"
-              className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-            >
-              <Undo2 className="size-4" />
-            </button>
-            <button
-              type="button"
-              onClick={redo}
-              title="Redo"
-              aria-label="Redo"
-              className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-            >
-              <Redo2 className="size-4" />
-            </button>
-            {(() => {
-              const selected = elements.find(
-                (el: WhiteboardElement) => el.id === selectedElementId,
-              );
-              if (
-                !selected ||
-                (selected.type !== "text" && selected.type !== "equation")
-              )
-                return null;
-              return (
-                <button
-                  type="button"
-                  onClick={duplicateSelectedText}
-                  title="Duplicate selected text"
-                  aria-label="Duplicate selected text"
-                  className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-                >
-                  <Copy className="size-4" />
-                </button>
-              );
-            })()}
-
-            <div className="mx-1 h-5 w-px bg-slate-200" />
-
-            <div className="flex items-center gap-2">
-              {saveStatus !== "idle" && (
-                <span
-                  className={`hidden sm:inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold ${
-                    saveStatus === "saving"
-                      ? "bg-blue-50 text-blue-600"
-                      : saveStatus === "saved"
-                        ? "bg-emerald-50 text-emerald-600"
-                        : "bg-red-50 text-red-600"
-                  }`}
-                >
-                  {saveStatus === "saving" && "Saving..."}
-                  {saveStatus === "saved" && "Saved"}
-                  {saveStatus === "error" && "Save failed"}
-                </span>
-              )}
-
-              <button
-                type="button"
-                onClick={() => saveBoard(true)}
-                title="Save workspace"
-                aria-label="Save workspace"
-                className={`flex size-8 items-center justify-center rounded-lg transition ${
-                  saveStatus === "saved"
-                    ? "bg-emerald-50 text-emerald-600"
-                    : saveStatus === "saving"
-                      ? "bg-blue-50 text-blue-600"
-                      : saveStatus === "error"
-                        ? "bg-red-50 text-red-600"
-                        : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                }`}
-              >
-                <Save
-                  className={`size-4 ${
-                    saveStatus === "saving" ? "animate-pulse" : ""
-                  }`}
-                />
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={restoreBoard}
-              title="Restore workspace"
-              aria-label="Restore workspace"
-              className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-            >
-              <FolderOpen className="size-4" />
-            </button>
-            <button
-              type="button"
-              onClick={exportPNG}
-              title="Export PNG"
-              aria-label="Export PNG"
-              className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-            >
-              <Download className="size-4" />
-            </button>
-
-            <div className="mx-1 h-5 w-px bg-slate-200" />
-
-            <button
-              type="button"
-              onClick={() => setShowGraphSettings((v) => !v)}
-              title="Canvas & Grid"
-              aria-label="Canvas & Grid"
-              className={`flex size-8 items-center justify-center rounded-lg transition ${showGraphSettings ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}
-            >
-              <Grid2X2 className="size-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowCalculator((v) => !v)}
-              title="Calculator"
-              aria-label="Calculator"
-              className={`flex size-8 items-center justify-center rounded-lg transition ${showCalculator ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}
-            >
-              <Calculator className="size-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowToolsPanel((v) => !v)}
-              title="Math Toolkit"
-              aria-label="Math Toolkit"
-              className={`flex size-8 items-center justify-center rounded-lg transition ${showToolsPanel ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}
-            >
-              <PanelRight className="size-4" />
-            </button>
-            <button
-              type="button"
-              onClick={clearPage}
-              title="Clear page"
-              aria-label="Clear page"
-              className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600"
-            >
-              <Trash2 className="size-4" />
-            </button>
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-              aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-              className="ml-1 flex size-8 items-center justify-center rounded-lg bg-slate-900 text-white transition hover:bg-slate-800"
-            >
-              {isFullscreen ? (
-                <Minimize2 className="size-3.5" />
-              ) : (
-                <Maximize2 className="size-3.5" />
-              )}
-            </button>
-          </div>
-        </header>
-      )}
-
       {showTeacherControls && showGraphSettings && (
-        <div className="absolute right-4 top-16 z-50 w-80 rounded-md border border-slate-200 bg-white p-4 shadow-2xl">
+        <div className="fixed right-[338px] top-1/2 z-[290] w-80 max-w-[calc(100vw-360px)] -translate-y-1/2 sm:right-[338px] max-sm:right-4 max-sm:top-4 max-sm:translate-y-0 max-sm:w-[calc(100vw-88px)] max-sm:max-w-none rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900">
               Background & Grid Settings
@@ -2815,7 +2779,7 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
       )}
 
       {showTeacherControls && showCalculator && (
-        <div className="absolute right-4 top-16 z-50 w-72 rounded-md border border-slate-200 bg-white p-4 shadow-2xl">
+        <div className="fixed right-[338px] top-1/2 z-[290] w-72 max-w-[calc(100vw-360px)] -translate-y-1/2 sm:right-[338px] max-sm:right-4 max-sm:top-4 max-sm:translate-y-0 max-sm:w-[calc(100vw-88px)] max-sm:max-w-none rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900">
               Advanced Calculator
@@ -3356,134 +3320,389 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
           </div>
         </section>
 
-        {/* Floating left toolbox — teacher only */}
+        {/* Teacher workspace controls — unified right-side rail */}
         {showTeacherControls && (
-          <aside className="absolute left-4 top-1/2 z-40 -translate-y-1/2">
-            <div className="flex max-h-[calc(100vh-170px)] w-12 flex-col items-center gap-1 overflow-y-auto rounded-2xl border border-slate-200/80 bg-white/95 px-1.5 py-2 shadow-xl shadow-slate-900/10 backdrop-blur-xl">
-              {toolButton(
-                "select",
-                "Select / Move",
-                <MousePointer2 className="size-4" />,
-                "V",
-              )}
-              {toolButton("pen", "Pen", <PenLine className="size-4" />, "P")}
-              {toolButton(
-                "eraser",
-                "Eraser",
-                <Eraser className="size-4" />,
-                "E",
-              )}
+          <aside className="pointer-events-none fixed inset-y-4 right-[76px] z-[300] flex w-[250px] max-w-[calc(100vw-32px)] max-sm:right-[68px] max-sm:w-[220px] flex-col">
+            <div className="pointer-events-auto flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-white/70 bg-white/95 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl">
+              <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white/90 px-3.5 py-3">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white ring-1 ring-slate-100">
+                    <MyLogo showText={false} clickable={false} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="truncate text-[11px] font-extrabold tracking-tight text-slate-900">
+                      Teacher Controls
+                    </div>
+                    <div className="truncate text-[9px] text-slate-400">
+                      {currentPage?.name} · {elements.length}{" "}
+                      {elements.length === 1 ? "item" : "items"}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleTeacherControls}
+                  title="Hide teacher controls"
+                  aria-label="Hide teacher controls"
+                  className="flex size-7 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
 
-              <div className="my-1 h-px w-6 shrink-0 bg-slate-200" />
-
-              {toolButton("line", "Line", <Minus className="size-4" />, "L")}
-              {toolButton(
-                "rectangle",
-                "Rectangle",
-                <Square className="size-4" />,
-                "R",
-              )}
-              {toolButton(
-                "circle",
-                "Circle",
-                <Circle className="size-4" />,
-                "C",
-              )}
-              {toolButton(
-                "triangle",
-                "Triangle",
-                <Triangle className="size-4" />,
-              )}
-              {toolButton("ruler", "Ruler", <Ruler className="size-4" />, "U")}
-
-              <div className="my-1 h-px w-6 shrink-0 bg-slate-200" />
-
-              {toolButton(
-                "axes",
-                "Coordinate Axes",
-                <Crosshair className="size-4" />,
-                "A",
-              )}
-              {toolButton(
-                "equation",
-                "Equation",
-                <Sigma className="size-4" />,
-                "Q",
-              )}
-              {toolButton("text", "Text", <Type className="size-4" />, "T")}
-
-              <div className="my-1 h-px w-6 shrink-0 bg-slate-200" />
-
-              <button
-                ref={colorButtonRef}
-                type="button"
-                onClick={() => {
-                  if (showColorPopup && colorPopupTarget === "pen") {
-                    setShowColorPopup(false);
-                    return;
-                  }
-                  positionColorPopup("pen");
-                }}
-                title="Pen color"
-                aria-label="Pen color"
-                className="group relative flex size-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-              >
-                <span
-                  className="size-5 rounded-full border-2 border-white shadow-sm ring-1 ring-slate-300"
-                  style={{ backgroundColor: color }}
-                />
-                <span className="pointer-events-none absolute left-full ml-3 hidden whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 lg:block">
-                  Pen Color
-                </span>
-              </button>
-
-              {selectedElement && (
-                <>
+              <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
+                <div className="mb-2 grid grid-cols-2 gap-1.5">
                   <button
-                    ref={objectColorButtonRef}
+                    type="button"
+                    onClick={undo}
+                    title="Undo"
+                    className="flex h-9 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-[10px] font-bold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                  >
+                    <Undo2 className="size-3.5" /> Undo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={redo}
+                    title="Redo"
+                    className="flex h-9 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-[10px] font-bold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                  >
+                    <Redo2 className="size-3.5" /> Redo
+                  </button>
+                </div>
+
+                <div className="mb-2 grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => saveBoard(true)}
+                    title="Save workspace"
+                    className={`flex h-9 items-center justify-center rounded-xl border text-[10px] font-bold transition ${saveStatus === "saved" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : saveStatus === "saving" ? "border-blue-200 bg-blue-50 text-blue-700" : saveStatus === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+                  >
+                    <Save
+                      className={`size-3.5 ${saveStatus === "saving" ? "animate-pulse" : ""}`}
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={restoreBoard}
+                    title="Restore workspace"
+                    className="flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
+                  >
+                    <FolderOpen className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportPNG}
+                    title="Export PNG"
+                    className="flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
+                  >
+                    <Download className="size-3.5" />
+                  </button>
+                </div>
+
+                <div className="mb-2 rounded-2xl border border-slate-100 bg-slate-50/80 p-1.5">
+                  <div className="mb-1.5 px-1.5 text-[8px] font-extrabold uppercase tracking-wider text-slate-400">
+                    Drawing tools
+                  </div>
+                  <div className="grid grid-cols-4 gap-1">
+                    {toolButton(
+                      "select",
+                      "Select / Move",
+                      <MousePointer2 className="size-3.5" />,
+                      "V",
+                    )}
+                    {toolButton(
+                      "pen",
+                      "Pen",
+                      <PenLine className="size-3.5" />,
+                      "P",
+                    )}
+                    {toolButton(
+                      "eraser",
+                      "Eraser",
+                      <Eraser className="size-3.5" />,
+                      "E",
+                    )}
+                    {toolButton(
+                      "line",
+                      "Line",
+                      <Minus className="size-3.5" />,
+                      "L",
+                    )}
+                    {toolButton(
+                      "rectangle",
+                      "Rectangle",
+                      <Square className="size-3.5" />,
+                      "R",
+                    )}
+                    {toolButton(
+                      "circle",
+                      "Circle",
+                      <Circle className="size-3.5" />,
+                      "C",
+                    )}
+                    {toolButton(
+                      "triangle",
+                      "Triangle",
+                      <Triangle className="size-3.5" />,
+                    )}
+                    {toolButton(
+                      "ruler",
+                      "Ruler",
+                      <Ruler className="size-3.5" />,
+                      "U",
+                    )}
+                    {toolButton(
+                      "axes",
+                      "Coordinate Axes",
+                      <Crosshair className="size-3.5" />,
+                      "A",
+                    )}
+                    {toolButton(
+                      "equation",
+                      "Equation",
+                      <Sigma className="size-3.5" />,
+                      "Q",
+                    )}
+                    {toolButton(
+                      "text",
+                      "Text",
+                      <Type className="size-3.5" />,
+                      "T",
+                    )}
+                  </div>
+                </div>
+
+                <div className="mb-2 grid grid-cols-2 gap-1.5">
+                  <button
+                    ref={colorButtonRef}
                     type="button"
                     onClick={() => {
-                      if (showColorPopup && colorPopupTarget === "object") {
+                      if (showColorPopup && colorPopupTarget === "pen") {
                         setShowColorPopup(false);
-                        setColorPopupTarget(null);
                         return;
                       }
-                      positionColorPopup("object");
+                      positionColorPopup("pen");
                     }}
-                    title="Selected object color"
-                    aria-label="Selected object color"
-                    className={`group relative flex size-9 shrink-0 items-center justify-center rounded-lg border transition ${
-                      colorPopupTarget === "object" && showColorPopup
-                        ? "border-blue-300 bg-blue-50"
-                        : "border-transparent hover:bg-slate-100"
-                    }`}
+                    title="Pen color"
+                    aria-label="Pen color"
+                    className={`flex h-9 items-center gap-2 rounded-xl border px-2.5 text-[9px] font-bold transition ${colorPopupTarget === "pen" && showColorPopup ? "border-blue-200 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
                   >
                     <span
-                      className="size-5 rounded-md border-2 border-white shadow-sm ring-1 ring-slate-300"
-                      style={{ backgroundColor: selectedElement.color }}
-                    />
-
-                    <span className="pointer-events-none absolute left-full ml-3 hidden whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 lg:block">
-                      Object Color
-                    </span>
+                      className="size-4 rounded-full border border-white shadow-sm ring-1 ring-slate-300"
+                      style={{ backgroundColor: color }}
+                    />{" "}
+                    Pen color
                   </button>
-                </>
-              )}
+                  {selectedElement ? (
+                    <button
+                      ref={objectColorButtonRef}
+                      type="button"
+                      onClick={() => {
+                        if (showColorPopup && colorPopupTarget === "object") {
+                          setShowColorPopup(false);
+                          setColorPopupTarget(null);
+                          return;
+                        }
+                        positionColorPopup("object");
+                      }}
+                      title="Selected object color"
+                      aria-label="Selected object color"
+                      className={`flex h-9 items-center gap-2 rounded-xl border px-2.5 text-[9px] font-bold transition ${colorPopupTarget === "object" && showColorPopup ? "border-blue-200 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+                    >
+                      <span
+                        className="size-4 rounded-md border border-white shadow-sm ring-1 ring-slate-300"
+                        style={{ backgroundColor: selectedElement.color }}
+                      />{" "}
+                      Object
+                    </button>
+                  ) : (
+                    <div className="flex h-9 items-center justify-center rounded-xl border border-slate-100 bg-slate-50 text-[9px] font-semibold text-slate-400">
+                      Select object
+                    </div>
+                  )}
+                </div>
 
-              <div className="mt-1 flex w-9 flex-col items-center rounded-lg bg-slate-50 py-1">
-                <span className="mb-0.5 text-[7px] font-bold text-slate-400">
-                  {width}px
-                </span>
-                <input
-                  type="range"
-                  min="1"
-                  max="20"
-                  value={width}
-                  onChange={(e) => setWidth(Number(e.target.value))}
-                  title="Stroke width"
-                  aria-label="Stroke width"
-                  className="h-12 w-1 cursor-pointer [writing-mode:vertical-lr]"
-                />
+                <div className="mb-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2">
+                  <div className="mb-1 flex items-center justify-between text-[8px] font-bold uppercase tracking-wider text-slate-400">
+                    <span>Stroke width</span>
+                    <span className="text-slate-600">{width}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="20"
+                    value={width}
+                    onChange={(e) => setWidth(Number(e.target.value))}
+                    title="Stroke width"
+                    aria-label="Stroke width"
+                    className="h-1.5 w-full cursor-pointer accent-blue-600"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowGraphSettings((v) => !v)}
+                    className={`flex h-10 w-full items-center gap-2.5 rounded-xl px-3 text-left text-[10px] font-bold transition ${showGraphSettings ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-100"}`}
+                  >
+                    <Grid2X2 className="size-4 text-blue-600" />
+                    <span className="flex-1">Canvas & Grid</span>
+                    {showGraphSettings && (
+                      <span className="size-1.5 rounded-full bg-blue-500" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCalculator((v) => !v)}
+                    className={`flex h-10 w-full items-center gap-2.5 rounded-xl px-3 text-left text-[10px] font-bold transition ${showCalculator ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-100"}`}
+                  >
+                    <Calculator className="size-4 text-blue-600" />
+                    <span className="flex-1">Calculator</span>
+                    {showCalculator && (
+                      <span className="size-1.5 rounded-full bg-blue-500" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowToolsPanel((v) => !v)}
+                    className={`flex h-10 w-full items-center gap-2.5 rounded-xl px-3 text-left text-[10px] font-bold transition ${showToolsPanel ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-100"}`}
+                  >
+                    <PanelRight className="size-4 text-blue-600" />
+                    <span className="flex-1">Math Toolkit</span>
+                    {showToolsPanel && (
+                      <span className="size-1.5 rounded-full bg-blue-500" />
+                    )}
+                  </button>
+                </div>
+
+                <div className="my-2 border-t border-slate-100" />
+
+                <div className="mb-2">
+                  <div className="mb-1.5 flex items-center justify-between px-1.5">
+                    <span className="text-[8px] font-extrabold uppercase tracking-wider text-slate-400">
+                      Pages
+                    </span>
+                    <button
+                      type="button"
+                      onClick={addPage}
+                      title="Add page"
+                      className="flex size-6 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm transition hover:bg-blue-700"
+                    >
+                      <Plus className="size-3.5" />
+                    </button>
+                  </div>
+                  <div className="space-y-1">
+                    {pages.map((page, index) => {
+                      const isActive = currentPageIndex === index;
+                      return (
+                        <div
+                          key={page.id}
+                          className={`group rounded-xl border transition ${isActive ? "border-blue-200 bg-blue-50" : "border-slate-100 bg-white hover:bg-slate-50"}`}
+                        >
+                          <div className="flex items-center">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCurrentPageIndex(index);
+                                setSelectedElementId(null);
+                              }}
+                              title={`Open ${page.name}`}
+                              className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left"
+                            >
+                              <span
+                                className={`flex size-5 shrink-0 items-center justify-center rounded-md text-[8px] font-extrabold ${isActive ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}
+                              >
+                                {index + 1}
+                              </span>
+                              <span
+                                className={`min-w-0 flex-1 truncate text-[9px] font-bold ${isActive ? "text-blue-800" : "text-slate-600"}`}
+                              >
+                                {page.name}
+                              </span>
+                              <span className="text-[8px] text-slate-400">
+                                {page.elements.length}
+                              </span>
+                            </button>
+                            <div className="flex items-center pr-1">
+                              <button
+                                type="button"
+                                onClick={() => duplicatePage(index)}
+                                title="Duplicate page"
+                                className="flex size-6 items-center justify-center rounded-md text-slate-400 hover:bg-white hover:text-blue-600"
+                              >
+                                <Copy className="size-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => renamePage(index)}
+                                title="Rename page"
+                                className="flex size-6 items-center justify-center rounded-md text-slate-400 hover:bg-white hover:text-slate-700"
+                              >
+                                <Settings2 className="size-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deletePage(index)}
+                                title="Delete page"
+                                className="flex size-6 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600"
+                              >
+                                <Trash2 className="size-3" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={clearPage}
+                    title="Clear page"
+                    className="flex h-9 items-center justify-center gap-2 rounded-xl border border-red-100 bg-white text-[9px] font-bold text-red-600 transition hover:bg-red-50"
+                  >
+                    <Trash2 className="size-3.5" /> Clear
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleFullscreen}
+                    title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                    className="flex h-9 items-center justify-center gap-2 rounded-xl bg-slate-900 text-[9px] font-bold text-white transition hover:bg-slate-800"
+                  >
+                    {isFullscreen ? (
+                      <Minimize2 className="size-3.5" />
+                    ) : (
+                      <Maximize2 className="size-3.5" />
+                    )}
+                    {isFullscreen ? "Exit" : "Fullscreen"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="shrink-0 border-t border-slate-100 bg-slate-50/80 px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`size-1.5 shrink-0 rounded-full ${tool === "pen" ? "bg-blue-500" : "bg-slate-400"}`}
+                  />
+                  <span className="truncate text-[9px] font-semibold text-slate-500">
+                    {tool === "pen"
+                      ? `Pen · ${width}px`
+                      : tool.charAt(0).toUpperCase() + tool.slice(1)}
+                  </span>
+                  {saveStatus !== "idle" && (
+                    <span
+                      className={`ml-auto rounded-full px-2 py-0.5 text-[8px] font-bold ${saveStatus === "saved" ? "bg-emerald-50 text-emerald-600" : saveStatus === "saving" ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600"}`}
+                    >
+                      {saveStatus === "saving"
+                        ? "Saving"
+                        : saveStatus === "saved"
+                          ? "Saved"
+                          : "Error"}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </aside>
@@ -3492,7 +3711,7 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
         {/* Floating color palette — teacher only */}
         {showTeacherControls && showColorPopup && (
           <div
-            className="fixed z-120 w-55 rounded-2xl border border-slate-200/90 bg-white/98 p-3 shadow-2xl shadow-slate-900/15 backdrop-blur-xl"
+            className="fixed z-[310] w-55 max-w-[calc(100vw-24px)] rounded-2xl border border-slate-200/90 bg-white/98 p-3 shadow-2xl shadow-slate-900/15 backdrop-blur-xl"
             style={{
               top: colorPopupPosition.top,
               left: colorPopupPosition.left,
@@ -3575,7 +3794,7 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
 
         {/* Floating Math Toolkit — teacher only */}
         {showTeacherControls && showToolsPanel && (
-          <aside className="absolute right-4 top-20 bottom-16 z-40 flex w-72 max-w-[calc(100vw-32px)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 shadow-2xl shadow-slate-900/10 backdrop-blur-xl">
+          <aside className="fixed right-[338px] top-1/2 z-[290] flex max-h-[calc(100vh-32px)] w-72 max-w-[calc(100vw-360px)] -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl max-sm:right-4 max-sm:top-4 max-sm:w-[calc(100vw-88px)] max-sm:max-w-none max-sm:translate-y-0">
             <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-3 py-2.5">
               <div className="flex items-center gap-2">
                 <div className="flex size-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
@@ -3675,175 +3894,57 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
             </div>
           </aside>
         )}
-
-        {/* Floating bottom page dock — teacher only */}
-        {showTeacherControls && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-40 flex justify-center px-4">
-            <div className="pointer-events-auto flex max-w-[calc(100vw-32px)] items-center gap-1 rounded-2xl border border-slate-200/80 bg-white/95 p-1 shadow-xl shadow-slate-900/10 backdrop-blur-xl">
-              <button
-                type="button"
-                onClick={addPage}
-                title="Add page"
-                aria-label="Add page"
-                className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm transition hover:bg-blue-700"
-              >
-                <Plus className="size-4" />
-              </button>
-
-              <div className="mx-1 h-5 w-px bg-slate-200" />
-
-              <div className="max-w-[min(70vw,900px)] overflow-x-auto scrollbar-thin">
-                <div className="flex min-w-max items-center gap-1">
-                  {pages.map((page, index) => {
-                    const isActive = currentPageIndex === index;
-                    return (
-                      <div
-                        key={page.id}
-                        className={`group flex h-8 shrink-0 items-center rounded-lg border transition-all ${isActive ? "border-blue-200 bg-blue-50" : "border-transparent hover:border-slate-200 hover:bg-slate-50"}`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCurrentPageIndex(index);
-                            setSelectedElementId(null);
-                          }}
-                          title={`Open ${page.name}`}
-                          className="flex h-full items-center gap-1.5 px-2.5"
-                        >
-                          <span
-                            className={`text-[10px] font-extrabold ${isActive ? "text-blue-600" : "text-slate-400"}`}
-                          >
-                            {index + 1}
-                          </span>
-                          <span
-                            className={`max-w-28 truncate text-[10px] font-semibold ${isActive ? "text-blue-800" : "text-slate-600"}`}
-                          >
-                            {page.name}
-                          </span>
-                          <span
-                            className={`whitespace-nowrap text-[9px] ${isActive ? "text-blue-500" : "text-slate-400"}`}
-                          >
-                            · {page.elements.length}{" "}
-                            {page.elements.length === 1 ? "item" : "items"}
-                          </span>
-                        </button>
-
-                        <div
-                          className={`flex items-center border-l px-0.5 ${isActive ? "border-blue-200 opacity-100" : "border-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100"}`}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => duplicatePage(index)}
-                            title="Duplicate page"
-                            aria-label={`Duplicate ${page.name}`}
-                            className="flex size-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-white hover:text-blue-600"
-                          >
-                            <Copy className="size-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => renamePage(index)}
-                            title="Rename page"
-                            aria-label={`Rename ${page.name}`}
-                            className="flex size-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-white hover:text-slate-700"
-                          >
-                            <Settings2 className="size-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deletePage(index)}
-                            title="Delete page"
-                            aria-label={`Delete ${page.name}`}
-                            className="flex size-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Floating undo / redo controls — teacher only */}
-        {showTeacherControls && (
-          <div className="absolute bottom-3 left-4 z-40 flex items-center gap-0.5 rounded-xl border border-slate-200/80 bg-white/95 p-1 shadow-lg shadow-slate-900/5 backdrop-blur-xl">
-            <button
-              type="button"
-              onClick={undo}
-              title="Undo"
-              aria-label="Undo"
-              className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-            >
-              <Undo2 className="size-4" />
-            </button>
-            <button
-              type="button"
-              onClick={redo}
-              title="Redo"
-              aria-label="Redo"
-              className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-            >
-              <Redo2 className="size-4" />
-            </button>
-            <div className="mx-1 h-5 w-px bg-slate-200" />
-            <button
-              type="button"
-              onClick={clearPage}
-              title="Clear page"
-              aria-label="Clear page"
-              className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
-          </div>
-        )}
-
-        {/* Floating workspace status — teacher only */}
-        {showTeacherControls && (
-          <div className="absolute bottom-3 right-4 z-40 hidden items-center gap-2 rounded-xl border border-slate-200/80 bg-white/95 px-3 py-1.5 text-[9px] font-semibold text-slate-500 shadow-lg shadow-slate-900/5 backdrop-blur-xl md:flex">
-            <span
-              className={`size-1.5 rounded-full ${tool === "pen" ? "bg-blue-500" : "bg-slate-400"}`}
-            />
-            {tool === "pen"
-              ? `Pen · ${width}px`
-              : tool.charAt(0).toUpperCase() + tool.slice(1)}
-          </div>
-        )}
       </div>
 
-      {/* Teacher controls toggle — intentionally always visible */}
-      <div className="pointer-events-none fixed bottom-5 right-5 z-300">
+      {/* Draggable teacher control launcher */}
+      <div
+        className="pointer-events-none fixed inset-0 z-[320]"
+        aria-hidden={false}
+      >
         <button
           type="button"
-          onClick={toggleTeacherControls}
+          onPointerDown={handleTeacherControlPointerDown}
+          onPointerMove={handleTeacherControlPointerMove}
+          onPointerUp={handleTeacherControlPointerUp}
+          onPointerCancel={handleTeacherControlPointerUp}
+          onClick={handleTeacherControlClick}
           title={
             showTeacherControls
-              ? "Hide teacher controls"
-              : "Open teacher controls"
+              ? "Hide teacher controls · drag to reposition"
+              : "Open teacher controls · drag to reposition"
           }
           aria-label={
             showTeacherControls
-              ? "Hide teacher controls"
-              : "Open teacher controls"
+              ? "Hide teacher controls. Drag to reposition."
+              : "Open teacher controls. Drag to reposition."
           }
-          className={`pointer-events-auto group flex items-center gap-2 rounded-2xl border px-3.5 py-2.5 text-xs font-bold shadow-xl backdrop-blur-xl transition-all duration-200 ${
+          style={{
+            left: teacherControlPosition.left,
+            top: teacherControlPosition.top,
+            touchAction: "none",
+          }}
+          className={`pointer-events-auto fixed z-[321] flex size-[52px] select-none items-center justify-center overflow-hidden rounded-2xl border bg-white/95 shadow-xl backdrop-blur-xl transition-[transform,box-shadow,border-color] duration-200 hover:scale-105 active:scale-95 ${
             showTeacherControls
-              ? "border-slate-300 bg-white/95 text-slate-700 shadow-slate-900/10 hover:bg-white"
-              : "border-slate-700/40 bg-slate-900/90 text-white shadow-slate-950/25 hover:bg-slate-800"
+              ? "border-blue-200 shadow-blue-500/20"
+              : "border-white/80 shadow-slate-950/15"
+          } ${
+            teacherControlDragging
+              ? "cursor-grabbing shadow-2xl"
+              : "cursor-grab"
           }`}
         >
-          <Settings2
-            className={`size-4 transition-transform duration-300 ${
-              showTeacherControls ? "rotate-90" : ""
+          {/* The logo is visual only. It can never navigate away from the board. */}
+          <span className="pointer-events-none flex items-center justify-center">
+            <MyLogo showText={false} clickable={false} />
+          </span>
+
+          <span
+            className={`pointer-events-none absolute -right-0.5 -top-0.5 size-3 rounded-full border-2 border-white transition-colors ${
+              showTeacherControls ? "bg-blue-500" : "bg-slate-300"
             }`}
           />
-          <span className="hidden sm:inline">
-            {showTeacherControls ? "Hide Controls" : "Teacher Controls"}
-          </span>
+
+          <span className="pointer-events-none absolute inset-0 rounded-2xl bg-blue-500/0 transition group-hover:bg-blue-500/5" />
         </button>
       </div>
 
