@@ -170,6 +170,8 @@ export function NavbarClient() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
 
   // Account dropdown
   const [accountOpen, setAccountOpen] = useState(false);
@@ -249,12 +251,16 @@ export function NavbarClient() {
     }
 
     const timer = window.setTimeout(() => {
+      const isMobile = window.matchMedia("(max-width: 767px)").matches;
+
+      const triggerType = isMobile ? "mobile" : "desktop";
+
       const loginTrigger = document.querySelector(
-        '[data-login-trigger="true"]',
+        `[data-login-trigger="${triggerType}"]`,
       ) as HTMLButtonElement | null;
 
       if (!loginTrigger) {
-        console.warn("SigninModal trigger was not found.");
+        console.warn(`SigninModal ${triggerType} trigger was not found.`);
         return;
       }
 
@@ -558,6 +564,11 @@ export function NavbarClient() {
   };
 
   const closeMobileMenu = () => {
+    setMobileOpen(false);
+  };
+  const openAuthModal = (mode: "signin" | "signup") => {
+    setAuthMode(mode);
+    setAuthOpen(true);
     setMobileOpen(false);
   };
 
@@ -949,37 +960,35 @@ export function NavbarClient() {
                   </div>
                 </div>
               ) : (
-                <AuthModal defaultMode="signin">
-                  <button
-                    type="button"
-                    data-login-trigger="true"
-                    className={cn(
-                      buttonVariants({
-                        variant: "default",
-                        size: "sm",
-                      }),
-                      `
-                        h-9
-                        cursor-pointer
-                        rounded-md
-                        border-0
-                        bg-blue-500
-                        px-5
-                        text-sm
-                        font-medium
-                        text-white
-                        shadow-md
-                        shadow-[#857938]/20
-                        transition-all
-                        hover:bg-blue-600
-                        active:scale-95
-                        whitespace-nowrap
-                      `,
-                    )}
-                  >
-                    Sign In
-                  </button>
-                </AuthModal>
+                <button
+                  type="button"
+                  onClick={() => openAuthModal("signin")}
+                  className={cn(
+                    buttonVariants({
+                      variant: "default",
+                      size: "sm",
+                    }),
+                    `
+      h-9
+      cursor-pointer
+      rounded-md
+      border-0
+      bg-blue-500
+      px-5
+      text-sm
+      font-medium
+      text-white
+      shadow-md
+      shadow-[#857938]/20
+      transition-all
+      hover:bg-blue-600
+      active:scale-95
+      whitespace-nowrap
+    `,
+                  )}
+                >
+                  Sign In
+                </button>
               ))}
 
             {/* CART */}
@@ -1029,6 +1038,12 @@ export function NavbarClient() {
             </button>
           </div>
         </div>
+
+        <AuthModal
+          open={authOpen}
+          onOpenChange={setAuthOpen}
+          defaultMode={authMode}
+        />
 
         {/* ======================================================
             MOBILE HEADER
@@ -1746,30 +1761,34 @@ export function NavbarClient() {
                 MOBILE AUTH
             ==================================================== */}
 
+            {/* ====================================================
+    MOBILE AUTH
+==================================================== */}
+
             {session ? (
               <div
                 className="
-                  mt-3
-                  border-t
-                  border-slate-100
-                  pt-3
-                "
+      mt-3
+      border-t
+      border-slate-100
+      pt-3
+    "
               >
                 <Link
                   href={dashboardUrl}
                   className="
-                    block
-                    rounded-lg
-                    bg-[#857938]
-                    px-3
-                    py-2.5
-                    text-center
-                    text-sm
-                    font-medium
-                    text-white
-                    transition-colors
-                    hover:bg-[#70662e]
-                  "
+        block
+        rounded-lg
+        bg-[#857938]
+        px-3
+        py-2.5
+        text-center
+        text-sm
+        font-medium
+        text-white
+        transition-colors
+        hover:bg-[#70662e]
+      "
                   onClick={closeMobileMenu}
                 >
                   Go to Dashboard →
@@ -1778,59 +1797,56 @@ export function NavbarClient() {
             ) : (
               <div
                 className="
-                  mt-3
-                  flex
-                  flex-col
-                  gap-2
-                  border-t
-                  border-slate-100
-                  pt-3
-                "
+      mt-3
+      flex
+      flex-col
+      gap-2
+      border-t
+      border-slate-100
+      pt-3
+    "
               >
-                <AuthModal defaultMode="signin">
-                  <button
-                    type="button"
-                    data-login-trigger="true"
-                    className="
-                      block
-                      w-full
-                      cursor-pointer
-                      py-2
-                      text-center
-                      text-sm
-                      font-medium
-                      text-slate-700
-                      transition-colors
-                      hover:text-[#857938]
-                    "
-                    onClick={closeMobileMenu}
-                  >
-                    Log in
-                  </button>
-                </AuthModal>
+                {/* MOBILE LOGIN */}
+                <button
+                  type="button"
+                  onClick={() => openAuthModal("signin")}
+                  className="
+    block
+    w-full
+    cursor-pointer
+    py-2
+    text-center
+    text-sm
+    font-medium
+    text-slate-700
+    transition-colors
+    hover:text-[#857938]
+  "
+                >
+                  Log in
+                </button>
 
-                <AuthModal defaultMode="signup">
-                  <button
-                    type="button"
-                    className="
-                      block
-                      w-full
-                      cursor-pointer
-                      rounded-lg
-                      bg-[#857938]
-                      py-2
-                      text-center
-                      text-sm
-                      font-medium
-                      text-white
-                      transition-colors
-                      hover:bg-[#70662e]
-                    "
-                    onClick={closeMobileMenu}
-                  >
-                    Get Started
-                  </button>
-                </AuthModal>
+                {/* MOBILE SIGN UP */}
+                <button
+                  type="button"
+                  onClick={() => openAuthModal("signup")}
+                  className="
+    block
+    w-full
+    cursor-pointer
+    rounded-lg
+    bg-[#857938]
+    py-2
+    text-center
+    text-sm
+    font-medium
+    text-white
+    transition-colors
+    hover:bg-[#70662e]
+  "
+                >
+                  Get Started
+                </button>
               </div>
             )}
           </motion.div>

@@ -2,11 +2,7 @@
 
 import { useState } from "react";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from "@/app/_components/ui/dialog";
+import { Dialog, DialogContent } from "@/app/_components/ui/dialog";
 
 import { SigninModal } from "./SigninModal";
 import { SignupModal } from "./SignupModal";
@@ -14,48 +10,36 @@ import { SignupModal } from "./SignupModal";
 type AuthMode = "signin" | "signup";
 
 interface AuthModalProps {
-  children?: React.ReactNode;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   defaultMode?: AuthMode;
 }
 
 export function AuthModal({
-  children,
   open,
   onOpenChange,
   defaultMode = "signin",
 }: AuthModalProps) {
-  const [internalOpen, setInternalOpen] = useState(false);
   const [mode, setMode] = useState<AuthMode>(defaultMode);
 
-  const isControlled = open !== undefined;
-  const isOpen = isControlled ? open : internalOpen;
+  const handleOpenChange = (nextOpen: boolean) => {
+    onOpenChange(nextOpen);
 
-  const handleOpenChange = (value: boolean) => {
-    if (isControlled) {
-      onOpenChange?.(value);
-    } else {
-      setInternalOpen(value);
-    }
-
-    if (!value) {
+    if (!nextOpen) {
       setMode(defaultMode);
     }
   };
 
-  const switchToSignin = () => {
-    setMode("signin");
-  };
+  const handleSigninSuccess = () => {
+    // Close the modal after successful authentication
+    onOpenChange(false);
 
-  const switchToSignup = () => {
-    setMode("signup");
+    // Reset back to the default mode for the next time it opens
+    setMode(defaultMode);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      {children ? <DialogTrigger asChild>{children}</DialogTrigger> : null}
-
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className="
           w-[calc(100%-2rem)]
@@ -63,18 +47,24 @@ export function AuthModal({
           max-h-[calc(100vh-2rem)]
           overflow-y-auto
           overflow-x-hidden
-          p-0
+          rounded-xl
           border-0
           bg-transparent
+          p-0
           shadow-2xl
-          rounded-xl
           sm:max-h-[calc(100vh-3rem)]
         "
       >
         {mode === "signin" ? (
-          <SigninModal onSwitchToSignup={switchToSignup} />
+          <SigninModal
+            onSwitchToSignup={() => setMode("signup")}
+            onSuccess={handleSigninSuccess}
+          />
         ) : (
-          <SignupModal onSwitchToSignin={switchToSignin} />
+          <SignupModal
+            onSwitchToSignin={() => setMode("signin")}
+            onSuccess={handleSigninSuccess}
+          />
         )}
       </DialogContent>
     </Dialog>

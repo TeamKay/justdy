@@ -39,9 +39,10 @@ type RoleOption = "Learner" | "Educator";
 
 interface SignupModalProps {
   onSwitchToSignin?: () => void;
+  onSuccess?: () => void;
 }
 
-export function SignupModal({ onSwitchToSignin }: SignupModalProps) {
+export function SignupModal({ onSwitchToSignin, onSuccess }: SignupModalProps) {
   const router = useRouter();
 
   const [isPending, startTransition] = useTransition();
@@ -93,9 +94,10 @@ export function SignupModal({ onSwitchToSignin }: SignupModalProps) {
 
         return;
       }
-
       if (res.type === "created") {
         toast.success("Verification email sent! Please check your inbox.");
+
+        onSuccess?.();
 
         router.push(
           `/verify-request?email=${encodeURIComponent(values.email)}`,

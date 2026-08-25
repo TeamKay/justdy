@@ -3,6 +3,7 @@ import { Inter, Playfair_Display } from "next/font/google";
 import { Toaster } from "./_components/ui/sonner";
 import { ThemeProvider } from "./_components/ui/theme-provider";
 import { TooltipProvider } from "./_components/ui/tooltip";
+import SiteAnalyticsTracker from "@/app/_components/SiteAnalyticsTracker";
 import "katex/dist/katex.min.css";
 
 import "./globals.css";
@@ -43,6 +44,7 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <SiteAnalyticsTracker />
           <TooltipProvider>
             {children}
             <Toaster closeButton position="bottom-center" />

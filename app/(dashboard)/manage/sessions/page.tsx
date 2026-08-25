@@ -77,6 +77,7 @@ function StatusBadge({ status }: { status: AppointmentStatus }) {
 /* ============================================================
    PAGE
    ============================================================ */
+
 export const dynamic = "force-dynamic";
 
 export default async function SessionsPage() {
@@ -97,7 +98,7 @@ export default async function SessionsPage() {
           HEADER
           ====================================================== */}
 
-      <div className=" flex flex-col gap-4 px-1  sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 px-1 sm:flex-row sm:items-center sm:justify-between">
         {/* TITLE */}
 
         <div className="flex items-center gap-3">
@@ -114,25 +115,42 @@ export default async function SessionsPage() {
           </div>
         </div>
 
-        {/* NEXT APPOINTMENT */}
+        {/* ====================================================
+            HEADER ACTIONS
+            ==================================================== */}
 
-        {nextAppointment && (
-          <Badge
-            variant="outline"
-            className="w-fit border-emerald-500/20 bg-emerald-500/5 text-emerald-400"
+        <div className="flex flex-wrap items-center gap-3">
+          {/* NEXT APPOINTMENT */}
+
+          {nextAppointment && (
+            <Badge
+              variant="outline"
+              className="w-fit border-emerald-500/20 bg-emerald-500/5 text-emerald-400"
+            >
+              Next:{" "}
+              {format(new Date(nextAppointment.startTime), "MMM d, h:mm a")}
+            </Badge>
+          )}
+
+          {/* ==================================================
+              STANDALONE WHITEBOARD
+
+              This does NOT depend on appointments.
+              ================================================== */}
+
+          <Link
+            href="/manage/sessions/whiteboard/standalone"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-400"
           >
-            Next: {format(new Date(nextAppointment.startTime), "MMM d, h:mm a")}
-          </Badge>
-        )}
-
-        <Link
-          href="/manage/sessions/whiteboard"
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-400"
-        >
-          <Pencil className="size-4" />
-          Open Whiteboard
-        </Link>
+            <Pencil className="size-4" />
+            Open Whiteboard
+          </Link>
+        </div>
       </div>
+
+      {/* ======================================================
+          APPOINTMENTS
+          ====================================================== */}
 
       {sortedAppointments.length > 0 ? (
         <div className="space-y-4">
@@ -170,17 +188,19 @@ export default async function SessionsPage() {
                   </div>
                 </div>
 
-                {/* STATUS + WHITEBOARD */}
+                {/* =================================================
+                    STATUS + SESSION WHITEBOARD
+                    ================================================= */}
 
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusBadge
                     status={appointment.status as AppointmentStatus}
                   />
 
+                  {/* APPOINTMENT-SPECIFIC WHITEBOARD */}
+
                   <Link
-                    href={`/manage/sessions/whiteboard?sessionId=${encodeURIComponent(
-                      appointment.id,
-                    )}`}
+                    href={`/manage/sessions/whiteboard/${appointment.id}`}
                     className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-black transition hover:bg-emerald-400"
                   >
                     <Pencil className="size-4" />

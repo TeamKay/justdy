@@ -93,7 +93,127 @@ type WhiteboardPage = {
   elements: WhiteboardElement[];
 };
 
-const STORAGE_KEY = "justdy-lab-whiteboard-v2";
+type FormulaCategory =
+  | "algebra"
+  | "geometry"
+  | "calculus"
+  | "trigonometry"
+  | "statistics"
+  | "physics";
+
+type WhiteboardMode = "standalone" | "appointment";
+
+type WhiteboardProps = {
+  mode: WhiteboardMode;
+  appointmentId?: string;
+};
+
+type SavedWhiteboardData = {
+  version?: number;
+  whiteboardId?: string;
+  mode?: WhiteboardMode;
+  appointmentId?: string;
+  pages?: WhiteboardPage[];
+  currentPageIndex?: number;
+  showGrid?: boolean;
+  backgroundColor?: string;
+  backgroundImage?: string | null;
+  gridColor?: string;
+  snapToGrid?: boolean;
+  color?: string;
+  width?: number;
+  tool?: Tool;
+  formulaCategory?: FormulaCategory;
+  savedAt?: string;
+};
+
+const FORMULA_CATEGORIES: readonly FormulaCategory[] = [
+  "algebra",
+  "geometry",
+  "calculus",
+  "trigonometry",
+  "statistics",
+  "physics",
+];
+
+function isTool(value: unknown): value is Tool {
+  return (
+    value === "select" ||
+    value === "pen" ||
+    value === "eraser" ||
+    value === "line" ||
+    value === "rectangle" ||
+    value === "circle" ||
+    value === "triangle" ||
+    value === "text" ||
+    value === "equation" ||
+    value === "axes" ||
+    value === "ruler"
+  );
+}
+
+function isFormulaCategory(value: unknown): value is FormulaCategory {
+  return (
+    typeof value === "string" &&
+    FORMULA_CATEGORIES.includes(value as FormulaCategory)
+  );
+}
+
+function parseSavedBoardData(value: unknown): SavedWhiteboardData | null {
+  if (!value || typeof value !== "object") return null;
+
+  const candidate = value as Record<string, unknown>;
+
+  return {
+    version:
+      typeof candidate.version === "number" ? candidate.version : undefined,
+    whiteboardId:
+      typeof candidate.whiteboardId === "string"
+        ? candidate.whiteboardId
+        : undefined,
+    mode:
+      candidate.mode === "standalone" || candidate.mode === "appointment"
+        ? candidate.mode
+        : undefined,
+    appointmentId:
+      typeof candidate.appointmentId === "string"
+        ? candidate.appointmentId
+        : undefined,
+    pages: Array.isArray(candidate.pages)
+      ? (candidate.pages as WhiteboardPage[])
+      : undefined,
+    currentPageIndex:
+      typeof candidate.currentPageIndex === "number"
+        ? candidate.currentPageIndex
+        : undefined,
+    showGrid:
+      typeof candidate.showGrid === "boolean" ? candidate.showGrid : undefined,
+    backgroundColor:
+      typeof candidate.backgroundColor === "string"
+        ? candidate.backgroundColor
+        : undefined,
+    backgroundImage:
+      typeof candidate.backgroundImage === "string"
+        ? candidate.backgroundImage
+        : candidate.backgroundImage === null
+          ? null
+          : undefined,
+    gridColor:
+      typeof candidate.gridColor === "string" ? candidate.gridColor : undefined,
+    snapToGrid:
+      typeof candidate.snapToGrid === "boolean"
+        ? candidate.snapToGrid
+        : undefined,
+    color: typeof candidate.color === "string" ? candidate.color : undefined,
+    width: typeof candidate.width === "number" ? candidate.width : undefined,
+    tool: isTool(candidate.tool) ? candidate.tool : undefined,
+    formulaCategory: isFormulaCategory(candidate.formulaCategory)
+      ? candidate.formulaCategory
+      : undefined,
+    savedAt:
+      typeof candidate.savedAt === "string" ? candidate.savedAt : undefined,
+  };
+}
 
 const COLORS = [
   "#0f172a",
@@ -108,6 +228,12 @@ const COLORS = [
   "#64748b",
   "#db2777",
   "#4f46e5",
+];
+
+const DEFAULT_BACKGROUND_IMAGE = "/images/chalkboard.png";
+
+const BACKGROUND_IMAGE_OPTIONS = [
+  { label: "Chalkboard", value: DEFAULT_BACKGROUND_IMAGE },
 ];
 
 const BACKGROUND_OPTIONS = [
@@ -586,11 +712,25 @@ function translateElement(
   return { ...element, x: element.x + dx, y: element.y + dy };
 }
 
-export default function Whiteboard() {
+export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
+  const [databaseWhiteboardId, setDatabaseWhiteboardId] = useState<
+    string | null
+  >(null);
+  const [whiteboardReady, setWhiteboardReady] = useState(false);
+
   const rootRef = useRef<HTMLElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
+  const hasLoadedBoardRef = useRef(false);
+
+  const storageKey = useMemo(() => {
+    if (mode === "standalone") {
+      return "justdy-lab-whiteboard:standalone";
+    }
+
+    return `justdy-lab-whiteboard:appointment:${appointmentId ?? "unknown"}`;
+  }, [mode, appointmentId]);
 
   const [pages, setPages] = useState<WhiteboardPage[]>([createPage("Page 1")]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
@@ -601,7 +741,12 @@ export default function Whiteboard() {
 
   const [showGrid, setShowGrid] = useState(true);
   const [gridSize] = useState(32);
-  const [backgroundColor, setBackgroundColor] = useState("#ffffff");
+  const [backgroundColor, setBackgroundColor] = useState("#18181b");
+  const [backgroundImage, setBackgroundImage] = useState<string | null>(
+    DEFAULT_BACKGROUND_IMAGE,
+  );
+  const backgroundImageRef = useRef<HTMLImageElement | null>(null);
+  const [backgroundImageVersion, setBackgroundImageVersion] = useState(0);
   const [gridColor, setGridColor] = useState("#e5e7eb");
 
   const [showColorPopup, setShowColorPopup] = useState(false);
@@ -623,16 +768,11 @@ export default function Whiteboard() {
   const [showCalculator, setShowCalculator] = useState(false);
   const [calculatorValue, setCalculatorValue] = useState("");
   const [calculatorResult, setCalculatorResult] = useState("");
-  const [formulaCategory, setFormulaCategory] = useState<
-    | "algebra"
-    | "geometry"
-    | "calculus"
-    | "trigonometry"
-    | "statistics"
-    | "physics"
-  >("algebra");
+  const [formulaCategory, setFormulaCategory] =
+    useState<FormulaCategory>("algebra");
 
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showTeacherControls, setShowTeacherControls] = useState(false);
 
   const [renamePageState, setRenamePageState] = useState<{
     open: boolean;
@@ -643,7 +783,10 @@ export default function Whiteboard() {
     index: null,
     name: "",
   });
-  const [, setIsSaved] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle");
   const [selectedEquation, setSelectedEquation] = useState("");
   const [selectedElementId, setSelectedElementId] = useState<string | null>(
     null,
@@ -1110,6 +1253,44 @@ export default function Whiteboard() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }, []);
 
+  useEffect(() => {
+    // Clear the previously loaded image immediately when the selected
+    // background changes. The image is loaded asynchronously below.
+    backgroundImageRef.current = null;
+
+    if (!backgroundImage) return;
+
+    const image = new Image();
+    const requestedBackground = backgroundImage;
+
+    image.onload = () => {
+      // Ignore a late response from an image that is no longer selected.
+      if (backgroundImage !== requestedBackground) return;
+
+      backgroundImageRef.current = image;
+      // This state update happens from the external image-load callback,
+      // rather than synchronously inside the effect body.
+      setBackgroundImageVersion((value) => value + 1);
+    };
+
+    image.onerror = () => {
+      if (backgroundImage !== requestedBackground) return;
+
+      console.error(
+        `Failed to load whiteboard background image: ${requestedBackground}`,
+      );
+      backgroundImageRef.current = null;
+      setBackgroundImageVersion((value) => value + 1);
+    };
+
+    image.src = requestedBackground;
+
+    return () => {
+      image.onload = null;
+      image.onerror = null;
+    };
+  }, [backgroundImage]);
+
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -1119,8 +1300,25 @@ export default function Whiteboard() {
     if (!ctx) return;
     const rect = container.getBoundingClientRect();
 
-    ctx.fillStyle = backgroundColor;
-    ctx.fillRect(0, 0, rect.width, rect.height);
+    if (backgroundImage && backgroundImageRef.current) {
+      const image = backgroundImageRef.current;
+
+      const scale = Math.max(
+        rect.width / image.naturalWidth,
+        rect.height / image.naturalHeight,
+      );
+
+      const imageWidth = image.naturalWidth * scale;
+      const imageHeight = image.naturalHeight * scale;
+      const imageX = (rect.width - imageWidth) / 2;
+      const imageY = (rect.height - imageHeight) / 2;
+
+      ctx.drawImage(image, imageX, imageY, imageWidth, imageHeight);
+    } else {
+      ctx.fillStyle = backgroundColor;
+      ctx.fillRect(0, 0, rect.width, rect.height);
+    }
+
     drawGrid(ctx, rect.width, rect.height);
 
     // During move/resize, draw the live transformed element instead of waiting
@@ -1154,6 +1352,8 @@ export default function Whiteboard() {
     if (selected) drawSelection(ctx, selected);
   }, [
     backgroundColor,
+    backgroundImage,
+    backgroundImageVersion,
     drawGrid,
     drawShape,
     drawStroke,
@@ -1785,33 +1985,289 @@ export default function Whiteboard() {
     closeRenamePage();
   };
 
-  const saveBoard = () => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ pages, currentPageIndex }),
-    );
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2000);
-  };
-
-  const restoreBoard = () => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      window.alert("No saved session found.");
-      return;
-    }
+  const resolveWhiteboard = useCallback(async () => {
     try {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed.pages)) {
-        setPages(parsed.pages);
-        setCurrentPageIndex(
-          Math.min(parsed.currentPageIndex ?? 0, parsed.pages.length - 1),
-        );
+      setWhiteboardReady(false);
+
+      if (mode === "appointment" && !appointmentId) {
+        throw new Error("Appointment ID is required");
       }
-    } catch {
-      window.alert("Failed to load saved state.");
+
+      const response = await fetch("/api/whiteboards/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode,
+          appointmentId: mode === "appointment" ? appointmentId : undefined,
+        }),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.error || "Failed to resolve whiteboard");
+      }
+
+      const id = result?.whiteboard?.id;
+      if (!id) throw new Error("Whiteboard ID was not returned");
+
+      setDatabaseWhiteboardId(id);
+      return id as string;
+    } catch (error) {
+      console.error("Failed to resolve whiteboard:", error);
+      setSaveStatus("error");
+      setWhiteboardReady(false);
+      return null;
     }
-  };
+  }, [mode, appointmentId]);
+
+  const applyBoardData = useCallback((input: unknown) => {
+    const boardData = parseSavedBoardData(input);
+    if (!boardData) return;
+
+    if (Array.isArray(boardData.pages) && boardData.pages.length > 0) {
+      setPages(boardData.pages);
+      const nextPageIndex = Math.min(
+        Math.max(boardData.currentPageIndex ?? 0, 0),
+        boardData.pages.length - 1,
+      );
+      setCurrentPageIndex(nextPageIndex);
+      historyRef.current = [structuredClone(boardData.pages)];
+      redoRef.current = [];
+    }
+
+    if (typeof boardData.showGrid === "boolean")
+      setShowGrid(boardData.showGrid);
+    if (typeof boardData.backgroundColor === "string")
+      setBackgroundColor(boardData.backgroundColor);
+    if (typeof boardData.backgroundImage === "string")
+      setBackgroundImage(boardData.backgroundImage);
+    else if (boardData.backgroundImage === null) setBackgroundImage(null);
+    if (typeof boardData.gridColor === "string")
+      setGridColor(boardData.gridColor);
+    if (typeof boardData.snapToGrid === "boolean")
+      setSnapToGrid(boardData.snapToGrid);
+    if (typeof boardData.color === "string") setColor(boardData.color);
+    if (typeof boardData.width === "number") setWidth(boardData.width);
+    if (boardData.tool) setTool(boardData.tool);
+    if (boardData.formulaCategory)
+      setFormulaCategory(boardData.formulaCategory);
+
+    setSelectedElementId(null);
+  }, []);
+
+  const saveBoard = useCallback(
+    async (showFeedback = true) => {
+      if (!databaseWhiteboardId || !whiteboardReady) return;
+
+      if (showFeedback) {
+        setSaveStatus("saving");
+        setIsSaved(false);
+      }
+
+      const boardData = {
+        version: 1,
+        whiteboardId: databaseWhiteboardId,
+        mode,
+        appointmentId,
+        pages,
+        currentPageIndex,
+        showGrid,
+        backgroundColor,
+        backgroundImage,
+        gridColor,
+        snapToGrid,
+        color,
+        width,
+        tool,
+        formulaCategory,
+        savedAt: new Date().toISOString(),
+      };
+
+      try {
+        const response = await fetch(
+          `/api/whiteboards/${databaseWhiteboardId}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: currentPage?.name ?? "Untitled Whiteboard",
+              data: boardData,
+            }),
+          },
+        );
+
+        const result = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(result?.error || "Failed to save whiteboard");
+        }
+
+        localStorage.setItem(storageKey, JSON.stringify(boardData));
+
+        if (showFeedback) {
+          setSaveStatus("saved");
+          setIsSaved(true);
+          window.setTimeout(() => {
+            setIsSaved(false);
+            setSaveStatus("idle");
+          }, 2500);
+        }
+      } catch (error) {
+        console.error("Failed to save whiteboard:", error);
+        if (showFeedback) {
+          setSaveStatus("error");
+          setIsSaved(false);
+        }
+      }
+    },
+    [
+      databaseWhiteboardId,
+      whiteboardReady,
+      mode,
+      appointmentId,
+      storageKey,
+      pages,
+      currentPageIndex,
+      showGrid,
+      backgroundColor,
+      backgroundImage,
+      gridColor,
+      snapToGrid,
+      color,
+      width,
+      tool,
+      formulaCategory,
+      currentPage,
+    ],
+  );
+
+  const restoreBoard = useCallback(async () => {
+    if (!databaseWhiteboardId) return;
+
+    try {
+      const response = await fetch(`/api/whiteboards/${databaseWhiteboardId}`, {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.error || "Failed to retrieve whiteboard");
+      }
+
+      const boardData = result?.whiteboard?.data;
+      if (boardData) {
+        applyBoardData(boardData);
+        localStorage.setItem(storageKey, JSON.stringify(boardData));
+      }
+    } catch (error) {
+      console.error("Failed to restore whiteboard from database:", error);
+
+      // Local cache is only a fallback when the database cannot be reached.
+      try {
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+          const parsed: unknown = JSON.parse(stored);
+          applyBoardData(parsed);
+        }
+      } catch (localError) {
+        console.error("Failed to restore local whiteboard cache:", localError);
+      }
+    }
+  }, [databaseWhiteboardId, storageKey, applyBoardData]);
+
+  // Resolve the route context into the actual Prisma Whiteboard ID.
+  useEffect(() => {
+    if (mode === "appointment" && !appointmentId) return;
+
+    let cancelled = false;
+
+    const initializeWhiteboard = async () => {
+      hasLoadedBoardRef.current = false;
+      setWhiteboardReady(false);
+
+      const id = await resolveWhiteboard();
+      if (!id || cancelled) return;
+
+      try {
+        const response = await fetch(`/api/whiteboards/${id}`, {
+          method: "GET",
+          cache: "no-store",
+        });
+        const result = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(result?.error || "Failed to load whiteboard");
+        }
+
+        if (!cancelled) {
+          const boardData = result?.whiteboard?.data;
+
+          if (boardData) {
+            applyBoardData(boardData);
+            localStorage.setItem(storageKey, JSON.stringify(boardData));
+          }
+
+          hasLoadedBoardRef.current = true;
+          setWhiteboardReady(true);
+        }
+      } catch (error) {
+        console.error("Failed to initialize whiteboard:", error);
+
+        if (!cancelled) {
+          try {
+            const stored = localStorage.getItem(storageKey);
+            if (stored) {
+              const parsed: unknown = JSON.parse(stored);
+              applyBoardData(parsed);
+            }
+          } catch (localError) {
+            console.error(
+              "Failed to restore local whiteboard cache:",
+              localError,
+            );
+          }
+
+          hasLoadedBoardRef.current = true;
+          setWhiteboardReady(true);
+        }
+      }
+    };
+
+    initializeWhiteboard();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, appointmentId, resolveWhiteboard, applyBoardData, storageKey]);
+
+  useEffect(() => {
+    if (!databaseWhiteboardId || !whiteboardReady || !hasLoadedBoardRef.current)
+      return;
+
+    const timeout = window.setTimeout(() => {
+      saveBoard(false);
+    }, 1200);
+
+    return () => window.clearTimeout(timeout);
+  }, [
+    databaseWhiteboardId,
+    whiteboardReady,
+    pages,
+    currentPageIndex,
+    showGrid,
+    backgroundColor,
+    backgroundImage,
+    gridColor,
+    snapToGrid,
+    color,
+    width,
+    tool,
+    formulaCategory,
+    saveBoard,
+  ]);
 
   const exportPNG = () => {
     const canvas = canvasRef.current;
@@ -1832,6 +2288,22 @@ export default function Whiteboard() {
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const toggleTeacherControls = () => {
+    setShowTeacherControls((current) => {
+      const next = !current;
+
+      if (!next) {
+        setShowGraphSettings(false);
+        setShowCalculator(false);
+        setShowToolsPanel(false);
+        setShowColorPopup(false);
+        setColorPopupTarget(null);
+      }
+
+      return next;
+    });
   };
 
   const runCalculator = useCallback(() => {
@@ -1942,6 +2414,31 @@ export default function Whiteboard() {
   };
 
   useEffect(() => {
+    const handleFocusModeKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTypingTarget =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.tagName === "SELECT" ||
+        target?.isContentEditable;
+
+      if (
+        !isTypingTarget &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        event.key.toLowerCase() === "f"
+      ) {
+        event.preventDefault();
+        toggleTeacherControls();
+      }
+    };
+
+    window.addEventListener("keydown", handleFocusModeKeyDown);
+    return () => window.removeEventListener("keydown", handleFocusModeKeyDown);
+  }, []);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (tool !== "select" || !selectedElementId) return;
       const target = event.target as HTMLElement | null;
@@ -1992,155 +2489,187 @@ export default function Whiteboard() {
       ref={rootRef}
       className="relative flex h-screen w-full flex-col overflow-hidden bg-slate-50 text-slate-900 antialiased"
     >
-      {/* Floating top command bar */}
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-50 flex items-start justify-between px-4 pt-3">
-        <div className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/95 px-3 py-2 shadow-lg shadow-slate-900/5 backdrop-blur-xl">
-          <div className="flex size-8 items-center justify-center overflow-hidden rounded-xl bg-white">
-            <MyLogo showText={false} />
-          </div>
-
-          <div className="hidden sm:block">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xs font-extrabold tracking-tight text-slate-900">
-                Justdy Teaching Lab
-              </h1>
-              <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[8px] font-bold text-blue-600">
-                WHITEBOARD
-              </span>
+      {/* Floating top command bar — teacher only */}
+      {showTeacherControls && (
+        <header className="pointer-events-none absolute inset-x-0 top-0 z-50 flex items-start justify-between px-4 pt-3">
+          <div className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/95 px-3 py-2 shadow-lg shadow-slate-900/5 backdrop-blur-xl">
+            <div className="flex size-8 items-center justify-center overflow-hidden rounded-xl bg-white">
+              <MyLogo showText={false} />
             </div>
-            <p className="text-[9px] text-slate-400">
-              {currentPage?.name} · {elements.length}{" "}
-              {elements.length === 1 ? "item" : "items"}
-            </p>
-          </div>
-        </div>
 
-        <div className="pointer-events-auto flex items-center gap-0.5 rounded-2xl border border-slate-200/80 bg-white/95 p-1 shadow-lg shadow-slate-900/5 backdrop-blur-xl">
-          <button
-            type="button"
-            onClick={undo}
-            title="Undo"
-            aria-label="Undo"
-            className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-          >
-            <Undo2 className="size-4" />
-          </button>
-          <button
-            type="button"
-            onClick={redo}
-            title="Redo"
-            aria-label="Redo"
-            className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-          >
-            <Redo2 className="size-4" />
-          </button>
-          {(() => {
-            const selected = elements.find(
-              (el: WhiteboardElement) => el.id === selectedElementId,
-            );
-            if (
-              !selected ||
-              (selected.type !== "text" && selected.type !== "equation")
-            )
-              return null;
-            return (
+            <div className="hidden sm:block">
+              <div className="flex items-center gap-2">
+                <h1 className="text-xs font-extrabold tracking-tight text-slate-900">
+                  Justdy Teaching Lab
+                </h1>
+                <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[8px] font-bold text-blue-600">
+                  WHITEBOARD
+                </span>
+              </div>
+              <p className="text-[9px] text-slate-400">
+                {currentPage?.name} · {elements.length}{" "}
+                {elements.length === 1 ? "item" : "items"}
+              </p>
+            </div>
+          </div>
+
+          <div className="pointer-events-auto flex items-center gap-0.5 rounded-2xl border border-slate-200/80 bg-white/95 p-1 shadow-lg shadow-slate-900/5 backdrop-blur-xl">
+            <button
+              type="button"
+              onClick={undo}
+              title="Undo"
+              aria-label="Undo"
+              className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            >
+              <Undo2 className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={redo}
+              title="Redo"
+              aria-label="Redo"
+              className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            >
+              <Redo2 className="size-4" />
+            </button>
+            {(() => {
+              const selected = elements.find(
+                (el: WhiteboardElement) => el.id === selectedElementId,
+              );
+              if (
+                !selected ||
+                (selected.type !== "text" && selected.type !== "equation")
+              )
+                return null;
+              return (
+                <button
+                  type="button"
+                  onClick={duplicateSelectedText}
+                  title="Duplicate selected text"
+                  aria-label="Duplicate selected text"
+                  className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                >
+                  <Copy className="size-4" />
+                </button>
+              );
+            })()}
+
+            <div className="mx-1 h-5 w-px bg-slate-200" />
+
+            <div className="flex items-center gap-2">
+              {saveStatus !== "idle" && (
+                <span
+                  className={`hidden sm:inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+                    saveStatus === "saving"
+                      ? "bg-blue-50 text-blue-600"
+                      : saveStatus === "saved"
+                        ? "bg-emerald-50 text-emerald-600"
+                        : "bg-red-50 text-red-600"
+                  }`}
+                >
+                  {saveStatus === "saving" && "Saving..."}
+                  {saveStatus === "saved" && "Saved"}
+                  {saveStatus === "error" && "Save failed"}
+                </span>
+              )}
+
               <button
                 type="button"
-                onClick={duplicateSelectedText}
-                title="Duplicate selected text"
-                aria-label="Duplicate selected text"
-                className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                onClick={() => saveBoard(true)}
+                title="Save workspace"
+                aria-label="Save workspace"
+                className={`flex size-8 items-center justify-center rounded-lg transition ${
+                  saveStatus === "saved"
+                    ? "bg-emerald-50 text-emerald-600"
+                    : saveStatus === "saving"
+                      ? "bg-blue-50 text-blue-600"
+                      : saveStatus === "error"
+                        ? "bg-red-50 text-red-600"
+                        : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                }`}
               >
-                <Copy className="size-4" />
+                <Save
+                  className={`size-4 ${
+                    saveStatus === "saving" ? "animate-pulse" : ""
+                  }`}
+                />
               </button>
-            );
-          })()}
+            </div>
+            <button
+              type="button"
+              onClick={restoreBoard}
+              title="Restore workspace"
+              aria-label="Restore workspace"
+              className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            >
+              <FolderOpen className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={exportPNG}
+              title="Export PNG"
+              aria-label="Export PNG"
+              className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            >
+              <Download className="size-4" />
+            </button>
 
-          <div className="mx-1 h-5 w-px bg-slate-200" />
+            <div className="mx-1 h-5 w-px bg-slate-200" />
 
-          <button
-            type="button"
-            onClick={saveBoard}
-            title="Save workspace"
-            aria-label="Save workspace"
-            className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-          >
-            <Save className="size-4" />
-          </button>
-          <button
-            type="button"
-            onClick={restoreBoard}
-            title="Restore workspace"
-            aria-label="Restore workspace"
-            className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-          >
-            <FolderOpen className="size-4" />
-          </button>
-          <button
-            type="button"
-            onClick={exportPNG}
-            title="Export PNG"
-            aria-label="Export PNG"
-            className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-          >
-            <Download className="size-4" />
-          </button>
+            <button
+              type="button"
+              onClick={() => setShowGraphSettings((v) => !v)}
+              title="Canvas & Grid"
+              aria-label="Canvas & Grid"
+              className={`flex size-8 items-center justify-center rounded-lg transition ${showGraphSettings ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}
+            >
+              <Grid2X2 className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCalculator((v) => !v)}
+              title="Calculator"
+              aria-label="Calculator"
+              className={`flex size-8 items-center justify-center rounded-lg transition ${showCalculator ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}
+            >
+              <Calculator className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowToolsPanel((v) => !v)}
+              title="Math Toolkit"
+              aria-label="Math Toolkit"
+              className={`flex size-8 items-center justify-center rounded-lg transition ${showToolsPanel ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}
+            >
+              <PanelRight className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={clearPage}
+              title="Clear page"
+              aria-label="Clear page"
+              className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+            >
+              <Trash2 className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+              aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+              className="ml-1 flex size-8 items-center justify-center rounded-lg bg-slate-900 text-white transition hover:bg-slate-800"
+            >
+              {isFullscreen ? (
+                <Minimize2 className="size-3.5" />
+              ) : (
+                <Maximize2 className="size-3.5" />
+              )}
+            </button>
+          </div>
+        </header>
+      )}
 
-          <div className="mx-1 h-5 w-px bg-slate-200" />
-
-          <button
-            type="button"
-            onClick={() => setShowGraphSettings((v) => !v)}
-            title="Canvas & Grid"
-            aria-label="Canvas & Grid"
-            className={`flex size-8 items-center justify-center rounded-lg transition ${showGraphSettings ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}
-          >
-            <Grid2X2 className="size-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowCalculator((v) => !v)}
-            title="Calculator"
-            aria-label="Calculator"
-            className={`flex size-8 items-center justify-center rounded-lg transition ${showCalculator ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}
-          >
-            <Calculator className="size-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowToolsPanel((v) => !v)}
-            title="Math Toolkit"
-            aria-label="Math Toolkit"
-            className={`flex size-8 items-center justify-center rounded-lg transition ${showToolsPanel ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}
-          >
-            <PanelRight className="size-4" />
-          </button>
-          <button
-            type="button"
-            onClick={clearPage}
-            title="Clear page"
-            aria-label="Clear page"
-            className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600"
-          >
-            <Trash2 className="size-4" />
-          </button>
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-            aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-            className="ml-1 flex size-8 items-center justify-center rounded-lg bg-slate-900 text-white transition hover:bg-slate-800"
-          >
-            {isFullscreen ? (
-              <Minimize2 className="size-3.5" />
-            ) : (
-              <Maximize2 className="size-3.5" />
-            )}
-          </button>
-        </div>
-      </header>
-
-      {showGraphSettings && (
+      {showTeacherControls && showGraphSettings && (
         <div className="absolute right-4 top-16 z-50 w-80 rounded-md border border-slate-200 bg-white p-4 shadow-2xl">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900">
@@ -2170,7 +2699,10 @@ export default function Whiteboard() {
               </label>
               <select
                 value={backgroundColor}
-                onChange={(e) => setBackgroundColor(e.target.value)}
+                onChange={(e) => {
+                  setBackgroundColor(e.target.value);
+                  setBackgroundImage(null);
+                }}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold"
               >
                 {BACKGROUND_OPTIONS.map((opt) => (
@@ -2183,11 +2715,60 @@ export default function Whiteboard() {
                 {BACKGROUND_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
-                    onClick={() => setBackgroundColor(opt.value)}
-                    className={`h-6 w-full rounded-md border ${backgroundColor === opt.value ? "border-blue-600 ring-2 ring-blue-500/20" : "border-slate-200"}`}
+                    onClick={() => {
+                      setBackgroundColor(opt.value);
+                      setBackgroundImage(null);
+                    }}
+                    className={`h-6 w-full rounded-md border ${backgroundColor === opt.value && !backgroundImage ? "border-blue-600 ring-2 ring-blue-500/20" : "border-slate-200"}`}
                     style={{ backgroundColor: opt.value }}
                     title={opt.label}
                   />
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                Background Image
+              </label>
+              <select
+                value={backgroundImage ?? ""}
+                onChange={(e) => {
+                  setBackgroundImage(e.target.value || null);
+                }}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold"
+              >
+                <option value="">No Image — Use Background Color</option>
+                {BACKGROUND_IMAGE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {BACKGROUND_IMAGE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setBackgroundImage(opt.value)}
+                    className={`group relative h-16 overflow-hidden rounded-lg border transition ${
+                      backgroundImage === opt.value
+                        ? "border-blue-600 ring-2 ring-blue-500/20"
+                        : "border-slate-200 hover:border-slate-400"
+                    }`}
+                    title={opt.label}
+                    aria-label={`Use ${opt.label} background`}
+                  >
+                    <img
+                      src={opt.value}
+                      alt={opt.label}
+                      className="h-full w-full object-cover"
+                    />
+                    <span className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-[9px] font-bold text-white">
+                      {opt.label}
+                    </span>
+                  </button>
                 ))}
               </div>
             </div>
@@ -2233,7 +2814,7 @@ export default function Whiteboard() {
         </div>
       )}
 
-      {showCalculator && (
+      {showTeacherControls && showCalculator && (
         <div className="absolute right-4 top-16 z-50 w-72 rounded-md border border-slate-200 bg-white p-4 shadow-2xl">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900">
@@ -2775,129 +3356,141 @@ export default function Whiteboard() {
           </div>
         </section>
 
-        {/* Floating left toolbox */}
-        <aside className="absolute left-4 top-1/2 z-40 -translate-y-1/2">
-          <div className="flex max-h-[calc(100vh-170px)] w-12 flex-col items-center gap-1 overflow-y-auto rounded-2xl border border-slate-200/80 bg-white/95 px-1.5 py-2 shadow-xl shadow-slate-900/10 backdrop-blur-xl">
-            {toolButton(
-              "select",
-              "Select / Move",
-              <MousePointer2 className="size-4" />,
-              "V",
-            )}
-            {toolButton("pen", "Pen", <PenLine className="size-4" />, "P")}
-            {toolButton("eraser", "Eraser", <Eraser className="size-4" />, "E")}
+        {/* Floating left toolbox — teacher only */}
+        {showTeacherControls && (
+          <aside className="absolute left-4 top-1/2 z-40 -translate-y-1/2">
+            <div className="flex max-h-[calc(100vh-170px)] w-12 flex-col items-center gap-1 overflow-y-auto rounded-2xl border border-slate-200/80 bg-white/95 px-1.5 py-2 shadow-xl shadow-slate-900/10 backdrop-blur-xl">
+              {toolButton(
+                "select",
+                "Select / Move",
+                <MousePointer2 className="size-4" />,
+                "V",
+              )}
+              {toolButton("pen", "Pen", <PenLine className="size-4" />, "P")}
+              {toolButton(
+                "eraser",
+                "Eraser",
+                <Eraser className="size-4" />,
+                "E",
+              )}
 
-            <div className="my-1 h-px w-6 shrink-0 bg-slate-200" />
+              <div className="my-1 h-px w-6 shrink-0 bg-slate-200" />
 
-            {toolButton("line", "Line", <Minus className="size-4" />, "L")}
-            {toolButton(
-              "rectangle",
-              "Rectangle",
-              <Square className="size-4" />,
-              "R",
-            )}
-            {toolButton("circle", "Circle", <Circle className="size-4" />, "C")}
-            {toolButton(
-              "triangle",
-              "Triangle",
-              <Triangle className="size-4" />,
-            )}
-            {toolButton("ruler", "Ruler", <Ruler className="size-4" />, "U")}
+              {toolButton("line", "Line", <Minus className="size-4" />, "L")}
+              {toolButton(
+                "rectangle",
+                "Rectangle",
+                <Square className="size-4" />,
+                "R",
+              )}
+              {toolButton(
+                "circle",
+                "Circle",
+                <Circle className="size-4" />,
+                "C",
+              )}
+              {toolButton(
+                "triangle",
+                "Triangle",
+                <Triangle className="size-4" />,
+              )}
+              {toolButton("ruler", "Ruler", <Ruler className="size-4" />, "U")}
 
-            <div className="my-1 h-px w-6 shrink-0 bg-slate-200" />
+              <div className="my-1 h-px w-6 shrink-0 bg-slate-200" />
 
-            {toolButton(
-              "axes",
-              "Coordinate Axes",
-              <Crosshair className="size-4" />,
-              "A",
-            )}
-            {toolButton(
-              "equation",
-              "Equation",
-              <Sigma className="size-4" />,
-              "Q",
-            )}
-            {toolButton("text", "Text", <Type className="size-4" />, "T")}
+              {toolButton(
+                "axes",
+                "Coordinate Axes",
+                <Crosshair className="size-4" />,
+                "A",
+              )}
+              {toolButton(
+                "equation",
+                "Equation",
+                <Sigma className="size-4" />,
+                "Q",
+              )}
+              {toolButton("text", "Text", <Type className="size-4" />, "T")}
 
-            <div className="my-1 h-px w-6 shrink-0 bg-slate-200" />
+              <div className="my-1 h-px w-6 shrink-0 bg-slate-200" />
 
-            <button
-              ref={colorButtonRef}
-              type="button"
-              onClick={() => {
-                if (showColorPopup && colorPopupTarget === "pen") {
-                  setShowColorPopup(false);
-                  return;
-                }
-                positionColorPopup("pen");
-              }}
-              title="Pen color"
-              aria-label="Pen color"
-              className="group relative flex size-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-            >
-              <span
-                className="size-5 rounded-full border-2 border-white shadow-sm ring-1 ring-slate-300"
-                style={{ backgroundColor: color }}
-              />
-              <span className="pointer-events-none absolute left-full ml-3 hidden whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 lg:block">
-                Pen Color
-              </span>
-            </button>
+              <button
+                ref={colorButtonRef}
+                type="button"
+                onClick={() => {
+                  if (showColorPopup && colorPopupTarget === "pen") {
+                    setShowColorPopup(false);
+                    return;
+                  }
+                  positionColorPopup("pen");
+                }}
+                title="Pen color"
+                aria-label="Pen color"
+                className="group relative flex size-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+              >
+                <span
+                  className="size-5 rounded-full border-2 border-white shadow-sm ring-1 ring-slate-300"
+                  style={{ backgroundColor: color }}
+                />
+                <span className="pointer-events-none absolute left-full ml-3 hidden whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 lg:block">
+                  Pen Color
+                </span>
+              </button>
 
-            {selectedElement && (
-              <>
-                <button
-                  ref={objectColorButtonRef}
-                  type="button"
-                  onClick={() => {
-                    if (showColorPopup && colorPopupTarget === "object") {
-                      setShowColorPopup(false);
-                      setColorPopupTarget(null);
-                      return;
-                    }
-                    positionColorPopup("object");
-                  }}
-                  title="Selected object color"
-                  aria-label="Selected object color"
-                  className={`group relative flex size-9 shrink-0 items-center justify-center rounded-lg border transition ${
-                    colorPopupTarget === "object" && showColorPopup
-                      ? "border-blue-300 bg-blue-50"
-                      : "border-transparent hover:bg-slate-100"
-                  }`}
-                >
-                  <span
-                    className="size-5 rounded-md border-2 border-white shadow-sm ring-1 ring-slate-300"
-                    style={{ backgroundColor: selectedElement.color }}
-                  />
+              {selectedElement && (
+                <>
+                  <button
+                    ref={objectColorButtonRef}
+                    type="button"
+                    onClick={() => {
+                      if (showColorPopup && colorPopupTarget === "object") {
+                        setShowColorPopup(false);
+                        setColorPopupTarget(null);
+                        return;
+                      }
+                      positionColorPopup("object");
+                    }}
+                    title="Selected object color"
+                    aria-label="Selected object color"
+                    className={`group relative flex size-9 shrink-0 items-center justify-center rounded-lg border transition ${
+                      colorPopupTarget === "object" && showColorPopup
+                        ? "border-blue-300 bg-blue-50"
+                        : "border-transparent hover:bg-slate-100"
+                    }`}
+                  >
+                    <span
+                      className="size-5 rounded-md border-2 border-white shadow-sm ring-1 ring-slate-300"
+                      style={{ backgroundColor: selectedElement.color }}
+                    />
 
-                  <span className="pointer-events-none absolute left-full ml-3 hidden whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 lg:block">
-                    Object Color
-                  </span>
-                </button>
-              </>
-            )}
+                    <span className="pointer-events-none absolute left-full ml-3 hidden whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 lg:block">
+                      Object Color
+                    </span>
+                  </button>
+                </>
+              )}
 
-            <div className="mt-1 flex w-9 flex-col items-center rounded-lg bg-slate-50 py-1">
-              <span className="mb-0.5 text-[7px] font-bold text-slate-400">
-                {width}px
-              </span>
-              <input
-                type="range"
-                min="1"
-                max="20"
-                value={width}
-                onChange={(e) => setWidth(Number(e.target.value))}
-                title="Stroke width"
-                aria-label="Stroke width"
-                className="h-12 w-1 cursor-pointer [writing-mode:vertical-lr]"
-              />
+              <div className="mt-1 flex w-9 flex-col items-center rounded-lg bg-slate-50 py-1">
+                <span className="mb-0.5 text-[7px] font-bold text-slate-400">
+                  {width}px
+                </span>
+                <input
+                  type="range"
+                  min="1"
+                  max="20"
+                  value={width}
+                  onChange={(e) => setWidth(Number(e.target.value))}
+                  title="Stroke width"
+                  aria-label="Stroke width"
+                  className="h-12 w-1 cursor-pointer [writing-mode:vertical-lr]"
+                />
+              </div>
             </div>
-          </div>
-        </aside>
+          </aside>
+        )}
 
-        {/* Floating color palette */}
-        {showColorPopup && (
+        {/* Floating color palette — teacher only */}
+        {showTeacherControls && showColorPopup && (
           <div
             className="fixed z-120 w-55 rounded-2xl border border-slate-200/90 bg-white/98 p-3 shadow-2xl shadow-slate-900/15 backdrop-blur-xl"
             style={{
@@ -2980,8 +3573,8 @@ export default function Whiteboard() {
           </div>
         )}
 
-        {/* Floating Math Toolkit */}
-        {showToolsPanel && (
+        {/* Floating Math Toolkit — teacher only */}
+        {showTeacherControls && showToolsPanel && (
           <aside className="absolute right-4 top-20 bottom-16 z-40 flex w-72 max-w-[calc(100vw-32px)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 shadow-2xl shadow-slate-900/10 backdrop-blur-xl">
             <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-3 py-2.5">
               <div className="flex items-center gap-2">
@@ -3083,137 +3676,175 @@ export default function Whiteboard() {
           </aside>
         )}
 
-        {/* Floating bottom page dock */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-3 z-40 flex justify-center px-4">
-          <div className="pointer-events-auto flex max-w-[calc(100vw-32px)] items-center gap-1 rounded-2xl border border-slate-200/80 bg-white/95 p-1 shadow-xl shadow-slate-900/10 backdrop-blur-xl">
-            <button
-              type="button"
-              onClick={addPage}
-              title="Add page"
-              aria-label="Add page"
-              className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm transition hover:bg-blue-700"
-            >
-              <Plus className="size-4" />
-            </button>
+        {/* Floating bottom page dock — teacher only */}
+        {showTeacherControls && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-40 flex justify-center px-4">
+            <div className="pointer-events-auto flex max-w-[calc(100vw-32px)] items-center gap-1 rounded-2xl border border-slate-200/80 bg-white/95 p-1 shadow-xl shadow-slate-900/10 backdrop-blur-xl">
+              <button
+                type="button"
+                onClick={addPage}
+                title="Add page"
+                aria-label="Add page"
+                className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm transition hover:bg-blue-700"
+              >
+                <Plus className="size-4" />
+              </button>
 
-            <div className="mx-1 h-5 w-px bg-slate-200" />
+              <div className="mx-1 h-5 w-px bg-slate-200" />
 
-            <div className="max-w-[min(70vw,900px)] overflow-x-auto scrollbar-thin">
-              <div className="flex min-w-max items-center gap-1">
-                {pages.map((page, index) => {
-                  const isActive = currentPageIndex === index;
-                  return (
-                    <div
-                      key={page.id}
-                      className={`group flex h-8 shrink-0 items-center rounded-lg border transition-all ${isActive ? "border-blue-200 bg-blue-50" : "border-transparent hover:border-slate-200 hover:bg-slate-50"}`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCurrentPageIndex(index);
-                          setSelectedElementId(null);
-                        }}
-                        title={`Open ${page.name}`}
-                        className="flex h-full items-center gap-1.5 px-2.5"
-                      >
-                        <span
-                          className={`text-[10px] font-extrabold ${isActive ? "text-blue-600" : "text-slate-400"}`}
-                        >
-                          {index + 1}
-                        </span>
-                        <span
-                          className={`max-w-28 truncate text-[10px] font-semibold ${isActive ? "text-blue-800" : "text-slate-600"}`}
-                        >
-                          {page.name}
-                        </span>
-                        <span
-                          className={`whitespace-nowrap text-[9px] ${isActive ? "text-blue-500" : "text-slate-400"}`}
-                        >
-                          · {page.elements.length}{" "}
-                          {page.elements.length === 1 ? "item" : "items"}
-                        </span>
-                      </button>
-
+              <div className="max-w-[min(70vw,900px)] overflow-x-auto scrollbar-thin">
+                <div className="flex min-w-max items-center gap-1">
+                  {pages.map((page, index) => {
+                    const isActive = currentPageIndex === index;
+                    return (
                       <div
-                        className={`flex items-center border-l px-0.5 ${isActive ? "border-blue-200 opacity-100" : "border-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100"}`}
+                        key={page.id}
+                        className={`group flex h-8 shrink-0 items-center rounded-lg border transition-all ${isActive ? "border-blue-200 bg-blue-50" : "border-transparent hover:border-slate-200 hover:bg-slate-50"}`}
                       >
                         <button
                           type="button"
-                          onClick={() => duplicatePage(index)}
-                          title="Duplicate page"
-                          aria-label={`Duplicate ${page.name}`}
-                          className="flex size-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-white hover:text-blue-600"
+                          onClick={() => {
+                            setCurrentPageIndex(index);
+                            setSelectedElementId(null);
+                          }}
+                          title={`Open ${page.name}`}
+                          className="flex h-full items-center gap-1.5 px-2.5"
                         >
-                          <Copy className="size-3.5" />
+                          <span
+                            className={`text-[10px] font-extrabold ${isActive ? "text-blue-600" : "text-slate-400"}`}
+                          >
+                            {index + 1}
+                          </span>
+                          <span
+                            className={`max-w-28 truncate text-[10px] font-semibold ${isActive ? "text-blue-800" : "text-slate-600"}`}
+                          >
+                            {page.name}
+                          </span>
+                          <span
+                            className={`whitespace-nowrap text-[9px] ${isActive ? "text-blue-500" : "text-slate-400"}`}
+                          >
+                            · {page.elements.length}{" "}
+                            {page.elements.length === 1 ? "item" : "items"}
+                          </span>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => renamePage(index)}
-                          title="Rename page"
-                          aria-label={`Rename ${page.name}`}
-                          className="flex size-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-white hover:text-slate-700"
+
+                        <div
+                          className={`flex items-center border-l px-0.5 ${isActive ? "border-blue-200 opacity-100" : "border-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100"}`}
                         >
-                          <Settings2 className="size-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => deletePage(index)}
-                          title="Delete page"
-                          aria-label={`Delete ${page.name}`}
-                          className="flex size-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => duplicatePage(index)}
+                            title="Duplicate page"
+                            aria-label={`Duplicate ${page.name}`}
+                            className="flex size-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-white hover:text-blue-600"
+                          >
+                            <Copy className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => renamePage(index)}
+                            title="Rename page"
+                            aria-label={`Rename ${page.name}`}
+                            className="flex size-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-white hover:text-slate-700"
+                          >
+                            <Settings2 className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deletePage(index)}
+                            title="Delete page"
+                            aria-label={`Delete ${page.name}`}
+                            className="flex size-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Floating undo / redo controls */}
-        <div className="absolute bottom-3 left-4 z-40 flex items-center gap-0.5 rounded-xl border border-slate-200/80 bg-white/95 p-1 shadow-lg shadow-slate-900/5 backdrop-blur-xl">
-          <button
-            type="button"
-            onClick={undo}
-            title="Undo"
-            aria-label="Undo"
-            className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-          >
-            <Undo2 className="size-4" />
-          </button>
-          <button
-            type="button"
-            onClick={redo}
-            title="Redo"
-            aria-label="Redo"
-            className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-          >
-            <Redo2 className="size-4" />
-          </button>
-          <div className="mx-1 h-5 w-px bg-slate-200" />
-          <button
-            type="button"
-            onClick={clearPage}
-            title="Clear page"
-            aria-label="Clear page"
-            className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
-        </div>
+        {/* Floating undo / redo controls — teacher only */}
+        {showTeacherControls && (
+          <div className="absolute bottom-3 left-4 z-40 flex items-center gap-0.5 rounded-xl border border-slate-200/80 bg-white/95 p-1 shadow-lg shadow-slate-900/5 backdrop-blur-xl">
+            <button
+              type="button"
+              onClick={undo}
+              title="Undo"
+              aria-label="Undo"
+              className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            >
+              <Undo2 className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={redo}
+              title="Redo"
+              aria-label="Redo"
+              className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            >
+              <Redo2 className="size-4" />
+            </button>
+            <div className="mx-1 h-5 w-px bg-slate-200" />
+            <button
+              type="button"
+              onClick={clearPage}
+              title="Clear page"
+              aria-label="Clear page"
+              className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          </div>
+        )}
 
-        {/* Floating workspace status */}
-        <div className="absolute bottom-3 right-4 z-40 hidden items-center gap-2 rounded-xl border border-slate-200/80 bg-white/95 px-3 py-1.5 text-[9px] font-semibold text-slate-500 shadow-lg shadow-slate-900/5 backdrop-blur-xl md:flex">
-          <span
-            className={`size-1.5 rounded-full ${tool === "pen" ? "bg-blue-500" : "bg-slate-400"}`}
+        {/* Floating workspace status — teacher only */}
+        {showTeacherControls && (
+          <div className="absolute bottom-3 right-4 z-40 hidden items-center gap-2 rounded-xl border border-slate-200/80 bg-white/95 px-3 py-1.5 text-[9px] font-semibold text-slate-500 shadow-lg shadow-slate-900/5 backdrop-blur-xl md:flex">
+            <span
+              className={`size-1.5 rounded-full ${tool === "pen" ? "bg-blue-500" : "bg-slate-400"}`}
+            />
+            {tool === "pen"
+              ? `Pen · ${width}px`
+              : tool.charAt(0).toUpperCase() + tool.slice(1)}
+          </div>
+        )}
+      </div>
+
+      {/* Teacher controls toggle — intentionally always visible */}
+      <div className="pointer-events-none fixed bottom-5 right-5 z-300">
+        <button
+          type="button"
+          onClick={toggleTeacherControls}
+          title={
+            showTeacherControls
+              ? "Hide teacher controls"
+              : "Open teacher controls"
+          }
+          aria-label={
+            showTeacherControls
+              ? "Hide teacher controls"
+              : "Open teacher controls"
+          }
+          className={`pointer-events-auto group flex items-center gap-2 rounded-2xl border px-3.5 py-2.5 text-xs font-bold shadow-xl backdrop-blur-xl transition-all duration-200 ${
+            showTeacherControls
+              ? "border-slate-300 bg-white/95 text-slate-700 shadow-slate-900/10 hover:bg-white"
+              : "border-slate-700/40 bg-slate-900/90 text-white shadow-slate-950/25 hover:bg-slate-800"
+          }`}
+        >
+          <Settings2
+            className={`size-4 transition-transform duration-300 ${
+              showTeacherControls ? "rotate-90" : ""
+            }`}
           />
-          {tool === "pen"
-            ? `Pen · ${width}px`
-            : tool.charAt(0).toUpperCase() + tool.slice(1)}
-        </div>
+          <span className="hidden sm:inline">
+            {showTeacherControls ? "Hide Controls" : "Teacher Controls"}
+          </span>
+        </button>
       </div>
 
       {/* Professional page rename dialog */}

@@ -13,6 +13,7 @@ import { loginSchema } from "@/lib/zodSchemas";
 import { User } from "@/lib/auth";
 import Cookies from "js-cookie";
 import LogoImg from "@/public/images/logo.png";
+
 import {
   Form,
   FormControl,
@@ -27,9 +28,10 @@ import { Button } from "@/app/_components/ui/button";
 
 interface SigninModalProps {
   onSwitchToSignup?: () => void;
+  onSuccess?: () => void;
 }
 
-export function SigninModal({ onSwitchToSignup }: SigninModalProps) {
+export function SigninModal({ onSwitchToSignup, onSuccess }: SigninModalProps) {
   const router = useRouter();
 
   const [isPending] = useTransition();
@@ -80,6 +82,9 @@ export function SigninModal({ onSwitchToSignup }: SigninModalProps) {
 
         toast.success("Successfully logged in!");
 
+        // Close authentication modal
+        onSuccess?.();
+
         if (callbackUrl) {
           const url = new URL(window.location.href);
 
@@ -92,10 +97,9 @@ export function SigninModal({ onSwitchToSignup }: SigninModalProps) {
           );
 
           router.push(callbackUrl);
-          router.refresh();
-        } else {
-          router.refresh();
         }
+
+        router.refresh();
       }
     } catch (err) {
       console.error("LOGIN ERROR:", err);
@@ -107,10 +111,10 @@ export function SigninModal({ onSwitchToSignup }: SigninModalProps) {
   }
 
   return (
-    <div className="w-full p-1 rounded-xl bg-white border border-gray-200 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)]">
-      <div className="bg-white rounded-lg border border-gray-100 py-7 px-5 sm:px-8">
+    <div className="w-full rounded-xl border border-gray-200 bg-white p-1 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)]">
+      <div className="rounded-lg border border-gray-100 bg-white px-5 py-7 sm:px-8">
         {/* Header */}
-        <div className="flex flex-col items-center text-center mb-6">
+        <div className="mb-6 flex flex-col items-center text-center">
           <div className="mb-3">
             <Image src={LogoImg} alt="Logo" width={44} height={44} priority />
           </div>
@@ -119,7 +123,7 @@ export function SigninModal({ onSwitchToSignup }: SigninModalProps) {
             Welcome Back
           </h2>
 
-          <p className="text-gray-500 text-xs mt-1">
+          <p className="mt-1 text-xs text-gray-500">
             Login to continue your learning
           </p>
         </div>
@@ -138,7 +142,7 @@ export function SigninModal({ onSwitchToSignup }: SigninModalProps) {
                 <FormItem className="space-y-1.5">
                   <FormLabel className="text-xs font-semibold text-gray-600">
                     Email
-                    <span className="text-blue-500 ml-1">*</span>
+                    <span className="ml-1 text-blue-500">*</span>
                   </FormLabel>
 
                   <FormControl>
@@ -149,16 +153,16 @@ export function SigninModal({ onSwitchToSignup }: SigninModalProps) {
                       {...field}
                       className="
                         h-11
-                        px-4
-                        bg-white
-                        border-gray-200
-                        text-gray-900
-                        text-sm
-                        placeholder:text-gray-400
                         rounded-lg
+                        border-gray-200
+                        bg-white
+                        px-4
+                        text-sm
+                        text-gray-900
+                        placeholder:text-gray-400
+                        transition-all
                         focus:border-blue-500
                         focus:ring-[#857938]/20
-                        transition-all
                       "
                     />
                   </FormControl>
@@ -176,7 +180,7 @@ export function SigninModal({ onSwitchToSignup }: SigninModalProps) {
                 <FormItem className="space-y-1.5">
                   <FormLabel className="text-xs font-semibold text-gray-600">
                     Password
-                    <span className="text-blue-500 ml-1">*</span>
+                    <span className="ml-1 text-blue-500">*</span>
                   </FormLabel>
 
                   <FormControl>
@@ -187,16 +191,16 @@ export function SigninModal({ onSwitchToSignup }: SigninModalProps) {
                       {...field}
                       className="
                         h-11
-                        px-4
-                        bg-white
-                        border-gray-200
-                        text-gray-900
-                        text-sm
-                        placeholder:text-gray-400
                         rounded-lg
+                        border-gray-200
+                        bg-white
+                        px-4
+                        text-sm
+                        text-gray-900
+                        placeholder:text-gray-400
+                        transition-all
                         focus:border-blue-600
                         focus:ring-[#857938]/20
-                        transition-all
                       "
                     />
                   </FormControl>
@@ -211,24 +215,24 @@ export function SigninModal({ onSwitchToSignup }: SigninModalProps) {
               type="submit"
               disabled={loading || isPending}
               className="
+                mt-2
                 h-11
                 w-full
-                mt-2
-                bg-blue-500
-                hover:bg-blue-600
-                text-white
-                font-semibold
-                text-sm
+                cursor-pointer
                 rounded-lg
-                transition-all
+                bg-blue-500
+                text-sm
+                font-semibold
+                text-white
                 shadow-md
                 shadow-[#857938]/20
-                cursor-pointer
+                transition-all
+                hover:bg-blue-600
               "
             >
               {loading ? (
                 <div className="flex items-center justify-center gap-2">
-                  <Loader className="animate-spin h-4 w-4" />
+                  <Loader className="h-4 w-4 animate-spin" />
                   <span>Signing in...</span>
                 </div>
               ) : (
@@ -239,7 +243,7 @@ export function SigninModal({ onSwitchToSignup }: SigninModalProps) {
         </Form>
 
         {/* Switch to Signup */}
-        <div className="text-center mt-6 pt-5 border-t border-gray-100">
+        <div className="mt-6 border-t border-gray-100 pt-5 text-center">
           <p className="text-sm text-gray-500">
             Don&apos;t have an account?{" "}
             <button
@@ -247,23 +251,23 @@ export function SigninModal({ onSwitchToSignup }: SigninModalProps) {
               onClick={onSwitchToSignup}
               className="
                 inline-flex
+                cursor-pointer
                 items-center
                 gap-1
-                text-blue-500
                 font-semibold
-                hover:text-blue-600
+                text-blue-500
                 transition-colors
-                cursor-pointer
+                hover:text-blue-600
               "
             >
               Sign up instead
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </p>
         </div>
 
         {/* reCAPTCHA */}
-        <p className="text-gray-400 text-[10px] leading-relaxed text-center mt-5">
+        <p className="mt-5 text-center text-[10px] leading-relaxed text-gray-400">
           This site is protected by reCAPTCHA Enterprise and the Google{" "}
           <a
             href="https://policies.google.com/privacy"
@@ -287,8 +291,8 @@ export function SigninModal({ onSwitchToSignup }: SigninModalProps) {
       </div>
 
       {/* Bottom Banner */}
-      <div className="p-2.5 bg-gray-50 border-t border-gray-100 text-center rounded-b-xl">
-        <p className="text-[9px] text-gray-400 uppercase tracking-[0.2em]">
+      <div className="rounded-b-xl border-t border-gray-100 bg-gray-50 p-2.5 text-center">
+        <p className="text-[9px] uppercase tracking-[0.2em] text-gray-400">
           Protected by SSL Encryption
         </p>
       </div>

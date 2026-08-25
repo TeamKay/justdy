@@ -43,6 +43,7 @@ model User {
   pendingEnrollments   PendingEnrollment[]
   roles                UserRole[]
   purchases            Purchase[]
+  whitrboard           Whiteboard[]
 
   @@map("user")
 }
@@ -192,6 +193,7 @@ model Appointment {
   videoSessionToken      String?
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
+  whiteboard            Whiteboard?
 
   @@index([status, startTime])
   @@index([educatorId, startTime])
@@ -444,6 +446,43 @@ model Investment {
   @@index([type])
   @@index([region])
   @@index([importBatchId])
+}
+
+model Whiteboard {
+  id            String       @id @default(cuid())
+  userId        String
+  appointmentId String?      @unique
+  isStandalone  Boolean      @default(false)
+  name          String       @default("Untitled Whiteboard")
+  data          Json
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([userId, isStandalone])
+}
+
+model SiteVisitor {
+  id        String   @id @default(cuid())
+  visitorId String   @unique
+  firstSeen DateTime @default(now())
+  lastSeen  DateTime @default(now())
+  pageViews Int      @default(0)
+  pageViewsRecords SitePageView[]
+  @@index([lastSeen])
+  @@index([firstSeen])
+}
+
+model SitePageView {
+  id        String   @id @default(cuid())
+  visitorId String
+  path      String
+  createdAt DateTime @default(now())
+  visitor SiteVisitor @relation(fields: [visitorId],references: [visitorId],onDelete: Cascade)
+  @@index([visitorId])
+  @@index([createdAt])
+  @@index([path])
 }
 
 // ==========================================
