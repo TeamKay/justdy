@@ -34,6 +34,8 @@ import {
   Trash2,
   FunctionSquare,
   Settings2,
+  Image as ImageIcon,
+  Upload,
 } from "lucide-react";
 import MyLogo from "@/app/_components/Logo";
 
@@ -75,6 +77,17 @@ type ShapeElement = {
   width: number;
 };
 
+type ImageElement = {
+  id: string;
+  type: "image";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  src: string;
+  name?: string;
+};
+
 type TextElement = {
   id: string;
   type: "text" | "equation";
@@ -88,7 +101,11 @@ type TextElement = {
   underline?: boolean;
 };
 
-type WhiteboardElement = StrokeElement | ShapeElement | TextElement;
+type WhiteboardElement =
+  | StrokeElement
+  | ShapeElement
+  | TextElement
+  | ImageElement;
 
 type WhiteboardPage = {
   id: string;
@@ -617,6 +634,15 @@ function getElementBounds(
     };
   }
 
+  if (element.type === "image") {
+    return {
+      left: element.x,
+      top: element.y,
+      right: element.x + element.width,
+      bottom: element.y + element.height,
+    };
+  }
+
   const mathMetrics =
     element.type === "equation"
       ? estimateMathMetrics(element.text, element.fontSize, ctx)
@@ -782,6 +808,97 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
     Array<{ expression: string; result: string }>
   >([]);
   const [calculatorPosition, setCalculatorPosition] = useState({ x: 0, y: 0 });
+  const [popupPositions, setPopupPositions] = useState<
+    Record<string, { x: number; y: number }>
+  >({});
+  const popupDragRef = useRef<{
+    key: string;
+    dx: number;
+    dy: number;
+    element: HTMLElement;
+    captureTarget: HTMLElement;
+  } | null>(null);
+
+  const getPopupPosition = useCallback(
+    (key: string, fallback: { x: number; y: number }) =>
+      popupPositions[key] ?? fallback,
+    [popupPositions],
+  );
+
+  const startPopupDrag = useCallback(
+    (key: string, event: React.PointerEvent<HTMLElement>) => {
+      const target = event.target as HTMLElement;
+      if (target.closest("button, input, select, textarea, [data-no-drag]"))
+        return;
+
+      // Store the actual popup element. The popup's parent is often the
+      // full-screen whiteboard wrapper, which was causing small popups to
+      // clamp to the left edge.
+      // Always resolve the actual popup dialog itself. When the drag starts
+      // from a popup header, event.currentTarget is the header; when it starts
+      // from the popup container, its parent is the full-screen board wrapper.
+      // Using closest(dialog) fixes the left-edge clamping for every popup.
+      const popup = event.currentTarget.closest(
+        '[role="dialog"], aside',
+      ) as HTMLElement | null;
+      if (!popup) return;
+
+      const rect = popup.getBoundingClientRect();
+
+      popupDragRef.current = {
+        key,
+        dx: event.clientX - rect.left,
+        dy: event.clientY - rect.top,
+        element: popup,
+        captureTarget: event.currentTarget,
+      };
+
+      event.currentTarget.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    },
+    [],
+  );
+
+  const movePopupDrag = useCallback(
+    (event: React.PointerEvent<HTMLElement>) => {
+      const drag = popupDragRef.current;
+      if (!drag) return;
+
+      const root = rootRef.current?.getBoundingClientRect();
+      if (!root) return;
+
+      // Always measure the popup itself, never event.currentTarget.parentElement.
+      const popupRect = drag.element.getBoundingClientRect();
+      const width = popupRect.width;
+      const height = popupRect.height;
+
+      const maxX = Math.max(8, root.width - width - 8);
+      const maxY = Math.max(8, root.height - height - 8);
+
+      const x = Math.max(
+        8,
+        Math.min(event.clientX - root.left - drag.dx, maxX),
+      );
+      const y = Math.max(8, Math.min(event.clientY - root.top - drag.dy, maxY));
+
+      setPopupPositions((previous) => ({
+        ...previous,
+        [drag.key]: { x, y },
+      }));
+    },
+    [],
+  );
+
+  const endPopupDrag = useCallback((event: React.PointerEvent<HTMLElement>) => {
+    const drag = popupDragRef.current;
+    popupDragRef.current = null;
+
+    if (!drag) return;
+
+    try {
+      drag.captureTarget.releasePointerCapture(event.pointerId);
+    } catch {}
+  }, []);
   const calculatorDraggingRef = useRef(false);
   const calculatorDragOffsetRef = useRef({ x: 0, y: 0 });
   const [formulaCategory, setFormulaCategory] =
@@ -824,6 +941,10 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
   const [selectedElementId, setSelectedElementId] = useState<string | null>(
     null,
   );
+  const [selectedElementIds, setSelectedElementIds] = useState<string[]>([]);
+  const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
+  const [imageVersion, setImageVersion] = useState(0);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   const [textEditor, setTextEditor] = useState<{
     open: boolean;
@@ -863,11 +984,18 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
 
   const transformRef = useRef<{
     mode: "move" | "resize";
-    element: WhiteboardElement;
-    originalElement: WhiteboardElement;
+    ids: string[];
+    elements: WhiteboardElement[];
+    originalElements: WhiteboardElement[];
     startPoint: Point;
     anchor: Point;
     handle: "nw" | "ne" | "se" | "sw" | null;
+    moved: boolean;
+  } | null>(null);
+
+  const marqueeRef = useRef<{
+    start: Point;
+    current: Point;
     moved: boolean;
   } | null>(null);
 
@@ -935,6 +1063,12 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
       );
       if (!selected) return;
 
+      if (!("color" in selected)) {
+        setShowColorPopup(false);
+        setColorPopupTarget(null);
+        return;
+      }
+
       if (selected.color === nextColor) {
         setShowColorPopup(false);
         return;
@@ -957,7 +1091,7 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
   );
 
   const getPoint = useCallback(
-    (event: PointerEvent): Point => {
+    (event: Pick<MouseEvent, "clientX" | "clientY">): Point => {
       const canvas = canvasRef.current;
       if (!canvas) return { x: 0, y: 0 };
       const rect = canvas.getBoundingClientRect();
@@ -1173,6 +1307,88 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
     [],
   );
 
+  const getUnionBounds = useCallback((items: WhiteboardElement[]) => {
+    if (!items.length) return null;
+    return items.reduce(
+      (acc, item) => {
+        const b = getElementBounds(item, contextRef.current);
+        return {
+          left: Math.min(acc.left, b.left),
+          top: Math.min(acc.top, b.top),
+          right: Math.max(acc.right, b.right),
+          bottom: Math.max(acc.bottom, b.bottom),
+        };
+      },
+      getElementBounds(items[0], contextRef.current),
+    );
+  }, []);
+
+  const drawSelectionGroup = useCallback(
+    (ctx: CanvasRenderingContext2D, items: WhiteboardElement[]) => {
+      const bounds = getUnionBounds(items);
+      if (!bounds) return;
+
+      const handleSize = 9;
+      const half = handleSize / 2;
+      const handles = [
+        { x: bounds.left, y: bounds.top },
+        { x: bounds.right, y: bounds.top },
+        { x: bounds.right, y: bounds.bottom },
+        { x: bounds.left, y: bounds.bottom },
+      ];
+
+      ctx.save();
+      ctx.strokeStyle = "#2563eb";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(
+        bounds.left,
+        bounds.top,
+        bounds.right - bounds.left,
+        bounds.bottom - bounds.top,
+      );
+      ctx.setLineDash([]);
+      handles.forEach(({ x, y }) => {
+        ctx.fillStyle = "#fff";
+        ctx.strokeStyle = "#2563eb";
+        ctx.beginPath();
+        ctx.roundRect(x - half, y - half, handleSize, handleSize, 2);
+        ctx.fill();
+        ctx.stroke();
+      });
+
+      if (items.length === 1) {
+        const deleteX = bounds.right + 14;
+        const deleteY = bounds.top - 14;
+        ctx.fillStyle = "#ef4444";
+        ctx.beginPath();
+        ctx.arc(deleteX, deleteY, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(deleteX - 3, deleteY - 3);
+        ctx.lineTo(deleteX + 3, deleteY + 3);
+        ctx.moveTo(deleteX + 3, deleteY - 3);
+        ctx.lineTo(deleteX - 3, deleteY + 3);
+        ctx.stroke();
+      }
+
+      if (items.length > 1) {
+        ctx.fillStyle = "#2563eb";
+        ctx.font = "700 10px Inter, sans-serif";
+        ctx.textBaseline = "bottom";
+        ctx.fillText(
+          `${items.length} objects selected`,
+          bounds.left,
+          Math.max(12, bounds.top - 8),
+        );
+      }
+      ctx.restore();
+    },
+    [getUnionBounds],
+  );
+
   const getSelectionHandle = useCallback(
     (element: WhiteboardElement, point: Point) => {
       const bounds = getElementBounds(element, contextRef.current);
@@ -1240,6 +1456,16 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
         };
       }
 
+      if (original.type === "image") {
+        return {
+          ...original,
+          x: left,
+          y: top,
+          width: Math.max(minSize, right - left),
+          height: Math.max(minSize, bottom - top),
+        };
+      }
+
       if ("start" in original && "end" in original) {
         return {
           ...original,
@@ -1269,6 +1495,15 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
       null
     );
   }, [elements, selectedElementId]);
+
+  const getSelectedElements = useCallback(() => {
+    const ids = selectedElementIds.length
+      ? selectedElementIds
+      : selectedElementId
+        ? [selectedElementId]
+        : [];
+    return elements.filter((el) => ids.includes(el.id));
+  }, [elements, selectedElementId, selectedElementIds]);
 
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -1324,6 +1559,25 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
     };
   }, [backgroundImage]);
 
+  // Load imported board images once and redraw when they become available.
+  useEffect(() => {
+    const imageElements = elements.filter(
+      (element): element is ImageElement => element.type === "image",
+    );
+    imageElements.forEach((element) => {
+      if (imageCacheRef.current.has(element.src)) return;
+      const image = new Image();
+      image.onload = () => {
+        imageCacheRef.current.set(element.src, image);
+        setImageVersion((value) => value + 1);
+      };
+      image.onerror = () => {
+        imageCacheRef.current.delete(element.src);
+      };
+      image.src = element.src;
+    });
+  }, [elements]);
+
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -1358,14 +1612,52 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
     // for React state to update on pointer-up. This makes resizing feel
     // continuous and keeps the selection handles attached to the live object.
     const liveTransform = transformRef.current;
-    const liveElement = liveTransform?.element ?? null;
+    const liveElementsById = new Map(
+      (liveTransform?.elements ?? []).map((element) => [element.id, element]),
+    );
 
     for (const element of elements) {
-      const elementToDraw =
-        liveElement && element.id === liveElement.id ? liveElement : element;
+      const elementToDraw = liveElementsById.get(element.id) ?? element;
 
       if (elementToDraw.type === "stroke") drawStroke(ctx, elementToDraw);
-      else if (
+      else if (elementToDraw.type === "image") {
+        const image = imageCacheRef.current.get(elementToDraw.src);
+        if (image) {
+          ctx.drawImage(
+            image,
+            elementToDraw.x,
+            elementToDraw.y,
+            elementToDraw.width,
+            elementToDraw.height,
+          );
+        } else {
+          ctx.save();
+          ctx.fillStyle = "#e2e8f0";
+          ctx.fillRect(
+            elementToDraw.x,
+            elementToDraw.y,
+            elementToDraw.width,
+            elementToDraw.height,
+          );
+          ctx.strokeStyle = "#94a3b8";
+          ctx.strokeRect(
+            elementToDraw.x,
+            elementToDraw.y,
+            elementToDraw.width,
+            elementToDraw.height,
+          );
+          ctx.fillStyle = "#64748b";
+          ctx.font = "12px Inter, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(
+            "Loading image…",
+            elementToDraw.x + elementToDraw.width / 2,
+            elementToDraw.y + elementToDraw.height / 2,
+          );
+          ctx.restore();
+        }
+      } else if (
         ["line", "rectangle", "circle", "triangle", "axes"].includes(
           elementToDraw.type,
         )
@@ -1381,12 +1673,34 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
     if (currentStrokeRef.current) drawStroke(ctx, currentStrokeRef.current);
     if (previewElementRef.current) drawShape(ctx, previewElementRef.current);
 
-    const selected = liveElement ?? getSelectedElement();
-    if (selected) drawSelection(ctx, selected);
+    const selectedItems = liveTransform
+      ? liveTransform.elements
+      : getSelectedElements();
+
+    if (selectedItems.length === 1) {
+      drawSelection(ctx, selectedItems[0]);
+    } else if (selectedItems.length > 1) {
+      drawSelectionGroup(ctx, selectedItems);
+    }
+
+    const marquee = marqueeRef.current;
+    if (marquee?.moved) {
+      const left = Math.min(marquee.start.x, marquee.current.x);
+      const top = Math.min(marquee.start.y, marquee.current.y);
+      const width = Math.abs(marquee.current.x - marquee.start.x);
+      const height = Math.abs(marquee.current.y - marquee.start.y);
+      ctx.save();
+      ctx.fillStyle = "rgba(37, 99, 235, 0.08)";
+      ctx.fillRect(left, top, width, height);
+      ctx.strokeStyle = "#2563eb";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 4]);
+      ctx.strokeRect(left, top, width, height);
+      ctx.restore();
+    }
   }, [
     backgroundColor,
     backgroundImage,
-    backgroundImageVersion,
     drawGrid,
     drawShape,
     drawStroke,
@@ -1395,7 +1709,17 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
     elements,
     getSelectedElement,
     resizeCanvas,
+    imageVersion,
   ]);
+
+  // backgroundImageVersion is intentionally a render trigger. The image is
+  // loaded outside React, so redraw the canvas when that external image load
+  // completes without making it an unnecessary renderCanvas dependency.
+  useEffect(() => {
+    if (backgroundImageVersion >= 0) {
+      renderCanvas();
+    }
+  }, [backgroundImageVersion, renderCanvas]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -1513,6 +1837,64 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
     [color, fontSize],
   );
 
+  const handleTextEditorDrag = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLElement;
+      if (target.closest("button, input, select, textarea, [data-no-drag]"))
+        return;
+      const rect = event.currentTarget.parentElement?.getBoundingClientRect();
+      if (!rect) return;
+      popupDragRef.current = {
+        key: "textEditor",
+        dx: event.clientX - rect.left,
+        dy: event.clientY - rect.top,
+        element: event.currentTarget.parentElement as HTMLElement,
+        captureTarget: event.currentTarget,
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    },
+    [],
+  );
+
+  const handleTextEditorDragMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const drag = popupDragRef.current;
+      if (!drag || drag.key !== "textEditor") return;
+      const root = rootRef.current?.getBoundingClientRect();
+      if (!root) return;
+
+      const popup = drag.element;
+      const width = popup.offsetWidth;
+      const height = popup.offsetHeight;
+      const maxX = Math.max(8, root.width - width - 8);
+      const maxY = Math.max(8, root.height - height - 8);
+
+      const x = Math.max(
+        8,
+        Math.min(event.clientX - root.left - drag.dx, maxX),
+      );
+      const y = Math.max(8, Math.min(event.clientY - root.top - drag.dy, maxY));
+
+      setTextEditor((previous) => ({ ...previous, x, y }));
+    },
+    [],
+  );
+
+  const handleTextEditorDragEnd = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const drag = popupDragRef.current;
+      popupDragRef.current = null;
+
+      if (drag) {
+        try {
+          drag.captureTarget.releasePointerCapture(event.pointerId);
+        } catch {}
+      }
+    },
+    [],
+  );
+
   const closeTextEditor = useCallback(() => {
     setTextEditor((previous) => ({
       ...previous,
@@ -1583,6 +1965,7 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
       }));
 
       setSelectedElementId(textEditor.editingElementId);
+      setSelectedElementIds([textEditor.editingElementId]);
       setTextEditor((previous) => ({
         ...previous,
         open: false,
@@ -1621,6 +2004,7 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
     }));
 
     setSelectedElementId(el.id);
+    setSelectedElementIds([el.id]);
     setTextEditor((previous) => ({
       ...previous,
       open: false,
@@ -1629,35 +2013,62 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
     }));
   }, [pushHistory, textEditor, updateCurrentPage]);
 
-  const duplicateSelectedText = useCallback(() => {
+  // Duplicate the currently selected object using the latest React state.
+  // This avoids stale `elements` when the board is updating at the same time.
+  const duplicateSelectedElement = useCallback(() => {
     if (!selectedElementId) return;
-
-    const selected = elements.find(
-      (element: WhiteboardElement) => element.id === selectedElementId,
-    );
-    if (
-      !selected ||
-      (selected.type !== "text" && selected.type !== "equation")
-    ) {
-      return;
-    }
 
     pushHistory();
 
-    const duplicate: TextElement = {
-      ...structuredClone(selected),
-      id: createId(),
-      x: selected.x + 24,
-      y: selected.y + 24,
-    };
+    let duplicatedId: string | null = null;
 
-    updateCurrentPage((page) => ({
-      ...page,
-      elements: [...page.elements, duplicate],
-    }));
+    setPages((previous) =>
+      previous.map((page, index) => {
+        if (index !== currentPageIndex) return page;
 
-    setSelectedElementId(duplicate.id);
-  }, [elements, pushHistory, selectedElementId, updateCurrentPage]);
+        const selected = page.elements.find(
+          (element: WhiteboardElement) => element.id === selectedElementId,
+        );
+        if (!selected) return page;
+
+        const duplicate = structuredClone(selected) as WhiteboardElement;
+        duplicate.id = createId();
+        duplicatedId = duplicate.id;
+
+        const offset = 24;
+
+        if (duplicate.type === "stroke") {
+          duplicate.points = duplicate.points.map((point) => ({
+            x: point.x + offset,
+            y: point.y + offset,
+          }));
+        } else if ("start" in duplicate && "end" in duplicate) {
+          duplicate.start = {
+            x: duplicate.start.x + offset,
+            y: duplicate.start.y + offset,
+          };
+          duplicate.end = {
+            x: duplicate.end.x + offset,
+            y: duplicate.end.y + offset,
+          };
+        } else {
+          duplicate.x += offset;
+          duplicate.y += offset;
+        }
+
+        return {
+          ...page,
+          elements: [...page.elements, duplicate],
+        };
+      }),
+    );
+
+    if (duplicatedId) {
+      setSelectedElementId(duplicatedId);
+      setSelectedElementIds([duplicatedId]);
+      setIsSaved(false);
+    }
+  }, [currentPageIndex, pushHistory, selectedElementId]);
 
   const handleTextEditorKeyDown = (
     event: React.KeyboardEvent<HTMLTextAreaElement>,
@@ -1673,6 +2084,77 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
       addTextElement();
     }
   };
+
+  const importImage = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file || !file.type.startsWith("image/")) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const src = String(reader.result);
+        const image = new Image();
+        image.onload = () => {
+          const canvas = canvasRef.current;
+          const rect = canvas?.getBoundingClientRect();
+          if (!rect) return;
+
+          const maxWidth = Math.min(520, rect.width * 0.48);
+          const maxHeight = Math.min(420, rect.height * 0.48);
+          const scale = Math.min(
+            1,
+            maxWidth / image.naturalWidth,
+            maxHeight / image.naturalHeight,
+          );
+          const width = Math.max(80, image.naturalWidth * scale);
+          const height = Math.max(80, image.naturalHeight * scale);
+
+          const element: ImageElement = {
+            id: createId(),
+            type: "image",
+            x: Math.max(12, (rect.width - width) / 2),
+            y: Math.max(12, (rect.height - height) / 2),
+            width,
+            height,
+            src,
+            name: file.name,
+          };
+
+          pushHistory();
+          updateCurrentPage((page) => ({
+            ...page,
+            elements: [...page.elements, element],
+          }));
+          imageCacheRef.current.set(src, image);
+          setImageVersion((value) => value + 1);
+          setTool("select");
+          setSelectedElementId(element.id);
+          setSelectedElementIds([element.id]);
+        };
+        image.src = src;
+      };
+      reader.readAsDataURL(file);
+    },
+    [pushHistory, updateCurrentPage],
+  );
+
+  const handleCanvasContextMenu = useCallback(
+    (event: React.MouseEvent<HTMLCanvasElement>) => {
+      if (tool !== "select" || !selectedElementId) return;
+
+      const point = getPoint(event.nativeEvent);
+      const selected = elements.find(
+        (element: WhiteboardElement) => element.id === selectedElementId,
+      );
+
+      if (selected && hitTestElement(selected, point, contextRef.current)) {
+        event.preventDefault();
+        duplicateSelectedElement();
+      }
+    },
+    [duplicateSelectedElement, elements, selectedElementId, tool],
+  );
 
   const handleCanvasDoubleClick = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -1704,6 +2186,7 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
       }
 
       setSelectedElementId(hit.id);
+      setSelectedElementIds([hit.id]);
 
       openTextEditor(
         point,
@@ -1725,36 +2208,37 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     canvas.setPointerCapture(event.pointerId);
+
     const point = getPoint(event.nativeEvent);
     startPointRef.current = point;
 
     if (tool === "select") {
       const selected = getSelectedElement();
+      const isMulti = selectedElementIds.length > 1;
 
-      if (selected && isDeleteHandle(selected, point)) {
+      if (selected && !isMulti && isDeleteHandle(selected, point)) {
         pushHistory();
         updateCurrentPage((page) => ({
           ...page,
-          elements: page.elements.filter(
-            (el: WhiteboardElement) => el.id !== selected.id,
-          ),
+          elements: page.elements.filter((el) => el.id !== selected.id),
         }));
         setSelectedElementId(null);
+        setSelectedElementIds([]);
         setShowColorPopup(false);
         setColorPopupTarget(null);
         return;
       }
 
-      if (selected) {
+      if (selected && !isMulti) {
         const handle = getSelectionHandle(selected, point);
         if (handle) {
           pushHistory();
-          setSelectedElementId(selected.id);
           drawingRef.current = true;
           transformRef.current = {
             mode: "resize",
-            element: structuredClone(selected),
-            originalElement: structuredClone(selected),
+            ids: [selected.id],
+            elements: [structuredClone(selected)],
+            originalElements: [structuredClone(selected)],
             startPoint: point,
             anchor: point,
             handle,
@@ -1766,17 +2250,37 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
 
       const hit = [...elements]
         .reverse()
-        .find((el: WhiteboardElement) =>
-          hitTestElement(el, point, contextRef.current),
-        );
+        .find((el) => hitTestElement(el, point, contextRef.current));
+
       if (hit) {
-        setSelectedElementId(hit.id);
+        const alreadySelected = selectedElementIds.includes(hit.id);
+        let nextIds = selectedElementIds;
+
+        if (event.shiftKey) {
+          nextIds = alreadySelected
+            ? selectedElementIds.filter((id) => id !== hit.id)
+            : [...selectedElementIds, hit.id];
+          setSelectedElementIds(nextIds);
+          setSelectedElementId(nextIds[0] ?? null);
+
+          if (!nextIds.length) {
+            drawingRef.current = false;
+            return;
+          }
+        } else if (!alreadySelected || !selectedElementIds.length) {
+          nextIds = [hit.id];
+          setSelectedElementIds(nextIds);
+          setSelectedElementId(hit.id);
+        }
+
+        const movingElements = elements.filter((el) => nextIds.includes(el.id));
         pushHistory();
         drawingRef.current = true;
         transformRef.current = {
           mode: "move",
-          element: structuredClone(hit),
-          originalElement: structuredClone(hit),
+          ids: nextIds,
+          elements: structuredClone(movingElements),
+          originalElements: structuredClone(movingElements),
           startPoint: point,
           anchor: point,
           handle: null,
@@ -1784,7 +2288,13 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
         };
       } else {
         setSelectedElementId(null);
-        renderCanvas();
+        if (!event.shiftKey) setSelectedElementIds([]);
+        marqueeRef.current = {
+          start: point,
+          current: point,
+          moved: false,
+        };
+        drawingRef.current = true;
       }
       return;
     }
@@ -1838,17 +2348,31 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
 
     if (transformRef.current) {
       const tr = transformRef.current;
-      if (tr.mode === "resize" && tr.handle) {
-        tr.element = resizeElement(tr.originalElement, tr.handle, point);
+
+      if (
+        tr.mode === "resize" &&
+        tr.handle &&
+        tr.originalElements.length === 1
+      ) {
+        tr.elements = [resizeElement(tr.originalElements[0], tr.handle, point)];
       } else {
-        tr.element = translateElement(
-          tr.element,
-          point.x - tr.startPoint.x,
-          point.y - tr.startPoint.y,
+        const dx = point.x - tr.startPoint.x;
+        const dy = point.y - tr.startPoint.y;
+        tr.elements = tr.originalElements.map((element) =>
+          translateElement(element, dx, dy),
         );
-        tr.startPoint = point;
       }
+
       tr.moved = true;
+      renderCanvas();
+      return;
+    }
+
+    if (marqueeRef.current) {
+      marqueeRef.current.current = point;
+      marqueeRef.current.moved =
+        Math.abs(point.x - marqueeRef.current.start.x) > 4 ||
+        Math.abs(point.y - marqueeRef.current.start.y) > 4;
       renderCanvas();
       return;
     }
@@ -1868,6 +2392,7 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
   const handlePointerUp = (event: React.PointerEvent<HTMLCanvasElement>) => {
     if (!drawingRef.current) return;
     drawingRef.current = false;
+
     const canvas = canvasRef.current;
     if (canvas) {
       try {
@@ -1876,16 +2401,54 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
     }
 
     if (transformRef.current) {
-      if (transformRef.current.moved) {
-        const final = transformRef.current.element;
-        updateCurrentPage((p) => ({
-          ...p,
-          elements: p.elements.map((el: WhiteboardElement) =>
-            el.id === final.id ? final : el,
-          ),
+      const tr = transformRef.current;
+      if (tr.moved) {
+        const finalElements = tr.elements;
+        updateCurrentPage((page) => ({
+          ...page,
+          elements: page.elements.map((el) => {
+            const final = finalElements.find((item) => item.id === el.id);
+            return final ?? el;
+          }),
         }));
       }
       transformRef.current = null;
+      renderCanvas();
+      return;
+    }
+
+    if (marqueeRef.current) {
+      const marquee = marqueeRef.current;
+      const left = Math.min(marquee.start.x, marquee.current.x);
+      const right = Math.max(marquee.start.x, marquee.current.x);
+      const top = Math.min(marquee.start.y, marquee.current.y);
+      const bottom = Math.max(marquee.start.y, marquee.current.y);
+
+      if (marquee.moved) {
+        const ids = elements
+          .filter((element) => {
+            const b = getElementBounds(element, contextRef.current);
+            return (
+              b.left >= left &&
+              b.right <= right &&
+              b.top >= top &&
+              b.bottom <= bottom
+            );
+          })
+          .map((element) => element.id);
+
+        const nextIds = event.shiftKey
+          ? Array.from(new Set([...selectedElementIds, ...ids]))
+          : ids;
+
+        setSelectedElementIds(nextIds);
+        setSelectedElementId(nextIds[0] ?? null);
+      } else if (!event.shiftKey) {
+        setSelectedElementIds([]);
+        setSelectedElementId(null);
+      }
+
+      marqueeRef.current = null;
       renderCanvas();
       return;
     }
@@ -1941,34 +2504,46 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
     setCurrentPageIndex(pages.length);
   };
 
-  const duplicatePage = (index: number) => {
-    const sourcePage = pages[index];
-    if (!sourcePage) return;
+  const duplicatePage = useCallback(
+    (index: number) => {
+      pushHistory();
 
-    pushHistory();
+      let duplicatedIndex = index;
 
-    // Deep-clone the page and regenerate every ID so the duplicated page
-    // is completely independent of the original page.
-    const duplicatedPage: WhiteboardPage = {
-      ...structuredClone(sourcePage),
-      id: createId(),
-      name: `${sourcePage.name} (Copy)`,
-      elements: sourcePage.elements.map((element: WhiteboardElement) => ({
-        ...structuredClone(element),
-        id: createId(),
-      })),
-    };
+      setPages((previous) => {
+        const sourcePage = previous[index];
+        if (!sourcePage) return previous;
 
-    const insertIndex = index + 1;
+        const duplicatedPage: WhiteboardPage = {
+          ...structuredClone(sourcePage),
+          id: createId(),
+          name: `${sourcePage.name} (Copy)`,
+          elements: sourcePage.elements.map((element: WhiteboardElement) => ({
+            ...structuredClone(element),
+            id: createId(),
+          })),
+        };
 
-    setPages((previous) => [
-      ...previous.slice(0, insertIndex),
-      duplicatedPage,
-      ...previous.slice(insertIndex),
-    ]);
-    setCurrentPageIndex(insertIndex);
-    setSelectedElementId(null);
-  };
+        duplicatedIndex = index + 1;
+
+        return [
+          ...previous.slice(0, duplicatedIndex),
+          duplicatedPage,
+          ...previous.slice(duplicatedIndex),
+        ];
+      });
+
+      setCurrentPageIndex(duplicatedIndex);
+      setSelectedElementId(null);
+      setSelectedElementIds([]);
+      setIsSaved(false);
+    },
+    [pushHistory],
+  );
+
+  const duplicateCurrentPage = useCallback(() => {
+    duplicatePage(currentPageIndex);
+  }, [currentPageIndex, duplicatePage]);
 
   const deletePage = (index: number) => {
     if (pages.length === 1) {
@@ -1983,7 +2558,10 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
   const goToPreviousPage = useCallback(() => {
     setCurrentPageIndex((current) => {
       const next = Math.max(0, current - 1);
-      if (next !== current) setSelectedElementId(null);
+      if (next !== current) {
+        setSelectedElementId(null);
+        setSelectedElementIds([]);
+      }
       return next;
     });
   }, []);
@@ -1991,7 +2569,10 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
   const goToNextPage = useCallback(() => {
     setCurrentPageIndex((current) => {
       const next = Math.min(pages.length - 1, current + 1);
-      if (next !== current) setSelectedElementId(null);
+      if (next !== current) {
+        setSelectedElementId(null);
+        setSelectedElementIds([]);
+      }
       return next;
     });
   }, [pages.length]);
@@ -2103,6 +2684,7 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
       setFormulaCategory(boardData.formulaCategory);
 
     setSelectedElementId(null);
+    setSelectedElementIds([]);
   }, []);
 
   const saveBoard = useCallback(
@@ -2767,22 +3349,18 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (tool !== "select" || !selectedElementId) return;
+      if (tool !== "select" || !selectedElementIds.length) return;
       const target = event.target as HTMLElement | null;
       if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA") return;
 
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "d") {
-        const selected = elements.find(
-          (element: WhiteboardElement) => element.id === selectedElementId,
-        );
-        if (
-          selected &&
-          (selected.type === "text" || selected.type === "equation")
-        ) {
-          event.preventDefault();
-          duplicateSelectedText();
-          return;
-        }
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === "d" &&
+        selectedElementIds.length === 1
+      ) {
+        event.preventDefault();
+        duplicateSelectedElement();
+        return;
       }
 
       if (event.key === "Delete" || event.key === "Backspace") {
@@ -2791,20 +3369,22 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
         updateCurrentPage((page) => ({
           ...page,
           elements: page.elements.filter(
-            (el: WhiteboardElement) => el.id !== selectedElementId,
+            (el: WhiteboardElement) => !selectedElementIds.includes(el.id),
           ),
         }));
         setSelectedElementId(null);
+        setSelectedElementIds([]);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
-    duplicateSelectedText,
+    duplicateSelectedElement,
     elements,
     pushHistory,
     selectedElementId,
+    selectedElementIds,
     tool,
     updateCurrentPage,
   ]);
@@ -2817,8 +3397,25 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
       className="relative flex h-screen w-full flex-col overflow-hidden bg-slate-50 text-slate-900 antialiased"
     >
       {showTeacherControls && showGraphSettings && (
-        <div className="fixed right-[338px] top-1/2 z-[290] w-80 max-w-[calc(100vw-360px)] -translate-y-1/2 sm:right-[338px] max-sm:right-4 max-sm:top-4 max-sm:translate-y-0 max-sm:w-[calc(100vw-88px)] max-sm:max-w-none rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl">
-          <div className="mb-3 flex items-center justify-between">
+        <div
+          className="fixed z-[290] w-80 max-w-[calc(100vw-24px)] rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl"
+          style={{
+            left: getPopupPosition("graph", {
+              x: Math.max(12, window.innerWidth - 420),
+              y: Math.max(80, window.innerHeight / 2 - 220),
+            }).x,
+            top: getPopupPosition("graph", {
+              x: 0,
+              y: Math.max(80, window.innerHeight / 2 - 220),
+            }).y,
+          }}
+          onPointerMove={movePopupDrag}
+          onPointerUp={endPopupDrag}
+        >
+          <div
+            className="mb-3 flex cursor-move items-center justify-between select-none"
+            onPointerDown={(event) => startPopupDrag("graph", event)}
+          >
             <h3 className="text-sm font-bold text-slate-900">
               Background & Grid Settings
             </h3>
@@ -3175,8 +3772,13 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
             top: textEditor.y,
           }}
           onPointerDown={(event) => event.stopPropagation()}
+          onPointerMove={handleTextEditorDragMove}
+          onPointerUp={handleTextEditorDragEnd}
         >
-          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/95 px-4 py-3">
+          <div
+            className="flex cursor-move items-center justify-between border-b border-slate-100 bg-slate-50/95 px-4 py-3 select-none"
+            onPointerDown={handleTextEditorDrag}
+          >
             <div className="flex items-center gap-3">
               <div className="flex size-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
                 {textEditor.type === "equation" ? (
@@ -3653,6 +4255,14 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
         </div>
       )}
 
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+        className="hidden"
+        onChange={importImage}
+      />
+
       {/* Full-screen drawing workspace */}
       <div className="absolute inset-0">
         <section
@@ -3671,6 +4281,7 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerUp}
               onDoubleClick={handleCanvasDoubleClick}
+              onContextMenu={handleCanvasContextMenu}
             />
           </div>
         </section>
@@ -3682,9 +4293,9 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
             onPointerEnter={() => setToolbarHovered(true)}
             onPointerLeave={(event) => {
               // Keep the toolbar open while the pointer moves toward the popup.
-              const next = event.relatedTarget as Node | null;
+              const next = event.relatedTarget;
               if (
-                next &&
+                next instanceof Node &&
                 (event.currentTarget.contains(next) ||
                   (next instanceof Element && next.closest('[role="dialog"]')))
               )
@@ -3761,6 +4372,17 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
 
               <div className="mx-0.5 h-8 w-px shrink-0 bg-white/10" />
 
+              {/* Import image for classroom illustrations */}
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                title="Import image"
+                aria-label="Import image"
+                className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-white/65 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <ImageIcon className="size-4" />
+              </button>
+
               {/* Shapes & math tools popup — replaces the horizontal-scrolling tool strip. */}
               <button
                 ref={shapeToolsButtonRef}
@@ -3806,30 +4428,46 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
                 </button>
 
                 {selectedElement ? (
-                  <button
-                    ref={objectColorButtonRef}
-                    type="button"
-                    onClick={() => {
-                      if (showColorPopup && colorPopupTarget === "object") {
-                        setShowColorPopup(false);
-                        setColorPopupTarget(null);
-                        return;
-                      }
-                      positionColorPopup("object");
-                    }}
-                    title="Selected object color"
-                    aria-label="Selected object color"
-                    className={`flex size-10 items-center justify-center rounded-2xl transition ${
-                      colorPopupTarget === "object" && showColorPopup
-                        ? "bg-blue-500/20 text-blue-300"
-                        : "text-white/65 hover:bg-white/10 hover:text-white"
-                    }`}
-                  >
-                    <span
-                      className="size-4 rounded-md border border-white/70 shadow-sm ring-1 ring-white/20"
-                      style={{ backgroundColor: selectedElement.color }}
-                    />
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={duplicateSelectedElement}
+                      title="Duplicate selected object (⌘/Ctrl+D)"
+                      aria-label="Duplicate selected object"
+                      className="flex size-10 items-center justify-center rounded-2xl text-white/65 transition hover:bg-blue-500/15 hover:text-blue-300"
+                    >
+                      <Copy className="size-4" />
+                    </button>
+                    <button
+                      ref={objectColorButtonRef}
+                      type="button"
+                      onClick={() => {
+                        if (showColorPopup && colorPopupTarget === "object") {
+                          setShowColorPopup(false);
+                          setColorPopupTarget(null);
+                          return;
+                        }
+                        positionColorPopup("object");
+                      }}
+                      title="Selected object color"
+                      aria-label="Selected object color"
+                      className={`flex size-10 items-center justify-center rounded-2xl transition ${
+                        colorPopupTarget === "object" && showColorPopup
+                          ? "bg-blue-500/20 text-blue-300"
+                          : "text-white/65 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      <span
+                        className="size-4 rounded-md border border-white/70 shadow-sm ring-1 ring-white/20"
+                        style={{
+                          backgroundColor:
+                            "color" in selectedElement
+                              ? selectedElement.color
+                              : "#94a3b8",
+                        }}
+                      />
+                    </button>
+                  </>
                 ) : null}
 
                 <div
@@ -3976,11 +4614,20 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
                 <button
                   type="button"
                   onClick={addPage}
-                  title="Add page"
-                  aria-label="Add page"
+                  title="Add blank page"
+                  aria-label="Add blank page"
                   className="hidden size-10 items-center justify-center rounded-2xl text-white/65 transition hover:bg-white/10 hover:text-white sm:flex"
                 >
                   <Plus className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={duplicateCurrentPage}
+                  title="Duplicate current page"
+                  aria-label="Duplicate current page"
+                  className="hidden size-10 items-center justify-center rounded-2xl text-white/65 transition hover:bg-blue-500/15 hover:text-blue-300 sm:flex"
+                >
+                  <Copy className="size-4" />
                 </button>
                 <button
                   type="button"
@@ -4010,13 +4657,33 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
 
             {showShapeToolsPopup && (
               <div
-                className="fixed bottom-[88px] left-1/2 z-[500] w-[min(390px,calc(100vw-20px))] -translate-x-1/2 rounded-2xl border border-white/15 bg-slate-950/95 p-2.5 shadow-2xl shadow-black/50 backdrop-blur-2xl"
-                onPointerDown={(event) => event.stopPropagation()}
+                className="fixed z-[500] w-[min(390px,calc(100vw-20px))] rounded-2xl border border-white/15 bg-slate-950/95 p-2.5 shadow-2xl shadow-black/50 backdrop-blur-2xl"
+                style={{
+                  left: getPopupPosition("shapes", {
+                    x: Math.max(12, window.innerWidth / 2 - 195),
+                    y: Math.max(70, window.innerHeight - 300),
+                  }).x,
+                  top: getPopupPosition("shapes", {
+                    x: 0,
+                    y: Math.max(70, window.innerHeight - 300),
+                  }).y,
+                }}
+                onPointerDown={(event) => {
+                  if (!(event.target as HTMLElement).closest("button")) {
+                    startPopupDrag("shapes", event);
+                  }
+                  event.stopPropagation();
+                }}
+                onPointerMove={movePopupDrag}
+                onPointerUp={endPopupDrag}
                 onClick={(event) => event.stopPropagation()}
                 role="dialog"
                 aria-label="Shapes and math tools"
               >
-                <div className="mb-2 flex items-center justify-between px-1">
+                <div
+                  className="mb-2 flex cursor-move touch-none items-center justify-between px-1 select-none"
+                  onPointerDown={(event) => startPopupDrag("shapes", event)}
+                >
                   <div>
                     <div className="text-[10px] font-extrabold uppercase tracking-wider text-white/80">
                       Shapes & Math Tools
@@ -4036,6 +4703,15 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
                 </div>
 
                 <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5">
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    title="Import image"
+                    aria-label="Import image"
+                    className="flex size-10 items-center justify-center rounded-xl text-white/65 transition hover:bg-white/10 hover:text-white"
+                  >
+                    <Upload className="size-4" />
+                  </button>
                   {toolButton(
                     "eraser",
                     "Eraser",
@@ -4129,12 +4805,27 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
         {/* Compact page manager — preserves duplicate / rename / delete page controls */}
         {showTeacherControls && showPagesPanel && (
           <aside
-            className="fixed bottom-[98px] left-1/2 z-[310] w-[min(360px,calc(100vw-24px))] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/15 bg-slate-950/80 shadow-2xl shadow-black/30 backdrop-blur-2xl"
+            className="fixed z-[310] w-[min(360px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-white/15 bg-slate-950/80 shadow-2xl shadow-black/30 backdrop-blur-2xl"
+            style={{
+              left: getPopupPosition("pages", {
+                x: Math.max(12, window.innerWidth / 2 - 180),
+                y: Math.max(70, window.innerHeight - 390),
+              }).x,
+              top: getPopupPosition("pages", {
+                x: 0,
+                y: Math.max(70, window.innerHeight - 390),
+              }).y,
+            }}
+            onPointerMove={movePopupDrag}
+            onPointerUp={endPopupDrag}
             onPointerEnter={() => setToolbarHovered(true)}
             onPointerLeave={() => setToolbarHovered(false)}
             onPointerDown={(event) => event.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-white/10 px-3 py-2.5">
+            <div
+              className="flex cursor-move touch-none items-center justify-between border-b border-white/10 px-3 py-2.5 select-none"
+              onPointerDown={(event) => startPopupDrag("pages", event)}
+            >
               <div>
                 <div className="text-[10px] font-extrabold uppercase tracking-wider text-white/80">
                   Pages
@@ -4143,15 +4834,26 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
                   {pages.length} {pages.length === 1 ? "page" : "pages"}
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={addPage}
-                title="Add page"
-                aria-label="Add page"
-                className="flex size-8 items-center justify-center rounded-xl bg-blue-500 text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-400"
-              >
-                <Plus className="size-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={addPage}
+                  title="Add page"
+                  aria-label="Add page"
+                  className="flex size-8 items-center justify-center rounded-xl bg-blue-500 text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-400"
+                >
+                  <Plus className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPagesPanel(false)}
+                  title="Close pages"
+                  aria-label="Close manage pages"
+                  className="flex size-8 items-center justify-center rounded-xl text-white/45 transition hover:bg-white/10 hover:text-white"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
             </div>
             <div className="max-h-56 space-y-1 overflow-y-auto p-2">
               {pages.map((page, index) => {
@@ -4170,6 +4872,7 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
                       onClick={() => {
                         setCurrentPageIndex(index);
                         setSelectedElementId(null);
+                        setSelectedElementIds([]);
                         setShowPagesPanel(false);
                       }}
                       className="flex min-w-0 flex-1 items-center gap-2 px-1.5 py-2 text-left"
@@ -4234,12 +4937,23 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
           <div
             className="fixed z-[310] w-55 max-w-[calc(100vw-24px)] rounded-2xl border border-slate-200/90 bg-white/98 p-3 shadow-2xl shadow-slate-900/15 backdrop-blur-xl"
             style={{
-              top: colorPopupPosition.top,
-              left: colorPopupPosition.left,
+              top: getPopupPosition("color", {
+                x: colorPopupPosition.left,
+                y: colorPopupPosition.top,
+              }).y,
+              left: getPopupPosition("color", {
+                x: colorPopupPosition.left,
+                y: colorPopupPosition.top,
+              }).x,
             }}
+            onPointerMove={movePopupDrag}
+            onPointerUp={endPopupDrag}
             onPointerDown={(event) => event.stopPropagation()}
           >
-            <div className="mb-3 flex items-center justify-between">
+            <div
+              className="mb-3 flex cursor-move touch-none items-center justify-between select-none"
+              onPointerDown={(event) => startPopupDrag("color", event)}
+            >
               <div>
                 <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
                   {colorPopupTarget === "object" ? "Object Color" : "Pen Color"}
@@ -4266,7 +4980,9 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
               {COLORS.map((c) => {
                 const activeColor =
                   colorPopupTarget === "object"
-                    ? selectedElement?.color
+                    ? selectedElement && "color" in selectedElement
+                      ? selectedElement.color
+                      : undefined
                     : color;
 
                 return (
@@ -4306,7 +5022,12 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
                 </span>
                 <span
                   className="size-4 rounded-full border border-slate-200 shadow-sm"
-                  style={{ backgroundColor: selectedElement.color }}
+                  style={{
+                    backgroundColor:
+                      "color" in selectedElement
+                        ? selectedElement.color
+                        : "#94a3b8",
+                  }}
                 />
               </div>
             )}
@@ -4315,8 +5036,25 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
 
         {/* Floating Math Toolkit — teacher only */}
         {showTeacherControls && showToolsPanel && (
-          <aside className="fixed right-[338px] top-1/2 z-[290] flex max-h-[calc(100vh-32px)] w-72 max-w-[calc(100vw-360px)] -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl max-sm:right-4 max-sm:top-4 max-sm:w-[calc(100vw-88px)] max-sm:max-w-none max-sm:translate-y-0">
-            <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-3 py-2.5">
+          <aside
+            className="fixed z-[290] flex max-h-[calc(100vh-32px)] w-72 max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl"
+            style={{
+              left: getPopupPosition("toolkit", {
+                x: Math.max(12, window.innerWidth - 420),
+                y: Math.max(80, window.innerHeight / 2 - 260),
+              }).x,
+              top: getPopupPosition("toolkit", {
+                x: 0,
+                y: Math.max(80, window.innerHeight / 2 - 260),
+              }).y,
+            }}
+            onPointerMove={movePopupDrag}
+            onPointerUp={endPopupDrag}
+          >
+            <div
+              className="flex shrink-0 cursor-move touch-none items-center justify-between border-b border-slate-100 px-3 py-2.5 select-none"
+              onPointerDown={(event) => startPopupDrag("toolkit", event)}
+            >
               <div className="flex items-center gap-2">
                 <div className="flex size-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
                   <Layers3 className="size-3.5" />
@@ -4476,10 +5214,25 @@ export default function Whiteboard({ mode, appointmentId }: WhiteboardProps) {
           }}
         >
           <div
-            className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20"
+            className="fixed w-[min(420px,calc(100vw-24px))] max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20"
+            style={{
+              left: getPopupPosition("rename", {
+                x: Math.max(12, window.innerWidth / 2 - 210),
+                y: Math.max(70, window.innerHeight / 2 - 180),
+              }).x,
+              top: getPopupPosition("rename", {
+                x: 0,
+                y: Math.max(70, window.innerHeight / 2 - 180),
+              }).y,
+            }}
             onPointerDown={(event) => event.stopPropagation()}
+            onPointerMove={movePopupDrag}
+            onPointerUp={endPopupDrag}
           >
-            <div className="flex items-start justify-between border-b border-slate-100 bg-slate-50/90 px-5 py-4">
+            <div
+              className="flex cursor-move touch-none items-start justify-between border-b border-slate-100 bg-slate-50/90 px-5 py-4 select-none"
+              onPointerDown={(event) => startPopupDrag("rename", event)}
+            >
               <div className="flex items-center gap-3">
                 <div className="flex size-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
                   <PenLine className="size-4" />

@@ -1,7 +1,8 @@
 "use server";
 
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-
+import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import {
   AssetType,
@@ -11,312 +12,229 @@ import {
   StatusType,
 } from "@/lib/generated/prisma/client";
 
-// ============================================================
-// TYPES
-// ============================================================
-
 export interface CreateInvestmentInput {
   name: string;
-
   tickerOrSymbol?: string | null;
   cusip?: string | null;
-
   accountNumber?: string | null;
   accountName?: string | null;
   institution?: string | null;
-
   assetClass: AssetType;
   region: RegionType;
   currency: CurrencyType;
-
   type: InvestmentTransactionType;
-
   shares?: number | null;
   pricePerShare?: number | null;
-
   amount: number;
   grossAmount?: number | null;
-
   fees?: number;
   taxes?: number;
-
   costBasis?: number | null;
   realizedGain?: number | null;
-
   marketValue?: number | null;
   unrealizedGain?: number | null;
   unrealizedGainPercent?: number | null;
-
   cashBalance?: number | null;
-
   exchangeRate?: number;
-
   date?: Date;
   settlementDate?: Date | null;
-
   source?: string | null;
   sourceFile?: string | null;
   importBatchId?: string | null;
-
   fingerprint?: string | null;
-
   status?: StatusType;
-
   notes?: string | null;
 }
 
-export interface UpdateInvestmentInput {
-  name: string;
+export type BulkImportResult = {
+  success: boolean;
+  imported: number;
+  duplicates: number;
+  error?: string;
+};
 
-  tickerOrSymbol?: string | null;
-  cusip?: string | null;
-
-  accountNumber?: string | null;
-  accountName?: string | null;
-  institution?: string | null;
-
-  assetClass: AssetType;
-  region: RegionType;
-  currency: CurrencyType;
-
-  type: InvestmentTransactionType;
-
-  shares?: number | null;
-  pricePerShare?: number | null;
-
-  amount: number;
-  grossAmount?: number | null;
-
-  fees?: number;
-  taxes?: number;
-
-  costBasis?: number | null;
-  realizedGain?: number | null;
-
-  marketValue?: number | null;
-  unrealizedGain?: number | null;
-  unrealizedGainPercent?: number | null;
-
-  cashBalance?: number | null;
-
-  exchangeRate?: number;
-
-  date?: Date;
-  settlementDate?: Date | null;
-
-  source?: string | null;
-  sourceFile?: string | null;
-  importBatchId?: string | null;
-
-  fingerprint?: string | null;
-
-  status?: StatusType;
-
-  notes?: string | null;
+async function requireUserId(): Promise<string> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  const userId = session?.user?.id;
+  if (!userId) throw new Error("Unauthorized. Please log in.");
+  return userId;
 }
 
-// ============================================================
-// HELPERS
-// ============================================================
+function nullableString(value?: string | null): string | null {
+  const v = value?.trim();
+  return v ? v : null;
+}
 
-/**
- * Calculate the USD value correctly.
- *
- * USD:
- *   amountUSD = amount
- *
- * GHS:
- *   amountUSD = amount * exchangeRate
- *
- * Assumes exchangeRate means:
- *   1 GHS = X USD
- */
-function calculateAmountUSD(
+function nullableNumber(value?: number | null): number | null {
+  return value != null && Number.isFinite(value) ? value : null;
+}
+
+function buildFingerprint(input: CreateInvestmentInput): string {
+  const date = input.date
+    ? new Date(input.date).toISOString().slice(0, 10)
+    : "";
+  return [
+    date,
+    (input.tickerOrSymbol || input.name || "").trim().toUpperCase(),
+    input.type,
+    input.accountNumber?.trim() ?? "",
+    input.accountName?.trim() ?? "",
+    Number(input.shares ?? 0).toFixed(8),
+    Number(input.pricePerShare ?? 0).toFixed(6),
+    Number(input.amount ?? 0).toFixed(2),
+    Number(input.grossAmount ?? input.amount ?? 0).toFixed(2),
+    Number(input.fees ?? 0).toFixed(2),
+    Number(input.taxes ?? 0).toFixed(2),
+    input.settlementDate
+      ? new Date(input.settlementDate).toISOString().slice(0, 10)
+      : "",
+  ].join("|");
+}
+
+function amountUSD(
   amount: number,
   currency: CurrencyType,
-  exchangeRate: number,
+  rate: number,
 ): number {
-  if (!Number.isFinite(amount)) {
-    return 0;
-  }
-
-  if (currency === CurrencyType.USD) {
-    return amount;
-  }
-
-  if (!Number.isFinite(exchangeRate) || exchangeRate <= 0) {
-    return 0;
-  }
-
-  return amount * exchangeRate;
+  if (!Number.isFinite(amount)) return 0;
+  if (currency === CurrencyType.USD) return amount;
+  return Number.isFinite(rate) && rate > 0 ? amount * rate : 0;
 }
 
-/**
- * Convert optional numeric values safely.
- */
-function nullableNumber(value?: number | null): number | null {
-  if (value === null || value === undefined) {
-    return null;
-  }
+function normalizeCreate(input: CreateInvestmentInput, userId: string) {
+  const exchangeRate =
+    Number.isFinite(input.exchangeRate) && (input.exchangeRate ?? 0) > 0
+      ? input.exchangeRate!
+      : 1;
+  const amount = Number.isFinite(input.amount) ? Math.abs(input.amount) : 0;
 
-  return Number.isFinite(value) ? value : null;
+  return {
+    userId,
+    name: input.name.trim(),
+    tickerOrSymbol: nullableString(input.tickerOrSymbol),
+    cusip: nullableString(input.cusip),
+    accountNumber: nullableString(input.accountNumber),
+    accountName: nullableString(input.accountName),
+    institution: nullableString(input.institution) ?? "Fidelity Investments",
+    assetClass: input.assetClass,
+    region: input.region,
+    currency: input.currency,
+    type: input.type,
+    shares: nullableNumber(input.shares),
+    pricePerShare: nullableNumber(input.pricePerShare),
+    amount,
+    grossAmount: nullableNumber(input.grossAmount) ?? amount,
+    fees: Number.isFinite(input.fees ?? 0) ? Math.abs(input.fees ?? 0) : 0,
+    taxes: Number.isFinite(input.taxes ?? 0) ? Math.abs(input.taxes ?? 0) : 0,
+    costBasis: nullableNumber(input.costBasis),
+    realizedGain: nullableNumber(input.realizedGain),
+    marketValue: nullableNumber(input.marketValue),
+    unrealizedGain: nullableNumber(input.unrealizedGain),
+    unrealizedGainPercent: nullableNumber(input.unrealizedGainPercent),
+    cashBalance: nullableNumber(input.cashBalance),
+    exchangeRate,
+    amountUSD: amountUSD(amount, input.currency, exchangeRate),
+    date: input.date ?? new Date(),
+    settlementDate: input.settlementDate ?? null,
+    source: nullableString(input.source),
+    sourceFile: nullableString(input.sourceFile),
+    importBatchId: nullableString(input.importBatchId),
+    fingerprint: nullableString(input.fingerprint) ?? buildFingerprint(input),
+    status: input.status ?? StatusType.ACTIVE,
+    notes: nullableString(input.notes),
+  };
 }
 
-/**
- * Normalize empty strings to null.
- */
-function nullableString(value?: string | null): string | null {
-  if (!value) {
-    return null;
-  }
+type InvestmentDb = Pick<typeof prisma, "investmentAccount">;
 
-  const trimmed = value.trim();
+async function ensureInvestmentAccount(
+  tx: InvestmentDb,
+  userId: string,
+  input: CreateInvestmentInput,
+) {
+  if (!input.accountNumber?.trim()) return null;
 
-  return trimmed.length > 0 ? trimmed : null;
+  return tx.investmentAccount.upsert({
+    where: {
+      userId_institution_accountNumber: {
+        userId,
+        institution: input.institution?.trim() || "Fidelity Investments",
+        accountNumber: input.accountNumber.trim(),
+      },
+    },
+    create: {
+      userId,
+      institution: input.institution?.trim() || "Fidelity Investments",
+      accountNumber: input.accountNumber.trim(),
+      accountName: nullableString(input.accountName),
+      currency: input.currency,
+    },
+    update: {
+      accountName: nullableString(input.accountName),
+      currency: input.currency,
+    },
+  });
 }
-
-// ============================================================
-// FETCH ALL INVESTMENTS
-// ============================================================
 
 export async function getInvestments(regionFilter?: "ALL" | "USA" | "GHANA") {
   try {
-    const whereCondition =
-      regionFilter && regionFilter !== "ALL"
-        ? {
-            region: regionFilter as RegionType,
-          }
-        : {};
-
+    const userId = await requireUserId();
     const investments = await prisma.investment.findMany({
-      where: whereCondition,
-      orderBy: [
-        {
-          date: "desc",
-        },
-        {
-          createdAt: "desc",
-        },
-      ],
+      where: {
+        userId,
+        ...(regionFilter && regionFilter !== "ALL"
+          ? { region: regionFilter as RegionType }
+          : {}),
+      },
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
     });
 
-    return {
-      success: true,
-      data: investments,
-      error: null,
-    };
+    return { success: true, data: investments, error: null };
   } catch (error) {
-    console.error("Failed to fetch investments:", error);
-
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Unknown database error while retrieving investments.";
-
     return {
       success: false,
       data: [],
       error:
-        process.env.NODE_ENV === "development"
-          ? `Failed to retrieve investments: ${message}`
+        error instanceof Error
+          ? error.message
           : "Failed to retrieve investments.",
     };
   }
 }
 
-// ============================================================
-// FETCH SINGLE INVESTMENT
-// ============================================================
-
 export async function getInvestmentById(id: string) {
   try {
-    // Validate the ID before sending it to Prisma
-    if (!id || typeof id !== "string" || id.trim().length === 0) {
-      return {
-        success: false,
-        data: null,
-        error: "Invalid investment ID.",
-      };
-    }
-
-    const investmentId = id.trim();
-
-    const investment = await prisma.investment.findUnique({
-      where: {
-        id: investmentId,
-      },
+    const userId = await requireUserId();
+    const investment = await prisma.investment.findFirst({
+      where: { id, userId },
     });
 
     if (!investment) {
-      return {
-        success: false,
-        data: null,
-        error: "Investment not found.",
-      };
+      return { success: false, data: null, error: "Investment not found." };
     }
 
-    return {
-      success: true,
-      data: investment,
-      error: null,
-    };
+    return { success: true, data: investment, error: null };
   } catch (error) {
-    // IMPORTANT: expose the real Prisma/database error in development
-    console.error("Failed to fetch investment:", {
-      id,
-      error,
-    });
-
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Unknown database error while retrieving investment.";
-
     return {
       success: false,
       data: null,
       error:
-        process.env.NODE_ENV === "development"
-          ? `Failed to retrieve investment: ${message}`
+        error instanceof Error
+          ? error.message
           : "Failed to retrieve investment.",
     };
   }
 }
 
-// ============================================================
-// SAVE NEW INVESTMENT
-// ============================================================
-
 export async function createInvestment(input: CreateInvestmentInput) {
   try {
-    // --------------------------------------------------------
-    // Normalize values
-    // --------------------------------------------------------
+    const userId = await requireUserId();
+    const normalized = normalizeCreate(input, userId);
 
-    const amount = Number.isFinite(input.amount) ? input.amount : 0;
-
-    const exchangeRate =
-      input.exchangeRate !== undefined &&
-      Number.isFinite(input.exchangeRate) &&
-      input.exchangeRate > 0
-        ? input.exchangeRate
-        : 1;
-
-    const amountUSD = calculateAmountUSD(amount, input.currency, exchangeRate);
-
-    // --------------------------------------------------------
-    // Prevent duplicate imports
-    // --------------------------------------------------------
-
-    const fingerprint = nullableString(input.fingerprint);
-
-    if (fingerprint) {
-      const existing = await prisma.investment.findUnique({
-        where: {
-          fingerprint,
-        },
+    if (normalized.fingerprint) {
+      const existing = await prisma.investment.findFirst({
+        where: { userId, fingerprint: normalized.fingerprint },
       });
-
       if (existing) {
         return {
           success: false,
@@ -327,151 +245,18 @@ export async function createInvestment(input: CreateInvestmentInput) {
       }
     }
 
-    // --------------------------------------------------------
-    // Create investment
-    // --------------------------------------------------------
-
-    const newInvestment = await prisma.investment.create({
+    const account = await ensureInvestmentAccount(prisma, userId, input);
+    const investment = await prisma.investment.create({
       data: {
-        // ----------------------------------------------
-        // Security
-        // ----------------------------------------------
-
-        name: input.name,
-
-        tickerOrSymbol: nullableString(input.tickerOrSymbol),
-
-        cusip: nullableString(input.cusip),
-
-        // ----------------------------------------------
-        // Fidelity / account
-        // ----------------------------------------------
-
-        accountNumber: nullableString(input.accountNumber),
-
-        accountName: nullableString(input.accountName),
-
-        institution:
-          nullableString(input.institution) ?? "Fidelity Investments",
-
-        // ----------------------------------------------
-        // Classification
-        // ----------------------------------------------
-
-        assetClass: input.assetClass,
-
-        region: input.region,
-
-        currency: input.currency,
-
-        type: input.type ?? InvestmentTransactionType.OTHER,
-
-        // ----------------------------------------------
-        // Transaction
-        // ----------------------------------------------
-
-        shares: nullableNumber(input.shares),
-
-        pricePerShare: nullableNumber(input.pricePerShare),
-
-        amount,
-
-        grossAmount: nullableNumber(input.grossAmount) ?? amount,
-
-        fees: Number.isFinite(input.fees ?? 0) ? (input.fees ?? 0) : 0,
-
-        taxes: Number.isFinite(input.taxes ?? 0) ? (input.taxes ?? 0) : 0,
-
-        // ----------------------------------------------
-        // Performance
-        // ----------------------------------------------
-
-        costBasis: nullableNumber(input.costBasis),
-
-        realizedGain: nullableNumber(input.realizedGain),
-
-        marketValue: nullableNumber(input.marketValue),
-
-        unrealizedGain: nullableNumber(input.unrealizedGain),
-
-        unrealizedGainPercent: nullableNumber(input.unrealizedGainPercent),
-
-        // ----------------------------------------------
-        // Cash
-        // ----------------------------------------------
-
-        cashBalance: nullableNumber(input.cashBalance),
-
-        // ----------------------------------------------
-        // Currency
-        // ----------------------------------------------
-
-        exchangeRate,
-
-        amountUSD,
-
-        // ----------------------------------------------
-        // Dates
-        // ----------------------------------------------
-
-        date: input.date ? new Date(input.date) : new Date(),
-
-        settlementDate: input.settlementDate
-          ? new Date(input.settlementDate)
-          : null,
-
-        // ----------------------------------------------
-        // Import metadata
-        // ----------------------------------------------
-
-        source: nullableString(input.source),
-
-        sourceFile: nullableString(input.sourceFile),
-
-        importBatchId: nullableString(input.importBatchId),
-
-        fingerprint,
-
-        // ----------------------------------------------
-        // Status
-        // ----------------------------------------------
-
-        status: input.status ?? StatusType.ACTIVE,
-
-        // ----------------------------------------------
-        // Notes
-        // ----------------------------------------------
-
-        notes: nullableString(input.notes),
+        ...normalized,
+        accountId: account?.id ?? null,
       },
     });
 
-    // Revalidate portfolio page
-    revalidatePath("/");
     revalidatePath("/portfolio");
-
-    return {
-      success: true,
-      data: newInvestment,
-      duplicate: false,
-    };
+    revalidatePath("/");
+    return { success: true, duplicate: false, data: investment, error: null };
   } catch (error) {
-    console.error("Failed to save investment:", error);
-
-    // Handle Prisma unique fingerprint error
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      error.code === "P2002"
-    ) {
-      return {
-        success: false,
-        duplicate: true,
-        error: "This investment record already exists.",
-      };
-    }
-
     return {
       success: false,
       duplicate: false,
@@ -481,248 +266,241 @@ export async function createInvestment(input: CreateInvestmentInput) {
   }
 }
 
-// ============================================================
-// UPDATE INVESTMENT
-// ============================================================
-
-export async function updateInvestment(
-  id: string,
-  data: UpdateInvestmentInput,
-) {
+export async function bulkImportInvestments(
+  inputs: CreateInvestmentInput[],
+): Promise<BulkImportResult> {
   try {
-    // --------------------------------------------------------
-    // Normalize values
-    // --------------------------------------------------------
-
-    const amount = Number.isFinite(data.amount) ? data.amount : 0;
-
-    const exchangeRate =
-      data.exchangeRate !== undefined &&
-      Number.isFinite(data.exchangeRate) &&
-      data.exchangeRate > 0
-        ? data.exchangeRate
-        : 1;
-
-    const amountUSD = calculateAmountUSD(amount, data.currency, exchangeRate);
-
-    const fingerprint = nullableString(data.fingerprint);
-
-    // --------------------------------------------------------
-    // Prevent changing to another existing fingerprint
-    // --------------------------------------------------------
-
-    if (fingerprint) {
-      const existing = await prisma.investment.findFirst({
-        where: {
-          fingerprint,
-          NOT: {
-            id,
-          },
-        },
-      });
-
-      if (existing) {
-        return {
-          success: false,
-          duplicate: true,
-          data: existing,
-          error: "Another investment record already uses this fingerprint.",
-        };
-      }
-    }
-
-    // --------------------------------------------------------
-    // Update
-    // --------------------------------------------------------
-
-    const updated = await prisma.investment.update({
-      where: {
-        id,
-      },
-
-      data: {
-        // ----------------------------------------------
-        // Security
-        // ----------------------------------------------
-
-        name: data.name,
-
-        tickerOrSymbol: nullableString(data.tickerOrSymbol),
-
-        cusip: nullableString(data.cusip),
-
-        // ----------------------------------------------
-        // Account
-        // ----------------------------------------------
-
-        accountNumber: nullableString(data.accountNumber),
-
-        accountName: nullableString(data.accountName),
-
-        institution: nullableString(data.institution) ?? "Fidelity Investments",
-
-        // ----------------------------------------------
-        // Classification
-        // ----------------------------------------------
-
-        assetClass: data.assetClass,
-
-        region: data.region,
-
-        currency: data.currency,
-
-        type: data.type,
-
-        // ----------------------------------------------
-        // Transaction
-        // ----------------------------------------------
-
-        shares: nullableNumber(data.shares),
-
-        pricePerShare: nullableNumber(data.pricePerShare),
-
-        amount,
-
-        grossAmount: nullableNumber(data.grossAmount) ?? amount,
-
-        fees: Number.isFinite(data.fees ?? 0) ? (data.fees ?? 0) : 0,
-
-        taxes: Number.isFinite(data.taxes ?? 0) ? (data.taxes ?? 0) : 0,
-
-        // ----------------------------------------------
-        // Performance
-        // ----------------------------------------------
-
-        costBasis: nullableNumber(data.costBasis),
-
-        realizedGain: nullableNumber(data.realizedGain),
-
-        marketValue: nullableNumber(data.marketValue),
-
-        unrealizedGain: nullableNumber(data.unrealizedGain),
-
-        unrealizedGainPercent: nullableNumber(data.unrealizedGainPercent),
-
-        // ----------------------------------------------
-        // Cash
-        // ----------------------------------------------
-
-        cashBalance: nullableNumber(data.cashBalance),
-
-        // ----------------------------------------------
-        // Currency
-        // ----------------------------------------------
-
-        exchangeRate,
-
-        amountUSD,
-
-        // ----------------------------------------------
-        // Dates
-        // ----------------------------------------------
-
-        ...(data.date
-          ? {
-              date: new Date(data.date),
-            }
-          : {}),
-
-        ...(data.settlementDate
-          ? {
-              settlementDate: new Date(data.settlementDate),
-            }
-          : {
-              settlementDate: null,
-            }),
-
-        // ----------------------------------------------
-        // Import metadata
-        // ----------------------------------------------
-
-        source: nullableString(data.source),
-
-        sourceFile: nullableString(data.sourceFile),
-
-        importBatchId: nullableString(data.importBatchId),
-
-        fingerprint,
-
-        // ----------------------------------------------
-        // Status
-        // ----------------------------------------------
-
-        status: data.status ?? StatusType.ACTIVE,
-
-        // ----------------------------------------------
-        // Notes
-        // ----------------------------------------------
-
-        notes: nullableString(data.notes),
-      },
-    });
-
-    revalidatePath("/");
-    revalidatePath("/portfolio");
-
-    return {
-      success: true,
-      data: updated,
-      duplicate: false,
-    };
-  } catch (error) {
-    console.error("Failed to update investment:", error);
-
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      error.code === "P2002"
-    ) {
+    const userId = await requireUserId();
+    if (!Array.isArray(inputs) || inputs.length === 0) {
       return {
         success: false,
-        duplicate: true,
-        error: "Another investment record already uses this fingerprint.",
+        imported: 0,
+        duplicates: 0,
+        error: "No records to import.",
       };
     }
 
+    const fingerprints = inputs
+      .map((item) => item.fingerprint?.trim())
+      .filter((value): value is string => Boolean(value));
+
+    const existing = fingerprints.length
+      ? await prisma.investment.findMany({
+          where: { userId, fingerprint: { in: fingerprints } },
+          select: { fingerprint: true },
+        })
+      : [];
+
+    const existingSet = new Set(
+      existing
+        .map((item) => item.fingerprint)
+        .filter((v): v is string => Boolean(v)),
+    );
+
+    const seen = new Set<string>();
+    const fresh = inputs.filter((item) => {
+      const fp = item.fingerprint?.trim();
+      if (!fp || existingSet.has(fp) || seen.has(fp)) return false;
+      seen.add(fp);
+      return true;
+    });
+
+    if (fresh.length === 0) {
+      return { success: true, imported: 0, duplicates: inputs.length };
+    }
+
+    const importBatchId =
+      fresh.find((item) => item.importBatchId)?.importBatchId ??
+      crypto.randomUUID();
+
+    /*
+     * Resolve Fidelity accounts once, then insert the investment rows in bulk.
+     *
+     * The previous implementation performed an account upsert + investment
+     * insert for every CSV row inside a single interactive transaction. A
+     * 175-row Fidelity file could therefore execute hundreds of queries before
+     * the transaction committed and exceed Prisma's default 5-second timeout.
+     *
+     * We now:
+     *   1. Normalize the rows in memory.
+     *   2. Resolve each unique account only once.
+     *   3. Use createMany() for the investment rows.
+     *   4. Keep the account creation and investment inserts atomic.
+     *
+     * The 30-second timeout is an additional safety margin, not the primary
+     * performance fix.
+     */
+    const normalizedRows = fresh.map((input) =>
+      normalizeCreate({ ...input, importBatchId }, userId),
+    );
+
+    type AccountKey = string;
+
+    const accountInputs = new Map<
+      AccountKey,
+      {
+        accountNumber: string;
+        institution: string;
+        accountName: string | null;
+        currency: CurrencyType;
+      }
+    >();
+
+    for (const input of fresh) {
+      const accountNumber = input.accountNumber?.trim();
+      if (!accountNumber) continue;
+
+      const institution = input.institution?.trim() || "Fidelity Investments";
+
+      const key = [
+        userId,
+        institution.toUpperCase(),
+        accountNumber.toUpperCase(),
+      ].join("|");
+
+      if (!accountInputs.has(key)) {
+        accountInputs.set(key, {
+          accountNumber,
+          institution,
+          accountName: nullableString(input.accountName),
+          currency: input.currency,
+        });
+      }
+    }
+
+    await prisma.$transaction(
+      async (tx) => {
+        const accountIds = new Map<AccountKey, string>();
+
+        for (const [key, accountInput] of accountInputs) {
+          const account = await tx.investmentAccount.upsert({
+            where: {
+              userId_institution_accountNumber: {
+                userId,
+                institution: accountInput.institution,
+                accountNumber: accountInput.accountNumber,
+              },
+            },
+            create: {
+              userId,
+              institution: accountInput.institution,
+              accountNumber: accountInput.accountNumber,
+              accountName: accountInput.accountName,
+              currency: accountInput.currency,
+            },
+            update: {
+              accountName: accountInput.accountName,
+              currency: accountInput.currency,
+            },
+            select: {
+              id: true,
+            },
+          });
+
+          accountIds.set(key, account.id);
+        }
+
+        const rows = normalizedRows.map((row) => {
+          const accountNumber = row.accountNumber;
+          const institution = row.institution?.trim() || "Fidelity Investments";
+
+          const key = accountNumber
+            ? [
+                userId,
+                institution.toUpperCase(),
+                accountNumber.toUpperCase(),
+              ].join("|")
+            : null;
+
+          return {
+            ...row,
+            accountId: key ? (accountIds.get(key) ?? null) : null,
+          };
+        });
+
+        await tx.investment.createMany({
+          data: rows,
+        });
+      },
+      {
+        maxWait: 10_000,
+        timeout: 30_000,
+      },
+    );
+
+    revalidatePath("/portfolio");
+    revalidatePath("/");
+    return {
+      success: true,
+      imported: fresh.length,
+      duplicates: inputs.length - fresh.length,
+    };
+  } catch (error) {
     return {
       success: false,
-      duplicate: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Failed to update investment in database.",
+      imported: 0,
+      duplicates: 0,
+      error: error instanceof Error ? error.message : "Bulk import failed.",
     };
   }
 }
 
-// ============================================================
-// DELETE INVESTMENT
-// ============================================================
-
-export async function deleteInvestment(id: string) {
+export async function updateInvestment(
+  id: string,
+  input: CreateInvestmentInput,
+) {
   try {
-    await prisma.investment.delete({
-      where: {
-        id,
-      },
+    const userId = await requireUserId();
+    const existing = await prisma.investment.findFirst({
+      where: { id, userId },
+    });
+    if (!existing) return { success: false, error: "Investment not found." };
+
+    const normalized = normalizeCreate(input, userId);
+    if (normalized.fingerprint) {
+      const conflict = await prisma.investment.findFirst({
+        where: { userId, fingerprint: normalized.fingerprint, NOT: { id } },
+      });
+      if (conflict)
+        return {
+          success: false,
+          duplicate: true,
+          error: "Another investment record uses this fingerprint.",
+        };
+    }
+
+    const account = await ensureInvestmentAccount(prisma, userId, input);
+    const updated = await prisma.investment.update({
+      where: { id },
+      data: { ...normalized, accountId: account?.id ?? null },
     });
 
-    revalidatePath("/");
     revalidatePath("/portfolio");
-
-    return {
-      success: true,
-    };
+    return { success: true, data: updated, duplicate: false };
   } catch (error) {
-    console.error("Failed to delete investment:", error);
-
     return {
       success: false,
       error:
-        error instanceof Error
-          ? error.message
-          : "Failed to delete investment from database.",
+        error instanceof Error ? error.message : "Failed to update investment.",
+    };
+  }
+}
+
+export async function deleteInvestment(id: string) {
+  try {
+    const userId = await requireUserId();
+    const result = await prisma.investment.deleteMany({
+      where: { id, userId },
+    });
+    if (result.count === 0)
+      return { success: false, error: "Investment not found." };
+    revalidatePath("/portfolio");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to delete investment.",
     };
   }
 }

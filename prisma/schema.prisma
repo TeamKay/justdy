@@ -44,6 +44,8 @@ model User {
   roles                UserRole[]
   purchases            Purchase[]
   whitrboard           Whiteboard[]
+  investments          Investment[]
+  investmentAccounts   InvestmentAccount[]
 
   @@map("user")
 }
@@ -394,58 +396,72 @@ model Transaction {
 // MY PORTFOLIO MODELS
 // ==========================================
 
+model InvestmentAccount {
+  id            String   @id @default(cuid())
+  userId        String
+  institution   String   @default("Fidelity Investments")
+  accountNumber String
+  accountName   String?
+  accountType   String?
+  currency      CurrencyType @default(USD)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investments  Investment[]
+
+  @@unique([userId, institution, accountNumber])
+  @@index([userId])
+}
+
 model Investment {
   id                    String   @id @default(cuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accountId             String?
+  investmentAccount     InvestmentAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
   name                  String
   tickerOrSymbol        String?
   cusip                 String?
   accountNumber         String?
   accountName           String?
   institution           String?  @default("Fidelity Investments")
-
   assetClass            AssetType
   region                RegionType
   currency              CurrencyType
   type                  InvestmentTransactionType
-
   shares                Float?
   pricePerShare         Float?
   amount                Float
   grossAmount           Float?
   fees                  Float    @default(0)
   taxes                 Float    @default(0)
-
   costBasis             Float?
   realizedGain          Float?
   marketValue           Float?
   unrealizedGain        Float?
   unrealizedGainPercent Float?
-
   cashBalance           Float?
-
   exchangeRate          Float    @default(1)
   amountUSD             Float
-
   date                  DateTime
   settlementDate        DateTime?
-
   source                String?
   sourceFile            String?
   importBatchId         String?
-  fingerprint           String?  @unique
-
+  fingerprint           String? @unique
   status                StatusType
   notes                 String?
-
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  @@index([tickerOrSymbol])
-  @@index([accountNumber])
-  @@index([date])
-  @@index([type])
-  @@index([region])
-  @@index([importBatchId])
+  @@index([userId, date])
+  @@index([userId, tickerOrSymbol])
+  @@index([userId, accountNumber])
+  @@index([userId, type])
+  @@index([userId, importBatchId])
 }
 
 model Whiteboard {
