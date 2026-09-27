@@ -1,101 +1,161 @@
-import prisma from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+
+import { auth } from "@/lib/auth";
+import prisma from "@/lib/prisma";
+import { Prisma } from "@/lib/generated/prisma/client";
+import { CAPABILITIES, ensureCapabilities } from "@/lib/auth/capabilities";
 
 export async function POST(req: Request) {
   try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "You must be signed in to apply as an educator." },
+        { status: 401 },
+      );
+    }
+
     const body = await req.json();
 
-    const { name, email } = body;
+    const {
+      headline,
+      specialty,
+      experience,
+      description,
+      hourlyRate,
+      currency,
+      subjects,
+      gradeLevels,
+    } = body;
 
-    // ============================================================
-    // 1. VALIDATE REQUIRED FIELDS
-    // ============================================================
-
-    if (!name || !email) {
-      return NextResponse.json(
-        {
-          error: "Name and email are required.",
-        },
-        {
-          status: 400,
-        },
-      );
-    }
-
-    const normalizedEmail = email.trim().toLowerCase();
-
-    // ============================================================
-    // 2. CHECK FOR EXISTING USER
-    // ============================================================
-
-    const existingUser = await prisma.user.findUnique({
+    const existingProfile = await prisma.teachingProfile.findUnique({
       where: {
-        email: normalizedEmail,
+        userId: session.user.id,
       },
     });
 
-    if (existingUser) {
+    if (existingProfile) {
       return NextResponse.json(
         {
-          error: "An account with this email already exists.",
+          error: "You already have a teaching profile.",
+          profile: existingProfile,
         },
-        {
-          status: 400,
-        },
+        { status: 409 },
       );
     }
 
-    // ============================================================
-    // 3. CREATE EDUCATOR USER
-    // ============================================================
-    //
-    // Only fields that exist on the current User Prisma model
-    // should be written here.
-    //
-    // description and contactNumber are intentionally NOT
-    // included because they are not fields on User in your
-    // current Prisma schema.
-    //
-    // ============================================================
+    const parsedExperience =
+      experience === null || experience === undefined || experience === ""
+        ? null
+        : Number(experience);
 
-    const newUser = await prisma.user.create({
-      data: {
-        name: name.trim(),
-        email: normalizedEmail,
-        role: "Educator",
-        emailVerified: false,
-        verificationStatus: "Pending",
+    const parsedHourlyRate =
+      hourlyRate === null || hourlyRate === undefined || hourlyRate === ""
+        ? null
+        : Number(hourlyRate);
+
+    if (
+      parsedExperience !== null &&
+      (!Number.isFinite(parsedExperience) || parsedExperience < 0)
+    ) {
+      return NextResponse.json(
+        { error: "Experience must be a valid positive number." },
+        { status: 400 },
+      );
+    }
+
+    if (
+      parsedHourlyRate !== null &&
+      (!Number.isFinite(parsedHourlyRate) || parsedHourlyRate < 0)
+    ) {
+      return NextResponse.json(
+        { error: "Hourly rate must be a valid positive amount." },
+        { status: 400 },
+      );
+    }
+
+    const parsedSubjects =
+      Array.isArray(subjects) && subjects.length > 0 ? subjects : null;
+
+    const parsedGradeLevels =
+      Array.isArray(gradeLevels) && gradeLevels.length > 0 ? gradeLevels : null;
+
+    const profile = await prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: {
+          id: session.user.id,
+        },
+        data: {
+          canTeach: true,
+        },
+      });
+
+      const teachingProfile = await tx.teachingProfile.create({
+        data: {
+          userId: updatedUser.id,
+
+          headline:
+            typeof headline === "string" && headline.trim()
+              ? headline.trim()
+              : null,
+
+          specialty:
+            typeof specialty === "string" && specialty.trim()
+              ? specialty.trim()
+              : null,
+
+          experience: parsedExperience,
+
+          description:
+            typeof description === "string" && description.trim()
+              ? description.trim()
+              : null,
+
+          hourlyRate: parsedHourlyRate,
+
+          currency:
+            typeof currency === "string" && currency.trim()
+              ? (currency.trim() as "USD" | "GHS")
+              : "USD",
+
+          /*
+           * Prisma JSON fields require Prisma.JsonNull rather than
+           * JavaScript null when explicitly storing JSON null.
+           */
+          subjects: parsedSubjects !== null ? parsedSubjects : Prisma.JsonNull,
+
+          gradeLevels:
+            parsedGradeLevels !== null ? parsedGradeLevels : Prisma.JsonNull,
+
+          verificationStatus: "Pending",
+        },
+      });
+
+      return teachingProfile;
+    });
+
+    await ensureCapabilities(session.user.id, [CAPABILITIES.TEACH]);
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Your teaching profile has been submitted for verification.",
+        profile,
       },
-    });
-
-    // ============================================================
-    // 4. SEND EMAIL VERIFICATION
-    // ============================================================
-
-    await auth.api.sendVerificationEmail({
-      body: {
-        email: newUser.email,
-      },
-    });
-
-    // ============================================================
-    // 5. RETURN CREATED USER
-    // ============================================================
-
-    return NextResponse.json(newUser, {
-      status: 201,
-    });
+      { status: 201 },
+    );
   } catch (error) {
     console.error("Educator application error:", error);
 
     return NextResponse.json(
       {
-        error: "Internal Server Error",
+        error: "Unable to submit educator application.",
       },
-      {
-        status: 500,
-      },
+      { status: 500 },
     );
   }
 }

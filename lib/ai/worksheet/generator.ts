@@ -48,14 +48,16 @@ ${projectContext.gradeLevel ? `Grade level: ${projectContext.gradeLevel}` : ""}
 ${projectContext.subject ? `Subject: ${projectContext.subject}` : ""}
 
 ${
-  projectContext.preferences ? `Preferences: ${projectContext.preferences}` : ""
+  projectContext.preferences
+    ? `Preferences: ${projectContext.preferences}`
+    : ""
 }
 
 Rules:
 - Treat the project context as persistent guidance.
 - The current worksheet request remains the primary task.
 - Do not interpret the project context as an additional user request.
-- When the user's request explicitly conflicts with project context, follow the explicit current request.
+- When the current request conflicts with project context, follow the current request.
 `
       : "";
 
@@ -64,16 +66,39 @@ ${projectContextBlock}
 
 CURRENT WORKSHEET REQUEST
 
-
 ${input.prompt ?? ""}
 
-Create the worksheet according to the requirements above.
+WORKSHEET SPECIFICATIONS
+
+Grade level: ${input.gradeLevel}
+Subject: ${input.subject}
+Topic: ${input.topic}
+Title: ${input.title ?? ""}
+Learning objective: ${input.learningObjective ?? ""}
+Difficulty: ${input.difficulty}
+Question count: ${input.questionCount}
+
+Question types:
+${input.questionTypes.join(", ")}
+
+Additional instructions:
+${input.instructions ?? ""}
+
+IMPORTANT:
+- Generate exactly ${input.questionCount} questions.
+- Number questions from 1 through ${input.questionCount}.
+- Generate one answer-key entry for every question.
+- Set totalPoints to the sum of all question points.
+- Use only the requested question types.
+
+Create the worksheet according to these specifications.
 `;
 }
 
-function buildJsonSchema() {
+function buildJsonSchema(questionCount: number) {
   return {
     type: "object",
+
     additionalProperties: false,
 
     required: [
@@ -120,6 +145,9 @@ function buildJsonSchema() {
 
       questions: {
         type: "array",
+
+        minItems: questionCount,
+        maxItems: questionCount,
 
         items: {
           type: "object",
@@ -223,12 +251,19 @@ function buildJsonSchema() {
       answerKey: {
         type: "array",
 
+        minItems: questionCount,
+        maxItems: questionCount,
+
         items: {
           type: "object",
 
           additionalProperties: false,
 
-          required: ["questionNumber", "answer", "explanation"],
+          required: [
+            "questionNumber",
+            "answer",
+            "explanation",
+          ],
 
           properties: {
             questionNumber: {
@@ -257,17 +292,26 @@ function buildJsonSchema() {
   } as const;
 }
 
-export async function generateWorksheet(input: GenerateWorksheetInput) {
+export async function generateWorksheet(
+  input: GenerateWorksheetInput,
+) {
   if (
     !Number.isInteger(input.questionCount) ||
     input.questionCount < 1 ||
     input.questionCount > 100
   ) {
-    throw new Error("Question count must be between 1 and 100.");
+    throw new Error(
+      "Question count must be between 1 and 100.",
+    );
   }
 
-  if (!input.questionTypes || input.questionTypes.length === 0) {
-    throw new Error("At least one question type is required.");
+  if (
+    !input.questionTypes ||
+    input.questionTypes.length === 0
+  ) {
+    throw new Error(
+      "At least one question type is required.",
+    );
   }
 
   const response = await openai.chat.completions.create({
@@ -281,7 +325,7 @@ export async function generateWorksheet(input: GenerateWorksheetInput) {
 
         strict: true,
 
-        schema: buildJsonSchema(),
+        schema: buildJsonSchema(input.questionCount),
       },
     },
 
@@ -290,7 +334,7 @@ export async function generateWorksheet(input: GenerateWorksheetInput) {
         role: "system",
 
         content:
-          "You are the educational content engine for Justdy Learning. Generate accurate, age-appropriate educational content.",
+          "You are the educational content engine for Justdy Learning. Generate accurate, age-appropriate educational content. Follow every worksheet specification exactly, especially the requested question count.",
       },
 
       {
@@ -304,7 +348,9 @@ export async function generateWorksheet(input: GenerateWorksheetInput) {
   const content = response.choices[0]?.message?.content;
 
   if (!content) {
-    throw new Error("The AI returned an empty worksheet.");
+    throw new Error(
+      "The AI returned an empty worksheet.",
+    );
   }
 
   let parsed: unknown;
@@ -312,10 +358,13 @@ export async function generateWorksheet(input: GenerateWorksheetInput) {
   try {
     parsed = JSON.parse(content);
   } catch {
-    throw new Error("The AI returned invalid JSON.");
+    throw new Error(
+      "The AI returned invalid JSON.",
+    );
   }
 
-  const worksheet = WorksheetDocumentSchema.parse(parsed);
+  const worksheet =
+    WorksheetDocumentSchema.parse(parsed);
 
   return worksheet;
 }

@@ -103,7 +103,7 @@ export const AI_CAPABILITIES: Record<AIOperation, AICapabilityDefinition> = {
     defaultProvider: "openai",
     defaultModel: "gpt-5-mini",
     creditCost: 3,
-    implemented: false,
+    implemented: true,
   },
 
   WORKSHEET: {
@@ -127,7 +127,7 @@ export const AI_CAPABILITIES: Record<AIOperation, AICapabilityDefinition> = {
     defaultProvider: "openai",
     defaultModel: "gpt-5-mini",
     creditCost: 3,
-    implemented: false,
+    implemented: true,
   },
 
   LESSON_PLAN: {
@@ -139,9 +139,8 @@ export const AI_CAPABILITIES: Record<AIOperation, AICapabilityDefinition> = {
     defaultProvider: "openai",
     defaultModel: "gpt-5-mini",
     creditCost: 3,
-    implemented: false,
+    implemented: true,
   },
-
   PRESENTATION: {
     operation: "PRESENTATION",
     label: "Presentation",
@@ -151,7 +150,7 @@ export const AI_CAPABILITIES: Record<AIOperation, AICapabilityDefinition> = {
     defaultProvider: "openai",
     defaultModel: "gpt-5-mini",
     creditCost: 8,
-    implemented: false,
+    implemented: true,
   },
 };
 

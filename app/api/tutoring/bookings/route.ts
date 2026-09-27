@@ -24,12 +24,14 @@ function calculateAmount(startTime: Date, endTime: Date) {
 
   return {
     durationMinutes,
-    amount: Math.round((TUTORING_HOURLY_RATE_CENTS / 60) * durationMinutes),
+    amount: Math.round(
+      (TUTORING_HOURLY_RATE_CENTS / 60) * durationMinutes,
+    ),
   };
 }
 
 /**
- * GET /api/tutoring/bookings
+ * GET /api/tutorings
  *
  * Returns only bookings belonging to the authenticated customer.
  * TutoringBooking intentionally has no Prisma relation named `appointment`;
@@ -43,7 +45,10 @@ export async function GET() {
     });
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized." },
+        { status: 401 },
+      );
     }
 
     const bookings = await prisma.tutoringBooking.findMany({
@@ -75,6 +80,14 @@ export async function GET() {
             id: true,
             name: true,
             imageUrl: true,
+            teachingProfile: {
+              select: {
+                specialty: true,
+                experience: true,
+                description: true,
+                verificationStatus: true,
+              },
+            },
             facilitatorProfile: {
               select: {
                 specialty: true,
@@ -125,7 +138,7 @@ export async function GET() {
     const result = bookings.map((booking) => ({
       ...booking,
       appointment: booking.appointmentId
-        ? (appointmentById.get(booking.appointmentId) ?? null)
+        ? appointmentById.get(booking.appointmentId) ?? null
         : null,
     }));
 
@@ -133,7 +146,7 @@ export async function GET() {
       bookings: result,
     });
   } catch (error) {
-    console.error("GET /api/tutoring/bookings:", error);
+    console.error("GET /api/tutorings:", error);
 
     return NextResponse.json(
       { error: "Unable to load tutoring bookings." },
@@ -152,7 +165,7 @@ type CreateBookingBody = {
 };
 
 /**
- * POST /api/tutoring/bookings
+ * POST /api/tutorings
  *
  * Creates a pending tutoring booking and reserves the selected slot before
  * sending the customer to Stripe Checkout.
@@ -167,7 +180,10 @@ export async function POST(request: Request) {
     });
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized." },
+        { status: 401 },
+      );
     }
 
     let body: CreateBookingBody;
@@ -183,7 +199,8 @@ export async function POST(request: Request) {
 
     const tutorId = typeof body.tutorId === "string" ? body.tutorId.trim() : "";
     const slotId = typeof body.slotId === "string" ? body.slotId.trim() : "";
-    const subject = typeof body.subject === "string" ? body.subject.trim() : "";
+    const subject =
+      typeof body.subject === "string" ? body.subject.trim() : "";
     const gradeLevel =
       typeof body.gradeLevel === "string" ? body.gradeLevel.trim() : "";
     const topic = typeof body.topic === "string" ? body.topic.trim() : "";
@@ -210,10 +227,18 @@ export async function POST(request: Request) {
       where: {
         id: tutorId,
         status: "Active",
-        verificationStatus: "Verified",
-        facilitatorProfile: {
-          verificationStatus: "Verified",
-        },
+        OR: [
+          {
+            teachingProfile: {
+              verificationStatus: "Verified",
+            },
+          },
+          {
+            facilitatorProfile: {
+              verificationStatus: "Verified",
+            },
+          },
+        ],
       },
       select: {
         id: true,
@@ -246,9 +271,7 @@ export async function POST(request: Request) {
 
     if (!slot || slot.tutorId !== tutorId) {
       return NextResponse.json(
-        {
-          error: "The selected tutoring slot is not available for this tutor.",
-        },
+        { error: "The selected tutoring slot is not available for this tutor." },
         { status: 404 },
       );
     }
@@ -381,10 +404,10 @@ export async function POST(request: Request) {
         ],
         customer_email: session.user.email || undefined,
         success_url:
-          `${getAppUrl()}/tutoring/booking/success` +
+          `${getAppUrl()}/tutoring/success` +
           "?session_id={CHECKOUT_SESSION_ID}",
         cancel_url:
-          `${getAppUrl()}/tutoring/book` +
+          `${getAppUrl()}/tutor` +
           `?tutorId=${encodeURIComponent(tutorId)}` +
           `&booking_id=${encodeURIComponent(booking.id)}` +
           "&cancelled=true",
@@ -465,10 +488,7 @@ export async function POST(request: Request) {
       );
 
       return NextResponse.json(
-        {
-          error:
-            "Payment was initialized but the booking could not be finalized. Please contact support.",
-        },
+        { error: "Payment was initialized but the booking could not be finalized. Please contact support." },
         { status: 500 },
       );
     }
@@ -487,10 +507,7 @@ export async function POST(request: Request) {
           );
         case "SLOT_UNAVAILABLE":
           return NextResponse.json(
-            {
-              error:
-                "The selected tutoring slot was just booked by someone else.",
-            },
+            { error: "The selected tutoring slot was just booked by someone else." },
             { status: 409 },
           );
         case "SLOT_STARTED":
@@ -499,10 +516,10 @@ export async function POST(request: Request) {
             { status: 400 },
           );
         default:
-          console.error("POST /api/tutoring/bookings:", error);
+          console.error("POST /api/tutorings:", error);
       }
     } else {
-      console.error("POST /api/tutoring/bookings:", error);
+      console.error("POST /api/tutorings:", error);
     }
 
     return NextResponse.json(

@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowUpRight, Mail, Sparkles } from "lucide-react";
-
-import { AuthModal } from "@/app/(auth)/AuthModal";
+import {
+  Github,
+  Mail,
+  MessageCircle,
+  Sparkles,
+  Youtube,
+} from "lucide-react";
 
 const footerGroups = [
   {
@@ -29,8 +33,9 @@ const footerGroups = [
     title: "Tutoring",
     links: [
       { label: "Find a tutor", href: "/tutoring" },
-      { label: "Book a session", href: "/tutoring/book" },
+      { label: "Book a session", href: "/tutor" },
       { label: "My sessions", href: "/tutoring/sessions" },
+      { label: "Free Lessons", href: "/videos" },
     ],
   },
 ];
@@ -51,129 +56,193 @@ export default function MarketingFooter() {
 
   return (
     <>
-      <footer className="border-t border-border bg-foreground text-background">
-        <div className="mx-auto max-w-7xl px-6 py-16 sm:px-8 lg:px-12">
-          <div className="grid gap-12 lg:grid-cols-[1.4fr_2fr]">
-            <div>
-              <Link href="/" className="inline-flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-background text-foreground">
-                  <Sparkles className="h-4 w-4" />
-                </div>
-
-                <span className="text-lg font-semibold tracking-tight">
-                  Justdy
-                </span>
-              </Link>
-
-              <h2 className="mt-7 max-w-md text-2xl font-semibold tracking-tight sm:text-3xl">
-                A smarter way to create, teach, learn, and grow.
-              </h2>
-
-              <p className="mt-4 max-w-md text-sm leading-6 text-background/65">
-                Justdy is an AI-powered educational ecosystem connecting
-                intelligent content creation, learning resources, and live
-                tutoring.
-              </p>
-
-              <div className="mt-7 inline-flex items-center gap-2 rounded-xl border border-background/10 bg-background/[0.04] px-4 py-3 text-sm text-background/75">
-                <Mail className="h-4 w-4 text-primary" />
-                Support whenever you need it.
+      <footer className="w-full bg-background text-foreground">
+        <div className="mx-auto max-w-7xl px-6 sm:px-8 lg:px-12">
+          {/* Top brand + social row */}
+          <div className="flex flex-col gap-8 py-10 sm:flex-row sm:items-center sm:justify-between">
+            <Link
+              href="/"
+              className="inline-flex w-fit items-center gap-3"
+              aria-label="Justdy home"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-sm bg-sky-500 text-white shadow-sm">
+                <Sparkles className="h-4 w-4" />
               </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-4">
-              {footerGroups.map((group) => (
-                <div key={group.title}>
-                  <h3 className="text-sm font-semibold text-background">
-                    {group.title}
-                  </h3>
+              <span className="text-xl font-semibold tracking-tight text-foreground">
+                Justdy
+              </span>
+            </Link>
 
-                  <ul className="mt-4 space-y-3">
-                    {group.links.map((link) => (
-                      <li key={link.href}>
-                        <Link
-                          href={link.href}
-                          className="text-sm text-background/60 transition hover:text-background"
-                        >
-                          {link.label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+            {/* Social links */}
+            <div className="flex items-center gap-5 text-muted-foreground">
+              <a
+                href="#"
+                aria-label="YouTube"
+                className="transition-colors hover:text-foreground"
+              >
+                <Youtube className="h-6 w-6" />
+              </a>
 
-              <div>
-                <h3 className="text-sm font-semibold text-background">
-                  Account
-                </h3>
+              <a
+                href="#"
+                aria-label="GitHub"
+                className="transition-colors hover:text-foreground"
+              >
+                <Github className="h-6 w-6" />
+              </a>
 
-                <ul className="mt-4 space-y-3">
-                  <li>
-                    <button
-                      type="button"
-                      onClick={openSignin}
-                      className="text-sm text-background/60 transition hover:text-background"
-                    >
-                      Sign in
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={openSignup}
-                      className="text-sm text-background/60 transition hover:text-background"
-                    >
-                      Create account
-                    </button>
-                  </li>
-                  <li>
-                    <Link
-                      href="/settings"
-                      className="text-sm text-background/60 transition hover:text-background"
-                    >
-                      Settings
-                    </Link>
-                  </li>
-                </ul>
-              </div>
+              <a
+                href="#"
+                aria-label="X"
+                className="text-2xl leading-none font-light transition-colors hover:text-foreground"
+              >
+                𝕏
+              </a>
+
+              <a
+                href="#"
+                aria-label="Discord"
+                className="transition-colors hover:text-foreground"
+              >
+                <MessageCircle className="h-6 w-6" />
+              </a>
             </div>
           </div>
 
-          <div className="mt-14 flex flex-col gap-5 border-t border-background/10 pt-7 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-background/45">
-              © {new Date().getFullYear()} Justdy. All rights reserved.
+          {/* Main divider */}
+          <div className="border-t border-border" />
+
+          {/* Footer columns */}
+          <div className="grid gap-12 py-5 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1.35fr] lg:gap-10">
+            {/* Platform */}
+            {footerGroups.map((group) => (
+              <div key={group.title}>
+                <h3 className="text-base font-medium text-foreground">
+                  {group.title}
+                </h3>
+
+                <ul className="mt-6 space-y-5">
+                  {group.links.map((link) => (
+                    <li key={link.href}>
+                      <Link
+                        href={link.href}
+                        className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+
+            {/* Company */}
+            <div>
+              <h3 className="text-base font-medium text-foreground">
+                Company
+              </h3>
+
+              <ul className="mt-0 space-y-5">
+                <li>
+                  <Link
+                    href="/terms"
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Terms
+                  </Link>
+                </li>
+
+                <li>
+                  <Link
+                    href="/privacy"
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Privacy
+                  </Link>
+                </li>
+
+                <li>
+                  <Link
+                    href="/license"
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    License
+                  </Link>
+                </li>
+
+                <li>
+                  <Link
+                    href="/contact"
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Contact
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Newsletter */}
+            <div>
+              <h3 className="text-base font-medium text-foreground">
+                Newsletter
+              </h3>
+
+              <form
+                className="mt-0 flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row"
+                onSubmit={(event) => event.preventDefault()}
+              >
+                <input
+                  type="email"
+                  required
+                  placeholder="Your email"
+                  aria-label="Email address"
+                  className="h-12 min-w-0 flex-1 rounded-lg border border-border bg-muted/30 px-4 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+                />
+
+                <button
+                  type="submit"
+                  className="h-12 shrink-0 rounded-lg bg-sky-500 px-5 text-sm font-semibold text-white transition-colors hover:bg-sky-600"
+                >
+                  Submit
+                </button>
+              </form>
+
+              <p className="mt-6 text-sm text-muted-foreground">
+                Don&apos;t miss any update!
+              </p>
+            </div>
+          </div>
+
+          {/* Bottom divider */}
+          <div className="border-t border-border" />
+
+          {/* Copyright */}
+          <div className="flex flex-col gap-4 py-8 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">
+              © {new Date().getFullYear()} Justdy, All rights reserved
             </p>
 
-            <div className="flex flex-wrap items-center gap-5 text-xs text-background/45">
-              <Link
-                href="/privacy"
-                className="transition hover:text-background"
+            <div className="flex items-center gap-6">
+              <button
+                type="button"
+                onClick={openSignin}
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
               >
-                Privacy
-              </Link>
+                Sign in
+              </button>
 
-              <Link href="/terms" className="transition hover:text-background">
-                Terms
-              </Link>
-
-              <Link
-                href="/contact"
-                className="inline-flex items-center gap-1 transition hover:text-background"
+              <button
+                type="button"
+                onClick={openSignup}
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
               >
-                Contact
-                <ArrowUpRight className="h-3 w-3" />
-              </Link>
+                Create account
+              </button>
             </div>
           </div>
         </div>
       </footer>
-
-      <AuthModal
-        open={authOpen}
-        onOpenChange={setAuthOpen}
-        defaultMode={authMode}
-      />
     </>
   );
 }

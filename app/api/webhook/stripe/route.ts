@@ -4,12 +4,12 @@ import Stripe from "stripe";
 import prisma from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { auth } from "@/lib/auth";
+import { CAPABILITIES, ensureCapabilities, hasCapability } from "@/lib/auth/capabilities";
 import { env } from "@/lib/env";
 import { Resend } from "resend";
 import crypto from "crypto";
-import { Auth } from "@vonage/auth";
-import { Vonage } from "@vonage/server-sdk";
-import { MediaMode } from "@vonage/video";
+import { processUniversalTutoringBooking } from "@/lib/tutoring-payment-finalization";
+
 
 // ============================================================
 // RESEND
@@ -26,23 +26,13 @@ const resend = new Resend(resendApiKey);
 // ============================================================
 // VONAGE VIDEO
 // ============================================================
-
-const vonageApplicationId = process.env.NEXT_PUBLIC_VONAGE_APPLICATION_ID;
-const vonagePrivateKey = process.env.VONAGE_PRIVATE_KEY;
-
-if (!vonageApplicationId || !vonagePrivateKey) {
-  throw new Error(
-    "NEXT_PUBLIC_VONAGE_APPLICATION_ID and VONAGE_PRIVATE_KEY are required.",
-  );
-}
-
-const vonage = new Vonage(
-  new Auth({
-    applicationId: vonageApplicationId,
-    privateKey: vonagePrivateKey,
-  }),
-  {},
-);
+//
+// Stripe payment finalization intentionally does not initialize Vonage.
+// The live classroom route creates the video session lazily when a
+// participant joins. Keeping Vonage out of the payment transaction prevents
+// a temporary video-provider error from rolling back a successful payment.
+//
+// ============================================================
 
 // ============================================================
 // STRIPE WEBHOOK SECRET
@@ -160,16 +150,12 @@ async function findOrCreateLearner({
   if (user) {
     const updateData: {
       stripeCustomerId?: string;
-      role?: string;
     } = {};
 
     if (!user.stripeCustomerId && stripeCustomerId) {
       updateData.stripeCustomerId = stripeCustomerId;
     }
 
-    if (user.role !== "Admin" && user.role !== "Educator") {
-      updateData.role = "Learner";
-    }
 
     if (Object.keys(updateData).length > 0) {
       user = await prisma.user.update({
@@ -179,6 +165,11 @@ async function findOrCreateLearner({
         data: updateData,
       });
     }
+
+    await ensureCapabilities(user.id, [
+      CAPABILITIES.LEARN,
+      CAPABILITIES.BOOK_TUTORING,
+    ]);
 
     return {
       user,
@@ -244,8 +235,6 @@ async function findOrCreateLearner({
       },
 
       data: {
-        role: "Learner",
-
         emailVerified: true,
 
         ...(stripeCustomerId
@@ -255,6 +244,11 @@ async function findOrCreateLearner({
           : {}),
       },
     });
+
+    await ensureCapabilities(user.id, [
+      CAPABILITIES.LEARN,
+      CAPABILITIES.BOOK_TUTORING,
+    ]);
 
     console.log("NEW STRIPE LEARNER CREATED:", {
       userId: user.id,
@@ -356,10 +350,13 @@ export async function POST(req: Request) {
   console.log("================================================");
 
   // ==========================================================
-  // ONLY PROCESS CHECKOUT COMPLETED
+  // PROCESS COMPLETED CHECKOUTS AND EXPIRED CHECKOUTS
   // ==========================================================
 
-  if (event.type !== "checkout.session.completed") {
+  if (
+    event.type !== "checkout.session.completed" &&
+    event.type !== "checkout.session.expired"
+  ) {
     return NextResponse.json({
       received: true,
     });
@@ -370,6 +367,41 @@ export async function POST(req: Request) {
   // ==========================================================
 
   const session = event.data.object as Stripe.Checkout.Session;
+
+  // A checkout.completed event is only allowed to fulfill an order
+  // when Stripe reports that the payment itself is paid. This keeps
+  // booking/payment state coupled to the actual Stripe payment state.
+  // The booking flow currently creates card-only Checkout Sessions,
+  // so an unexpected non-paid completed event should be retried rather
+  // than being treated as a successful purchase.
+  if (
+    event.type === "checkout.session.completed" &&
+    session.payment_status !== "paid"
+  ) {
+    console.error("STRIPE CHECKOUT COMPLETED WITHOUT PAID PAYMENT:", {
+      sessionId: session.id,
+      paymentStatus: session.payment_status,
+    });
+
+    return new NextResponse("Checkout payment is not yet confirmed", {
+      status: 409,
+    });
+  }
+
+  // ==========================================================
+  // RELEASE EXPIRED TUTORING CHECKOUTS
+  // ==========================================================
+
+  if (event.type === "checkout.session.expired") {
+    if (session.metadata?.checkoutType === "TUTORING") {
+      await expireUniversalTutoringBooking(session);
+    }
+
+    return NextResponse.json({
+      received: true,
+      expired: true,
+    });
+  }
 
   // ==========================================================
   // IDEMPOTENCY CHECK
@@ -384,36 +416,39 @@ export async function POST(req: Request) {
   // - emails
   // ==========================================================
 
-  const alreadyProcessed = await prisma.transaction.findFirst({
-    where: {
-      stripeSessionId: session.id,
-    },
+  // Tutoring has its own idempotent finalizer below. Do not let the
+  // generic transaction idempotency check short-circuit a tutoring
+  // checkout that has a Transaction but is missing its canonical
+  // TutoringSession/whiteboard. That state must be repairable on a
+  // Stripe retry or browser return.
+  const isUniversalTutoring =
+    session.metadata?.checkoutType === "TUTORING";
 
-    select: {
-      id: true,
-
-      userId: true,
-
-      status: true,
-    },
-  });
-
-  if (alreadyProcessed) {
-    console.log("STRIPE WEBHOOK ALREADY PROCESSED:", {
-      sessionId: session.id,
-
-      transactionId: alreadyProcessed.id,
-
-      userId: alreadyProcessed.userId,
-
-      status: alreadyProcessed.status,
+  if (!isUniversalTutoring) {
+    const alreadyProcessed = await prisma.transaction.findFirst({
+      where: {
+        stripeSessionId: session.id,
+      },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+      },
     });
 
-    return NextResponse.json({
-      received: true,
+    if (alreadyProcessed) {
+      console.log("STRIPE WEBHOOK ALREADY PROCESSED:", {
+        sessionId: session.id,
+        transactionId: alreadyProcessed.id,
+        userId: alreadyProcessed.userId,
+        status: alreadyProcessed.status,
+      });
 
-      alreadyProcessed: true,
-    });
+      return NextResponse.json({
+        received: true,
+        alreadyProcessed: true,
+      });
+    }
   }
 
   // ==========================================================
@@ -1019,11 +1054,13 @@ export async function POST(req: Request) {
         }
 
         if (!finalEducatorId) {
-          const fallback = await tx.user.findFirst({
-            where: {
-              role: "Educator",
-            },
+          const educatorCandidates = await tx.user.findMany({
+            where: { verificationStatus: "Verified" },
+            take: 50,
           });
+          const fallback = (await Promise.all(educatorCandidates.map(async (candidate) =>
+            (await hasCapability(candidate.id, CAPABILITIES.TEACH)) ? candidate : null
+          ))).find(Boolean) ?? null;
 
           if (!fallback) {
             throw new Error("No valid educator found.");
@@ -1185,482 +1222,27 @@ export async function POST(req: Request) {
     }
 
     // ========================================================
-    // NEW TUTORING BOOKING
+    // UNIVERSAL TUTORING BOOKING
+    // ========================================================
+    //
+    // New tutoring checkouts use the universal Booking / Service /
+    // Availability models. The handler performs payment verification,
+    // idempotency checks, availability locking, and the final
+    // PendingPayment -> Scheduled transition.
+    //
+    // Legacy tutoring checkouts without checkoutType=TUTORING were
+    // handled above and remain supported for backward compatibility.
     // ========================================================
 
-    const bookingId = session.metadata?.bookingId;
+    const tutoringProcessed = await processUniversalTutoringBooking(session);
 
-    if (!bookingId) {
-      throw new Error(
-        "Tutoring Stripe checkout is missing the authoritative bookingId.",
-      );
-    }
-
-    /*
-     * Card checkout should be paid when checkout.session.completed
-     * reaches this webhook. Do not schedule a session for an unpaid
-     * checkout.
-     */
-    if (session.payment_status !== "paid") {
-      console.warn("TUTORING CHECKOUT IS NOT PAID:", {
-        sessionId: session.id,
-        bookingId,
-        paymentStatus: session.payment_status,
-      });
-
-      return NextResponse.json({
-        received: true,
-        tutoringProcessed: false,
-        awaitingPayment: true,
-      });
-    }
-
-    // ========================================================
-    // STRIPE / BOOKING VERIFICATION
-    // ========================================================
-
-    const booking = await prisma.tutoringBooking.findUnique({
-      where: {
-        id: bookingId,
-      },
-      include: {
-        customer: true,
-        tutor: {
-          include: {
-            facilitatorProfile: true,
-          },
-        },
-        tutoringSlot: true,
-      },
-    });
-
-    if (!booking) {
-      throw new Error(`Tutoring booking ${bookingId} was not found.`);
-    }
-
-    if (booking.stripeSessionId && booking.stripeSessionId !== session.id) {
-      throw new Error(
-        "Tutoring booking is already associated with a different Stripe checkout session.",
-      );
-    }
-
-    // A paid webhook may be delivered after the booking has already been
-    // finalized by an earlier delivery. Treat that state as idempotent.
-    // This check also prevents a later/replayed checkout event from
-    // attempting to mutate a completed/cancelled/refunded booking.
-    if (booking.appointmentId && booking.status === "SCHEDULED") {
+    if (tutoringProcessed) {
       return NextResponse.json({
         received: true,
         tutoringProcessed: true,
-        bookingId: booking.id,
-        appointmentId: booking.appointmentId,
-        alreadyScheduled: true,
+        bookingId: session.metadata?.bookingId ?? null,
       });
     }
-
-    if (booking.status !== "PENDING_PAYMENT" && booking.status !== "PAID") {
-      throw new Error(
-        `Tutoring booking ${booking.id} is not payable in its current state: ${booking.status}.`,
-      );
-    }
-
-    if (booking.currency.toLowerCase() !== "usd") {
-      throw new Error(
-        `Unsupported tutoring booking currency: ${booking.currency}`,
-      );
-    }
-
-    if ((session.amount_total ?? 0) !== booking.amount) {
-      throw new Error(
-        `Tutoring payment amount mismatch for booking ${booking.id}.`,
-      );
-    }
-
-    if (
-      session.currency &&
-      session.currency.toLowerCase() !== booking.currency
-    ) {
-      throw new Error(
-        `Tutoring payment currency mismatch for booking ${booking.id}.`,
-      );
-    }
-
-    if (session.metadata?.tutorId !== booking.tutorId) {
-      throw new Error(
-        `Tutoring tutor metadata does not match booking ${booking.id}.`,
-      );
-    }
-
-    if (session.metadata?.customerId !== booking.customerId) {
-      throw new Error(
-        `Tutoring customer metadata does not match booking ${booking.id}.`,
-      );
-    }
-
-    if (session.metadata?.tutoringSlotId !== booking.tutoringSlotId) {
-      throw new Error(
-        `Tutoring slot metadata does not match booking ${booking.id}.`,
-      );
-    }
-
-    if (booking.tutoringSlot.status !== "Booked") {
-      throw new Error(
-        `Tutoring slot ${booking.tutoringSlot.id} is not reserved for this booking.`,
-      );
-    }
-
-    if (booking.tutor.status !== "Active") {
-      throw new Error("The tutor is no longer active.");
-    }
-
-    if (booking.tutor.verificationStatus !== "Verified") {
-      throw new Error("The tutor is no longer verified.");
-    }
-
-    if (booking.tutor.facilitatorProfile?.verificationStatus !== "Verified") {
-      throw new Error("The tutor is no longer approved for tutoring.");
-    }
-
-    /*
-     * The booking route already authenticated the customer and created
-     * this booking. The webhook therefore does not create a new user.
-     * The booking's customerId is authoritative.
-     */
-    const customer = booking.customer;
-    const tutor = booking.tutor;
-    const slot = booking.tutoringSlot;
-
-    if (!customer.email) {
-      throw new Error("Tutoring customer does not have an email address.");
-    }
-
-    if (customer.id === tutor.id) {
-      throw new Error("A customer cannot tutor themselves.");
-    }
-
-    if (slot.startTime >= slot.endTime) {
-      throw new Error(`Tutoring slot ${slot.id} has an invalid time range.`);
-    }
-
-    // ========================================================
-    // CREATE VONAGE VIDEO SESSION
-    // ========================================================
-
-    let videoSessionId: string;
-
-    try {
-      const videoSession = await vonage.video.createSession({
-        mediaMode: MediaMode.ROUTED,
-      });
-
-      videoSessionId = videoSession.sessionId;
-    } catch (videoError) {
-      console.error("FAILED TO CREATE TUTORING VIDEO SESSION:", videoError);
-      throw new Error("Failed to initialize the tutoring video classroom.");
-    }
-
-    // ========================================================
-    // CREATE APPOINTMENT + WHITEBOARD + TRANSACTION
-    // ========================================================
-
-    const tutoringResult = await prisma.$transaction(async (tx) => {
-      /*
-       * Re-read the booking inside the transaction.
-       */
-      const currentBooking = await tx.tutoringBooking.findUnique({
-        where: {
-          id: booking.id,
-        },
-        include: {
-          tutoringSlot: true,
-        },
-      });
-
-      if (!currentBooking) {
-        throw new Error(`Tutoring booking ${booking.id} was not found.`);
-      }
-
-      if (
-        currentBooking.status !== "PENDING_PAYMENT" &&
-        currentBooking.status !== "PAID" &&
-        !currentBooking.appointmentId
-      ) {
-        throw new Error(
-          `Tutoring booking ${currentBooking.id} changed to an invalid state: ${currentBooking.status}.`,
-        );
-      }
-
-      /*
-       * If another webhook invocation already completed the booking,
-       * do not create a second appointment.
-       */
-      if (currentBooking.appointmentId) {
-        const existingAppointment = await tx.appointment.findUnique({
-          where: {
-            id: currentBooking.appointmentId,
-          },
-          select: {
-            id: true,
-            learnerId: true,
-            educatorId: true,
-            subject: true,
-            gradeLevel: true,
-            date: true,
-            startTime: true,
-            endTime: true,
-            status: true,
-            videoSessionId: true,
-          },
-        });
-
-        if (existingAppointment) {
-          return {
-            appointment: existingAppointment,
-            alreadyScheduled: true,
-          };
-        }
-      }
-
-      /*
-       * The slot must still belong to this booking.
-       */
-      if (currentBooking.tutoringSlot.status !== "Booked") {
-        throw new Error(
-          `Tutoring slot ${currentBooking.tutoringSlotId} is no longer booked.`,
-        );
-      }
-
-      /*
-       * Create the ledger transaction.
-       *
-       * The outer webhook idempotency check normally prevents this
-       * from already existing, but this check protects the transaction
-       * itself against concurrent processing.
-       */
-      const existingTransaction = await tx.transaction.findFirst({
-        where: {
-          stripeSessionId: session.id,
-        },
-        select: {
-          id: true,
-        },
-      });
-
-      if (!existingTransaction) {
-        await tx.transaction.create({
-          data: {
-            userId: currentBooking.customerId,
-            amount: session.amount_total ?? currentBooking.amount,
-            stripeSessionId: session.id,
-            stripePaymentIntentId:
-              typeof session.payment_intent === "string"
-                ? session.payment_intent
-                : null,
-            status: "Paid",
-          },
-        });
-      }
-
-      /*
-       * Create the appointment using the existing appointment model's
-       * learnerId / educatorId compatibility fields.
-       *
-       * New tutoring code refers to these participants as customer
-       * and tutor; the legacy database field names remain unchanged.
-       */
-      const appointment = await tx.appointment.create({
-        data: {
-          learnerId: currentBooking.customerId,
-          educatorId: currentBooking.tutorId,
-          subject: currentBooking.subject,
-          gradeLevel: currentBooking.gradeLevel,
-          date: new Date(slot.startTime),
-          startTime: new Date(slot.startTime),
-          endTime: new Date(slot.endTime),
-          learnerDescription:
-            currentBooking.description || currentBooking.topic || null,
-          status: "Scheduled",
-          payoutStatus: "Unpaid",
-          stripeCheckoutSessionId: session.id,
-          paymentIntentId:
-            typeof session.payment_intent === "string"
-              ? session.payment_intent
-              : null,
-          videoSessionId,
-          tutoringSlotId: currentBooking.tutoringSlotId,
-        },
-        select: {
-          id: true,
-          learnerId: true,
-          educatorId: true,
-          subject: true,
-          gradeLevel: true,
-          date: true,
-          startTime: true,
-          endTime: true,
-          status: true,
-          videoSessionId: true,
-        },
-      });
-
-      /*
-       * Create the shared session whiteboard.
-       *
-       * The tutor owns the persisted whiteboard record initially.
-       * Access authorization for the customer will be handled by the
-       * tutoring-aware whiteboard route.
-       */
-      const emptyWhiteboardData = {
-        version: 1,
-        pages: [],
-        currentPageIndex: 0,
-      };
-
-      await tx.whiteboard.create({
-        data: {
-          userId: currentBooking.tutorId,
-          appointmentId: appointment.id,
-          isStandalone: false,
-          name: "Session Whiteboard",
-          data: emptyWhiteboardData,
-        },
-      });
-
-      /*
-       * Mark the booking as scheduled.
-       */
-      const updatedBooking = await tx.tutoringBooking.update({
-        where: {
-          id: currentBooking.id,
-        },
-        data: {
-          status: "SCHEDULED",
-          stripeSessionId: session.id,
-          paymentIntentId:
-            typeof session.payment_intent === "string"
-              ? session.payment_intent
-              : null,
-          appointmentId: appointment.id,
-        },
-        select: {
-          id: true,
-          status: true,
-          appointmentId: true,
-        },
-      });
-
-      return {
-        appointment,
-        booking: updatedBooking,
-        alreadyScheduled: false,
-      };
-    });
-
-    // ========================================================
-    // TUTORING EMAILS
-    // ========================================================
-
-    try {
-      const appointmentDetails = tutoringResult.appointment;
-
-      const sessionDate = appointmentDetails.date.toLocaleDateString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-
-      const startTime = appointmentDetails.startTime.toLocaleTimeString(
-        "en-US",
-        {
-          hour: "2-digit",
-          minute: "2-digit",
-        },
-      );
-
-      const endTime = appointmentDetails.endTime.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-
-      const TutoringBookingConfirmedEmail = (
-        await import("@/app/_components/emails/TutoringBookingConfirmedEmail")
-      ).default;
-
-      const customerResult = await resend.emails.send({
-        from: "Justdy <onboarding@justdy.com>",
-        to: [customer.email.trim().toLowerCase()],
-        subject: "Your Justdy Tutoring Session Is Confirmed",
-        react: TutoringBookingConfirmedEmail({
-          username: customer.name || "Customer",
-          subject: appointmentDetails.subject,
-          date: sessionDate,
-          time: `${startTime} - ${endTime}`,
-          amountPaid: ((session.amount_total ?? 0) / 100).toFixed(2),
-          tutoringUrl: `${appUrl}/tutoring/sessions`,
-        }),
-      });
-
-      if (customerResult.error) {
-        console.error("CUSTOMER TUTORING EMAIL ERROR:", customerResult.error);
-      } else {
-        console.log("CUSTOMER TUTORING EMAIL SENT:", {
-          id: customerResult.data?.id,
-          to: customer.email,
-        });
-      }
-
-      if (tutor.email) {
-        const TutoringSessionScheduledEmail = (
-          await import("@/app/_components/emails/TutoringSessionScheduledEmail")
-        ).default;
-
-        const tutorResult = await resend.emails.send({
-          from: "Justdy <onboarding@justdy.com>",
-          to: [tutor.email.trim().toLowerCase()],
-          subject: "New Justdy Tutoring Session Scheduled",
-          react: TutoringSessionScheduledEmail({
-            tutorName: tutor.name || "Tutor",
-            customerName: customer.name || "Customer",
-            subject: appointmentDetails.subject,
-            date: sessionDate,
-            time: `${startTime} - ${endTime}`,
-            tutoringUrl: `${appUrl}/tutor/sessions`,
-          }),
-        });
-
-        if (tutorResult.error) {
-          console.error("TUTOR TUTORING EMAIL ERROR:", tutorResult.error);
-        } else {
-          console.log("TUTOR TUTORING EMAIL SENT:", {
-            id: tutorResult.data?.id,
-            to: tutor.email,
-          });
-        }
-      }
-    } catch (emailError) {
-      /*
-       * Payment, booking, appointment, video, and whiteboard data have
-       * already been committed. Email failure must never make Stripe
-       * retry the financial operation.
-       */
-      console.error(
-        "TUTORING BOOKING SAVED BUT EMAIL NOTIFICATION FAILED:",
-        emailError,
-      );
-    }
-
-    // ========================================================
-    // TUTORING SUCCESS
-    // ========================================================
-
-    return NextResponse.json({
-      received: true,
-      tutoringProcessed: true,
-      bookingId: booking.id,
-      appointmentId: tutoringResult.appointment.id,
-      alreadyScheduled: tutoringResult.alreadyScheduled,
-    });
   } catch (error) {
     console.error("================================================");
 
@@ -1673,3 +1255,88 @@ export async function POST(req: Request) {
     });
   }
 }
+
+async function expireUniversalTutoringBooking(
+  session: Stripe.Checkout.Session,
+) {
+  const bookingId = session.metadata?.bookingId;
+
+  if (!bookingId) {
+    console.warn("EXPIRED TUTORING CHECKOUT HAS NO BOOKING ID:", session.id);
+    return;
+  }
+
+  await prisma.$transaction(
+    async (tx) => {
+      const booking = await tx.booking.findUnique({
+        where: { id: bookingId },
+        select: {
+          id: true,
+          studentId: true,
+          educatorId: true,
+          serviceId: true,
+          availabilityId: true,
+          status: true,
+          stripeSessionId: true,
+        },
+      });
+
+      if (!booking) {
+        console.warn("EXPIRED TUTORING BOOKING NOT FOUND:", bookingId);
+        return;
+      }
+
+      if (
+        booking.stripeSessionId &&
+        booking.stripeSessionId !== session.id
+      ) {
+        console.warn("IGNORING EXPIRED CHECKOUT FOR ANOTHER STRIPE SESSION:", {
+          bookingId,
+          bookingSessionId: booking.stripeSessionId,
+          expiredSessionId: session.id,
+        });
+        return;
+      }
+
+      if (booking.status !== "PendingPayment") {
+        return;
+      }
+
+      if (booking.availabilityId) {
+        await tx.$queryRaw`
+          SELECT id
+          FROM "Availability"
+          WHERE id = ${booking.availabilityId}
+          FOR UPDATE
+        `;
+      }
+
+      await tx.booking.update({
+        where: { id: booking.id },
+        data: {
+          status: "Cancelled",
+        },
+      });
+
+      if (booking.serviceId && booking.availabilityId) {
+        await tx.availability.updateMany({
+          where: {
+            id: booking.availabilityId,
+            educatorId: booking.educatorId,
+            status: "Booked",
+          },
+          data: {
+            status: "Available",
+          },
+        });
+      }
+    },
+    { isolationLevel: "Serializable" },
+  );
+
+  console.log("EXPIRED TUTORING CHECKOUT RELEASED:", {
+    bookingId,
+    stripeSessionId: session.id,
+  });
+}
+

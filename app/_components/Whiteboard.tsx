@@ -10,7 +10,10 @@ import {
 } from "react";
 import {
   Circle,
+  CircleHelp,
   Copy,
+  Hand,
+  Home,
   MousePointer2,
   Download,
   Eraser,
@@ -29,6 +32,8 @@ import {
   Calculator,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Grid2X2,
   Layers3,
   Plus,
@@ -38,6 +43,7 @@ import {
   PanelRight,
   Shapes,
   Crosshair,
+  Crop,
   Trash2,
   FunctionSquare,
   Settings2,
@@ -46,14 +52,116 @@ import {
 } from "lucide-react";
 import MyLogo from "@/app/_components/Logo";
 
+type DesmosGraphState = Record<string, unknown>;
+
+type DesmosGraphingCalculator = {
+  screenshot: (options?: { width?: number; height?: number }) => string;
+  asyncScreenshot?: (
+    options: { width?: number; height?: number },
+    callback: (dataUri: string) => void,
+  ) => void;
+  getState?: () => DesmosGraphState;
+  setState?: (state: DesmosGraphState) => void;
+  destroy: () => void;
+  resize?: () => void;
+};
+
+type DesmosNamespace = {
+  GraphingCalculator: (
+    element: HTMLElement,
+    options?: Record<string, unknown>,
+  ) => DesmosGraphingCalculator;
+};
+
+declare global {
+  interface Window {
+    Desmos?: DesmosNamespace;
+    pdfjsLib?: {
+      GlobalWorkerOptions: { workerSrc: string };
+      getDocument: (source: { data: Uint8Array }) => {
+        promise: Promise<{
+          numPages: number;
+          getPage: (pageNumber: number) => Promise<{
+            getViewport: (options: { scale: number }) => { width: number; height: number };
+            render: (options: {
+              canvasContext: CanvasRenderingContext2D;
+              viewport: { width: number; height: number };
+            }) => { promise: Promise<void> };
+          }>;
+        }>;
+      };
+    };
+  }
+}
+
+const DESMOS_API_SCRIPT_ID = "justdy-desmos-graphing-api";
+const DESMOS_API_KEY =
+  process.env.NEXT_PUBLIC_DESMOS_API_KEY ??
+  "dcb31709b452b1cf9dc26972add0fda6";
+
+function loadDesmosApi(): Promise<DesmosNamespace> {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("Desmos is only available in the browser."));
+  }
+
+  if (window.Desmos) return Promise.resolve(window.Desmos);
+
+  const existing = document.getElementById(
+    DESMOS_API_SCRIPT_ID,
+  ) as HTMLScriptElement | null;
+
+  if (existing) {
+    return new Promise((resolve, reject) => {
+      const handleLoad = () => {
+        if (window.Desmos) resolve(window.Desmos);
+        else reject(new Error("Desmos loaded without exposing its API."));
+      };
+      const handleError = () =>
+        reject(new Error("Unable to load the Desmos Graphing Calculator."));
+
+      existing.addEventListener("load", handleLoad, { once: true });
+      existing.addEventListener("error", handleError, { once: true });
+
+      if (window.Desmos) handleLoad();
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.id = DESMOS_API_SCRIPT_ID;
+    script.src =
+      `https://www.desmos.com/api/v1.13/calculator.js?apiKey=${encodeURIComponent(DESMOS_API_KEY)}`;
+    script.async = true;
+    script.onload = () => {
+      if (window.Desmos) resolve(window.Desmos);
+      else reject(new Error("Desmos loaded without exposing its API."));
+    };
+    script.onerror = () =>
+      reject(new Error("Unable to load the Desmos Graphing Calculator."));
+    document.head.appendChild(script);
+  });
+}
+
 type Tool =
   | "select"
+  | "hand"
   | "pen"
   | "eraser"
+  | "arrow"
   | "line"
+  | "ellipse"
   | "rectangle"
   | "circle"
   | "triangle"
+  | "cube"
+  | "cylinder"
+  | "diamond"
+  | "pentagon"
+  | "hexagon"
+  | "heptagon"
+  | "octagon"
+  | "parallelogram"
+  | "sphere"
   | "text"
   | "equation"
   | "axes"
@@ -73,7 +181,10 @@ type StrokeElement = {
   pressureSensitive: boolean;
 };
 
-type ShapeType = "line" | "rectangle" | "circle" | "triangle" | "axes";
+type ShapeType =
+  | "arrow" | "line" | "ellipse" | "rectangle" | "circle" | "triangle"
+  | "cube" | "cylinder" | "diamond" | "pentagon" | "hexagon"
+  | "heptagon" | "octagon" | "parallelogram" | "sphere" | "axes";
 
 type ShapeElement = {
   id: string;
@@ -93,6 +204,8 @@ type ImageElement = {
   height: number;
   src: string;
   name?: string;
+  graphState?: string;
+  sourceType?: "image" | "pdf";
 };
 
 type TextElement = {
@@ -106,6 +219,9 @@ type TextElement = {
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
+  // Equations can be stretched independently in X/Y while selected.
+  scaleX?: number;
+  scaleY?: number;
 };
 
 type WhiteboardElement =
@@ -128,13 +244,14 @@ type FormulaCategory =
   | "statistics"
   | "physics";
 
-type WhiteboardMode = "standalone" | "appointment";
+type WhiteboardMode = "standalone" | "appointment" | "booking";
 
 export type WhiteboardRealtimeData = {
   version: number;
   whiteboardId?: string;
   mode?: WhiteboardMode;
   appointmentId?: string;
+  bookingId?: string;
   pages: WhiteboardPage[];
   currentPageIndex: number;
   showGrid: boolean;
@@ -155,6 +272,10 @@ export type WhiteboardRealtimeData = {
 type WhiteboardProps = {
   mode: WhiteboardMode;
   appointmentId?: string;
+  bookingId?: string;
+  /** Width reserved on the right for the tutoring participant sidebar. */
+  rightInset?: number;
+  onClose?: () => void;
   onRealtimeChange?: (data: WhiteboardRealtimeData) => void;
   onReady?: (data: WhiteboardRealtimeData) => void;
   remoteData?: WhiteboardRealtimeData | null;
@@ -165,6 +286,7 @@ type SavedWhiteboardData = {
   whiteboardId?: string;
   mode?: WhiteboardMode;
   appointmentId?: string;
+  bookingId?: string;
   pages?: WhiteboardPage[];
   currentPageIndex?: number;
   showGrid?: boolean;
@@ -193,12 +315,24 @@ const FORMULA_CATEGORIES: readonly FormulaCategory[] = [
 function isTool(value: unknown): value is Tool {
   return (
     value === "select" ||
+    value === "hand" ||
     value === "pen" ||
     value === "eraser" ||
+    value === "arrow" ||
     value === "line" ||
+    value === "ellipse" ||
     value === "rectangle" ||
     value === "circle" ||
     value === "triangle" ||
+    value === "cube" ||
+    value === "cylinder" ||
+    value === "diamond" ||
+    value === "pentagon" ||
+    value === "hexagon" ||
+    value === "heptagon" ||
+    value === "octagon" ||
+    value === "parallelogram" ||
+    value === "sphere" ||
     value === "text" ||
     value === "equation" ||
     value === "axes" ||
@@ -226,12 +360,16 @@ function parseSavedBoardData(value: unknown): SavedWhiteboardData | null {
         ? candidate.whiteboardId
         : undefined,
     mode:
-      candidate.mode === "standalone" || candidate.mode === "appointment"
+      candidate.mode === "standalone" || candidate.mode === "appointment" || candidate.mode === "booking"
         ? candidate.mode
         : undefined,
     appointmentId:
       typeof candidate.appointmentId === "string"
         ? candidate.appointmentId
+        : undefined,
+    bookingId:
+      typeof candidate.bookingId === "string"
+        ? candidate.bookingId
         : undefined,
     pages: Array.isArray(candidate.pages)
       ? (candidate.pages as WhiteboardPage[])
@@ -292,7 +430,84 @@ const COLORS = [
   "#4f46e5",
 ];
 
+const PEN_POPUP_COLORS = [
+  "#000000",
+  "#ffffff",
+  "#ff3b30",
+  "#0a84ff",
+  "#6fba45",
+  "#9c27b0",
+  "#ffd54f",
+];
+
+const PEN_SIZE_OPTIONS = [
+  { value: 1, width: 2 },
+  { value: 2, width: 3 },
+  { value: 4, width: 5 },
+  { value: 6, width: 7 },
+  { value: 8, width: 9 },
+  { value: 10, width: 11 },
+];
+
+const LATEX_SYMBOLS = [
+  ["α", "\\alpha "], ["β", "\\beta "], ["γ", "\\gamma "], ["δ", "\\delta "], ["ε", "\\epsilon "],
+  ["ζ", "\\zeta "], ["η", "\\eta "], ["ι", "\\iota "], ["κ", "\\kappa "], ["λ", "\\lambda "],
+  ["μ", "\\mu "], ["ν", "\\nu "], ["ξ", "\\xi "], ["ο", "o "], ["π", "\\pi "],
+  ["ρ", "\\rho "], ["ς", "\\varsigma "], ["σ", "\\sigma "], ["τ", "\\tau "], ["υ", "\\upsilon "],
+  ["φ", "\\phi "], ["ϕ", "\\varphi "], ["χ", "\\chi "], ["ψ", "\\psi "], ["ω", "\\omega "],
+  ["÷", "\\div "], ["Σ", "\\Sigma "], ["√", "\\sqrt{}"], ["∫", "\\int "], ["×", "\\times "],
+  ["∩", "\\cap "], ["∪", "\\cup "], ["≠", "\\neq "], ["≤", "\\le "], ["≥", "\\ge "],
+  ["∈", "\\in "], ["±", "\\pm "], ["∓", "\\mp "], ["∞", "\\infty "], ["≈", "\\approx "],
+  ["∼", "\\sim "], ["∧", "\\land "], ["∨", "\\lor "], ["⊕", "\\oplus "], ["⊗", "\\otimes "],
+  ["=", "= "], ["≡", "\\equiv "], ["∀", "\\forall "], ["∃", "\\exists "], ["∂", "\\partial "],
+  ["∇", "\\nabla "], ["↔", "\\leftrightarrow "], ["←", "\\leftarrow "], ["⇐", "\\Leftarrow "], ["→", "\\rightarrow "],
+  ["⇒", "\\Rightarrow "], ["↕", "\\updownarrow "], ["⇔", "\\Leftrightarrow "],
+] as const;
+
+const LATEX_LETTER_LABELS = new Set([
+  "α", "β", "γ", "δ", "ε", "ζ", "η", "ι", "κ", "λ",
+  "μ", "ν", "ξ", "ο", "π", "ρ", "ς", "σ", "τ", "υ",
+  "φ", "ϕ", "χ", "ψ", "ω",
+]);
+
+const LATEX_ARROW_LABELS = new Set([
+  "↔", "←", "⇐", "→", "⇒", "↕", "⇔",
+]);
+
+const LATEX_EDITOR_COLORS = [
+  "#000000",
+  "#ffffff",
+  "#ff3b30",
+  "#0a84ff",
+  "#6fba45",
+  "#9c27b0",
+  "#ffd54f",
+] as const;
+
 const DEFAULT_BACKGROUND_IMAGE = "/images/chalkboard.png";
+
+function ShapeToolIcon({ shape }: { shape: ShapeType }) {
+  const common = { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
+  switch (shape) {
+    case "arrow": return <svg {...common}><path d="M5 19 19 5" /><path d="M10 5h9v9" /></svg>;
+    case "line": return <svg {...common}><path d="M5 19 19 5" /></svg>;
+    case "ellipse": return <svg {...common}><ellipse cx="12" cy="12" rx="8.5" ry="5.5" /></svg>;
+    case "rectangle": return <svg {...common}><rect x="4" y="6" width="16" height="12" /></svg>;
+    case "circle": return <svg {...common}><circle cx="12" cy="12" r="8" /></svg>;
+    case "triangle": return <svg {...common}><path d="m12 4 8 15H4L12 4Z" /></svg>;
+    case "cube": return <svg {...common}><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /><path d="m8 5.25 8 4.5v9" /></svg>;
+    case "cylinder": return <svg {...common}><ellipse cx="12" cy="6" rx="7" ry="2.8" /><path d="M5 6v12c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8V6" /><path d="M5 18c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8" /></svg>;
+    case "diamond": return <svg {...common}><path d="m12 3 8 9-8 9-8-9 8-9Z" /></svg>;
+    case "pentagon": return <svg {...common}><path d="m12 3 8 5.8-3.05 9.2h-9.9L4 8.8 12 3Z" /></svg>;
+    case "hexagon": return <svg {...common}><path d="m7 4 10 0 5 8-5 8H7l-5-8 5-8Z" /></svg>;
+    case "heptagon": return <svg {...common}><path d="M12 2.8 19.2 6l2 8-5 6.2H7.8l-5-6.2 2-8L12 2.8Z" /></svg>;
+    case "octagon": return <svg {...common}><path d="m8 3 8 0 5 5v8l-5 5H8l-5-5V8l5-5Z" /></svg>;
+    case "parallelogram": return <svg {...common}><path d="m7 5 14 0-4 14H3L7 5Z" /></svg>;
+    case "sphere": return <svg {...common}><circle cx="12" cy="12" r="8" /><ellipse cx="12" cy="12" rx="3.2" ry="8" /></svg>;
+    default: return <svg {...common}><path d="M4 12h16M12 4v16" /><path d="m19 9-3 3 3 3M9 5l3 3 3-3M5 15l3-3-3-3" /></svg>;
+  }
+}
+
 
 const BACKGROUND_IMAGE_OPTIONS = [
   { label: "Chalkboard", value: DEFAULT_BACKGROUND_IMAGE },
@@ -465,6 +680,33 @@ function latexToReadable(text: string): string {
   return convert(text);
 }
 
+function renderLatexPreview(text: string, color: string) {
+  const value = text.trim();
+  const fraction = value.match(/^\\frac\{([^{}]*)\}\{([^{}]*)\}$/);
+  if (fraction) {
+    return (
+      <span
+        className="inline-flex flex-col items-center justify-center leading-none"
+        style={{ color }}
+      >
+        <span className="border-b-2 border-current px-2 pb-1">{latexToReadable(fraction[1])}</span>
+        <span className="px-2 pt-1">{latexToReadable(fraction[2])}</span>
+      </span>
+    );
+  }
+
+  const sqrt = value.match(/^\\sqrt\{([^{}]*)\}$/);
+  if (sqrt) {
+    return (
+      <span style={{ color }}>
+        √<span className="border-t-2 border-current px-1">{latexToReadable(sqrt[1])}</span>
+      </span>
+    );
+  }
+
+  return <span style={{ color }}>{latexToReadable(value)}</span>;
+}
+
 function estimateMathMetrics(
   text: string,
   fontSize: number,
@@ -479,10 +721,16 @@ function estimateMathMetrics(
   const superscriptCount = (text.match(/\^/g) || []).length;
   const subscriptCount = (text.match(/_/g) || []).length;
 
+  const commandCount = (text.match(/\\[A-Za-z]+/g) || []).length;
+  const groupCount = (text.match(/[{}]/g) || []).length / 2;
   return {
     width: Math.max(
       fontSize * 0.8,
-      plainWidth + fractionCount * fontSize * 0.25 + sqrtCount * fontSize * 0.1,
+      plainWidth * 1.08 +
+        fractionCount * fontSize * 0.25 +
+        sqrtCount * fontSize * 0.14 +
+        commandCount * fontSize * 0.08 +
+        groupCount * fontSize * 0.025,
     ),
     height:
       fontSize *
@@ -649,6 +897,126 @@ function drawMathEquation(
   ctx.restore();
 }
 
+function measureMathRenderWidth(
+  text: string,
+  fontSize: number,
+  ctx?: CanvasRenderingContext2D | null,
+): number {
+  const measure = (source: string, size: number): number => {
+    let cursorX = 0;
+    let i = 0;
+    const baseFont = `${size}px Cambria Math, STIX Two Math, Times New Roman, serif`;
+
+    const readGroup = (): string => {
+      if (source[i] === "{") {
+        let depth = 0;
+        const start = ++i;
+        while (i < source.length) {
+          if (source[i] === "{") depth++;
+          else if (source[i] === "}") {
+            if (depth === 0) break;
+            depth--;
+          }
+          i++;
+        }
+        const group = source.slice(start, i);
+        if (source[i] === "}") i++;
+        return group;
+      }
+      if (source[i] === "\\") {
+        const start = i++;
+        while (i < source.length && /[A-Za-z]/.test(source[i])) i++;
+        return source.slice(start, i);
+      }
+      return source[i++] || "";
+    };
+
+    while (i < source.length) {
+      if (/\s/.test(source[i])) {
+        cursorX += size * 0.22;
+        i++;
+        continue;
+      }
+
+      if (source[i] === "\\") {
+        i++;
+        const start = i;
+        while (i < source.length && /[A-Za-z]/.test(source[i])) i++;
+        const command = source.slice(start, i);
+
+        if (command === "frac") {
+          const numerator = readGroup();
+          const denominator = readGroup();
+          const fracSize = size * 0.86;
+          const width = Math.max(
+            measure(numerator, fracSize),
+            measure(denominator, fracSize),
+          ) + size * 0.35;
+          cursorX += width;
+          continue;
+        }
+
+        if (command === "sqrt") {
+          const radicand = readGroup();
+          cursorX += size * 0.36 + measure(radicand, size * 0.9) + size * 0.08;
+          continue;
+        }
+
+        if (command === "text") {
+          const content = readGroup();
+          if (ctx) {
+            ctx.save();
+            ctx.font = `${size}px Inter, sans-serif`;
+            cursorX += ctx.measureText(content).width;
+            ctx.restore();
+          } else {
+            cursorX += content.length * size * 0.56;
+          }
+          continue;
+        }
+
+        const symbol = MATH_SYMBOLS[command] ?? command;
+        if (ctx) {
+          ctx.save();
+          ctx.font = baseFont;
+          cursorX += ctx.measureText(symbol).width;
+          ctx.restore();
+        } else {
+          cursorX += symbol.length * size * 0.62;
+        }
+        continue;
+      }
+
+      if (source[i] === "^" || source[i] === "_") {
+        i++;
+        readGroup();
+        // Superscripts/subscripts are drawn at cursorX and do not advance it.
+        continue;
+      }
+
+      if (source[i] === "{") {
+        const group = readGroup();
+        cursorX += measure(group, size);
+        continue;
+      }
+
+      const ch = source[i++];
+      if (ctx) {
+        ctx.save();
+        ctx.font = baseFont;
+        cursorX += ctx.measureText(ch).width;
+        ctx.restore();
+      } else {
+        cursorX += size * 0.62;
+      }
+    }
+
+    return cursorX;
+  };
+
+  return Math.max(fontSize * 0.8, measure(text, fontSize));
+}
+
 function getElementBounds(
   element: WhiteboardElement,
   ctx?: CanvasRenderingContext2D | null,
@@ -689,18 +1057,47 @@ function getElementBounds(
     element.type === "equation"
       ? estimateMathMetrics(element.text, element.fontSize, ctx)
       : null;
-  const measuredWidth = mathMetrics
-    ? mathMetrics.width
-    : ctx
-      ? ctx.measureText(element.text).width
-      : element.text.length * element.fontSize * 0.62;
-  const measuredHeight = mathMetrics?.height ?? element.fontSize + 6;
+
+  let measuredWidth: number;
+  let measuredHeight: number;
+
+  if (mathMetrics) {
+    const scaleX = element.type === "equation" ? Math.max(0.2, element.scaleX ?? 1) : 1;
+    const scaleY = element.type === "equation" ? Math.max(0.2, element.scaleY ?? 1) : 1;
+    // Use the same cursor/command rules as drawMathEquation so the dotted
+    // selection frame encloses the complete rendered formula, including
+    // fractions, square roots, commands, and text groups.
+    const renderedWidth = measureMathRenderWidth(element.text, element.fontSize, ctx);
+    measuredWidth = renderedWidth * scaleX;
+    measuredHeight = mathMetrics.height * scaleY;
+  } else if (ctx) {
+    // Text selection bounds must use the exact same font metrics as the
+    // renderer. Previously the canvas context could still contain the font
+    // from another element, which made the blue selection frame stop halfway
+    // across longer/bold/italic text.
+    ctx.save();
+    ctx.font = `${element.italic ? "italic " : ""}${element.bold ? "700 " : "400 "}${element.fontSize}px Inter, sans-serif`;
+    measuredWidth = ctx.measureText(element.text).width;
+    const metrics = ctx.measureText(element.text);
+    measuredHeight = Math.max(
+      element.fontSize + 6,
+      (metrics.actualBoundingBoxAscent || element.fontSize * 0.8) +
+        (metrics.actualBoundingBoxDescent || element.fontSize * 0.2) +
+        6,
+    );
+    ctx.restore();
+  } else {
+    measuredWidth = element.text.length * element.fontSize * 0.62;
+    measuredHeight = element.fontSize + 6;
+  }
+
+  const padding = Math.max(7, element.fontSize * 0.14) * (element.type === "equation" ? Math.max(1, Math.min(element.scaleX ?? 1, element.scaleY ?? 1)) : 1);
 
   return {
-    left: element.x - 4,
-    top: element.y - 4,
-    right: element.x + Math.max(measuredWidth, element.fontSize * 0.6) + 4,
-    bottom: element.y + measuredHeight + 4,
+    left: element.x - padding,
+    top: element.y - padding,
+    right: element.x + Math.max(measuredWidth, element.fontSize * 0.6) + padding,
+    bottom: element.y + measuredHeight + padding,
   };
 }
 
@@ -783,9 +1180,56 @@ function translateElement(
   return { ...element, x: element.x + dx, y: element.y + dy };
 }
 
+let pdfJsLoadPromise: Promise<NonNullable<Window["pdfjsLib"]>> | null = null;
+
+function loadPdfJs(): Promise<NonNullable<Window["pdfjsLib"]>> {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("PDF rendering is only available in the browser."));
+  }
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (pdfJsLoadPromise) return pdfJsLoadPromise;
+
+  pdfJsLoadPromise = new Promise<NonNullable<Window["pdfjsLib"]>>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[data-justdy-pdfjs="true"]',
+    );
+    if (existing) {
+      existing.addEventListener("load", () => {
+        if (window.pdfjsLib) resolve(window.pdfjsLib);
+        else reject(new Error("PDF.js loaded without a usable API."));
+      });
+      existing.addEventListener("error", () =>
+        reject(new Error("Unable to load the PDF renderer.")),
+      );
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    script.async = true;
+    script.dataset.justdyPdfjs = "true";
+    script.onload = () => {
+      if (!window.pdfjsLib) {
+        reject(new Error("PDF.js loaded without a usable API."));
+        return;
+      }
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      resolve(window.pdfjsLib);
+    };
+    script.onerror = () => reject(new Error("Unable to load the PDF renderer."));
+    document.head.appendChild(script);
+  });
+
+  return pdfJsLoadPromise;
+}
+
 export default function Whiteboard({
   mode,
   appointmentId,
+  bookingId,
+  rightInset = 0,
+  onClose,
   onRealtimeChange,
   onReady,
   remoteData,
@@ -812,25 +1256,44 @@ export default function Whiteboard({
       return "justdy-lab-whiteboard:standalone";
     }
 
+    if (mode === "booking") {
+      return `justdy-lab-whiteboard:booking:${bookingId ?? "unknown"}`;
+    }
+
     return `justdy-lab-whiteboard:appointment:${appointmentId ?? "unknown"}`;
-  }, [mode, appointmentId]);
+  }, [mode, appointmentId, bookingId]);
 
   const [pages, setPages] = useState<WhiteboardPage[]>([createPage("Page 1")]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [tool, setTool] = useState<Tool>("pen");
+  const textPlacementArmedRef = useRef(false);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const panRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+  } | null>(null);
   const [color, setColor] = useState("#2563eb");
   const [width, setWidth] = useState(4);
+  const [eraserWidth, setEraserWidth] = useState(32);
+  const [showEraserPopup, setShowEraserPopup] = useState(false);
+  const [eraserPopupPosition, setEraserPopupPosition] = useState({
+    top: 0,
+    left: 0,
+  });
+  const eraserButtonRef = useRef<HTMLButtonElement | null>(null);
+  const eraserPopupRef = useRef<HTMLDivElement | null>(null);
   const [fontSize] = useState(24);
 
   const [showGrid, setShowGrid] = useState(true);
   const [gridSize] = useState(32);
-  const [backgroundColor, setBackgroundColor] = useState("#18181b");
-  const [backgroundImage, setBackgroundImage] = useState<string | null>(
-    DEFAULT_BACKGROUND_IMAGE,
-  );
+  const [backgroundColor, setBackgroundColor] = useState("#ffffff");
+  const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const backgroundImageRef = useRef<HTMLImageElement | null>(null);
   const [backgroundImageVersion, setBackgroundImageVersion] = useState(0);
-  const [gridColor, setGridColor] = useState("#e5e7eb");
+  const [gridColor, setGridColor] = useState("#e2e8f0");
 
   const [showColorPopup, setShowColorPopup] = useState(false);
   const [colorPopupTarget, setColorPopupTarget] = useState<
@@ -843,14 +1306,49 @@ export default function Whiteboard({
     left: 0,
   });
 
+  const [showPenPopup, setShowPenPopup] = useState(false);
+  const [penStyle, setPenStyle] = useState<"pen" | "marker">("pen");
+  const penButtonRef = useRef<HTMLButtonElement | null>(null);
+  const penPopupRef = useRef<HTMLDivElement | null>(null);
+  const [penPopupPosition, setPenPopupPosition] = useState({
+    top: 0,
+    left: 0,
+  });
+
   const [axisColor] = useState("#475569");
   const [snapToGrid, setSnapToGrid] = useState(false);
-  const [showMinorGrid] = useState(true);
   const [showToolsPanel, setShowToolsPanel] = useState(false);
   const [showShapeToolsPopup, setShowShapeToolsPopup] = useState(false);
   const shapeToolsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [showFormulaMenu, setShowFormulaMenu] = useState(false);
+  const formulaToolsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [formulaMenuPosition, setFormulaMenuPosition] = useState({ top: 0, left: 0 });
+  const [showUploadMenu, setShowUploadMenu] = useState(false);
+  const uploadButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [uploadMenuPosition, setUploadMenuPosition] = useState({ top: 0, left: 0 });
+  const [cropEditor, setCropEditor] = useState<{
+    open: boolean;
+    elementId: string | null;
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+  }>({
+    open: false,
+    elementId: null,
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+  });
   const [showPagesPanel, setShowPagesPanel] = useState(false);
+  const pageThumbnailRefs = useRef<Record<string, HTMLCanvasElement | null>>({});
   const [showGraphSettings, setShowGraphSettings] = useState(false);
+  const [showGraphEditor, setShowGraphEditor] = useState(false);
+  const [graphLoadError, setGraphLoadError] = useState<string | null>(null);
+  const graphContainerRef = useRef<HTMLDivElement | null>(null);
+  const graphCalculatorRef = useRef<DesmosGraphingCalculator | null>(null);
+  const graphEditingElementIdRef = useRef<string | null>(null);
   const [showCalculator, setShowCalculator] = useState(false);
   const [calculatorValue, setCalculatorValue] = useState("");
   const [calculatorResult, setCalculatorResult] = useState("");
@@ -878,6 +1376,77 @@ export default function Whiteboard({
       popupPositions[key] ?? fallback,
     [popupPositions],
   );
+
+  useEffect(() => {
+    if (!showGraphEditor) return;
+
+    let cancelled = false;
+
+    loadDesmosApi()
+      .then((Desmos) => {
+        if (cancelled || !graphContainerRef.current || graphCalculatorRef.current) {
+          return;
+        }
+
+        setGraphLoadError(null);
+        graphCalculatorRef.current = Desmos.GraphingCalculator(
+          graphContainerRef.current,
+          {
+            graphpaper: true,
+            expressions: true,
+            expressionsCollapsed: true,
+            expressionsTopbar: true,
+            settingsMenu: true,
+            zoomButtons: true,
+            keypad: true,
+            keypadActivated: false,
+            autosize: true,
+            border: true,
+            pointsOfInterest: true,
+            trace: true,
+          },
+        );
+
+        const editingId = graphEditingElementIdRef.current;
+        if (editingId && graphCalculatorRef.current.setState) {
+          const editingElement = pages
+            .flatMap((page) => page.elements)
+            .find(
+              (element): element is ImageElement =>
+                element.id === editingId &&
+                element.type === "image" &&
+                element.name === "Desmos Graph" &&
+                Boolean(element.graphState),
+            );
+
+          if (editingElement?.graphState) {
+            try {
+              graphCalculatorRef.current.setState(
+                JSON.parse(editingElement.graphState) as DesmosGraphState,
+              );
+            } catch {
+              // Keep the default calculator state if an older graph has no
+              // valid serialized Desmos state.
+            }
+          }
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setGraphLoadError(
+            error instanceof Error
+              ? error.message
+              : "Unable to load the Desmos Graphing Calculator.",
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      graphCalculatorRef.current?.destroy();
+      graphCalculatorRef.current = null;
+    };
+  }, [showGraphEditor, pages]);
 
   const startPopupDrag = useCallback(
     (key: string, event: React.PointerEvent<HTMLElement>) => {
@@ -959,7 +1528,7 @@ export default function Whiteboard({
     useState<FormulaCategory>("algebra");
 
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showTeacherControls, setShowTeacherControls] = useState(true);
+  const [showTeacherControls] = useState(true);
   const [toolbarHovered, setToolbarHovered] = useState(false);
   const [teacherControlDragging, setTeacherControlDragging] = useState(false);
 
@@ -996,9 +1565,11 @@ export default function Whiteboard({
     null,
   );
   const [selectedElementIds, setSelectedElementIds] = useState<string[]>([]);
+  const [textObjectDragging, setTextObjectDragging] = useState(false);
   const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const [, setImageVersion] = useState(0);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const pdfInputRef = useRef<HTMLInputElement | null>(null);
 
   const [textEditor, setTextEditor] = useState<{
     open: boolean;
@@ -1027,9 +1598,28 @@ export default function Whiteboard({
   });
 
   const textInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const latexInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const [latexEditor, setLatexEditor] = useState<{
+    open: boolean;
+    text: string;
+    color: string;
+    editingElementId: string | null;
+    x: number;
+    y: number;
+  }>({
+    open: false,
+    text: "",
+    color: "#0f172a",
+    editingElementId: null,
+    x: 0,
+    y: 0,
+  });
+  const [latexTab, setLatexTab] = useState<"All" | "Math" | "Arrow" | "Letter">("All");
   const [activeTextPanel, setActiveTextPanel] = useState<
     "symbols" | "templates" | "formatting" | null
   >(null);
+  const [showTextFormattingColors, setShowTextFormattingColors] =
+    useState(false);
 
   const drawingRef = useRef(false);
   const startPointRef = useRef<Point | null>(null);
@@ -1043,7 +1633,7 @@ export default function Whiteboard({
     originalElements: WhiteboardElement[];
     startPoint: Point;
     anchor: Point;
-    handle: "nw" | "ne" | "se" | "sw" | null;
+    handle: "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | null;
     moved: boolean;
   } | null>(null);
 
@@ -1084,6 +1674,77 @@ export default function Whiteboard({
     setColorPopupTarget(target);
     setShowColorPopup(true);
   }, []);
+
+  const positionPenPopup = useCallback(() => {
+    const button = penButtonRef.current;
+    if (!button) return;
+
+    const rect = button.getBoundingClientRect();
+    const popupWidth = 344;
+    const popupHeight = 230;
+    const gap = 10;
+
+    let left = rect.left + rect.width / 2 - popupWidth / 2;
+    let top = rect.bottom + gap;
+
+    left = Math.max(12, Math.min(left, window.innerWidth - popupWidth - 12));
+
+    if (top + popupHeight > window.innerHeight - 12) {
+      top = Math.max(12, rect.top - popupHeight - gap);
+    }
+
+    setPenPopupPosition({ top, left });
+  }, []);
+
+  useEffect(() => {
+    if (!showEraserPopup) return;
+
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (
+        target &&
+        (eraserPopupRef.current?.contains(target) ||
+          eraserButtonRef.current?.contains(target))
+      ) {
+        return;
+      }
+      setShowEraserPopup(false);
+    };
+
+    document.addEventListener("pointerdown", handleOutsidePointerDown);
+    return () =>
+      document.removeEventListener("pointerdown", handleOutsidePointerDown);
+  }, [showEraserPopup]);
+
+  useEffect(() => {
+    if (!showPenPopup) return;
+
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+
+      if (
+        target &&
+        (penPopupRef.current?.contains(target) ||
+          penButtonRef.current?.contains(target))
+      ) {
+        return;
+      }
+
+      setShowPenPopup(false);
+    };
+
+    document.addEventListener(
+      "pointerdown",
+      handleOutsidePointerDown,
+    );
+
+    return () => {
+      document.removeEventListener(
+        "pointerdown",
+        handleOutsidePointerDown,
+      );
+    };
+  }, [showPenPopup]);
 
   const pushHistory = useCallback(() => {
     historyRef.current.push(JSON.parse(JSON.stringify(pages)));
@@ -1149,15 +1810,15 @@ export default function Whiteboard({
       const canvas = canvasRef.current;
       if (!canvas) return { x: 0, y: 0 };
       const rect = canvas.getBoundingClientRect();
-      let x = event.clientX - rect.left;
-      let y = event.clientY - rect.top;
+      let x = event.clientX - rect.left - panOffset.x;
+      let y = event.clientY - rect.top - panOffset.y;
       if (snapToGrid) {
         x = Math.round(x / gridSize) * gridSize;
         y = Math.round(y / gridSize) * gridSize;
       }
       return { x, y };
     },
-    [gridSize, snapToGrid],
+    [gridSize, panOffset.x, panOffset.y, snapToGrid],
   );
 
   const drawGrid = useCallback(
@@ -1167,44 +1828,25 @@ export default function Whiteboard({
       canvasHeight: number,
     ) => {
       if (!showGrid) return;
+
+      // LiveBoard-style reference background: a clean white canvas with
+      // very light, evenly spaced dots instead of horizontal/vertical grid lines.
       ctx.save();
-      ctx.strokeStyle = gridColor;
-      ctx.lineWidth = 1;
+      ctx.fillStyle = gridColor;
+      ctx.globalAlpha = 0.42;
 
+      const radius = 1.05;
       for (let x = 0; x <= canvasWidth; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvasHeight);
-        ctx.stroke();
-      }
-      for (let y = 0; y <= canvasHeight; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvasWidth, y);
-        ctx.stroke();
+        for (let y = 0; y <= canvasHeight; y += gridSize) {
+          ctx.beginPath();
+          ctx.arc(x, y, radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
 
-      if (showMinorGrid) {
-        ctx.strokeStyle = gridColor;
-        ctx.globalAlpha = 0.35;
-        ctx.lineWidth = 0.5;
-        const minor = Math.max(4, gridSize / 4);
-        for (let x = 0; x <= canvasWidth; x += minor) {
-          ctx.beginPath();
-          ctx.moveTo(x, 0);
-          ctx.lineTo(x, canvasHeight);
-          ctx.stroke();
-        }
-        for (let y = 0; y <= canvasHeight; y += minor) {
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(canvasWidth, y);
-          ctx.stroke();
-        }
-      }
       ctx.restore();
     },
-    [gridColor, gridSize, showGrid, showMinorGrid],
+    [gridColor, gridSize, showGrid],
   );
 
   const drawStroke = useCallback(
@@ -1245,26 +1887,61 @@ export default function Whiteboard({
 
       const centerX = (start.x + end.x) / 2;
       const centerY = (start.y + end.y) / 2;
+      const width = Math.abs(end.x - start.x);
+      const height = Math.abs(end.y - start.y);
+      const drawRegularPolygon = (sides: number, radius: number) => {
+        const points = Array.from({ length: sides }, (_, index) => {
+          const angle = -Math.PI / 2 + (index * Math.PI * 2) / sides;
+          return { x: centerX + Math.cos(angle) * radius, y: centerY + Math.sin(angle) * radius };
+        });
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let index = 1; index < points.length; index++) ctx.lineTo(points[index].x, points[index].y);
+        ctx.closePath();
+      };
 
       ctx.beginPath();
-      if (element.type === "line") {
-        ctx.moveTo(start.x, start.y);
-        ctx.lineTo(end.x, end.y);
+      if (element.type === "arrow") {
+        const angle = Math.atan2(end.y - start.y, end.x - start.x);
+        const arrowSize = Math.max(10, Math.min(20, Math.hypot(end.x - start.x, end.y - start.y) * 0.12));
+        ctx.moveTo(start.x, start.y); ctx.lineTo(end.x, end.y);
+        ctx.moveTo(end.x, end.y); ctx.lineTo(end.x - arrowSize * Math.cos(angle - Math.PI / 6), end.y - arrowSize * Math.sin(angle - Math.PI / 6));
+        ctx.moveTo(end.x, end.y); ctx.lineTo(end.x - arrowSize * Math.cos(angle + Math.PI / 6), end.y - arrowSize * Math.sin(angle + Math.PI / 6));
+      } else if (element.type === "line") {
+        ctx.moveTo(start.x, start.y); ctx.lineTo(end.x, end.y);
+      } else if (element.type === "ellipse") {
+        ctx.ellipse(centerX, centerY, Math.max(1, width / 2), Math.max(1, height / 2), 0, 0, Math.PI * 2);
       } else if (element.type === "rectangle") {
         ctx.rect(start.x, start.y, end.x - start.x, end.y - start.y);
       } else if (element.type === "circle") {
-        const radius = Math.hypot(end.x - start.x, end.y - start.y) / 2;
-        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.arc(centerX, centerY, Math.max(1, Math.min(width, height) / 2), 0, Math.PI * 2);
       } else if (element.type === "triangle") {
-        ctx.moveTo(centerX, start.y);
-        ctx.lineTo(end.x, end.y);
-        ctx.lineTo(start.x, end.y);
-        ctx.closePath();
+        ctx.moveTo(centerX, start.y); ctx.lineTo(end.x, end.y); ctx.lineTo(start.x, end.y); ctx.closePath();
+      } else if (element.type === "cube") {
+        const offsetX = Math.max(10, width * 0.22); const offsetY = Math.max(8, height * 0.18);
+        const backLeft = start.x + offsetX; const backTop = start.y - offsetY; const backRight = end.x + offsetX; const backBottom = end.y - offsetY;
+        ctx.rect(start.x, start.y, end.x - start.x, end.y - start.y);
+        ctx.moveTo(backLeft, backTop); ctx.lineTo(backRight, backTop); ctx.lineTo(backRight, backBottom); ctx.lineTo(backLeft, backBottom); ctx.closePath();
+        ctx.moveTo(start.x, start.y); ctx.lineTo(backLeft, backTop); ctx.moveTo(end.x, start.y); ctx.lineTo(backRight, backTop); ctx.moveTo(end.x, end.y); ctx.lineTo(backRight, backBottom); ctx.moveTo(start.x, end.y); ctx.lineTo(backLeft, backBottom);
+      } else if (element.type === "cylinder") {
+        const radiusX = Math.max(1, width / 2); const radiusY = Math.max(3, Math.min(14, height * 0.16));
+        ctx.ellipse(centerX, start.y, radiusX, radiusY, 0, 0, Math.PI * 2);
+        ctx.moveTo(start.x, start.y); ctx.lineTo(start.x, end.y); ctx.moveTo(end.x, start.y); ctx.lineTo(end.x, end.y);
+        ctx.ellipse(centerX, end.y, radiusX, radiusY, 0, 0, Math.PI);
+      } else if (element.type === "diamond") {
+        ctx.moveTo(centerX, start.y); ctx.lineTo(end.x, centerY); ctx.lineTo(centerX, end.y); ctx.lineTo(start.x, centerY); ctx.closePath();
+      } else if (element.type === "pentagon") { drawRegularPolygon(5, Math.max(1, Math.min(width, height) / 2));
+      } else if (element.type === "hexagon") { drawRegularPolygon(6, Math.max(1, Math.min(width, height) / 2));
+      } else if (element.type === "heptagon") { drawRegularPolygon(7, Math.max(1, Math.min(width, height) / 2));
+      } else if (element.type === "octagon") { drawRegularPolygon(8, Math.max(1, Math.min(width, height) / 2));
+      } else if (element.type === "parallelogram") {
+        const skew = Math.max(8, width * 0.2);
+        ctx.moveTo(start.x + skew, start.y); ctx.lineTo(end.x, start.y); ctx.lineTo(end.x - skew, end.y); ctx.lineTo(start.x, end.y); ctx.closePath();
+      } else if (element.type === "sphere") {
+        const radius = Math.max(1, Math.min(width, height) / 2);
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.moveTo(centerX, centerY - radius); ctx.ellipse(centerX, centerY, radius * 0.42, radius, 0, 0, Math.PI * 2);
       } else if (element.type === "axes") {
-        ctx.moveTo(start.x, centerY);
-        ctx.lineTo(end.x, centerY);
-        ctx.moveTo(centerX, start.y);
-        ctx.lineTo(centerX, end.y);
+        ctx.moveTo(start.x, centerY); ctx.lineTo(end.x, centerY); ctx.moveTo(centerX, start.y); ctx.lineTo(centerX, end.y);
       }
       ctx.stroke();
       ctx.restore();
@@ -1275,14 +1952,20 @@ export default function Whiteboard({
   const drawText = useCallback(
     (ctx: CanvasRenderingContext2D, element: TextElement) => {
       if (element.type === "equation") {
+        const scaleX = Math.max(0.2, element.scaleX ?? 1);
+        const scaleY = Math.max(0.2, element.scaleY ?? 1);
+        ctx.save();
+        ctx.translate(element.x, element.y);
+        ctx.scale(scaleX, scaleY);
         drawMathEquation(
           ctx,
           element.text,
-          element.x,
-          element.y,
+          0,
+          0,
           element.fontSize,
           element.color,
         );
+        ctx.restore();
         return;
       }
 
@@ -1313,10 +1996,14 @@ export default function Whiteboard({
       const handleSize = 9;
       const half = handleSize / 2;
       const handles = [
-        { x: bounds.left, y: bounds.top },
-        { x: bounds.right, y: bounds.top },
-        { x: bounds.right, y: bounds.bottom },
-        { x: bounds.left, y: bounds.bottom },
+        { name: "nw", x: bounds.left, y: bounds.top },
+        { name: "n", x: (bounds.left + bounds.right) / 2, y: bounds.top },
+        { name: "ne", x: bounds.right, y: bounds.top },
+        { name: "e", x: bounds.right, y: (bounds.top + bounds.bottom) / 2 },
+        { name: "se", x: bounds.right, y: bounds.bottom },
+        { name: "s", x: (bounds.left + bounds.right) / 2, y: bounds.bottom },
+        { name: "sw", x: bounds.left, y: bounds.bottom },
+        { name: "w", x: bounds.left, y: (bounds.top + bounds.bottom) / 2 },
       ];
 
       ctx.save();
@@ -1341,21 +2028,6 @@ export default function Whiteboard({
         ctx.stroke();
       });
 
-      // Delete control: red circular node at the top-right.
-      const deleteX = bounds.right + 14;
-      const deleteY = bounds.top - 14;
-      ctx.fillStyle = "#ef4444";
-      ctx.beginPath();
-      ctx.arc(deleteX, deleteY, 10, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(deleteX - 3, deleteY - 3);
-      ctx.lineTo(deleteX + 3, deleteY + 3);
-      ctx.moveTo(deleteX + 3, deleteY - 3);
-      ctx.lineTo(deleteX - 3, deleteY + 3);
-      ctx.stroke();
       ctx.restore();
     },
     [],
@@ -1385,10 +2057,14 @@ export default function Whiteboard({
       const handleSize = 9;
       const half = handleSize / 2;
       const handles = [
-        { x: bounds.left, y: bounds.top },
-        { x: bounds.right, y: bounds.top },
-        { x: bounds.right, y: bounds.bottom },
-        { x: bounds.left, y: bounds.bottom },
+        { name: "nw", x: bounds.left, y: bounds.top },
+        { name: "n", x: (bounds.left + bounds.right) / 2, y: bounds.top },
+        { name: "ne", x: bounds.right, y: bounds.top },
+        { name: "e", x: bounds.right, y: (bounds.top + bounds.bottom) / 2 },
+        { name: "se", x: bounds.right, y: bounds.bottom },
+        { name: "s", x: (bounds.left + bounds.right) / 2, y: bounds.bottom },
+        { name: "sw", x: bounds.left, y: bounds.bottom },
+        { name: "w", x: bounds.left, y: (bounds.top + bounds.bottom) / 2 },
       ];
 
       ctx.save();
@@ -1411,23 +2087,6 @@ export default function Whiteboard({
         ctx.stroke();
       });
 
-      if (items.length === 1) {
-        const deleteX = bounds.right + 14;
-        const deleteY = bounds.top - 14;
-        ctx.fillStyle = "#ef4444";
-        ctx.beginPath();
-        ctx.arc(deleteX, deleteY, 10, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(deleteX - 3, deleteY - 3);
-        ctx.lineTo(deleteX + 3, deleteY + 3);
-        ctx.moveTo(deleteX + 3, deleteY - 3);
-        ctx.lineTo(deleteX - 3, deleteY + 3);
-        ctx.stroke();
-      }
-
       if (items.length > 1) {
         ctx.fillStyle = "#2563eb";
         ctx.font = "700 10px Inter, sans-serif";
@@ -1449,9 +2108,13 @@ export default function Whiteboard({
       const tolerance = 12;
       const handles = [
         { name: "nw" as const, x: bounds.left, y: bounds.top },
+        { name: "n" as const, x: (bounds.left + bounds.right) / 2, y: bounds.top },
         { name: "ne" as const, x: bounds.right, y: bounds.top },
+        { name: "e" as const, x: bounds.right, y: (bounds.top + bounds.bottom) / 2 },
         { name: "se" as const, x: bounds.right, y: bounds.bottom },
+        { name: "s" as const, x: (bounds.left + bounds.right) / 2, y: bounds.bottom },
         { name: "sw" as const, x: bounds.left, y: bounds.bottom },
+        { name: "w" as const, x: bounds.left, y: (bounds.top + bounds.bottom) / 2 },
       ];
       return (
         handles.find(
@@ -1464,20 +2127,10 @@ export default function Whiteboard({
     [],
   );
 
-  const isDeleteHandle = useCallback(
-    (element: WhiteboardElement, point: Point) => {
-      const bounds = getElementBounds(element, contextRef.current);
-      const x = bounds.right + 14;
-      const y = bounds.top - 14;
-      return Math.hypot(point.x - x, point.y - y) <= 14;
-    },
-    [],
-  );
-
   const resizeElement = useCallback(
     (
       original: WhiteboardElement,
-      handle: "nw" | "ne" | "se" | "sw",
+      handle: "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w",
       point: Point,
     ) => {
       const bounds = getElementBounds(original, contextRef.current);
@@ -1528,7 +2181,23 @@ export default function Whiteboard({
         };
       }
 
-      if (original.type === "text" || original.type === "equation") {
+      if (original.type === "equation") {
+        const metrics = estimateMathMetrics(original.text, original.fontSize, contextRef.current);
+        const padding = Math.max(7, original.fontSize * 0.14);
+        const baseWidth = Math.max(metrics.width, original.fontSize * 0.8);
+        const baseHeight = Math.max(metrics.height, original.fontSize);
+        const targetWidth = Math.max(minSize, newWidth - padding * 2);
+        const targetHeight = Math.max(minSize, newHeight - padding * 2);
+        return {
+          ...original,
+          x: left + padding,
+          y: top + padding,
+          scaleX: Math.max(0.2, targetWidth / baseWidth),
+          scaleY: Math.max(0.2, targetHeight / baseHeight),
+        };
+      }
+
+      if (original.type === "text") {
         return {
           ...original,
           x: left + 4,
@@ -1662,6 +2331,10 @@ export default function Whiteboard({
 
     drawGrid(ctx, rect.width, rect.height);
 
+    // Hand/pan mode moves the board content without moving the toolbar or grid.
+    ctx.save();
+    ctx.translate(panOffset.x, panOffset.y);
+
     // During move/resize, draw the live transformed element instead of waiting
     // for React state to update on pointer-up. This makes resizing feel
     // continuous and keeps the selection handles attached to the live object.
@@ -1671,6 +2344,17 @@ export default function Whiteboard({
     );
 
     for (const element of elements) {
+      // While editing an existing text element, the live textarea is the
+      // source of truth. Hide the underlying canvas text so it does not
+      // appear duplicated underneath the editor.
+      if (
+        textEditor.open &&
+        textEditor.type === "text" &&
+        textEditor.editingElementId === element.id
+      ) {
+        continue;
+      }
+
       const elementToDraw = liveElementsById.get(element.id) ?? element;
 
       if (elementToDraw.type === "stroke") drawStroke(ctx, elementToDraw);
@@ -1712,7 +2396,7 @@ export default function Whiteboard({
           ctx.restore();
         }
       } else if (
-        ["line", "rectangle", "circle", "triangle", "axes"].includes(
+        ["arrow", "line", "ellipse", "rectangle", "circle", "triangle", "cube", "cylinder", "diamond", "pentagon", "hexagon", "heptagon", "octagon", "parallelogram", "sphere", "axes"].includes(
           elementToDraw.type,
         )
       )
@@ -1731,10 +2415,15 @@ export default function Whiteboard({
       ? liveTransform.elements
       : getSelectedElements();
 
-    if (selectedItems.length === 1) {
-      drawSelection(ctx, selectedItems[0]);
-    } else if (selectedItems.length > 1) {
-      drawSelectionGroup(ctx, selectedItems);
+    // While a text object is being edited, the live textarea below is the
+    // source of truth for its size. Do not draw the stale canvas selection
+    // underneath it; the textarea itself renders the live blue dotted frame.
+    if (!textEditor.open) {
+      if (selectedItems.length === 1) {
+        drawSelection(ctx, selectedItems[0]);
+      } else if (selectedItems.length > 1) {
+        drawSelectionGroup(ctx, selectedItems);
+      }
     }
 
     const marquee = marqueeRef.current;
@@ -1752,6 +2441,8 @@ export default function Whiteboard({
       ctx.strokeRect(left, top, width, height);
       ctx.restore();
     }
+
+    ctx.restore();
   }, [
     backgroundColor,
     backgroundImage,
@@ -1763,6 +2454,8 @@ export default function Whiteboard({
     drawSelectionGroup,
     elements,
     getSelectedElements,
+    panOffset.x,
+    panOffset.y,
     resizeCanvas,
   ]);
 
@@ -1836,6 +2529,31 @@ export default function Whiteboard({
     };
   }, [resizeCanvas, renderCanvas]);
 
+  const openLatexEditor = useCallback(
+    (
+      initialText = "",
+      editingElementId: string | null = null,
+      existingColor?: string,
+    ) => {
+      setTextEditor((previous) => ({ ...previous, open: false }));
+      setActiveTextPanel(null);
+      setLatexTab("All");
+      setLatexEditor({
+        open: true,
+        text: initialText,
+        color: existingColor ?? color,
+        editingElementId,
+        x: Math.max(12, window.innerWidth / 2 - 390),
+        y: Math.max(12, window.innerHeight / 2 - 300),
+      });
+      requestAnimationFrame(() => {
+        latexInputRef.current?.focus();
+        latexInputRef.current?.select();
+      });
+    },
+    [color],
+  );
+
   const openTextEditor = useCallback(
     (
       point: Point,
@@ -1848,30 +2566,12 @@ export default function Whiteboard({
       existingItalic?: boolean,
       existingUnderline?: boolean,
     ) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      const rect = canvas.getBoundingClientRect();
-      const popupWidth = 520;
-      const popupHeight = 500;
-      const margin = 16;
-
-      let left = point.x + rect.left + 18;
-      let top = point.y + rect.top + 18;
-
-      if (left + popupWidth > window.innerWidth - margin) {
-        left = Math.max(margin, point.x + rect.left - popupWidth - 18);
-      }
-      if (top + popupHeight > window.innerHeight - margin) {
-        top = Math.max(margin, point.y + rect.top - popupHeight - 18);
-      }
-
       setActiveTextPanel(null);
       setTextEditor({
         open: true,
         type,
-        x: left,
-        y: top,
+        x: point.x,
+        y: point.y,
         text: initialText,
         fontSize:
           existingFontSize ??
@@ -1950,13 +2650,29 @@ export default function Whiteboard({
   );
 
   const closeTextEditor = useCallback(() => {
+    const editingId = textEditor.editingElementId;
+
+    if (editingId && !textEditor.text.trim()) {
+      updateCurrentPage((page) => ({
+        ...page,
+        elements: page.elements.filter(
+          (element: WhiteboardElement) => element.id !== editingId,
+        ),
+      }));
+      setSelectedElementId(null);
+      setSelectedElementIds([]);
+    }
+
     setTextEditor((previous) => ({
       ...previous,
       open: false,
+      text: "",
       editingElementId: null,
     }));
     setActiveTextPanel(null);
-  }, []);
+    setShowTextFormattingColors(false);
+    setTool("select");
+  }, [textEditor.editingElementId, textEditor.text, updateCurrentPage]);
 
   const insertLatexAtCursor = useCallback(
     (value: string) => {
@@ -1984,10 +2700,119 @@ export default function Whiteboard({
     [textEditor.text],
   );
 
+  const insertLatexModalAtCursor = useCallback((value: string) => {
+    const input = latexInputRef.current;
+    if (!input) {
+      setLatexEditor((previous) => ({ ...previous, text: previous.text + value }));
+      return;
+    }
+
+    const start = input.selectionStart ?? latexEditor.text.length;
+    const end = input.selectionEnd ?? start;
+    const nextText =
+      latexEditor.text.slice(0, start) + value + latexEditor.text.slice(end);
+    const nextCursor = start + value.length;
+
+    setLatexEditor((previous) => ({ ...previous, text: nextText }));
+    requestAnimationFrame(() => {
+      input.focus();
+      input.setSelectionRange(nextCursor, nextCursor);
+    });
+  }, [latexEditor.text]);
+
+  const addLatexElement = useCallback(() => {
+    const value = latexEditor.text.trim();
+    if (!value) {
+      latexInputRef.current?.focus();
+      return;
+    }
+
+    pushHistory();
+
+    if (latexEditor.editingElementId) {
+      updateCurrentPage((page) => ({
+        ...page,
+        elements: page.elements.map((element: WhiteboardElement) =>
+          element.id === latexEditor.editingElementId &&
+          element.type === "equation"
+            ? {
+                ...element,
+                text: value,
+                color: latexEditor.color,
+                fontSize: Math.max(element.fontSize, 24),
+              }
+            : element,
+        ),
+      }));
+      setSelectedElementId(latexEditor.editingElementId);
+      setSelectedElementIds([latexEditor.editingElementId]);
+    } else {
+      const canvas = canvasRef.current;
+      const rect = canvas?.getBoundingClientRect();
+      const x = rect ? Math.max(0, rect.width / 2 - 18) : 120;
+      const y = rect ? Math.max(0, rect.height / 2 - 60) : 120;
+      const el: TextElement = {
+        id: createId(),
+        type: "equation",
+        x,
+        y,
+        text: value,
+        color: latexEditor.color,
+        fontSize: Math.max(fontSize, 24),
+        bold: false,
+        italic: false,
+        underline: false,
+      };
+      updateCurrentPage((page) => ({
+        ...page,
+        elements: [...page.elements, el],
+      }));
+      setSelectedElementId(el.id);
+      setSelectedElementIds([el.id]);
+    }
+
+    // Formula insertion is a one-shot action. Once the formula is committed,
+    // leave the equation tool and return to normal object-selection mode.
+    // This prevents the next click on the newly inserted equation from
+    // starting the equation insertion flow again.
+    setLatexEditor((previous) => ({
+      ...previous,
+      open: false,
+      text: "",
+      editingElementId: null,
+    }));
+    setSelectedEquation("");
+    setActiveTextPanel(null);
+    setShowTextFormattingColors(false);
+    textPlacementArmedRef.current = false;
+    setTool("select");
+  }, [fontSize, latexEditor, pushHistory, updateCurrentPage]);
+
   const addTextElement = useCallback(() => {
     const value = textEditor.text.trim();
+
     if (!value) {
-      textInputRef.current?.focus();
+      if (textEditor.editingElementId) {
+        updateCurrentPage((page) => ({
+          ...page,
+          elements: page.elements.filter(
+            (element: WhiteboardElement) =>
+              element.id !== textEditor.editingElementId,
+          ),
+        }));
+        setSelectedElementId(null);
+        setSelectedElementIds([]);
+      }
+
+      setTextEditor((previous) => ({
+        ...previous,
+        open: false,
+        text: "",
+        editingElementId: null,
+      }));
+      setActiveTextPanel(null);
+      textPlacementArmedRef.current = false;
+      setTool("select");
       return;
     }
 
@@ -2003,17 +2828,13 @@ export default function Whiteboard({
 
           return {
             ...element,
-            type: textEditor.type,
+            type: "text",
             text: value,
             color: textEditor.color,
-            fontSize:
-              textEditor.type === "equation"
-                ? Math.max(textEditor.fontSize, 24)
-                : textEditor.fontSize,
-            bold: textEditor.type === "text" ? textEditor.bold : false,
-            italic: textEditor.type === "text" ? textEditor.italic : false,
-            underline:
-              textEditor.type === "text" ? textEditor.underline : false,
+            fontSize: textEditor.fontSize,
+            bold: textEditor.bold,
+            italic: textEditor.italic,
+            underline: textEditor.underline,
           };
         }),
       }));
@@ -2026,6 +2847,9 @@ export default function Whiteboard({
         text: "",
         editingElementId: null,
       }));
+      setActiveTextPanel(null);
+      textPlacementArmedRef.current = false;
+      setTool("select");
       return;
     }
 
@@ -2065,7 +2889,25 @@ export default function Whiteboard({
       text: "",
       editingElementId: null,
     }));
+    setActiveTextPanel(null);
+    textPlacementArmedRef.current = false;
+    setTool("select");
   }, [pushHistory, textEditor, updateCurrentPage]);
+
+  useEffect(() => {
+    if (!textEditor.open || textEditor.type !== "text") return;
+
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-text-editor-ui]")) return;
+      addTextElement();
+    };
+
+    document.addEventListener("pointerdown", handleOutsidePointerDown, true);
+    return () => {
+      document.removeEventListener("pointerdown", handleOutsidePointerDown, true);
+    };
+  }, [addTextElement, textEditor.open, textEditor.type]);
 
   // Duplicate the currently selected object using the latest React state.
   // This avoids stale `elements` when the board is updating at the same time.
@@ -2139,6 +2981,126 @@ export default function Whiteboard({
     }
   };
 
+  const insertGraphFromDesmos = useCallback(() => {
+    const calculator = graphCalculatorRef.current;
+    const canvas = canvasRef.current;
+    if (!calculator || !canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.min(640, Math.max(320, rect.width * 0.52));
+    const height = Math.min(480, Math.max(240, width * 0.68));
+
+    const addGraphImage = (src: string) => {
+      const graphState = calculator.getState
+        ? JSON.stringify(calculator.getState())
+        : undefined;
+      const editingId = graphEditingElementIdRef.current;
+      const existingGraph = editingId
+        ? elements.find(
+            (element): element is ImageElement =>
+              element.id === editingId &&
+              element.type === "image" &&
+              element.name === "Desmos Graph",
+          )
+        : null;
+
+      const element: ImageElement = existingGraph
+        ? {
+            ...existingGraph,
+            src,
+            graphState,
+          }
+        : {
+            id: createId(),
+            type: "image",
+            x: Math.max(12, (rect.width - width) / 2),
+            y: Math.max(72, (rect.height - height) / 2),
+            width,
+            height,
+            src,
+            name: "Desmos Graph",
+            graphState,
+          };
+
+      const image = new Image();
+      image.onload = () => {
+        imageCacheRef.current.set(src, image);
+        setImageVersion((value) => value + 1);
+      };
+      image.src = src;
+
+      pushHistory();
+      updateCurrentPage((page) => ({
+        ...page,
+        elements: existingGraph
+          ? page.elements.map((item) =>
+              item.id === existingGraph.id ? element : item,
+            )
+          : [...page.elements, element],
+      }));
+      setTool("select");
+      setSelectedElementId(element.id);
+      setSelectedElementIds([element.id]);
+      setShowGraphEditor(false);
+      graphEditingElementIdRef.current = null;
+    };
+
+    if (calculator.asyncScreenshot) {
+      calculator.asyncScreenshot(
+        { width: Math.round(width), height: Math.round(height) },
+        addGraphImage,
+      );
+    } else {
+      addGraphImage(
+        calculator.screenshot({
+          width: Math.round(width),
+          height: Math.round(height),
+        }),
+      );
+    }
+  }, [pushHistory, updateCurrentPage]);
+
+  const addImportedImage = useCallback(
+    (src: string, width: number, height: number, name: string, sourceType: "image" | "pdf" = "image") => {
+      const canvas = canvasRef.current;
+      const rect = canvas?.getBoundingClientRect();
+      if (!rect) return;
+
+      const maxWidth = Math.min(520, rect.width * 0.48);
+      const maxHeight = Math.min(420, rect.height * 0.48);
+      const scale = Math.min(1, maxWidth / width, maxHeight / height);
+      const finalWidth = Math.max(80, width * scale);
+      const finalHeight = Math.max(80, height * scale);
+      const element: ImageElement = {
+        id: createId(),
+        type: "image",
+        x: Math.max(12, (rect.width - finalWidth) / 2),
+        y: Math.max(12, (rect.height - finalHeight) / 2),
+        width: finalWidth,
+        height: finalHeight,
+        src,
+        name,
+        sourceType,
+      };
+
+      pushHistory();
+      updateCurrentPage((page) => ({
+        ...page,
+        elements: [...page.elements, element],
+      }));
+      const image = new Image();
+      image.onload = () => {
+        imageCacheRef.current.set(src, image);
+        setImageVersion((value) => value + 1);
+      };
+      image.src = src;
+      setTool("select");
+      setSelectedElementId(element.id);
+      setSelectedElementIds([element.id]);
+    },
+    [pushHistory, updateCurrentPage],
+  );
+
   const importImage = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
@@ -2150,48 +3112,144 @@ export default function Whiteboard({
         const src = String(reader.result);
         const image = new Image();
         image.onload = () => {
-          const canvas = canvasRef.current;
-          const rect = canvas?.getBoundingClientRect();
-          if (!rect) return;
-
-          const maxWidth = Math.min(520, rect.width * 0.48);
-          const maxHeight = Math.min(420, rect.height * 0.48);
-          const scale = Math.min(
-            1,
-            maxWidth / image.naturalWidth,
-            maxHeight / image.naturalHeight,
-          );
-          const width = Math.max(80, image.naturalWidth * scale);
-          const height = Math.max(80, image.naturalHeight * scale);
-
-          const element: ImageElement = {
-            id: createId(),
-            type: "image",
-            x: Math.max(12, (rect.width - width) / 2),
-            y: Math.max(12, (rect.height - height) / 2),
-            width,
-            height,
-            src,
-            name: file.name,
-          };
-
-          pushHistory();
-          updateCurrentPage((page) => ({
-            ...page,
-            elements: [...page.elements, element],
-          }));
-          imageCacheRef.current.set(src, image);
-          setImageVersion((value) => value + 1);
-          setTool("select");
-          setSelectedElementId(element.id);
-          setSelectedElementIds([element.id]);
+          addImportedImage(image.src, image.naturalWidth, image.naturalHeight, file.name, "image");
         };
         image.src = src;
       };
       reader.readAsDataURL(file);
     },
+    [addImportedImage],
+  );
+
+  const importPdf = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file || file.type !== "application/pdf") return;
+
+      try {
+        const pdfjs = await loadPdfJs();
+        const data = new Uint8Array(await file.arrayBuffer());
+        const pdf = await pdfjs.getDocument({ data }).promise;
+        const pageCount = Math.min(pdf.numPages, 20);
+        const canvas = canvasRef.current;
+        const rect = canvas?.getBoundingClientRect();
+        if (!rect) return;
+
+        pushHistory();
+        const newElements: ImageElement[] = [];
+        let y = Math.max(24, (rect.height - Math.min(720, rect.height * 0.8)) / 2);
+
+        for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+          const page = await pdf.getPage(pageNumber);
+          const baseViewport = page.getViewport({ scale: 1.25 });
+          const maxWidth = Math.min(620, rect.width * 0.58);
+          const scale = Math.min(1, maxWidth / baseViewport.width);
+          const viewport = page.getViewport({ scale: 1.25 * scale });
+          const renderCanvas = document.createElement("canvas");
+          renderCanvas.width = Math.ceil(viewport.width);
+          renderCanvas.height = Math.ceil(viewport.height);
+          const renderContext = renderCanvas.getContext("2d");
+          if (!renderContext) continue;
+
+          await page.render({
+            canvasContext: renderContext,
+            viewport,
+          }).promise;
+
+          const src = renderCanvas.toDataURL("image/png");
+          const element: ImageElement = {
+            id: createId(),
+            type: "image",
+            x: Math.max(12, (rect.width - viewport.width) / 2),
+            y,
+            width: viewport.width,
+            height: viewport.height,
+            src,
+            name: `${file.name} — Page ${pageNumber}`,
+            sourceType: "pdf",
+          };
+          newElements.push(element);
+          const pdfImage = new Image();
+          pdfImage.onload = () => {
+            imageCacheRef.current.set(src, pdfImage);
+            setImageVersion((value) => value + 1);
+          };
+          pdfImage.src = src;
+          y += viewport.height + 24;
+        }
+
+        if (newElements.length === 0) return;
+        updateCurrentPage((page) => ({
+          ...page,
+          elements: [...page.elements, ...newElements],
+        }));
+        setImageVersion((value) => value + 1);
+        const first = newElements[0];
+        setTool("select");
+        setSelectedElementId(first.id);
+        setSelectedElementIds([first.id]);
+      } catch (error) {
+        console.error("Failed to import PDF", error);
+        window.alert("Unable to import this PDF. Please try again.");
+      }
+    },
     [pushHistory, updateCurrentPage],
   );
+
+  const cropSelectedImage = useCallback(async () => {
+    const target = elements.find(
+      (element): element is ImageElement =>
+        element.id === cropEditor.elementId && element.type === "image",
+    );
+    if (!target) return;
+
+    const image = imageCacheRef.current.get(target.src);
+    if (!image) return;
+
+    const naturalWidth = image.naturalWidth || image.width;
+    const naturalHeight = image.naturalHeight || image.height;
+    const left = Math.max(0, Math.min(100, cropEditor.left));
+    const top = Math.max(0, Math.min(100, cropEditor.top));
+    const right = Math.max(left + 1, Math.min(100, cropEditor.right));
+    const bottom = Math.max(top + 1, Math.min(100, cropEditor.bottom));
+    const sx = Math.round((left / 100) * naturalWidth);
+    const sy = Math.round((top / 100) * naturalHeight);
+    const sw = Math.max(1, Math.round(((right - left) / 100) * naturalWidth));
+    const sh = Math.max(1, Math.round(((bottom - top) / 100) * naturalHeight));
+    const cropCanvas = document.createElement("canvas");
+    cropCanvas.width = sw;
+    cropCanvas.height = sh;
+    const ctx = cropCanvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.drawImage(image, sx, sy, sw, sh, 0, 0, sw, sh);
+    const src = cropCanvas.toDataURL("image/png");
+    const nextWidth = target.width * ((right - left) / 100);
+    const nextHeight = target.height * ((bottom - top) / 100);
+
+    pushHistory();
+    updateCurrentPage((page) => ({
+      ...page,
+      elements: page.elements.map((element) =>
+        element.id === target.id
+          ? {
+              ...element,
+              src,
+              width: Math.max(40, nextWidth),
+              height: Math.max(40, nextHeight),
+            }
+          : element,
+      ),
+    }));
+    const croppedImage = new Image();
+    croppedImage.onload = () => {
+      imageCacheRef.current.set(src, croppedImage);
+      setImageVersion((value) => value + 1);
+    };
+    croppedImage.src = src;
+    setCropEditor((previous) => ({ ...previous, open: false, elementId: null }));
+  }, [cropEditor, elements, pushHistory, updateCurrentPage]);
 
   const handleCanvasContextMenu = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -2242,23 +3300,35 @@ export default function Whiteboard({
       setSelectedElementId(hit.id);
       setSelectedElementIds([hit.id]);
 
-      openTextEditor(
-        point,
-        hit.type,
-        hit.text,
-        hit.id,
-        hit.fontSize,
-        hit.color,
-        hit.bold ?? false,
-        hit.italic ?? false,
-        hit.underline ?? false,
-      );
+      if (hit.type === "equation") {
+        openLatexEditor(hit.text, hit.id, hit.color);
+      } else {
+        setShowTextFormattingColors(false);
+        openTextEditor(
+          { x: hit.x, y: hit.y },
+          "text",
+          hit.text,
+          hit.id,
+          hit.fontSize,
+          hit.color,
+          hit.bold ?? false,
+          hit.italic ?? false,
+          hit.underline ?? false,
+        );
+      }
     },
-    [elements, gridSize, openTextEditor, snapToGrid, tool],
+    [elements, gridSize, openLatexEditor, openTextEditor, snapToGrid, tool],
   );
 
   const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
     event.preventDefault();
+
+    // Clicking the whiteboard outside the live text editor commits the text
+    // and exits editing mode before the board handles the new pointer action.
+    if (textEditor.open && textEditor.type === "text") {
+      addTextElement();
+    }
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     canvas.setPointerCapture(event.pointerId);
@@ -2266,22 +3336,21 @@ export default function Whiteboard({
     const point = getPoint(event.nativeEvent);
     startPointRef.current = point;
 
+    if (tool === "hand") {
+      drawingRef.current = true;
+      panRef.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        originX: panOffset.x,
+        originY: panOffset.y,
+      };
+      return;
+    }
+
     if (tool === "select") {
       const selected = getSelectedElement();
       const isMulti = selectedElementIds.length > 1;
-
-      if (selected && !isMulti && isDeleteHandle(selected, point)) {
-        pushHistory();
-        updateCurrentPage((page) => ({
-          ...page,
-          elements: page.elements.filter((el) => el.id !== selected.id),
-        }));
-        setSelectedElementId(null);
-        setSelectedElementIds([]);
-        setShowColorPopup(false);
-        setColorPopupTarget(null);
-        return;
-      }
 
       if (selected && !isMulti) {
         const handle = getSelectionHandle(selected, point);
@@ -2327,6 +3396,18 @@ export default function Whiteboard({
           setSelectedElementId(hit.id);
         }
 
+        // A single click in Select mode only selects/moves the object.
+        // Text enters editing mode exclusively through the double-click
+        // handler below. While the text object is being dragged, keep the
+        // editing toolbar hidden; it reappears when the drag is released.
+        if (hit.type === "text" || hit.type === "equation") {
+          setActiveTextPanel(null);
+          setShowTextFormattingColors(false);
+          if (hit.type === "text") {
+            setTextObjectDragging(true);
+          }
+        }
+
         const movingElements = elements.filter((el) => nextIds.includes(el.id));
         pushHistory();
         drawingRef.current = true;
@@ -2361,14 +3442,14 @@ export default function Whiteboard({
         type: "stroke",
         points: [point],
         color: tool === "eraser" ? backgroundColor : color,
-        width: tool === "eraser" ? Math.max(width * 4, 24) : width,
+        width: tool === "eraser" ? eraserWidth : width,
         pressureSensitive: true,
       };
       return;
     }
 
     if (
-      ["line", "rectangle", "circle", "triangle", "axes", "ruler"].includes(
+      ["arrow", "line", "ellipse", "rectangle", "circle", "triangle", "cube", "cylinder", "diamond", "pentagon", "hexagon", "heptagon", "octagon", "parallelogram", "sphere", "axes", "ruler"].includes(
         tool,
       )
     ) {
@@ -2388,8 +3469,51 @@ export default function Whiteboard({
       return;
     }
 
-    if (tool === "text" || tool === "equation") {
-      openTextEditor(point, tool, tool === "equation" ? selectedEquation : "");
+    if (tool === "text") {
+      if (!textPlacementArmedRef.current) {
+        return;
+      }
+
+      textPlacementArmedRef.current = false;
+      const id = createId();
+      const starter: TextElement = {
+        id,
+        type: "text",
+        x: point.x,
+        y: point.y,
+        text: "",
+        color,
+        fontSize,
+        bold: false,
+        italic: false,
+        underline: false,
+      };
+
+      updateCurrentPage((page) => ({
+        ...page,
+        elements: [...page.elements, starter],
+      }));
+
+      setSelectedElementId(id);
+      setSelectedElementIds([id]);
+      setShowTextFormattingColors(false);
+
+      openTextEditor(
+        point,
+        "text",
+        "",
+        id,
+        fontSize,
+        color,
+        false,
+        false,
+        false,
+      );
+      return;
+    }
+
+    if (tool === "equation") {
+      openLatexEditor(selectedEquation);
       setSelectedEquation("");
       return;
     }
@@ -2399,6 +3523,24 @@ export default function Whiteboard({
     if (!drawingRef.current) return;
     event.preventDefault();
     const point = getPoint(event.nativeEvent);
+
+    if (tool === "hand" && panRef.current) {
+      const pan = panRef.current;
+      if (pan.pointerId !== event.pointerId) return;
+      setPanOffset({
+        x: pan.originX + event.clientX - pan.startX,
+        y: pan.originY + event.clientY - pan.startY,
+      });
+      renderCanvas();
+      return;
+    }
+
+    if (panRef.current?.pointerId === event.pointerId) {
+      panRef.current = null;
+      startPointRef.current = null;
+      renderCanvas();
+      return;
+    }
 
     if (transformRef.current) {
       const tr = transformRef.current;
@@ -2466,7 +3608,13 @@ export default function Whiteboard({
           }),
         }));
       }
+      const wasTextDrag = tr.ids.some((id) =>
+        elements.some((element) => element.id === id && element.type === "text"),
+      );
       transformRef.current = null;
+      if (wasTextDrag) {
+        setTextObjectDragging(false);
+      }
       renderCanvas();
       return;
     }
@@ -2677,12 +3825,17 @@ export default function Whiteboard({
         throw new Error("Appointment ID is required");
       }
 
+      if (mode === "booking" && !bookingId) {
+        throw new Error("Booking ID is required");
+      }
+
       const response = await fetch("/api/whiteboards/resolve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mode,
           appointmentId: mode === "appointment" ? appointmentId : undefined,
+          bookingId: mode === "booking" ? bookingId : undefined,
         }),
       });
 
@@ -2703,7 +3856,7 @@ export default function Whiteboard({
       setWhiteboardReady(false);
       return null;
     }
-  }, [mode, appointmentId]);
+  }, [mode, appointmentId, bookingId]);
 
   const applyBoardData = useCallback((input: unknown) => {
     const boardData = parseSavedBoardData(input);
@@ -2720,15 +3873,25 @@ export default function Whiteboard({
       redoRef.current = [];
     }
 
-    if (typeof boardData.showGrid === "boolean")
-      setShowGrid(boardData.showGrid);
-    if (typeof boardData.backgroundColor === "string")
-      setBackgroundColor(boardData.backgroundColor);
-    if (typeof boardData.backgroundImage === "string")
-      setBackgroundImage(boardData.backgroundImage);
-    else if (boardData.backgroundImage === null) setBackgroundImage(null);
-    if (typeof boardData.gridColor === "string")
-      setGridColor(boardData.gridColor);
+    // Keep the tutoring whiteboard on the clean reference canvas. Older
+    // saved sessions may contain the previous chalkboard/line-grid settings,
+    // so migrate those legacy visual settings without touching board content.
+    if (mode === "booking") {
+      setShowGrid(true);
+      setBackgroundColor("#ffffff");
+      setBackgroundImage(null);
+      setGridColor("#e2e8f0");
+    } else {
+      if (typeof boardData.showGrid === "boolean")
+        setShowGrid(boardData.showGrid);
+      if (typeof boardData.backgroundColor === "string")
+        setBackgroundColor(boardData.backgroundColor);
+      if (typeof boardData.backgroundImage === "string")
+        setBackgroundImage(boardData.backgroundImage);
+      else if (boardData.backgroundImage === null) setBackgroundImage(null);
+      if (typeof boardData.gridColor === "string")
+        setGridColor(boardData.gridColor);
+    }
     if (typeof boardData.snapToGrid === "boolean")
       setSnapToGrid(boardData.snapToGrid);
     if (typeof boardData.color === "string") setColor(boardData.color);
@@ -2740,6 +3903,29 @@ export default function Whiteboard({
     setSelectedElementId(null);
     setSelectedElementIds([]);
   }, []);
+
+  // localStorage is only a convenience cache. Uploaded PDFs/images can contain
+  // large base64 payloads that exceed the browser's storage quota even though
+  // the database save succeeds. Never let that optional cache failure break
+  // whiteboard saving.
+  const saveLocalBoardCache = useCallback(
+    (data: unknown) => {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(data));
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "QuotaExceededError") {
+          try {
+            localStorage.removeItem(storageKey);
+          } catch {
+            // Ignore cache cleanup failures; the database remains authoritative.
+          }
+          return;
+        }
+        console.warn("Unable to update the whiteboard local cache:", error);
+      }
+    },
+    [storageKey],
+  );
 
   const saveBoard = useCallback(
     async (showFeedback = true) => {
@@ -2755,6 +3941,7 @@ export default function Whiteboard({
         whiteboardId: databaseWhiteboardId,
         mode,
         appointmentId,
+        bookingId,
         pages,
         currentPageIndex,
         showGrid,
@@ -2788,7 +3975,7 @@ export default function Whiteboard({
           throw new Error(result?.error || "Failed to save whiteboard");
         }
 
-        localStorage.setItem(storageKey, JSON.stringify(boardData));
+        saveLocalBoardCache(boardData);
 
         if (showFeedback) {
           setSaveStatus("saved");
@@ -2811,7 +3998,9 @@ export default function Whiteboard({
       whiteboardReady,
       mode,
       appointmentId,
+      bookingId,
       storageKey,
+      saveLocalBoardCache,
       pages,
       currentPageIndex,
       showGrid,
@@ -2845,7 +4034,7 @@ export default function Whiteboard({
       const boardData = result?.whiteboard?.data;
       if (boardData) {
         applyBoardData(boardData);
-        localStorage.setItem(storageKey, JSON.stringify(boardData));
+        saveLocalBoardCache(boardData);
       }
     } catch (error) {
       console.error("Failed to restore whiteboard from database:", error);
@@ -2861,7 +4050,7 @@ export default function Whiteboard({
         console.error("Failed to restore local whiteboard cache:", localError);
       }
     }
-  }, [databaseWhiteboardId, storageKey, applyBoardData]);
+  }, [databaseWhiteboardId, storageKey, applyBoardData, saveLocalBoardCache]);
 
   // Resolve the route context into the actual Prisma Whiteboard ID.
   useEffect(() => {
@@ -2893,7 +4082,7 @@ export default function Whiteboard({
 
           if (boardData) {
             applyBoardData(boardData);
-            localStorage.setItem(storageKey, JSON.stringify(boardData));
+            saveLocalBoardCache(boardData);
           }
 
           hasLoadedBoardRef.current = true;
@@ -2927,7 +4116,7 @@ export default function Whiteboard({
     return () => {
       cancelled = true;
     };
-  }, [mode, appointmentId, resolveWhiteboard, applyBoardData, storageKey]);
+  }, [mode, appointmentId, bookingId, resolveWhiteboard, applyBoardData, storageKey, saveLocalBoardCache]);
 
   const buildRealtimeData = useCallback(
     (revision = realtimeRevisionRef.current): WhiteboardRealtimeData => ({
@@ -2935,6 +4124,7 @@ export default function Whiteboard({
       whiteboardId: databaseWhiteboardId ?? undefined,
       mode,
       appointmentId,
+      bookingId,
       pages,
       currentPageIndex,
       showGrid,
@@ -2954,6 +4144,7 @@ export default function Whiteboard({
       databaseWhiteboardId,
       mode,
       appointmentId,
+      bookingId,
       pages,
       currentPageIndex,
       showGrid,
@@ -2973,6 +4164,7 @@ export default function Whiteboard({
       whiteboardId: data.whiteboardId,
       mode: data.mode,
       appointmentId: data.appointmentId,
+      bookingId: data.bookingId,
       pages: data.pages,
       currentPageIndex: data.currentPageIndex,
       showGrid: data.showGrid,
@@ -3106,20 +4298,15 @@ export default function Whiteboard({
   };
 
   const toggleTeacherControls = () => {
-    setShowTeacherControls((current) => {
-      const next = !current;
-
-      if (!next) {
-        setShowGraphSettings(false);
-        setShowCalculator(false);
-        setShowToolsPanel(false);
-        setShowPagesPanel(false);
-        setShowColorPopup(false);
-        setColorPopupTarget(null);
-      }
-
-      return next;
-    });
+    setShowGraphSettings(false);
+    setShowCalculator(false);
+    setShowToolsPanel(false);
+    setShowPagesPanel(false);
+    setShowColorPopup(false);
+    setColorPopupTarget(null);
+    setShowShapeToolsPopup(false);
+    setShowFormulaMenu(false);
+    setShowUploadMenu(false);
   };
 
   const clampTeacherControlPosition = useCallback(
@@ -3134,7 +4321,7 @@ export default function Whiteboard({
       return {
         left: Math.min(
           Math.max(margin, left),
-          Math.max(margin, window.innerWidth - size - margin),
+          Math.max(margin, (window.innerWidth - rightInset) - size - margin),
         ),
         top: Math.min(
           Math.max(margin, top),
@@ -3142,7 +4329,7 @@ export default function Whiteboard({
         ),
       };
     },
-    [],
+    [rightInset],
   );
 
   // Put the launcher in the bottom-right corner on first mount.
@@ -3157,7 +4344,7 @@ export default function Whiteboard({
     const margin = 20;
 
     setTeacherControlPosition({
-      left: Math.max(margin, window.innerWidth - size - margin),
+      left: Math.max(margin, (window.innerWidth - rightInset) - size - margin),
       top: Math.max(margin, window.innerHeight - size - margin),
     });
   }, []);
@@ -3458,17 +4645,30 @@ export default function Whiteboard({
     return (
       <button
         key={name}
+        ref={name === "pen" ? penButtonRef : undefined}
         type="button"
         onClick={() => {
           setTool(name);
           setShowShapeToolsPopup(false);
+          setShowEraserPopup(false);
+
+          if (name === "pen") {
+            if (showPenPopup) {
+              setShowPenPopup(false);
+            } else {
+              positionPenPopup();
+              setShowPenPopup(true);
+            }
+          } else {
+            setShowPenPopup(false);
+          }
         }}
         title={shortcut ? `${label} (${shortcut})` : label}
         aria-label={label}
-        className={`group relative flex size-10 shrink-0 items-center justify-center rounded-2xl transition-all ${
+        className={`group relative flex size-10 shrink-0 items-center justify-center rounded-xl transition-all ${
           active
-            ? "bg-blue-500 text-white shadow-lg shadow-blue-500/30"
-            : "text-white/65 hover:bg-white/10 hover:text-white"
+            ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25"
+            : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
         }`}
       >
         {icon}
@@ -3492,44 +4692,22 @@ export default function Whiteboard({
       if (!canvas) return;
 
       const rect = canvas.getBoundingClientRect();
-      setTool(type);
-      openTextEditor(
-        {
-          x: rect.width / 2,
-          y: Math.max(120, rect.height / 2 - 120),
-        },
-        type,
-        type === "equation" ? selectedEquation : "",
-      );
-      setSelectedEquation("");
-    },
-    [openTextEditor, selectedEquation],
-  );
-
-  useEffect(() => {
-    const handleFocusModeKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      const isTypingTarget =
-        target?.tagName === "INPUT" ||
-        target?.tagName === "TEXTAREA" ||
-        target?.tagName === "SELECT" ||
-        target?.isContentEditable;
-
-      if (
-        !isTypingTarget &&
-        !event.metaKey &&
-        !event.ctrlKey &&
-        !event.altKey &&
-        event.key.toLowerCase() === "f"
-      ) {
-        event.preventDefault();
-        toggleTeacherControls();
+      if (type === "equation") {
+        setTool("equation");
+        openLatexEditor(selectedEquation);
+        setSelectedEquation("");
+        return;
       }
-    };
 
-    window.addEventListener("keydown", handleFocusModeKeyDown);
-    return () => window.removeEventListener("keydown", handleFocusModeKeyDown);
-  }, []);
+      setTool("text");
+      textPlacementArmedRef.current = true;
+      openTextEditor({
+        x: rect.width / 2,
+        y: Math.max(120, rect.height / 2 - 120),
+      }, "text", "");
+    },
+    [openLatexEditor, openTextEditor, selectedEquation],
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -3573,19 +4751,321 @@ export default function Whiteboard({
     updateCurrentPage,
   ]);
 
+  // Render lightweight previews for the Pages sidebar. The previews are kept
+  // separate from the main canvas so opening the page manager never changes
+  // the whiteboard drawing surface itself.
+  useEffect(() => {
+    if (!showPagesPanel) return;
+
+    const thumbnailWidth = 254;
+    const thumbnailHeight = 142;
+    const boardWidth = 1200;
+    const boardHeight = 800;
+    const dpr = window.devicePixelRatio || 1;
+
+    pages.forEach((page) => {
+      const canvas = pageThumbnailRefs.current[page.id];
+      if (!canvas) return;
+
+      canvas.width = Math.round(thumbnailWidth * dpr);
+      canvas.height = Math.round(thumbnailHeight * dpr);
+      canvas.style.width = `${thumbnailWidth}px`;
+      canvas.style.height = `${thumbnailHeight}px`;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, thumbnailWidth, thumbnailHeight);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, thumbnailWidth, thumbnailHeight);
+
+      if (showGrid) {
+        ctx.save();
+        ctx.fillStyle = gridColor;
+        ctx.globalAlpha = 0.35;
+        const scale = Math.min(thumbnailWidth / boardWidth, thumbnailHeight / boardHeight);
+        const scaledGrid = Math.max(4, gridSize * scale);
+        for (let x = 0; x <= thumbnailWidth; x += scaledGrid) {
+          for (let y = 0; y <= thumbnailHeight; y += scaledGrid) {
+            ctx.beginPath();
+            ctx.arc(x, y, 0.7, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        ctx.restore();
+      }
+
+      const scale = Math.min(thumbnailWidth / boardWidth, thumbnailHeight / boardHeight);
+      const offsetX = (thumbnailWidth - boardWidth * scale) / 2;
+      const offsetY = (thumbnailHeight - boardHeight * scale) / 2;
+
+      ctx.save();
+      ctx.translate(offsetX, offsetY);
+      ctx.scale(scale, scale);
+
+      for (const element of page.elements) {
+        if (element.type === "stroke") {
+          drawStroke(ctx, element);
+        } else if (element.type === "image") {
+          const image = imageCacheRef.current.get(element.src);
+          if (image) {
+            ctx.drawImage(image, element.x, element.y, element.width, element.height);
+          } else {
+            ctx.save();
+            ctx.fillStyle = "#e2e8f0";
+            ctx.fillRect(element.x, element.y, element.width, element.height);
+            ctx.strokeStyle = "#cbd5e1";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(element.x, element.y, element.width, element.height);
+            ctx.restore();
+          }
+        } else if (
+          [
+            "arrow", "line", "ellipse", "rectangle", "circle", "triangle",
+            "cube", "cylinder", "diamond", "pentagon", "hexagon", "heptagon",
+            "octagon", "parallelogram", "sphere", "axes",
+          ].includes(element.type)
+        ) {
+          drawShape(ctx, element as ShapeElement);
+        } else if (element.type === "text" || element.type === "equation") {
+          drawText(ctx, element as TextElement);
+        }
+      }
+
+      ctx.restore();
+    });
+  }, [
+    drawShape,
+    drawStroke,
+    drawText,
+    gridColor,
+    gridSize,
+    pages,
+    showGrid,
+    showPagesPanel,
+  ]);
+
   const selectedElement = getSelectedElement();
+  const selectedTextElement =
+    selectedElement?.type === "text" ? selectedElement : null;
+  const selectedEquationElement =
+    selectedElement?.type === "equation" ? selectedElement : null;
+  const selectedGraphElement =
+    selectedElement?.type === "image" && selectedElement.name === "Desmos Graph"
+      ? selectedElement
+      : null;
+  const selectedMediaElement =
+    selectedElement?.type === "image" && selectedElement.name !== "Desmos Graph"
+      ? selectedElement
+      : null;
+  const selectedMediaBounds = selectedMediaElement
+    ? {
+        left: selectedMediaElement.x,
+        top: selectedMediaElement.y,
+        right: selectedMediaElement.x + selectedMediaElement.width,
+        bottom: selectedMediaElement.y + selectedMediaElement.height,
+      }
+    : null;
+  const selectedGraphBounds = selectedGraphElement
+    ? {
+        left: selectedGraphElement.x,
+        top: selectedGraphElement.y,
+        right: selectedGraphElement.x + selectedGraphElement.width,
+        bottom: selectedGraphElement.y + selectedGraphElement.height,
+      }
+    : null;
+
+  // Equation bounds are derived directly from the selected element. This keeps
+  // render pure: getElementBounds has a context-free equation-metrics fallback,
+  // so we do not need to read contextRef.current or set state from an effect.
+  const selectedEquationBounds = selectedEquationElement
+    ? getElementBounds(selectedEquationElement)
+    : null;
 
   return (
     <main
       ref={rootRef}
-      className="relative flex h-screen w-full flex-col overflow-hidden bg-slate-50 text-slate-900 antialiased"
+      className="fixed inset-y-0 left-0 z-[700] flex flex-col overflow-hidden bg-slate-50 text-slate-900 antialiased"
+      style={{
+        right: `${Math.max(0, rightInset)}px`,
+      }}
     >
+      {showTeacherControls && cropEditor.open && (
+        <div
+          className="fixed inset-0 z-[1050] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="crop-image-title"
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setCropEditor((previous) => ({ ...previous, open: false, elementId: null }));
+            }
+          }}
+        >
+          <div
+            className="w-[min(720px,calc(100vw-32px))] rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 id="crop-image-title" className="text-base font-bold text-slate-900">
+                Crop image
+              </h2>
+              <button
+                type="button"
+                onClick={() =>
+                  setCropEditor((previous) => ({ ...previous, open: false, elementId: null }))
+                }
+                className="flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                aria-label="Close crop editor"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="mb-5 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-3">
+              {cropEditor.elementId && (() => {
+                const target = elements.find(
+                  (element): element is ImageElement =>
+                    element.id === cropEditor.elementId && element.type === "image",
+                );
+                return target ? (
+                  <img
+                    src={target.src}
+                    alt={target.name ?? "Image to crop"}
+                    className="mx-auto max-h-[420px] max-w-full object-contain"
+                  />
+                ) : null;
+              })()}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-xs font-semibold text-slate-700">
+              {[
+                ["Left", "left"],
+                ["Top", "top"],
+                ["Right", "right"],
+                ["Bottom", "bottom"],
+              ].map(([label, key]) => (
+                <label key={key} className="flex flex-col gap-2">
+                  <span>{label}: {cropEditor[key as "left" | "top" | "right" | "bottom"]}%</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={cropEditor[key as "left" | "top" | "right" | "bottom"]}
+                    onChange={(event) =>
+                      setCropEditor((previous) => ({
+                        ...previous,
+                        [key]: Number(event.target.value),
+                      }))
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setCropEditor((previous) => ({ ...previous, open: false, elementId: null }))
+                }
+                className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={cropSelectedImage}
+                className="rounded-xl bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+              >
+                Apply crop
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTeacherControls && showGraphEditor && (
+        <div
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="create-graph-title"
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setShowGraphEditor(false);
+              graphEditingElementIdRef.current = null;
+            }
+          }}
+        >
+          <div
+            className="flex h-[min(784px,calc(100vh-32px))] w-[min(775px,calc(100vw-32px))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/25"
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <div className="flex h-20 shrink-0 items-center justify-between border-b border-slate-200 px-5">
+              <h2
+                id="create-graph-title"
+                className="text-[18px] font-bold tracking-tight text-slate-800"
+              >
+                Create Graph
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowGraphEditor(false);
+                  graphEditingElementIdRef.current = null;
+                }}
+                title="Close"
+                aria-label="Close graph editor"
+                className="flex size-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 px-6 py-9">
+              {graphLoadError ? (
+                <div className="flex h-full items-center justify-center rounded-lg border border-red-200 bg-red-50 px-6 text-center text-sm font-semibold text-red-700">
+                  {graphLoadError}
+                </div>
+              ) : (
+                <div
+                  ref={graphContainerRef}
+                  className="h-full w-full overflow-hidden bg-white"
+                />
+              )}
+            </div>
+
+            <div className="flex h-[66px] shrink-0 items-center justify-end gap-3 border-t border-slate-200 px-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowGraphEditor(false);
+                  graphEditingElementIdRef.current = null;
+                }}
+                className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={insertGraphFromDesmos}
+                className="rounded-xl bg-[#3f8062] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#356f55]"
+              >
+                Insert
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showTeacherControls && showGraphSettings && (
         <div
-          className="fixed z-[290] w-80 max-w-[calc(100vw-24px)] rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl"
+          className="absolute z-[290] w-80 max-w-[calc(100vw-24px)] rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl"
           style={{
             left: getPopupPosition("graph", {
-              x: Math.max(12, window.innerWidth - 420),
+              x: Math.max(12, (window.innerWidth - rightInset) - 420),
               y: Math.max(80, window.innerHeight / 2 - 220),
             }).x,
             top: getPopupPosition("graph", {
@@ -3744,7 +5224,7 @@ export default function Whiteboard({
       )}
 
       {showTeacherControls && showCalculator && (
-        <div className="fixed inset-0 z-[500] pointer-events-none">
+        <div className="absolute inset-0 z-[500] pointer-events-none">
           <div
             className="pointer-events-auto absolute w-[min(430px,calc(100vw-24px))] overflow-hidden rounded-3xl border border-slate-200/80 bg-white/98 shadow-2xl shadow-slate-950/25 backdrop-blur-2xl"
             style={{
@@ -3949,495 +5429,232 @@ export default function Whiteboard({
         </div>
       )}
 
-      {textEditor.open && (
+      {latexEditor.open && (
         <div
-          className="fixed z-100 w-130 max-w-[calc(100vw-24px)] overflow-visible rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/20"
-          style={{
-            left: textEditor.x,
-            top: textEditor.y,
+          className="absolute inset-0 z-[700] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="latex-editor-title"
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setLatexEditor((previous) => ({
+                ...previous,
+                open: false,
+                text: "",
+                editingElementId: null,
+              }));
+              setSelectedEquation("");
+              setActiveTextPanel(null);
+              setShowTextFormattingColors(false);
+              textPlacementArmedRef.current = false;
+              setTool("select");
+            }
           }}
-          onPointerDown={(event) => event.stopPropagation()}
-          onPointerMove={handleTextEditorDragMove}
-          onPointerUp={handleTextEditorDragEnd}
         >
           <div
-            className="flex cursor-move items-center justify-between border-b border-slate-100 bg-slate-50/95 px-4 py-3 select-none"
-            onPointerDown={handleTextEditorDrag}
+            data-latex-editor
+            className="w-[min(780px,calc(100vw-32px))] overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-2xl"
+            onPointerDown={(event) => event.stopPropagation()}
           >
-            <div className="flex items-center gap-3">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
-                {textEditor.type === "equation" ? (
-                  <Sigma className="size-4" />
-                ) : (
-                  <Type className="size-4" />
-                )}
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">
-                  {textEditor.editingElementId
-                    ? textEditor.type === "equation"
-                      ? "Edit Equation"
-                      : "Edit Text"
-                    : textEditor.type === "equation"
-                      ? "LaTeX Equation"
-                      : "Add Text"}
-                </h3>
-                <p className="text-[10px] text-slate-500">
-                  {textEditor.editingElementId
-                    ? "Edit the selected item on your board"
-                    : textEditor.type === "equation"
-                      ? "Type LaTeX directly and preview the result"
-                      : "Add a label or note to your board"}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={closeTextEditor}
-              className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
-              aria-label="Close text editor"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
-
-          <div className="p-4">
-            <div className="mb-3 flex rounded-xl border border-slate-200 bg-slate-100 p-1">
+            <div className="flex items-center justify-between px-6 py-5">
+              <h2 id="latex-editor-title" className="text-xl font-extrabold tracking-[-0.02em] text-slate-900">
+                LaTeX formula editor
+              </h2>
               <button
                 type="button"
                 onClick={() => {
+                  setLatexEditor((previous) => ({
+                    ...previous,
+                    open: false,
+                    text: "",
+                    editingElementId: null,
+                  }));
+                  setSelectedEquation("");
                   setActiveTextPanel(null);
-                  setTextEditor((previous) => ({ ...previous, type: "text" }));
+                  setShowTextFormattingColors(false);
+                  textPlacementArmedRef.current = false;
+                  setTool("select");
                 }}
-                className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
-                  textEditor.type === "text"
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
+                className="flex size-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                aria-label="Close LaTeX formula editor"
               >
-                <span className="inline-flex items-center gap-1.5">
-                  <Type className="size-3.5" /> Text
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setTextEditor((previous) => ({
-                    ...previous,
-                    type: "equation",
-                    fontSize: Math.max(previous.fontSize, 24),
-                  }))
-                }
-                className={`flex-1 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
-                  textEditor.type === "equation"
-                    ? "bg-white text-blue-700 shadow-sm"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  <Sigma className="size-3.5" /> Math / LaTeX
-                </span>
+                <X className="size-5" />
               </button>
             </div>
 
-            <div className="mb-3 flex items-center gap-2">
-              {textEditor.type === "equation" && (
-                <>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setActiveTextPanel((v) =>
-                          v === "symbols" ? null : "symbols",
-                        )
-                      }
-                      className={`flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-bold transition-colors ${
-                        activeTextPanel === "symbols"
-                          ? "border-blue-300 bg-blue-50 text-blue-700"
-                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                      }`}
-                    >
-                      <Sigma className="size-3.5" /> Symbols
-                    </button>
-                    {activeTextPanel === "symbols" && (
-                      <div className="absolute left-0 top-11 z-120 w-85 rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
-                        <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                          Insert LaTeX symbols
-                        </div>
-                        <div className="grid grid-cols-7 gap-1.5">
-                          {[
-                            ["α", "\\alpha "],
-                            ["β", "\\beta "],
-                            ["γ", "\\gamma "],
-                            ["θ", "\\theta "],
-                            ["π", "\\pi "],
-                            ["λ", "\\lambda "],
-                            ["μ", "\\mu "],
-                            ["Σ", "\\Sigma "],
-                            ["∑", "\\sum "],
-                            ["∏", "\\prod "],
-                            ["∫", "\\int "],
-                            ["∞", "\\infty "],
-                            ["±", "\\pm "],
-                            ["×", "\\times "],
-                            ["≤", "\\le "],
-                            ["≥", "\\ge "],
-                            ["≠", "\\neq "],
-                            ["≈", "\\approx "],
-                            ["→", "\\rightarrow "],
-                            ["∂", "\\partial "],
-                            ["∇", "\\nabla "],
-                          ].map(([label, value]) => (
-                            <button
-                              key={label}
-                              type="button"
-                              onClick={() => insertLatexAtCursor(value)}
-                              className="flex h-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-                              title={`Insert ${value.trim()}`}
-                            >
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setActiveTextPanel((v) =>
-                          v === "templates" ? null : "templates",
-                        )
-                      }
-                      className={`flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-bold transition-colors ${
-                        activeTextPanel === "templates"
-                          ? "border-blue-300 bg-blue-50 text-blue-700"
-                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                      }`}
-                    >
-                      <FunctionSquare className="size-3.5" /> Templates
-                    </button>
-                    {activeTextPanel === "templates" && (
-                      <div className="absolute left-0 top-11 z-120 w-90 rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
-                        <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                          Common LaTeX structures
-                        </div>
-                        <div className="grid grid-cols-2 gap-1.5">
-                          {[
-                            ["Fraction", "\\frac{a}{b}"],
-                            ["Square root", "\\sqrt{x}"],
-                            ["Power", "x^{2}"],
-                            ["Subscript", "x_{i}"],
-                            ["Sum", "\\sum_{i=1}^{n} x_i"],
-                            ["Integral", "\\int_{a}^{b} f(x)\\,dx"],
-                            ["Limit", "\\lim_{x\\to0} f(x)"],
-                            ["Text", "\\text{word}"],
-                            ["Parentheses", "\\left( x \\right)"],
-                            ["Absolute value", "\\left| x \\right|"],
-                          ].map(([label, value]) => (
-                            <button
-                              key={label}
-                              type="button"
-                              onClick={() => insertLatexAtCursor(value)}
-                              className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-left hover:border-blue-300 hover:bg-blue-50"
-                            >
-                              <div className="text-[10px] font-bold text-slate-700">
-                                {label}
-                              </div>
-                              <div className="mt-0.5 truncate font-mono text-[10px] text-blue-600">
-                                {value}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-
-              <div className="ml-auto flex items-center gap-2">
-                <span className="hidden text-[10px] font-bold uppercase tracking-wide text-slate-400 sm:inline">
-                  Format
-                </span>
-
-                <button
-                  type="button"
-                  disabled={textEditor.type === "equation"}
-                  onClick={() =>
-                    setTextEditor((p) => ({ ...p, bold: !p.bold }))
-                  }
-                  className={`flex size-9 items-center justify-center rounded-lg border text-sm font-bold transition-colors ${
-                    textEditor.type === "equation"
-                      ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300"
-                      : textEditor.bold
-                        ? "border-blue-300 bg-blue-50 text-blue-700"
-                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                  title="Bold"
-                  aria-label="Bold"
-                >
-                  B
-                </button>
-
-                <button
-                  type="button"
-                  disabled={textEditor.type === "equation"}
-                  onClick={() =>
-                    setTextEditor((p) => ({ ...p, italic: !p.italic }))
-                  }
-                  className={`flex size-9 items-center justify-center rounded-lg border text-sm italic transition-colors ${
-                    textEditor.type === "equation"
-                      ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300"
-                      : textEditor.italic
-                        ? "border-blue-300 bg-blue-50 text-blue-700"
-                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                  title="Italic"
-                  aria-label="Italic"
-                >
-                  I
-                </button>
-
-                <button
-                  type="button"
-                  disabled={textEditor.type === "equation"}
-                  onClick={() =>
-                    setTextEditor((p) => ({
-                      ...p,
-                      underline: !p.underline,
-                    }))
-                  }
-                  className={`flex size-9 items-center justify-center rounded-lg border text-sm font-semibold underline transition-colors ${
-                    textEditor.type === "equation"
-                      ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300"
-                      : textEditor.underline
-                        ? "border-blue-300 bg-blue-50 text-blue-700"
-                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                  title="Underline"
-                  aria-label="Underline"
-                >
-                  U
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setTextEditor((p) => ({
-                      ...p,
-                      fontSize: Math.max(12, p.fontSize - 2),
-                    }))
-                  }
-                  className="flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white font-bold text-slate-600 hover:bg-slate-50"
-                  title="Decrease font size"
-                  aria-label="Decrease font size"
-                >
-                  −
-                </button>
-
-                <input
-                  type="number"
-                  min={12}
-                  max={96}
-                  value={textEditor.fontSize}
+            <div className="px-6 pb-6">
+              <div className="grid grid-cols-2 gap-3">
+                <textarea
+                  ref={latexInputRef}
+                  value={latexEditor.text}
                   onChange={(event) =>
-                    setTextEditor((p) => ({
-                      ...p,
-                      fontSize: Math.min(
-                        96,
-                        Math.max(12, Number(event.target.value) || 12),
-                      ),
-                    }))
+                    setLatexEditor((previous) => ({ ...previous, text: event.target.value }))
                   }
-                  className="h-9 w-16 rounded-lg border border-slate-200 bg-white text-center text-xs font-semibold"
-                  title="Font size"
-                  aria-label="Font size"
-                />
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setTextEditor((p) => ({
-                      ...p,
-                      fontSize: Math.min(96, p.fontSize + 2),
-                    }))
-                  }
-                  className="flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white font-bold text-slate-600 hover:bg-slate-50"
-                  title="Increase font size"
-                  aria-label="Increase font size"
-                >
-                  +
-                </button>
-
-                <div className="relative">
-                  <button
-                    type="button"
-                    disabled={textEditor.type === "equation"}
-                    onClick={() =>
-                      setActiveTextPanel((v) =>
-                        v === "formatting" ? null : "formatting",
-                      )
+                  onKeyDown={(event) => {
+                    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                      event.preventDefault();
+                      addLatexElement();
                     }
-                    className={`flex size-9 items-center justify-center rounded-lg border transition-colors ${
-                      textEditor.type === "equation"
-                        ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300"
-                        : activeTextPanel === "formatting"
-                          ? "border-blue-300 bg-blue-50 text-blue-700"
-                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
-                    title="Text color"
-                    aria-label="Text color"
-                  >
-                    <span
-                      className="size-4 rounded-full border-2 border-white shadow-sm ring-1 ring-slate-300"
-                      style={{ backgroundColor: textEditor.color }}
-                    />
-                  </button>
-
-                  {activeTextPanel === "formatting" &&
-                    textEditor.type === "text" && (
-                      <div className="absolute right-0 top-11 z-120 w-64 rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
-                        <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                          Text Color
-                        </div>
-                        <div className="grid grid-cols-6 gap-2">
-                          {COLORS.map((c) => (
-                            <button
-                              key={c}
-                              type="button"
-                              onClick={() => {
-                                setTextEditor((p) => ({ ...p, color: c }));
-                                setActiveTextPanel(null);
-                              }}
-                              className={`flex size-8 items-center justify-center rounded-full ${
-                                textEditor.color === c
-                                  ? "ring-2 ring-blue-500 ring-offset-2"
-                                  : ""
-                              }`}
-                              title={`Text color ${c}`}
-                              aria-label={`Text color ${c}`}
-                            >
-                              <span
-                                className="size-6 rounded-full border border-slate-200"
-                                style={{ backgroundColor: c }}
-                              />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <textarea
-                ref={textInputRef}
-                value={textEditor.text}
-                onChange={(event) =>
-                  setTextEditor((previous) => ({
-                    ...previous,
-                    text: event.target.value,
-                  }))
-                }
-                onKeyDown={handleTextEditorKeyDown}
-                placeholder={
-                  textEditor.type === "equation"
-                    ? "Type LaTeX here… e.g. \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}"
-                    : "Type your text..."
-                }
-                rows={textEditor.type === "equation" ? 4 : 3}
-                spellCheck={textEditor.type !== "equation"}
-                className={`w-full resize-none rounded-xl border px-3.5 py-3 text-sm text-slate-900 outline-none transition-all focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-500/10 ${
-                  textEditor.type === "equation"
-                    ? "min-h-29 bg-slate-950 font-mono leading-6 text-emerald-300 placeholder:text-slate-500"
-                    : "bg-slate-50 placeholder:text-slate-400"
-                }`}
-              />
-              <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-400">
-                <span>
-                  {textEditor.type === "equation"
-                    ? "LaTeX source • Ctrl/Cmd + Enter to add"
-                    : "Ctrl/Cmd + Enter to add"}
-                </span>
-                <span>{textEditor.text.length}/1000</span>
-              </div>
-            </div>
-
-            {textEditor.text.trim() && (
-              <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 p-3">
-                <div className="mb-1.5 flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                    Live Preview
-                  </span>
-                  {textEditor.type === "equation" && (
-                    <span className="font-mono text-[9px] text-slate-400">
-                      LaTeX → Math
-                    </span>
-                  )}
-                </div>
-                <div
-                  className="max-h-16 overflow-hidden wrap-break-word whitespace-pre-wrap"
-                  style={{
-                    color: textEditor.color,
-                    fontSize: Math.min(textEditor.fontSize, 30),
-                    fontWeight: textEditor.bold ? 700 : 400,
-                    fontStyle: textEditor.italic ? "italic" : "normal",
-                    textDecoration: textEditor.underline ? "underline" : "none",
-                    fontFamily:
-                      textEditor.type === "equation"
-                        ? "Cambria Math, STIX Two Math, Times New Roman, serif"
-                        : "Inter, ui-sans-serif, system-ui, sans-serif",
                   }}
-                >
-                  {textEditor.type === "equation"
-                    ? latexToReadable(textEditor.text)
-                    : textEditor.text}
+                  placeholder="Type LaTeX code here, e.g. \delta"
+                  className="h-[150px] resize-none rounded-[12px] border border-slate-200 bg-[#e8edf5] px-5 py-4 font-mono text-lg leading-6 text-slate-700 outline-none placeholder:text-slate-400 focus:border-slate-300"
+                />
+                <div className="h-[150px] rounded-[12px] border border-slate-300 bg-white p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+                  <div className="text-sm text-slate-400">Preview</div>
+                  <div className="flex h-[105px] items-center justify-center overflow-hidden text-center text-4xl text-slate-950">
+                    {latexEditor.text.trim()
+                      ? renderLatexPreview(latexEditor.text, latexEditor.color)
+                      : null}
+                  </div>
                 </div>
               </div>
-            )}
 
-            <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
-              <span className="text-[10px] text-slate-400">
-                {textEditor.editingElementId
-                  ? "Changes will update the selected item."
-                  : textEditor.type === "equation"
-                    ? "Use the popups for quick LaTeX structures."
-                    : "Add text directly to the board."}
-              </span>
-              <div className="flex items-center gap-2">
+              <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
+                <span>Get familiar</span>
                 <button
                   type="button"
-                  onClick={closeTextEditor}
-                  className="rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100"
+                  onClick={() => setLatexTab("All")}
+                  className="font-semibold text-emerald-600 underline underline-offset-2"
+                >
+                  with the commands.
+                </button>
+                <span className="ml-2">Check popular</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLatexEditor((previous) => ({
+                      ...previous,
+                      text: "\\frac{1}{3}",
+                    }));
+                    setLatexTab("All");
+                    requestAnimationFrame(() => latexInputRef.current?.focus());
+                  }}
+                  className="font-semibold text-emerald-600 underline underline-offset-2"
+                >
+                  equation examples
+                </button>
+              </div>
+
+              <div className="mt-4 flex items-center gap-3">
+                {LATEX_EDITOR_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setLatexEditor((previous) => ({ ...previous, color: c }))}
+                    className={`flex size-8 items-center justify-center rounded-full ${latexEditor.color === c ? "ring-2 ring-slate-500 ring-offset-2" : ""}`}
+                    aria-label={`Formula color ${c}`}
+                  >
+                    <span className="size-7 rounded-full border border-slate-200" style={{ backgroundColor: c }} />
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-3 flex items-center gap-2">
+                {(["All", "Math", "Arrow", "Letter"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setLatexTab(tab)}
+                    className={`rounded-[12px] border px-4 py-2 text-sm font-semibold transition ${latexTab === tab ? "border-transparent bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-3 grid max-h-[270px] grid-cols-10 gap-2 overflow-y-auto pr-1">
+                {LATEX_SYMBOLS
+                  .filter(([label]) => {
+                    if (latexTab === "Letter") return LATEX_LETTER_LABELS.has(label);
+                    if (latexTab === "Arrow") return LATEX_ARROW_LABELS.has(label);
+                    if (latexTab === "Math") {
+                      return !LATEX_LETTER_LABELS.has(label) && !LATEX_ARROW_LABELS.has(label);
+                    }
+                    return true;
+                  })
+                  .map(([label, value]) => (
+                    <button
+                      key={`${label}-${value}`}
+                      type="button"
+                      onClick={() => insertLatexModalAtCursor(value)}
+                      className="flex h-9 items-center justify-center rounded-[6px] border border-slate-200 bg-white text-base text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                      title={`Insert ${value.trim()}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+              </div>
+
+              <div className="mt-4 flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                  setLatexEditor((previous) => ({
+                    ...previous,
+                    open: false,
+                    text: "",
+                    editingElementId: null,
+                  }));
+                  setSelectedEquation("");
+                  setActiveTextPanel(null);
+                  setShowTextFormattingColors(false);
+                  textPlacementArmedRef.current = false;
+                  setTool("select");
+                }}
+                  className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  onClick={addTextElement}
-                  disabled={!textEditor.text.trim()}
-                  className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm shadow-blue-600/20 transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={addLatexElement}
+                  disabled={!latexEditor.text.trim()}
+                  className="rounded-[12px] bg-emerald-600 px-7 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {textEditor.type === "equation" ? (
-                    <Sigma className="size-3.5" />
-                  ) : (
-                    <Type className="size-3.5" />
-                  )}
-                  {textEditor.editingElementId
-                    ? textEditor.type === "equation"
-                      ? "Update Equation"
-                      : "Update Text"
-                    : textEditor.type === "equation"
-                      ? "Add Equation"
-                      : "Add to Board"}
+                  Insert
                 </button>
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {textEditor.open && textEditor.type === "text" && (
+        <textarea
+          ref={textInputRef}
+          value={textEditor.text}
+          onChange={(event) =>
+            setTextEditor((previous) => ({
+              ...previous,
+              text: event.target.value,
+            }))
+          }
+          onKeyDown={handleTextEditorKeyDown}
+          onBlur={addTextElement}
+          onPointerDown={(event) => event.stopPropagation()}
+          autoFocus
+          rows={1}
+          spellCheck
+          aria-label="Text on whiteboard"
+          placeholder=""
+          data-text-editor-ui
+          className="absolute z-[360] min-h-[28px] min-w-[24px] resize-none overflow-hidden border border-dashed border-blue-500 bg-white/5 p-0 text-left outline-none ring-0 placeholder:text-transparent"
+          style={{
+            left: textEditor.x + panOffset.x,
+            top: textEditor.y + panOffset.y,
+            width: Math.max(
+              40,
+              Math.min(2000, 32 + textEditor.text.length * textEditor.fontSize * 0.55),
+            ),
+            minHeight: Math.max(28, textEditor.fontSize + 8),
+            fontSize: textEditor.fontSize,
+            lineHeight: 1.2,
+            color: textEditor.color,
+            fontWeight: textEditor.bold ? 700 : 400,
+            fontStyle: textEditor.italic ? "italic" : "normal",
+            textDecoration: textEditor.underline ? "underline" : "none",
+          }}
+        />
       )}
 
       <input
@@ -4447,9 +5664,16 @@ export default function Whiteboard({
         className="hidden"
         onChange={importImage}
       />
+      <input
+        ref={pdfInputRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="hidden"
+        onChange={importPdf}
+      />
 
       {/* Full-screen drawing workspace */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-x-0 bottom-0 top-0">
         <section
           ref={containerRef}
           className="absolute inset-0 overflow-hidden"
@@ -4467,660 +5691,1111 @@ export default function Whiteboard({
               onPointerCancel={handlePointerUp}
               onDoubleClick={handleCanvasDoubleClick}
               onContextMenu={handleCanvasContextMenu}
+              style={{
+                cursor:
+                  tool === "hand"
+                    ? "grab"
+                    : tool === "select"
+                      ? "default"
+                      : "crosshair",
+              }}
             />
           </div>
         </section>
 
-        {/* Floating glass drawing dock — auto-reveals when the pointer enters the bottom hover zone */}
-        {showTeacherControls && (
-          <div
-            className="pointer-events-auto fixed inset-x-0 bottom-0 z-[400] flex h-[124px] items-end justify-center px-2 pb-3 sm:px-3 sm:pb-5"
-            onPointerEnter={() => setToolbarHovered(true)}
-            onPointerLeave={(event) => {
-              // Keep the toolbar open while the pointer moves toward the popup.
-              const next = event.relatedTarget;
-              if (
-                next instanceof Node &&
-                (event.currentTarget.contains(next) ||
-                  (next instanceof Element && next.closest('[role="dialog"]')))
-              )
-                return;
-              setToolbarHovered(false);
-            }}
-          >
-            <div
-              className={`relative flex w-fit max-w-[calc(100vw-16px)] items-center gap-1 overflow-x-auto overflow-y-visible scrollbar-none rounded-[28px] sm:max-w-[calc(100vw-24px)] sm:gap-1.5 border border-white/20 bg-slate-950/45 px-2.5 py-2.5 shadow-[0_24px_80px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-3xl backdrop-saturate-150 transition-all duration-300 ease-out ${
-                toolbarHovered
-                  ? "translate-y-0 opacity-100 scale-100"
-                  : "translate-y-[88px] opacity-0 scale-[0.96]"
+        {/* LiveBoard-style top toolbar */}
+        <header className="pointer-events-auto absolute inset-x-0 top-0 z-[450] flex h-14 items-center border-b border-slate-200 bg-white/95 px-2 shadow-sm backdrop-blur-xl">
+          <div className="flex min-w-0 shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => onClose?.()}
+              title="Close whiteboard"
+              aria-label="Close whiteboard and return to the tutoring session"
+              className="flex size-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
+            >
+              <Home className="size-5" />
+            </button>
+
+            <button
+              type="button"
+              title="Whiteboard help"
+              aria-label="Whiteboard help"
+              onClick={() =>
+                window.alert(
+                  "Whiteboard shortcuts: V select, P pen, E eraser, L line, R rectangle, C circle, T text, Q equation. Use the toolbar to add pages and tools.",
+                )
+              }
+              className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            >
+              <CircleHelp className="size-5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={goToPreviousPage}
+              disabled={currentPageIndex === 0}
+              title="Previous page"
+              aria-label="Previous page"
+              className="flex size-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              <ChevronLeft className="size-5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowPagesPanel((value) => !value)}
+              title="Pages"
+              aria-label="Open pages"
+              className={`flex h-9 shrink-0 items-center gap-2 rounded-xl px-2.5 text-xs font-semibold transition ${
+                showPagesPanel
+                  ? "bg-slate-100 text-slate-950"
+                  : "text-slate-700 hover:bg-slate-100"
               }`}
             >
-              <span
-                className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent"
-                aria-hidden="true"
-              />
+              <span>Pages</span>
+              <span className="font-bold">
+                {currentPageIndex + 1}/{pages.length}
+              </span>
+            </button>
 
-              {/* Page navigation */}
-              <button
-                type="button"
-                onClick={goToPreviousPage}
-                disabled={currentPageIndex === 0}
-                title="Previous page"
-                aria-label="Previous page"
-                className="group flex size-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-white/75 shadow-inner shadow-white/5 transition-all hover:-translate-y-0.5 hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-25"
-              >
-                <ChevronLeft className="size-5" />
-              </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (currentPageIndex < pages.length - 1) {
+                  setCurrentPageIndex((index) => index + 1);
+                  setSelectedElementId(null);
+                  setSelectedElementIds([]);
+                  return;
+                }
 
-              <div className="hidden shrink-0 items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-3 py-2 sm:flex">
-                <div className="flex size-7 items-center justify-center rounded-xl bg-white/10 text-[10px] font-extrabold text-white">
-                  {currentPageIndex + 1}
-                </div>
-                <div className="min-w-0 max-w-[125px]">
-                  <div className="truncate text-[10px] font-bold text-white">
-                    {currentPage?.name ?? "Page"}
-                  </div>
-                  <div className="text-[8px] font-medium text-white/45">
-                    {currentPageIndex + 1} / {pages.length}
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={goToNextPage}
-                disabled={currentPageIndex >= pages.length - 1}
-                title="Next page"
-                aria-label="Next page"
-                className="group flex size-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-white/75 shadow-inner shadow-white/5 transition-all hover:-translate-y-0.5 hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-25"
-              >
+                addPage();
+              }}
+              title={
+                currentPageIndex < pages.length - 1
+                  ? "Next page"
+                  : "Add another whiteboard"
+              }
+              aria-label={
+                currentPageIndex < pages.length - 1
+                  ? "Next page"
+                  : "Add another whiteboard page"
+              }
+              className="flex size-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
+            >
+              {currentPageIndex < pages.length - 1 ? (
                 <ChevronRight className="size-5" />
-              </button>
+              ) : (
+                <Plus className="size-5" />
+              )}
+            </button>
+          </div>
 
-              <div className="mx-0.5 h-8 w-px shrink-0 bg-white/10" />
+          <div className="mx-auto flex min-w-0 items-center justify-center gap-0.5 overflow-x-auto px-2 scrollbar-none">
+            {toolButton(
+              "select",
+              "Select / move",
+              <MousePointer2 className="size-4" />,
+              "V",
+            )}
 
-              {/* Core drawing tools — Select and Pen remain immediately available. */}
-              <div className="flex shrink-0 items-center gap-0.5">
-                {toolButton(
-                  "select",
-                  "Select / Move",
-                  <MousePointer2 className="size-4" />,
-                  "V",
-                )}
-                {toolButton(
-                  "pen",
-                  "Pen / Draw",
-                  <PenLine className="size-4" />,
-                  "P",
-                )}
-              </div>
+            <button
+              type="button"
+              onClick={() => setTool("hand")}
+              title="Hand / pan (H)"
+              aria-label="Hand / pan"
+              className={`group relative flex size-10 shrink-0 items-center justify-center rounded-xl transition-all ${
+                tool === "hand"
+                  ? "bg-slate-100 text-slate-950"
+                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+              }`}
+            >
+              <Hand className="size-4" />
+              <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-950 px-2 py-1 text-[9px] font-semibold text-white shadow-xl lg:block">
+                Hand / pan
+              </span>
+            </button>
 
-              <div className="mx-0.5 h-8 w-px shrink-0 bg-white/10" />
+            {toolButton(
+              "pen",
+              "Pen / marker",
+              <PenLine className="size-4" />,
+              "P",
+            )}
 
-              {/* Import image for classroom illustrations */}
+            <button
+              ref={shapeToolsButtonRef}
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setShowUploadMenu(false);
+                setShowFormulaMenu(false);
+                setShowShapeToolsPopup((value) => !value);
+              }}
+              title="Shapes"
+              aria-label="Shapes"
+              aria-expanded={showShapeToolsPopup}
+              className={`flex size-10 shrink-0 items-center justify-center rounded-xl transition ${
+                showShapeToolsPopup
+                  ? "bg-slate-100 text-slate-950"
+                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+              }`}
+            >
+              <Shapes className="size-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowShapeToolsPopup(false);
+                setShowFormulaMenu(false);
+                setShowUploadMenu(false);
+                setTool("text");
+                textPlacementArmedRef.current = true;
+                setActiveTextPanel(null);
+              }}
+              title="Text"
+              aria-label="Add text"
+              className={`flex size-10 shrink-0 items-center justify-center rounded-xl transition ${
+                tool === "text"
+                  ? "bg-slate-100 text-slate-950"
+                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+              }`}
+            >
+              <Type className="size-4" />
+            </button>
+
+            <button
+              ref={formulaToolsButtonRef}
+              type="button"
+              onClick={() => {
+                setShowShapeToolsPopup(false);
+                setShowUploadMenu(false);
+
+                const button = formulaToolsButtonRef.current;
+                if (button) {
+                  const rect = button.getBoundingClientRect();
+                  setFormulaMenuPosition({
+                    top: rect.bottom + 8,
+                    left: rect.left + rect.width / 2,
+                  });
+                }
+
+                setShowFormulaMenu((value) => !value);
+              }}
+              title="Formula"
+              aria-label="Formula"
+              aria-expanded={showFormulaMenu}
+              className={`flex size-10 shrink-0 items-center justify-center rounded-xl transition ${
+                showFormulaMenu || tool === "equation"
+                  ? "bg-slate-100 text-slate-950"
+                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+              }`}
+            >
+              <Sigma className="size-4" />
+            </button>
+
+            <div className="relative shrink-0">
               <button
+                ref={eraserButtonRef}
                 type="button"
-                onClick={() => imageInputRef.current?.click()}
-                title="Import image"
-                aria-label="Import image"
-                className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-white/65 transition-colors hover:bg-white/10 hover:text-white"
-              >
-                <ImageIcon className="size-4" />
-              </button>
+                onClick={() => {
+                  setShowShapeToolsPopup(false);
+                  setShowFormulaMenu(false);
+                  setShowUploadMenu(false);
+                  setShowPenPopup(false);
+                  setTool("eraser");
 
-              {/* Shapes & math tools popup — replaces the horizontal-scrolling tool strip. */}
-              <button
-                ref={shapeToolsButtonRef}
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setShowShapeToolsPopup((value) => !value);
-                }}
-                title="Shapes & math tools"
-                aria-label="Open shapes and math tools"
-                aria-expanded={showShapeToolsPopup}
-                className="flex size-10 shrink-0 items-center justify-center rounded-2xl text-white/65 transition-colors hover:text-white"
-              >
-                <Shapes className="size-4" />
-              </button>
+                  const button = eraserButtonRef.current;
+                  if (button) {
+                    const rect = button.getBoundingClientRect();
+                    const popupWidth = 252;
+                    const popupHeight = 156;
+                    const gap = 8;
+                    let left = rect.left + rect.width / 2 - popupWidth / 2;
+                    let top = rect.bottom + gap;
 
-              <div className="mx-0.5 h-8 w-px shrink-0 bg-white/10" />
+                    left = Math.max(12, Math.min(left, window.innerWidth - popupWidth - 12));
 
-              {/* More board controls — kept compact so the dock remains a single surface */}
-              <div className="flex shrink-0 items-center gap-1">
-                <button
-                  ref={colorButtonRef}
-                  type="button"
-                  onClick={() => {
-                    if (showColorPopup && colorPopupTarget === "pen") {
-                      setShowColorPopup(false);
-                      return;
+                    if (top + popupHeight > window.innerHeight - 12) {
+                      top = Math.max(12, rect.top - popupHeight - gap);
                     }
-                    positionColorPopup("pen");
-                  }}
-                  title="Pen color"
-                  aria-label="Pen color"
-                  className={`flex size-10 items-center justify-center rounded-2xl transition ${
-                    colorPopupTarget === "pen" && showColorPopup
-                      ? "bg-blue-500/20 text-blue-300"
-                      : "text-white/65 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  <span
-                    className="size-4 rounded-full border border-white/70 shadow-sm ring-1 ring-white/20"
-                    style={{ backgroundColor: color }}
-                  />
-                </button>
 
-                {selectedElement ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={duplicateSelectedElement}
-                      title="Duplicate selected object (⌘/Ctrl+D)"
-                      aria-label="Duplicate selected object"
-                      className="flex size-10 items-center justify-center rounded-2xl text-white/65 transition hover:bg-blue-500/15 hover:text-blue-300"
-                    >
-                      <Copy className="size-4" />
-                    </button>
-                    <button
-                      ref={objectColorButtonRef}
-                      type="button"
-                      onClick={() => {
-                        if (showColorPopup && colorPopupTarget === "object") {
-                          setShowColorPopup(false);
-                          setColorPopupTarget(null);
-                          return;
-                        }
-                        positionColorPopup("object");
-                      }}
-                      title="Selected object color"
-                      aria-label="Selected object color"
-                      className={`flex size-10 items-center justify-center rounded-2xl transition ${
-                        colorPopupTarget === "object" && showColorPopup
-                          ? "bg-blue-500/20 text-blue-300"
-                          : "text-white/65 hover:bg-white/10 hover:text-white"
-                      }`}
-                    >
-                      <span
-                        className="size-4 rounded-md border border-white/70 shadow-sm ring-1 ring-white/20"
-                        style={{
-                          backgroundColor:
-                            "color" in selectedElement
-                              ? selectedElement.color
-                              : "#94a3b8",
-                        }}
-                      />
-                    </button>
-                  </>
-                ) : null}
+                    setEraserPopupPosition({ top, left });
+                  }
 
+                  setShowEraserPopup((value) => !value);
+                }}
+                title="Eraser (E)"
+                aria-label="Eraser"
+                aria-expanded={showEraserPopup}
+                className={`group relative flex size-10 shrink-0 items-center justify-center rounded-xl transition-all ${
+                  tool === "eraser" || showEraserPopup
+                    ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                }`}
+              >
+                <Eraser className="size-4" />
+                <span className="pointer-events-none absolute -right-1.5 -top-1 hidden rounded bg-slate-900 px-1 py-0.5 text-[7px] font-bold text-white shadow-sm 2xl:block">
+                  E
+                </span>
+                <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-slate-950/90 px-2 py-1 text-[9px] font-semibold text-white shadow-xl backdrop-blur-xl opacity-0 transition-opacity group-hover:opacity-100 lg:block">
+                  Eraser
+                </span>
+              </button>
+
+              {showEraserPopup && (
                 <div
-                  className="hidden h-10 w-28 shrink-0 items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-2.5 sm:flex"
-                  title="Stroke width"
+                  ref={eraserPopupRef}
+                  className="fixed z-[700] w-[252px] rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-2xl shadow-slate-900/15"
+                  style={{
+                    top: eraserPopupPosition.top,
+                    left: eraserPopupPosition.left,
+                  }}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  role="dialog"
+                  aria-label="Eraser settings"
                 >
-                  <PenLine className="size-3.5 shrink-0 text-white/50" />
-                  <input
-                    type="range"
-                    min="1"
-                    max="20"
-                    value={width}
-                    onChange={(e) => setWidth(Number(e.target.value))}
-                    aria-label="Stroke width"
-                    className="h-1 w-full cursor-pointer accent-blue-500"
-                  />
-                  <span className="w-7 text-right text-[8px] font-bold text-white/45">
-                    {width}px
-                  </span>
+                  <div className="flex items-center justify-center gap-4">
+                    {[
+                      { value: 8, visual: 2 },
+                      { value: 16, visual: 3 },
+                      { value: 24, visual: 5 },
+                      { value: 32, visual: 7 },
+                      { value: 40, visual: 9 },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          setEraserWidth(option.value);
+                          setTool("eraser");
+                        }}
+                        title={`Eraser size ${option.value}px`}
+                        aria-label={`Eraser size ${option.value}px`}
+                        className={`flex h-10 w-9 items-center justify-center rounded-full transition ${
+                          eraserWidth === option.value
+                            ? "bg-slate-100 ring-1 ring-slate-300"
+                            : "hover:bg-slate-50"
+                        }`}
+                      >
+                        <span
+                          className="block w-6 rounded-full bg-slate-700"
+                          style={{ height: `${option.visual}px` }}
+                        />
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      pushHistory();
+                      updateCurrentPage((page) => ({
+                        ...page,
+                        elements: page.elements.filter(
+                          (element) => element.type !== "stroke",
+                        ),
+                      }));
+                      setSelectedElementId((currentId) => {
+                        const selected = currentPage?.elements.find(
+                          (element) => element.id === currentId,
+                        );
+                        return selected?.type === "stroke" ? null : currentId;
+                      });
+                      setSelectedElementIds((currentIds) =>
+                        currentIds.filter((id) => {
+                          const selected = currentPage?.elements.find(
+                            (element) => element.id === id,
+                          );
+                          return selected?.type !== "stroke";
+                        }),
+                      );
+                      setShowEraserPopup(false);
+                    }}
+                    className="mx-auto mt-3 flex items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-emerald-50"
+                  >
+                    <Trash2 className="size-4" />
+                    Erase all
+                  </button>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setShowGraphSettings((v) => !v)}
-                  title="Canvas & grid"
-                  aria-label="Canvas & grid"
-                  className={`flex size-10 items-center justify-center rounded-2xl transition ${
-                    showGraphSettings
-                      ? "bg-blue-500/20 text-blue-300"
-                      : "text-white/65 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  <Grid2X2 className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowCalculator((v) => !v)}
-                  title="Calculator"
-                  aria-label="Calculator"
-                  className={`flex size-10 items-center justify-center rounded-2xl transition ${
-                    showCalculator
-                      ? "bg-blue-500/20 text-blue-300"
-                      : "text-white/65 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  <Calculator className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowToolsPanel((v) => !v)}
-                  title="Math toolkit"
-                  aria-label="Math toolkit"
-                  className={`flex size-10 items-center justify-center rounded-2xl transition ${
-                    showToolsPanel
-                      ? "bg-blue-500/20 text-blue-300"
-                      : "text-white/65 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  <PanelRight className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowPagesPanel((v) => !v)}
-                  title="Manage pages"
-                  aria-label="Manage pages"
-                  className={`flex size-10 items-center justify-center rounded-2xl transition ${
-                    showPagesPanel
-                      ? "bg-blue-500/20 text-blue-300"
-                      : "text-white/65 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  <BookOpen className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={restoreBoard}
-                  title="Restore workspace"
-                  aria-label="Restore workspace"
-                  className="flex size-10 items-center justify-center rounded-2xl text-white/65 transition hover:bg-white/10 hover:text-white"
-                >
-                  <FolderOpen className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={exportPNG}
-                  title="Export PNG"
-                  aria-label="Export PNG"
-                  className="flex size-10 items-center justify-center rounded-2xl text-white/65 transition hover:bg-white/10 hover:text-white"
-                >
-                  <Download className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={clearPage}
-                  title="Clear page"
-                  aria-label="Clear page"
-                  className="flex size-10 items-center justify-center rounded-2xl text-white/65 transition hover:bg-red-500/15 hover:text-red-300"
-                >
-                  <Trash2 className="size-4" />
-                </button>
-              </div>
-
-              <div className="mx-0.5 h-8 w-px shrink-0 bg-white/10" />
-
-              {/* Compact actions */}
-              <div className="flex shrink-0 items-center gap-1">
-                <button
-                  type="button"
-                  onClick={undo}
-                  title="Undo"
-                  aria-label="Undo"
-                  className="flex size-10 items-center justify-center rounded-2xl text-white/65 transition hover:bg-white/10 hover:text-white"
-                >
-                  <Undo2 className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={redo}
-                  title="Redo"
-                  aria-label="Redo"
-                  className="flex size-10 items-center justify-center rounded-2xl text-white/65 transition hover:bg-white/10 hover:text-white"
-                >
-                  <Redo2 className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => saveBoard(true)}
-                  title="Save workspace"
-                  aria-label="Save workspace"
-                  className={`flex size-10 items-center justify-center rounded-2xl transition ${
-                    saveStatus === "saved"
-                      ? "bg-emerald-400/15 text-emerald-300"
-                      : saveStatus === "saving"
-                        ? "bg-blue-400/15 text-blue-300"
-                        : saveStatus === "error"
-                          ? "bg-red-400/15 text-red-300"
-                          : "text-white/65 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  <Save
-                    className={`size-4 ${saveStatus === "saving" ? "animate-pulse" : ""}`}
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={addPage}
-                  title="Add blank page"
-                  aria-label="Add blank page"
-                  className="hidden size-10 items-center justify-center rounded-2xl text-white/65 transition hover:bg-white/10 hover:text-white sm:flex"
-                >
-                  <Plus className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={duplicateCurrentPage}
-                  title="Duplicate current page"
-                  aria-label="Duplicate current page"
-                  className="hidden size-10 items-center justify-center rounded-2xl text-white/65 transition hover:bg-blue-500/15 hover:text-blue-300 sm:flex"
-                >
-                  <Copy className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={toggleFullscreen}
-                  title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-                  aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-                  className={`flex size-10 items-center justify-center rounded-2xl transition ${
-                    isFullscreen
-                      ? "bg-blue-500/20 text-blue-300"
-                      : "text-white/65 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  {isFullscreen ? (
-                    <Minimize2 className="size-4" />
-                  ) : (
-                    <Maximize2 className="size-4" />
-                  )}
-                </button>
-              </div>
-
-              {/* Tiny active-state indicator */}
-              <span
-                className="pointer-events-none absolute bottom-1 left-1/2 h-0.5 w-10 -translate-x-1/2 rounded-full bg-white/30"
-                aria-hidden="true"
-              />
+              )}
             </div>
 
-            {showShapeToolsPopup && (
-              <div
-                className="fixed z-[500] w-[min(390px,calc(100vw-20px))] rounded-2xl border border-white/15 bg-slate-950/95 p-2.5 shadow-2xl shadow-black/50 backdrop-blur-2xl"
-                style={{
-                  left: getPopupPosition("shapes", {
-                    x: Math.max(12, window.innerWidth / 2 - 195),
-                    y: Math.max(70, window.innerHeight - 300),
-                  }).x,
-                  top: getPopupPosition("shapes", {
-                    x: 0,
-                    y: Math.max(70, window.innerHeight - 300),
-                  }).y,
-                }}
-                onPointerDown={(event) => {
-                  if (!(event.target as HTMLElement).closest("button")) {
-                    startPopupDrag("shapes", event);
+            <div className="relative">
+              <button
+                ref={uploadButtonRef}
+                type="button"
+                onClick={() => {
+                  setShowShapeToolsPopup(false);
+                  setShowFormulaMenu(false);
+                  setShowEraserPopup(false);
+
+                  const button = uploadButtonRef.current;
+                  if (button) {
+                    const rect = button.getBoundingClientRect();
+                    const popupWidth = 176;
+                    const popupHeight = 94;
+                    const gap = 8;
+                    let left = rect.left + rect.width / 2 - popupWidth / 2;
+                    let top = rect.bottom + gap;
+
+                    left = Math.max(12, Math.min(left, window.innerWidth - popupWidth - 12));
+                    if (top + popupHeight > window.innerHeight - 12) {
+                      top = Math.max(12, rect.top - popupHeight - gap);
+                    }
+
+                    setUploadMenuPosition({ top, left });
                   }
-                  event.stopPropagation();
+
+                  setShowUploadMenu((value) => !value);
                 }}
-                onPointerMove={movePopupDrag}
-                onPointerUp={endPopupDrag}
-                onClick={(event) => event.stopPropagation()}
-                role="dialog"
-                aria-label="Shapes and math tools"
+                title="Upload files"
+                aria-label="Upload files"
+                aria-expanded={showUploadMenu}
+                className={`flex size-10 shrink-0 items-center justify-center rounded-xl transition ${
+                  showUploadMenu
+                    ? "bg-slate-100 text-slate-950"
+                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                }`}
               >
+                <Upload className="size-4" />
+              </button>
+
+              {showUploadMenu && (
                 <div
-                  className="mb-2 flex cursor-move touch-none items-center justify-between px-1 select-none"
-                  onPointerDown={(event) => startPopupDrag("shapes", event)}
+                  className="fixed z-[700] w-44 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl shadow-slate-900/15"
+                  style={{
+                    top: uploadMenuPosition.top,
+                    left: uploadMenuPosition.left,
+                  }}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  role="menu"
+                  aria-label="Upload files"
                 >
-                  <div>
-                    <div className="text-[10px] font-extrabold uppercase tracking-wider text-white/80">
-                      Shapes & Math Tools
-                    </div>
-                    <div className="text-[8px] text-white/40">
-                      Select a tool to use on the board
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowShapeToolsPopup(false)}
-                    aria-label="Close shapes and math tools"
-                    className="flex size-7 items-center justify-center rounded-lg text-white/45 hover:bg-white/10 hover:text-white"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5">
-                  <button
-                    type="button"
-                    onClick={() => imageInputRef.current?.click()}
-                    title="Import image"
-                    aria-label="Import image"
-                    className="flex size-10 items-center justify-center rounded-xl text-white/65 transition hover:bg-white/10 hover:text-white"
-                  >
-                    <Upload className="size-4" />
-                  </button>
-                  {toolButton(
-                    "eraser",
-                    "Eraser",
-                    <Eraser className="size-4" />,
-                    "E",
-                  )}
-                  {toolButton(
-                    "line",
-                    "Line",
-                    <Minus className="size-4" />,
-                    "L",
-                  )}
-                  {toolButton(
-                    "rectangle",
-                    "Rectangle",
-                    <Square className="size-4" />,
-                    "R",
-                  )}
-                  {toolButton(
-                    "circle",
-                    "Circle",
-                    <Circle className="size-4" />,
-                    "C",
-                  )}
-                  {toolButton(
-                    "triangle",
-                    "Triangle",
-                    <Triangle className="size-4" />,
-                  )}
-                  {toolButton(
-                    "ruler",
-                    "Ruler",
-                    <Ruler className="size-4" />,
-                    "U",
-                  )}
-                  {toolButton(
-                    "axes",
-                    "Coordinate Axes",
-                    <Crosshair className="size-4" />,
-                    "A",
-                  )}
                   <button
                     type="button"
                     onClick={() => {
-                      setTool("equation");
-                      setShowShapeToolsPopup(false);
-                      openToolbarTextEditor("equation");
+                      setShowUploadMenu(false);
+                      imageInputRef.current?.click();
                     }}
-                    title="LaTeX equation (Q)"
-                    aria-label="Add LaTeX equation"
-                    className={`flex size-10 items-center justify-center rounded-xl transition-all ${
-                      tool === "equation"
-                        ? "bg-blue-500 text-white"
-                        : "text-white/65 hover:bg-white/10 hover:text-white"
-                    }`}
+                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
                   >
-                    <Sigma className="size-4" />
+                    <ImageIcon className="size-4 text-slate-500" />
+                    Image
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      setTool("text");
-                      setShowShapeToolsPopup(false);
-                      openToolbarTextEditor("text");
+                      setShowUploadMenu(false);
+                      pdfInputRef.current?.click();
                     }}
-                    title="Text entry (T)"
-                    aria-label="Add text"
-                    className={`flex size-10 items-center justify-center rounded-xl transition-all ${
-                      tool === "text"
-                        ? "bg-blue-500 text-white"
-                        : "text-white/65 hover:bg-white/10 hover:text-white"
-                    }`}
+                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
                   >
-                    <Type className="size-4" />
+                    <Upload className="size-4 text-slate-500" />
+                    PDF
                   </button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Invisible/low-profile hover runway: moving the pointer near the bottom
-                edge reveals the dock again without needing a permanent launcher. */}
-            {!toolbarHovered && (
-              <span
-                className="pointer-events-none absolute bottom-1 left-1/2 h-1.5 w-20 -translate-x-1/2 rounded-full bg-white/25 shadow-[0_0_18px_rgba(255,255,255,0.18)] blur-[0.2px]"
-                aria-hidden="true"
-              />
-            )}
+            <div className="mx-1 h-7 w-px shrink-0 bg-slate-200" />
+
+            <button
+              type="button"
+              onClick={undo}
+              title="Undo"
+              aria-label="Undo"
+              className="flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            >
+              <Undo2 className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={redo}
+              title="Redo"
+              aria-label="Redo"
+              className="flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            >
+              <Redo2 className="size-4" />
+            </button>
+          </div>
+
+          <div className="flex min-w-0 shrink-0 items-center gap-1">
+            <div className="hidden max-w-44 truncate px-2 text-sm font-semibold text-slate-800 lg:block">
+              {currentPage?.name ?? "Untitled board"}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowGraphSettings((value) => !value)}
+              title="Settings"
+              aria-label="Whiteboard settings"
+              className={`flex size-10 items-center justify-center rounded-xl transition ${
+                showGraphSettings
+                  ? "bg-slate-100 text-slate-950"
+                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+              }`}
+            >
+              <Settings2 className="size-4" />
+            </button>
+          </div>
+        </header>
+
+        {showFormulaMenu && (
+          <div
+            data-formula-menu
+            className="fixed z-[900] w-40 -translate-x-1/2 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl"
+            style={{
+              top: formulaMenuPosition.top,
+              left: formulaMenuPosition.left,
+            }}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setShowFormulaMenu(false);
+                setTool("equation");
+                openLatexEditor("");
+              }}
+              className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              <Sigma className="size-4 text-slate-500" />
+              LaTeX
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowFormulaMenu(false);
+                setShowGraphSettings(false);
+                setGraphLoadError(null);
+                setShowGraphEditor(true);
+              }}
+              className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              <FunctionSquare className="size-4 text-slate-500" />
+              Graph Editor
+            </button>
           </div>
         )}
 
-        {/* Compact page manager — preserves duplicate / rename / delete page controls */}
-        {showTeacherControls && showPagesPanel && (
-          <aside
-            className="fixed z-[310] w-[min(360px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-white/15 bg-slate-950/80 shadow-2xl shadow-black/30 backdrop-blur-2xl"
+        {/* Shapes & math tools popup */}
+        {showShapeToolsPopup && (
+          <div
+            className="absolute z-[520] w-[min(390px,calc(100vw-20px))] rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl"
             style={{
-              left: getPopupPosition("pages", {
-                x: Math.max(12, window.innerWidth / 2 - 180),
-                y: Math.max(70, window.innerHeight - 390),
-              }).x,
-              top: getPopupPosition("pages", {
-                x: 0,
-                y: Math.max(70, window.innerHeight - 390),
-              }).y,
+              left: "50%",
+              top: "64px",
+              transform: "translateX(-50%)",
             }}
-            onPointerMove={movePopupDrag}
-            onPointerUp={endPopupDrag}
-            onPointerEnter={() => setToolbarHovered(true)}
-            onPointerLeave={() => setToolbarHovered(false)}
             onPointerDown={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-label="Shapes and math tools"
           >
-            <div
-              className="flex cursor-move touch-none items-center justify-between border-b border-white/10 px-3 py-2.5 select-none"
-              onPointerDown={(event) => startPopupDrag("pages", event)}
-            >
+            <div className="mb-2 flex items-center justify-between">
               <div>
-                <div className="text-[10px] font-extrabold uppercase tracking-wider text-white/80">
-                  Pages
+                <div className="text-xs font-extrabold text-slate-900">
+                  Shapes & Math Tools
                 </div>
-                <div className="text-[8px] text-white/40">
-                  {pages.length} {pages.length === 1 ? "page" : "pages"}
+                <div className="text-[9px] text-slate-500">
+                  Select a tool to use on the board
                 </div>
               </div>
-              <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setShowShapeToolsPopup(false)}
+                className="flex size-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Close shapes and math tools"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-5 gap-1.5">
+              {([
+                ["arrow", "Arrow"], ["line", "Line"], ["ellipse", "Ellipse"], ["circle", "Circle"], ["rectangle", "Rectangle"],
+                ["triangle", "Triangle"], ["cube", "Cube"], ["cylinder", "Cylinder"], ["diamond", "Diamond"], ["pentagon", "Pentagon"],
+                ["hexagon", "Hexagon"], ["heptagon", "Heptagon"], ["octagon", "Octagon"], ["parallelogram", "Parallelogram"], ["sphere", "Sphere"],
+              ] as const).map(([value, label]) => (
+                <button key={value} type="button" onClick={() => { setTool(value); setShowShapeToolsPopup(false); }} title={label} aria-label={label} className={`flex h-10 items-center justify-center rounded-xl transition ${tool === value ? "bg-slate-100 text-slate-950" : "text-slate-600 hover:bg-slate-50"}`}>
+                  <ShapeToolIcon shape={value} />
+                </button>
+              ))}
+            </div>
+            <div className="mt-2 grid grid-cols-5 gap-1.5 border-t border-slate-100 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setTool("eraser");
+                  setShowShapeToolsPopup(false);
+                  setShowEraserPopup(true);
+                }}
+                title="Eraser"
+                aria-label="Eraser"
+                className="flex h-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-50"
+              >
+                <Eraser className="size-4" />
+              </button>
+              {toolButton("ruler", "Ruler", <Ruler className="size-4" />, "U")}
+              {toolButton("axes", "Coordinate Axes", <Crosshair className="size-4" />, "A")}
+              {toolButton("equation", "Equation", <Sigma className="size-4" />, "Q")}
+              {toolButton("text", "Text", <Type className="size-4" />, "T")}
+            </div>
+          </div>
+        )}
+
+        {/* Full page thumbnail sidebar */}
+        {showTeacherControls && showPagesPanel && (
+          <aside
+            className="absolute inset-y-0 left-0 z-[560] w-[324px] border-r border-slate-200 bg-white shadow-2xl shadow-slate-900/10"
+            aria-label="Whiteboard pages"
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <div className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-3">
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={addPage}
                   title="Add page"
                   aria-label="Add page"
-                  className="flex size-8 items-center justify-center rounded-xl bg-blue-500 text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-400"
+                  className="flex size-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm transition hover:bg-emerald-700"
                 >
-                  <Plus className="size-4" />
+                  <Plus className="size-5" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowPagesPanel(false)}
-                  title="Close pages"
-                  aria-label="Close manage pages"
-                  className="flex size-8 items-center justify-center rounded-xl text-white/45 transition hover:bg-white/10 hover:text-white"
-                >
-                  <X className="size-4" />
-                </button>
+                <div className="text-sm font-bold text-slate-700">
+                  Pages({pages.length})
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setShowPagesPanel(false)}
+                title="Close pages"
+                aria-label="Close pages"
+                className="flex size-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+              >
+                <X className="size-5" />
+              </button>
             </div>
-            <div className="max-h-56 space-y-1 overflow-y-auto p-2">
-              {pages.map((page, index) => {
-                const isActive = currentPageIndex === index;
-                return (
-                  <div
-                    key={page.id}
-                    className={`group flex items-center gap-1 rounded-xl border px-1 transition ${
-                      isActive
-                        ? "border-blue-400/30 bg-blue-500/15"
-                        : "border-white/5 bg-white/5 hover:bg-white/10"
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCurrentPageIndex(index);
-                        setSelectedElementId(null);
-                        setSelectedElementIds([]);
-                        setShowPagesPanel(false);
-                      }}
-                      className="flex min-w-0 flex-1 items-center gap-2 px-1.5 py-2 text-left"
-                      title={`Open ${page.name}`}
-                    >
-                      <span
-                        className={`flex size-6 shrink-0 items-center justify-center rounded-lg text-[8px] font-extrabold ${
+
+            <div className="h-[calc(100%-56px)] overflow-y-auto bg-slate-50 px-4 py-5">
+              <div className="flex flex-col gap-3">
+                {pages.map((page, index) => {
+                  const isActive = currentPageIndex === index;
+                  return (
+                    <div key={page.id} className="flex items-center gap-2">
+                      <div className="flex w-4 shrink-0 items-center justify-center text-slate-500">
+                        <span className="text-lg leading-none">=</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCurrentPageIndex(index);
+                          setSelectedElementId(null);
+                          setSelectedElementIds([]);
+                        }}
+                        title={`Open ${page.name}`}
+                        className={`relative block h-[143px] w-[254px] shrink-0 overflow-hidden rounded-[4px] border bg-white shadow-sm transition ${
                           isActive
-                            ? "bg-blue-500 text-white"
-                            : "bg-white/10 text-white/55"
+                            ? "border-emerald-600 ring-1 ring-emerald-600/20"
+                            : "border-slate-200 hover:border-slate-300"
                         }`}
                       >
-                        {index + 1}
-                      </span>
-                      <span
-                        className={`min-w-0 flex-1 truncate text-[9px] font-bold ${
-                          isActive ? "text-blue-200" : "text-white/70"
-                        }`}
-                      >
-                        {page.name}
-                      </span>
-                      <span className="text-[8px] text-white/30">
-                        {page.elements.length}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => duplicatePage(index)}
-                      title="Duplicate page"
-                      aria-label={`Duplicate ${page.name}`}
-                      className="flex size-7 items-center justify-center rounded-lg text-white/35 transition hover:bg-white/10 hover:text-white"
-                    >
-                      <Copy className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => renamePage(index)}
-                      title="Rename page"
-                      aria-label={`Rename ${page.name}`}
-                      className="flex size-7 items-center justify-center rounded-lg text-white/35 transition hover:bg-white/10 hover:text-white"
-                    >
-                      <Settings2 className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deletePage(index)}
-                      title="Delete page"
-                      aria-label={`Delete ${page.name}`}
-                      className="flex size-7 items-center justify-center rounded-lg text-white/35 transition hover:bg-red-500/15 hover:text-red-300"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  </div>
-                );
-              })}
+                        <canvas
+                          ref={(node) => {
+                            pageThumbnailRefs.current[page.id] = node;
+                          }}
+                          className="block h-[142px] w-[254px]"
+                          aria-label={`${page.name} thumbnail`}
+                        />
+                        <span className="absolute right-1.5 top-1.5 flex min-w-6 items-center justify-center rounded-md bg-slate-200/90 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
+                          {index + 1}
+                        </span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </aside>
         )}
 
+        {/* Floating pen palette — teacher only */}
+        {showTeacherControls && showPenPopup && (
+          <div
+            ref={penPopupRef}
+            className="absolute z-[320] w-[344px] rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xl shadow-slate-900/15"
+            style={{
+              top: penPopupPosition.top,
+              left: penPopupPosition.left,
+            }}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => setPenStyle("pen")}
+                aria-label="Pen"
+                title="Pen"
+                className={`flex size-10 items-center justify-center rounded-xl transition ${
+                  penStyle === "pen"
+                    ? "bg-slate-100 text-slate-800"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                }`}
+              >
+                <PenLine className="size-5" style={{ strokeWidth: 2 }} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPenStyle("marker")}
+                aria-label="Marker"
+                title="Marker"
+                className={`flex size-10 items-center justify-center rounded-xl transition ${
+                  penStyle === "marker"
+                    ? "bg-slate-100 text-slate-800"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                }`}
+              >
+                <PenLine className="size-5" style={{ strokeWidth: 4 }} />
+              </button>
+            </div>
+
+            <div className="my-4 h-px bg-slate-200" />
+
+            <div className="flex items-center justify-center gap-4">
+              {PEN_POPUP_COLORS.map((penColor) => (
+                <button
+                  key={penColor}
+                  type="button"
+                  onClick={() => setColor(penColor)}
+                  title={`Pen color ${penColor}`}
+                  aria-label={`Pen color ${penColor}`}
+                  className={`flex size-9 items-center justify-center rounded-full transition ${
+                    color === penColor
+                      ? "ring-2 ring-slate-400 ring-offset-2"
+                      : ""
+                  }`}
+                >
+                  <span
+                    className="size-7 rounded-full border border-slate-200"
+                    style={{ backgroundColor: penColor }}
+                  />
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-5 flex items-center justify-center gap-5">
+              {PEN_SIZE_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setWidth(option.value)}
+                  title={`Pen size ${option.value}px`}
+                  aria-label={`Pen size ${option.value}px`}
+                  className={`flex size-9 items-center justify-center rounded-full transition ${
+                    width === option.value
+                      ? "bg-slate-100 ring-1 ring-slate-300"
+                      : "hover:bg-slate-50"
+                  }`}
+                >
+                  <span
+                    className="block rounded-full bg-slate-700"
+                    style={{
+                      width: `${Math.min(option.width + 8, 22)}px`,
+                      height: `${option.width}px`,
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {showTeacherControls &&
+          tool === "select" &&
+          selectedMediaElement &&
+          selectedMediaBounds && (
+            <div
+              data-media-selection-toolbar
+              className="absolute z-[430] flex items-center gap-1 rounded-xl border border-slate-200 bg-white/98 p-1.5 shadow-xl shadow-slate-900/15 backdrop-blur-xl"
+              style={{
+                left: Math.max(12, Math.min(
+                  selectedMediaBounds.left,
+                  window.innerWidth - rightInset - 190,
+                )),
+                top: Math.max(60, selectedMediaBounds.top - 58),
+              }}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+            >
+              <button
+                type="button"
+                onClick={duplicateSelectedElement}
+                className="flex size-9 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100"
+                title="Copy"
+                aria-label="Copy"
+              >
+                <Copy className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setCropEditor({
+                    open: true,
+                    elementId: selectedMediaElement.id,
+                    left: 5,
+                    top: 5,
+                    right: 95,
+                    bottom: 95,
+                  })
+                }
+                className="flex size-9 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100"
+                title="Crop"
+                aria-label="Crop"
+              >
+                <Crop className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  pushHistory();
+                  updateCurrentPage((page) => ({
+                    ...page,
+                    elements: page.elements.filter(
+                      (element) => element.id !== selectedMediaElement.id,
+                    ),
+                  }));
+                  setSelectedElementId(null);
+                  setSelectedElementIds([]);
+                }}
+                className="flex size-9 items-center justify-center rounded-lg text-slate-700 hover:bg-red-50 hover:text-red-600"
+                title="Delete"
+                aria-label="Delete"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </div>
+          )}
+
+        {showTeacherControls &&
+          tool === "select" &&
+          selectedGraphElement &&
+          selectedGraphBounds && (
+            <div
+              data-graph-selection-toolbar
+              className="absolute z-[430] flex items-center gap-1 rounded-xl border border-slate-200 bg-white/98 p-1.5 shadow-xl shadow-slate-900/15 backdrop-blur-xl"
+              style={{
+                left: Math.max(12, Math.min(
+                  selectedGraphBounds.left,
+                  window.innerWidth - rightInset - 130,
+                )),
+                top: Math.max(60, selectedGraphBounds.top - 58),
+              }}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  graphEditingElementIdRef.current = selectedGraphElement.id;
+                  setGraphLoadError(null);
+                  setShowGraphEditor(true);
+                }}
+                className="flex size-9 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100"
+                title="Edit graph"
+                aria-label="Edit graph"
+              >
+                <PenLine className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  pushHistory();
+                  updateCurrentPage((page) => ({
+                    ...page,
+                    elements: page.elements.filter(
+                      (element) => element.id !== selectedGraphElement.id,
+                    ),
+                  }));
+                  setSelectedElementId(null);
+                  setSelectedElementIds([]);
+                }}
+                className="flex size-9 items-center justify-center rounded-lg text-slate-700 hover:bg-red-50 hover:text-red-600"
+                title="Delete graph"
+                aria-label="Delete graph"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </div>
+          )}
+
+        {showTeacherControls &&
+          tool === "select" &&
+          selectedEquationElement &&
+          selectedEquationBounds &&
+          !latexEditor.open && (
+            <div
+              data-equation-selection-toolbar
+              className="absolute z-[430] flex items-center gap-1 rounded-xl border border-slate-200 bg-white/98 p-1.5 shadow-xl shadow-slate-900/15 backdrop-blur-xl"
+              style={{
+                left: Math.max(12, Math.min(selectedEquationBounds.left, window.innerWidth - rightInset - 190)),
+                top: Math.max(60, selectedEquationBounds.top - 58),
+              }}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+            >
+              <button
+                type="button"
+                onClick={() =>
+                  openLatexEditor(
+                    selectedEquationElement.text,
+                    selectedEquationElement.id,
+                    selectedEquationElement.color,
+                  )
+                }
+                className="flex size-9 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100"
+                title="Edit formula"
+                aria-label="Edit formula"
+              >
+                <PenLine className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => duplicateSelectedElement()}
+                className="flex size-9 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100"
+                title="Copy formula"
+                aria-label="Copy formula"
+              >
+                <Copy className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  pushHistory();
+                  updateCurrentPage((page) => ({
+                    ...page,
+                    elements: page.elements.filter((element) => element.id !== selectedEquationElement.id),
+                  }));
+                  setSelectedElementId(null);
+                  setSelectedElementIds([]);
+                }}
+                className="flex size-9 items-center justify-center rounded-lg text-slate-700 hover:bg-red-50 hover:text-red-600"
+                title="Delete formula"
+                aria-label="Delete formula"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </div>
+          )}
+
+        {showTeacherControls &&
+          !textObjectDragging &&
+          textEditor.open &&
+          textEditor.type === "text" && (
+            <div
+              data-text-editor-ui
+              className="absolute z-[340] w-[250px] rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/15"
+              style={{
+                left: Math.max(12, (textEditor.open && textEditor.type === "text" ? textEditor.x : selectedTextElement?.x ?? 12) - 18),
+                top: Math.max(12, (textEditor.open && textEditor.type === "text" ? textEditor.y : selectedTextElement?.y ?? 12) - 58),
+              }}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+            >
+              {showTextFormattingColors && (
+                <div className="absolute bottom-full left-0 mb-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/15">
+                  {PEN_POPUP_COLORS.map((textColor) => (
+                  <button
+                    key={textColor}
+                    type="button"
+                    onClick={() => {
+                      if (textEditor.open && textEditor.type === "text") {
+                        setTextEditor((previous) => ({ ...previous, color: textColor }));
+                        if (textEditor.editingElementId) {
+                          updateCurrentPage((page) => ({
+                            ...page,
+                            elements: page.elements.map((element) =>
+                              element.id === textEditor.editingElementId && element.type === "text"
+                                ? { ...element, color: textColor }
+                                : element,
+                            ),
+                          }));
+                        }
+                      } else {
+                        applySelectedElementColor(textColor);
+                      }
+                    }}
+                    className={`flex size-8 items-center justify-center rounded-full ${
+                      (textEditor.open && textEditor.type === "text"
+                        ? textEditor.color
+                        : selectedTextElement?.color) === textColor
+                        ? "ring-2 ring-slate-400 ring-offset-1"
+                        : ""
+                    }`}
+                    title={`Text color ${textColor}`}
+                    aria-label={`Text color ${textColor}`}
+                  >
+                    <span
+                      className="size-6 rounded-full border border-slate-200"
+                      style={{ backgroundColor: textColor }}
+                    />
+                  </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (textEditor.open && textEditor.type === "text") {
+                      const nextFontSize = Math.max(8, textEditor.fontSize - 2);
+                      setTextEditor((previous) => ({ ...previous, fontSize: nextFontSize }));
+                      if (textEditor.editingElementId) {
+                        updateCurrentPage((page) => ({
+                          ...page,
+                          elements: page.elements.map((element) =>
+                            element.id === textEditor.editingElementId && element.type === "text"
+                              ? { ...element, fontSize: nextFontSize }
+                              : element,
+                          ),
+                        }));
+                      }
+                    } else if (selectedElement) {
+                      updateCurrentPage((page) => ({
+                        ...page,
+                        elements: page.elements.map((element) =>
+                          element.id === selectedElement.id && element.type === "text"
+                            ? { ...element, fontSize: Math.max(8, element.fontSize - 2) }
+                            : element,
+                        ),
+                      }));
+                    }
+                  }}
+                  className="flex size-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
+                  title="Decrease font size"
+                  aria-label="Decrease font size"
+                >
+                  <ChevronDown className="size-4" />
+                </button>
+                <span className="min-w-8 text-center text-xs font-bold text-slate-700">
+                  {textEditor.open && textEditor.type === "text"
+                    ? textEditor.fontSize
+                    : selectedTextElement?.fontSize}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (textEditor.open && textEditor.type === "text") {
+                      const nextFontSize = Math.min(96, textEditor.fontSize + 2);
+                      setTextEditor((previous) => ({ ...previous, fontSize: nextFontSize }));
+                      if (textEditor.editingElementId) {
+                        updateCurrentPage((page) => ({
+                          ...page,
+                          elements: page.elements.map((element) =>
+                            element.id === textEditor.editingElementId && element.type === "text"
+                              ? { ...element, fontSize: nextFontSize }
+                              : element,
+                          ),
+                        }));
+                      }
+                    } else if (selectedElement) {
+                      updateCurrentPage((page) => ({
+                        ...page,
+                        elements: page.elements.map((element) =>
+                          element.id === selectedElement.id && element.type === "text"
+                            ? { ...element, fontSize: Math.min(96, element.fontSize + 2) }
+                            : element,
+                        ),
+                      }));
+                    }
+                  }}
+                  className="flex size-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
+                  title="Increase font size"
+                  aria-label="Increase font size"
+                >
+                  <ChevronUp className="size-4" />
+                </button>
+                <div className="mx-1 h-6 w-px bg-slate-200" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTool("text");
+
+                    if (textEditor.open && textEditor.type === "text") {
+                      setShowTextFormattingColors((previous) => !previous);
+                      requestAnimationFrame(() => {
+                        textInputRef.current?.focus();
+                        const length = textEditor.text.length;
+                        textInputRef.current?.setSelectionRange(length, length);
+                      });
+                    } else if (selectedTextElement) {
+                      openTextEditor(
+                        { x: selectedTextElement.x, y: selectedTextElement.y },
+                        "text",
+                        selectedTextElement.text,
+                        selectedTextElement.id,
+                        selectedTextElement.fontSize,
+                        selectedTextElement.color,
+                        selectedTextElement.bold,
+                        selectedTextElement.italic,
+                        selectedTextElement.underline,
+                      );
+                      setShowTextFormattingColors(true);
+                    }
+                  }}
+                  className="flex size-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
+                  title="Edit text"
+                  aria-label="Edit text"
+                >
+                  <span className="text-sm font-bold underline decoration-2 decoration-emerald-500 underline-offset-2">A</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const idToDelete =
+                      textEditor.open && textEditor.type === "text"
+                        ? textEditor.editingElementId
+                        : selectedElement?.id;
+                    if (!idToDelete) return;
+                    pushHistory();
+                    updateCurrentPage((page) => ({
+                      ...page,
+                      elements: page.elements.filter((element) => element.id !== idToDelete),
+                    }));
+                    setSelectedElementId(null);
+                    setSelectedElementIds([]);
+                    if (textEditor.open && textEditor.type === "text") {
+                      setTextEditor((previous) => ({
+                        ...previous,
+                        open: false,
+                        text: "",
+                        editingElementId: null,
+                      }));
+                      setTool("select");
+                    }
+                  }}
+                  className="flex size-8 items-center justify-center rounded-lg text-slate-600 hover:bg-red-50 hover:text-red-600"
+                  title="Delete text"
+                  aria-label="Delete text"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
         {/* Floating color palette — teacher only */}
         {showTeacherControls && showColorPopup && (
           <div
-            className="fixed z-[310] w-55 max-w-[calc(100vw-24px)] rounded-2xl border border-slate-200/90 bg-white/98 p-3 shadow-2xl shadow-slate-900/15 backdrop-blur-xl"
+            className="absolute z-[310] w-55 max-w-[calc(100vw-24px)] rounded-2xl border border-slate-200/90 bg-white/98 p-3 shadow-2xl shadow-slate-900/15 backdrop-blur-xl"
             style={{
               top: getPopupPosition("color", {
                 x: colorPopupPosition.left,
@@ -5222,10 +6897,10 @@ export default function Whiteboard({
         {/* Floating Math Toolkit — teacher only */}
         {showTeacherControls && showToolsPanel && (
           <aside
-            className="fixed z-[290] flex max-h-[calc(100vh-32px)] w-72 max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl"
+            className="absolute z-[290] flex max-h-[calc(100vh-32px)] w-72 max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl"
             style={{
               left: getPopupPosition("toolkit", {
-                x: Math.max(12, window.innerWidth - 420),
+                x: Math.max(12, (window.innerWidth - rightInset) - 420),
                 y: Math.max(80, window.innerHeight / 2 - 260),
               }).x,
               top: getPopupPosition("toolkit", {
@@ -5340,57 +7015,10 @@ export default function Whiteboard({
         )}
       </div>
 
-      {/* Draggable teacher control launcher */}
-      <div
-        className="pointer-events-none fixed inset-0 z-[320]"
-        aria-hidden={false}
-      >
-        <button
-          type="button"
-          onPointerDown={handleTeacherControlPointerDown}
-          onPointerMove={handleTeacherControlPointerMove}
-          onPointerUp={handleTeacherControlPointerUp}
-          onPointerCancel={handleTeacherControlPointerUp}
-          onClick={handleTeacherControlClick}
-          title={
-            showTeacherControls
-              ? "Hide toolbar · drag to reposition"
-              : "Show toolbar · drag to reposition"
-          }
-          aria-label={
-            showTeacherControls
-              ? "Hide toolbar. Drag to reposition."
-              : "Show toolbar. Drag to reposition."
-          }
-          style={{
-            left: teacherControlPosition.left,
-            top: teacherControlPosition.top,
-            touchAction: "none",
-          }}
-          className={`pointer-events-auto fixed z-[321] flex size-[50px] select-none items-center justify-center overflow-hidden rounded-[18px] border border-white/25 bg-slate-950/45 p-2 shadow-[0_16px_40px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-2xl transition-all duration-200 hover:scale-105 hover:border-white/40 hover:bg-slate-950/55 active:scale-95 ${
-            showTeacherControls ? "shadow-blue-500/25" : "shadow-black/30"
-          } ${
-            teacherControlDragging
-              ? "cursor-grabbing shadow-2xl"
-              : "cursor-grab"
-          }`}
-        >
-          {/* Brand-only launcher: click to show/hide the auto-hide toolbar. */}
-          <span className="pointer-events-none flex size-full items-center justify-center">
-            <MyLogo showText={false} clickable={false} />
-          </span>
-          <span
-            className={`pointer-events-none absolute inset-0 rounded-[18px] ring-1 ring-inset ${
-              showTeacherControls ? "ring-blue-400/30" : "ring-white/10"
-            }`}
-          />
-        </button>
-      </div>
-
       {/* Professional page rename dialog */}
       {renamePageState.open && (
         <div
-          className="fixed inset-0 z-200 flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-[3px]"
+          className="absolute inset-0 z-200 flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-[3px]"
           role="dialog"
           aria-modal="true"
           aria-labelledby="rename-page-title"
@@ -5399,10 +7027,10 @@ export default function Whiteboard({
           }}
         >
           <div
-            className="fixed w-[min(420px,calc(100vw-24px))] max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20"
+            className="absolute w-[min(420px,calc(100vw-24px))] max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20"
             style={{
               left: getPopupPosition("rename", {
-                x: Math.max(12, window.innerWidth / 2 - 210),
+                x: Math.max(12, (window.innerWidth - rightInset) / 2 - 210),
                 y: Math.max(70, window.innerHeight / 2 - 180),
               }).x,
               top: getPopupPosition("rename", {

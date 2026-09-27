@@ -1,91 +1,155 @@
 import Link from "next/link";
 import Image from "next/image";
+import { CheckCircle2, Mail, ArrowLeft } from "lucide-react";
+
 import LogoImg from "@/public/images/logo.png";
-import { ArrowLeft } from "lucide-react";
 
-export default function VerifyRequestPage() {
+interface VerifyRequestPageProps {
+  searchParams: Promise<{
+    email?: string;
+  }>;
+}
+
+export default async function VerifyRequestPage({
+  searchParams,
+}: VerifyRequestPageProps) {
+  const params = await searchParams;
+
+  const email =
+    params.email?.trim() || "";
+
   return (
-    <div className="min-h-screen bg-background text-white flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Grid Background */}
-      <div
-        className="absolute inset-0 opacity-10"
-        style={{
-          backgroundImage: `
-            linear-gradient(#1a1a1a 1px, transparent 1px),
-            linear-gradient(90deg, #1a1a1a 1px, transparent 1px)
-          `,
-          backgroundSize: "20px 20px",
-        }}
-      />
-
-      {/* Glow */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-20"
-          style={{
-            width: "800px",
-            height: "800px",
-            filter: "blur(120px)",
-            background:
-              "radial-gradient(circle, #6366f1 0%, rgba(0,0,0,0) 70%)",
-          }}
-        />
-      </div>
-
-      {/* Card */}
-      <div className="w-full max-w-md rounded-2xl bg-[#111111]/80 border border-white/10 backdrop-blur-md relative z-10 shadow-[0_0_50px_-12px_rgba(99,102,241,0.25)]">
-        <div className="bg-[#0a0a0a] rounded-xl border border-white/5 px-8 py-12">
+    <main className="min-h-screen bg-background px-6 py-12">
+      <div className="mx-auto flex min-h-[80vh] w-full max-w-md items-center justify-center">
+        <div className="w-full">
           {/* Logo */}
-          <div className="flex justify-center mb-8">
-            <Image src={LogoImg} alt="Logo" width={50} height={50} priority />
+          <div className="mb-8 flex justify-center">
+            <Image
+              src={LogoImg}
+              alt="Justdy"
+              width={150}
+              height={50}
+              priority
+            />
           </div>
 
-          {/* Heading */}
-          <div className="text-center">
-            <h1 className="text-3xl font-bold tracking-tight">
-              Check Your Email
+          {/* Card */}
+          <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+            {/* Success icon */}
+            <div className="mb-6 flex justify-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
+                <CheckCircle2 className="h-9 w-9 text-emerald-600" />
+              </div>
+            </div>
+
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              Account Created!
             </h1>
 
-            <p className="text-zinc-400 mt-4 leading-relaxed">
-              We&apos;ve sent a verification link to your email address.
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Your Justdy account has been created
+              successfully.
             </p>
 
-            <p className="text-zinc-500 text-sm mt-3">
-              Click the link in the email to activate your account and continue
-              to Justdy.
-            </p>
+            {/* Email box */}
+            <div className="mt-6 rounded-xl border border-border bg-muted/50 p-4">
+              <div className="flex items-center justify-center gap-2 text-sm font-medium text-foreground">
+                <Mail className="h-4 w-4 text-primary" />
+
+                <span>
+                  Verification email sent
+                </span>
+              </div>
+
+              {email ? (
+                <p className="mt-2 break-all text-sm font-medium text-primary">
+                  {email}
+                </p>
+              ) : null}
+            </div>
+
+            {/* Instructions */}
+            <div className="mt-6 text-left">
+              <h2 className="text-sm font-semibold text-foreground">
+                What to do next
+              </h2>
+
+              <ol className="mt-3 space-y-3 text-sm text-muted-foreground">
+                <li className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                    1
+                  </span>
+
+                  <span>
+                    Open your email inbox.
+                  </span>
+                </li>
+
+                <li className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                    2
+                  </span>
+
+                  <span>
+                    Find the email from Justdy titled
+                    <strong className="font-semibold text-foreground">
+                      {" "}
+                      &quot;Verify Your Justdy Account&quot;
+                    </strong>
+                    .
+                  </span>
+                </li>
+
+                <li className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                    3
+                  </span>
+
+                  <span>
+                    Click the verification link in
+                    the email.
+                  </span>
+                </li>
+
+                <li className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                    4
+                  </span>
+
+                  <span>
+                    After verification, return to
+                    Justdy and sign in.
+                  </span>
+                </li>
+              </ol>
+            </div>
+
+            {/* Spam notice */}
+            <div className="mt-6 rounded-lg bg-amber-50 px-4 py-3 text-left text-xs leading-5 text-amber-800">
+              <strong>Didn&apos;t receive the email?</strong>{" "}
+              Check your spam or junk folder. Make sure
+              you entered the correct email address.
+            </div>
+
+            {/* Sign in */}
+            <Link
+              href="/auth?mode=signin"
+              className="mt-7 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+            >
+              Continue to Sign In
+            </Link>
+
+            {/* Back */}
+            <Link
+              href="/"
+              className="mt-5 inline-flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to Justdy
+            </Link>
           </div>
-
-          {/* Tips */}
-          <div className="mt-8 rounded-xl border border-white/5 bg-white/2 p-4">
-            <p className="text-xs uppercase tracking-wider text-zinc-500 mb-3">
-              Didn&apos;t receive it?
-            </p>
-
-            <ul className="space-y-2 text-sm text-zinc-400">
-              <li>• Check your spam or junk folder.</li>
-              <li>• Verify you entered the correct email address.</li>
-              <li>• Wait a few minutes for delivery.</li>
-            </ul>
-          </div>
-
-          {/* Back Button */}
-          <Link
-            href="/login"
-            className="mt-8 flex items-center justify-center gap-2 h-12 rounded-lg border border-white/10 bg-white/2 hover:bg-white/5 transition-colors text-sm font-medium"
-          >
-            <ArrowLeft size={16} />
-            Back to Login
-          </Link>
-        </div>
-
-        {/* Footer Strip */}
-        <div className="p-4 bg-black/20 border-t border-white/5">
-          <p className="text-[10px] text-zinc-500 text-center uppercase tracking-[0.2em]">
-            Secure Verification • Justdy.com
-          </p>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

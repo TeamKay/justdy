@@ -1,76 +1,84 @@
 import prisma from "@/lib/prisma";
+import { CAPABILITIES, hasCapability } from "@/lib/auth/capabilities";
 
-export async function getTutoringAppointmentForUser({
-  appointmentId,
-  userId,
-}: {
-  appointmentId: string;
-  userId: string;
-}) {
-  return prisma.appointment.findFirst({
+export async function getVerifiedTutor(userId: string) {
+  if (!userId) return null;
+
+  const user = await prisma.user.findFirst({
     where: {
-      id: appointmentId,
-      OR: [
-        {
-          learnerId: userId,
-        },
-        {
-          educatorId: userId,
-        },
-      ],
+      id: userId,
+      status: "Active",
+      teachingProfile: {
+        verificationStatus: "Verified",
+      },
     },
-    include: {
-      learner: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      imageUrl: true,
+      teachingProfile: {
         select: {
           id: true,
-          name: true,
-          email: true,
-          imageUrl: true,
+          headline: true,
+          verificationStatus: true,
         },
       },
-      educator: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          imageUrl: true,
-          facilitatorProfile: {
-            select: {
-              specialty: true,
-              experience: true,
-              description: true,
-              verificationStatus: true,
-            },
-          },
-        },
-      },
-      tutoringSlot: true,
-      whiteboard: true,
     },
   });
+
+  if (!user?.teachingProfile) return null;
+
+  if (!(await hasCapability(userId, CAPABILITIES.TUTOR))) return null;
+
+  return user;
 }
 
-export function isTutoringParticipant({
-  appointment,
-  userId,
-}: {
-  appointment: {
-    learnerId: string;
-    educatorId: string;
-  };
-  userId: string;
-}) {
-  return appointment.learnerId === userId || appointment.educatorId === userId;
+export async function canProvideTutoring(userId: string) {
+  return Boolean(await getVerifiedTutor(userId));
 }
 
-export function isTutoringTutor({
-  appointment,
-  userId,
-}: {
-  appointment: {
-    educatorId: string;
-  };
-  userId: string;
-}) {
-  return appointment.educatorId === userId;
+export async function requireVerifiedTutor(userId: string) {
+  const tutor = await getVerifiedTutor(userId);
+  if (!tutor) {
+    throw new Error("Verified tutor access is required.");
+  }
+  return tutor;
+}
+
+export async function canTeach(userId: string) {
+  return hasCapability(userId, CAPABILITIES.TEACH);
+}
+
+export async function getVerifiedTutorByTeachingProfileId(
+  teachingProfileId: string,
+) {
+  const profile = await prisma.teachingProfile.findFirst({
+    where: {
+      id: teachingProfileId,
+      verificationStatus: "Verified",
+      user: {
+        status: "Active",
+      },
+    },
+    select: {
+      id: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          imageUrl: true,
+        },
+      },
+    },
+  });
+
+  if (!profile) return null;
+
+  if (!(await hasCapability(profile.user.id, CAPABILITIES.TUTOR))) {
+    return null;
+  }
+
+  return profile.user;
 }

@@ -1,31 +1,32 @@
 import type { Metadata } from "next";
 
-import { JustdyThemeProvider } from "./_components/theme/JustdyThemeProvider";
-import "katex/dist/katex.min.css";
-
 import "./globals.css";
 
+import { Toaster } from "sonner";
+
+import { ThemeProvider } from "@/app/_components/ThemeProvider";
+
 export const metadata: Metadata = {
-  title: "Justdy | Learn. Grow. Succeed",
-  description:
-    "Justdy provides online courses, tutoring, educational resources, and learning opportunities for students and educators.",
-  icons: {
-    icon: "/logo.ico",
-  },
-  verification: {
-    google: "googlef81a47f8ecddf48f.html",
-  },
+  title: "Justdy",
+  description: "Create, learn, and connect with Justdy.",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+    >
       <body>
-        <JustdyThemeProvider>{children}</JustdyThemeProvider>
+        <ThemeProvider>
+          {children}
+
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { getVerifiedTutor } from "@/lib/tutoring/authorization";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
+
+const JOIN_WINDOW_MINUTES = 30;
 
 async function getAuthenticatedUser() {
   const session = await auth.api.getSession({
@@ -43,20 +46,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const booking = await prisma.tutoringBooking.findUnique({
+    const booking = await prisma.booking.findUnique({
       where: { id },
-      select: {
-        id: true,
-        customerId: true,
-        tutorId: true,
-        status: true,
-        appointmentId: true,
-        tutoringSlot: {
-          select: {
-            startTime: true,
-            endTime: true,
-          },
+      include: {
+        availability: {
+          select: { startTime: true, endTime: true },
         },
+        service: {
+          select: { id: true },
+        },
+        tutoringSession: true,
       },
     });
 
@@ -67,21 +66,23 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const isCustomer = booking.customerId === user.id;
-    const isTutor = booking.tutorId === user.id;
+    const isLearner = booking.studentId === user.id;
+    const isTutor = booking.educatorId === user.id;
 
-    if (!isCustomer && !isTutor) {
+    if (!isLearner && !isTutor) {
       return NextResponse.json(
         { error: "You are not authorized to change this tutoring session." },
         { status: 403 },
       );
     }
 
+    const startTime = booking.availability?.startTime ?? booking.startTime;
+    const endTime = booking.availability?.endTime ?? booking.endTime;
+
     if (action === "start") {
       const now = Date.now();
       const joinStart =
-        booking.tutoringSlot.startTime.getTime() - 30 * 60 * 1000;
-      const end = booking.tutoringSlot.endTime.getTime();
+        startTime.getTime() - JOIN_WINDOW_MINUTES * 60 * 1000;
 
       if (now < joinStart) {
         return NextResponse.json(
@@ -90,67 +91,103 @@ export async function POST(request: NextRequest, context: RouteContext) {
         );
       }
 
-      if (now > end) {
+      if (now > endTime.getTime()) {
         return NextResponse.json(
           { error: "The tutoring session has already ended." },
           { status: 403 },
         );
       }
 
-      if (
-        booking.status === "COMPLETED" ||
-        booking.status === "CANCELLED" ||
-        booking.status === "REFUNDED"
-      ) {
+      if (booking.status !== "Scheduled") {
         return NextResponse.json(
-          { error: "This tutoring session can no longer be started." },
+          { error: "This booking is not available for a live session." },
           { status: 409 },
         );
       }
 
-      const nextStatus =
-        booking.status === "IN_PROGRESS"
-          ? "IN_PROGRESS"
-          : booking.status === "READY" || booking.status === "SCHEDULED"
-            ? "IN_PROGRESS"
-            : null;
-
-      if (!nextStatus) {
+      if (booking.tutoringSession?.status === "COMPLETED") {
         return NextResponse.json(
-          { error: "This tutoring session is not ready to start." },
+          { error: "This tutoring session has already been completed." },
           { status: 409 },
         );
+      }
+
+      if (booking.tutoringSession?.status === "CANCELLED") {
+        return NextResponse.json(
+          { error: "This tutoring session has been cancelled." },
+          { status: 409 },
+        );
+      }
+
+      if (booking.tutoringSession?.status === "NO_SHOW") {
+  return NextResponse.json(
+    { error: "This tutoring session was recorded as a no-show." },
+    { status: 409 },
+  );
+}
+
+      if (isTutor) {
+        const tutor = await getVerifiedTutor(user.id);
+        if (!tutor) {
+          return NextResponse.json(
+            { error: "Your tutor verification is not currently active." },
+            { status: 403 },
+          );
+        }
       }
 
       const updated = await prisma.$transaction(async (tx) => {
-        const result = await tx.tutoringBooking.updateMany({
-          where: {
-            id: booking.id,
-            status: { in: ["SCHEDULED", "READY", "IN_PROGRESS"] },
-          },
-          data: { status: "IN_PROGRESS" },
+        const existing = await tx.tutoringSession.findUnique({
+          where: { bookingId: booking.id },
+          select: { id: true, status: true, startedAt: true },
         });
 
-        if (result.count === 0) {
-          const current = await tx.tutoringBooking.findUnique({
-            where: { id: booking.id },
-            select: { status: true },
-          });
-
-          if (current?.status === "IN_PROGRESS") {
-            return current.status;
-          }
-
-          throw new Error("SESSION_STATE_CHANGED");
+        if (existing?.status === "COMPLETED") {
+          throw new Error("SESSION_COMPLETED");
         }
 
-        return "IN_PROGRESS" as const;
+        if (existing?.status === "CANCELLED") {
+          throw new Error("SESSION_CANCELLED");
+        }
+
+        if (existing?.status === "NO_SHOW") {
+  throw new Error("SESSION_NO_SHOW");
+}
+
+        if (existing) {
+          return tx.tutoringSession.update({
+            where: { id: existing.id },
+            data: {
+              status: "IN_PROGRESS",
+              startedAt: existing.startedAt ?? new Date(),
+              learnerAttendance: isLearner ? true : undefined,
+              educatorAttendance: isTutor ? true : undefined,
+            },
+          });
+        }
+
+        return tx.tutoringSession.create({
+          data: {
+            bookingId: booking.id,
+            learnerId: booking.studentId,
+            educatorId: booking.educatorId,
+            serviceId: booking.serviceId,
+            scheduledStart: startTime,
+            scheduledEnd: endTime,
+            status: "IN_PROGRESS",
+            startedAt: new Date(),
+            learnerAttendance: isLearner,
+            educatorAttendance: isTutor,
+          },
+        });
       });
 
       return NextResponse.json({
         success: true,
         action,
-        status: updated,
+        status: updated.status,
+        tutoringSessionId: updated.id,
+        startedAt: updated.startedAt?.toISOString() ?? null,
       });
     }
 
@@ -161,7 +198,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    if (booking.status === "COMPLETED") {
+    const tutor = await getVerifiedTutor(user.id);
+    if (!tutor) {
+      return NextResponse.json(
+        { error: "Your tutor verification is not currently active." },
+        { status: 403 },
+      );
+    }
+
+    if (booking.tutoringSession?.status === "COMPLETED") {
       return NextResponse.json({
         success: true,
         action,
@@ -170,10 +215,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       });
     }
 
-    // A lesson can only be completed after it has actually entered the live
-    // state. This prevents a forged direct API request from completing a
-    // future booking before either participant joins the classroom.
-    if (booking.status !== "IN_PROGRESS") {
+    if (booking.tutoringSession?.status !== "IN_PROGRESS") {
       return NextResponse.json(
         {
           error:
@@ -183,19 +225,37 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
+    // A tutor ending the room alone must not create a completed lesson.
+    // The learner's classroom connection records learnerAttendance.
+    // Once the learner has attended, the tutor may end the lesson even if
+    // the learner has already disconnected.
+    if (!booking.tutoringSession.learnerAttendance) {
+      return NextResponse.json(
+        {
+          error:
+            "The learner has not been recorded as attending this lesson, so it cannot be completed.",
+        },
+        { status: 409 },
+      );
+    }
+
     const updated = await prisma.$transaction(async (tx) => {
-      const result = await tx.tutoringBooking.updateMany({
+      const session = await tx.tutoringSession.updateMany({
         where: {
-          id: booking.id,
+          bookingId: booking.id,
           status: "IN_PROGRESS",
         },
-        data: { status: "COMPLETED" },
+        data: {
+          status: "COMPLETED",
+          endedAt: new Date(),
+          educatorAttendance: true,
+        },
       });
 
-      if (result.count === 0) {
-        const current = await tx.tutoringBooking.findUnique({
-          where: { id: booking.id },
-          select: { status: true },
+      if (session.count === 0) {
+        const current = await tx.tutoringSession.findUnique({
+          where: { bookingId: booking.id },
+          select: { id: true, status: true },
         });
 
         if (current?.status === "COMPLETED") {
@@ -205,15 +265,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
         throw new Error("SESSION_STATE_CHANGED");
       }
 
-      if (booking.appointmentId) {
-        await tx.appointment.updateMany({
-          where: {
-            id: booking.appointmentId,
-            status: { not: "Completed" },
-          },
-          data: { status: "Completed" },
-        });
-      }
+      await tx.booking.updateMany({
+        where: {
+          id: booking.id,
+          status: "Scheduled",
+        },
+        data: {
+          status: "Completed",
+        },
+      });
 
       return { status: "COMPLETED" as const, alreadyCompleted: false };
     });
@@ -225,6 +285,36 @@ export async function POST(request: NextRequest, context: RouteContext) {
       alreadyCompleted: updated.alreadyCompleted,
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+
+    if (message === "SESSION_COMPLETED") {
+      return NextResponse.json(
+        { error: "This tutoring session has already been completed." },
+        { status: 409 },
+      );
+    }
+
+    if (message === "SESSION_CANCELLED") {
+      return NextResponse.json(
+        { error: "This tutoring session has been cancelled." },
+        { status: 409 },
+      );
+    }
+
+    if (message === "SESSION_NO_SHOW") {
+  return NextResponse.json(
+    { error: "This tutoring session was recorded as a no-show." },
+    { status: 409 },
+  );
+}
+
+    if (message === "SESSION_STATE_CHANGED") {
+      return NextResponse.json(
+        { error: "The tutoring session changed state. Please refresh." },
+        { status: 409 },
+      );
+    }
+
     console.error("POST /api/tutoring/sessions/[id]/lifecycle error:", error);
 
     return NextResponse.json(

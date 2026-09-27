@@ -11,180 +11,149 @@ type Context = {
 };
 
 async function getAuthenticatedUser() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const requestHeaders = await headers();
 
-  return session?.user ?? null;
+  /*
+   * A database connection can occasionally be terminated while
+   * Better Auth is reading the current session. Retry once so a
+   * transient connection termination does not turn a valid request
+   * into a 500 response.
+   */
+  try {
+    const session = await auth.api.getSession({
+      headers: requestHeaders,
+    });
+
+    return session?.user ?? null;
+  } catch (error) {
+    console.warn(
+      "Whiteboard session lookup failed; retrying once:",
+      error,
+    );
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 150);
+    });
+
+    const session = await auth.api.getSession({
+      headers: requestHeaders,
+    });
+
+    return session?.user ?? null;
+  }
 }
 
-async function getAuthorizedWhiteboard(whiteboardId: string, userId: string) {
-  const whiteboard = await prisma.whiteboard.findUnique({
+async function getAuthorizedWhiteboard(
+  whiteboardId: string,
+  userId: string,
+) {
+  /*
+   * Tutoring whiteboards are shared by both booking participants.
+   * The canonical tutoring whiteboard is stored with the student's
+   * userId, so checking only whiteboard.userId would incorrectly
+   * reject the tutor when saving the same shared board.
+   */
+  return prisma.whiteboard.findFirst({
     where: {
       id: whiteboardId,
-    },
-    include: {
-      appointment: {
-        select: {
-          id: true,
-          learnerId: true,
-          educatorId: true,
-          status: true,
+      OR: [
+        {
+          userId,
         },
-      },
+        {
+          booking: {
+            OR: [
+              { studentId: userId },
+              { educatorId: userId },
+            ],
+          },
+        },
+        {
+          appointment: {
+            educatorId: userId,
+          },
+        },
+      ],
     },
   });
-
-  if (!whiteboard) {
-    return {
-      whiteboard: null,
-      authorized: false,
-    };
-  }
-
-  /*
-   * Standalone boards remain private.
-   */
-  if (whiteboard.isStandalone) {
-    return {
-      whiteboard,
-      authorized: whiteboard.userId === userId,
-    };
-  }
-
-  /*
-   * Appointment boards are shared between
-   * the two authorized tutoring participants.
-   */
-  if (!whiteboard.appointment) {
-    return {
-      whiteboard,
-      authorized: whiteboard.userId === userId,
-    };
-  }
-
-  const appointment = whiteboard.appointment;
-
-  const authorized =
-    appointment.learnerId === userId || appointment.educatorId === userId;
-
-  return {
-    whiteboard,
-    authorized,
-  };
 }
 
-export async function GET(_request: NextRequest, context: Context) {
+export async function GET(
+  _request: NextRequest,
+  context: Context,
+) {
   try {
     const user = await getAuthenticatedUser();
 
     if (!user?.id) {
       return NextResponse.json(
-        {
-          error: "Unauthorized",
-        },
-        {
-          status: 401,
-        },
+        { error: "Unauthorized" },
+        { status: 401 },
       );
     }
 
     const { whiteboardId } = await context.params;
 
-    const result = await getAuthorizedWhiteboard(whiteboardId, user.id);
+    const whiteboard = await getAuthorizedWhiteboard(
+      whiteboardId,
+      user.id,
+    );
 
-    if (!result.whiteboard) {
+    if (!whiteboard) {
       return NextResponse.json(
-        {
-          error: "Whiteboard not found.",
-        },
-        {
-          status: 404,
-        },
+        { error: "Whiteboard not found" },
+        { status: 404 },
       );
     }
 
-    if (!result.authorized) {
-      return NextResponse.json(
-        {
-          error: "You are not authorized to access this whiteboard.",
-        },
-        {
-          status: 403,
-        },
-      );
-    }
-
-    return NextResponse.json({
-      whiteboard: result.whiteboard,
-    });
+    return NextResponse.json({ whiteboard });
   } catch (error) {
-    console.error("GET /api/whiteboards/[whiteboardId] error:", error);
+    console.error(
+      "GET /api/whiteboards/[whiteboardId] error:",
+      error,
+    );
 
     return NextResponse.json(
-      {
-        error: "Failed to retrieve whiteboard.",
-      },
-      {
-        status: 500,
-      },
+      { error: "Failed to retrieve whiteboard" },
+      { status: 500 },
     );
   }
 }
 
-export async function PUT(request: NextRequest, context: Context) {
+export async function PUT(
+  request: NextRequest,
+  context: Context,
+) {
   try {
     const user = await getAuthenticatedUser();
 
     if (!user?.id) {
       return NextResponse.json(
-        {
-          error: "Unauthorized",
-        },
-        {
-          status: 401,
-        },
+        { error: "Unauthorized" },
+        { status: 401 },
       );
     }
 
     const { whiteboardId } = await context.params;
-
     const body = await request.json();
-
     const { name, data } = body;
 
     if (data === undefined || data === null) {
       return NextResponse.json(
-        {
-          error: "Whiteboard data is required.",
-        },
-        {
-          status: 400,
-        },
+        { error: "Whiteboard data is required" },
+        { status: 400 },
       );
     }
 
-    const result = await getAuthorizedWhiteboard(whiteboardId, user.id);
+    const existingWhiteboard = await getAuthorizedWhiteboard(
+      whiteboardId,
+      user.id,
+    );
 
-    if (!result.whiteboard) {
+    if (!existingWhiteboard) {
       return NextResponse.json(
-        {
-          error: "Whiteboard not found.",
-        },
-        {
-          status: 404,
-        },
-      );
-    }
-
-    if (!result.authorized) {
-      return NextResponse.json(
-        {
-          error: "You are not authorized to modify this whiteboard.",
-        },
-        {
-          status: 403,
-        },
+        { error: "Whiteboard not found" },
+        { status: 404 },
       );
     }
 
@@ -196,25 +165,21 @@ export async function PUT(request: NextRequest, context: Context) {
         name:
           typeof name === "string" && name.trim()
             ? name.trim()
-            : result.whiteboard.name,
-
+            : existingWhiteboard.name,
         data,
       },
     });
 
-    return NextResponse.json({
-      whiteboard,
-    });
+    return NextResponse.json({ whiteboard });
   } catch (error) {
-    console.error("PUT /api/whiteboards/[whiteboardId] error:", error);
+    console.error(
+      "PUT /api/whiteboards/[whiteboardId] error:",
+      error,
+    );
 
     return NextResponse.json(
-      {
-        error: "Failed to save whiteboard.",
-      },
-      {
-        status: 500,
-      },
+      { error: "Failed to save whiteboard" },
+      { status: 500 },
     );
   }
 }

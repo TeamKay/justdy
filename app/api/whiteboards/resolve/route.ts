@@ -3,10 +3,12 @@ import { headers } from "next/headers";
 
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { getVerifiedTutor } from "@/lib/tutoring/authorization";
 
 type ResolveRequest = {
-  mode?: "standalone" | "appointment";
+  mode?: "standalone" | "appointment" | "booking";
   appointmentId?: string;
+  bookingId?: string;
 };
 
 const EMPTY_WHITEBOARD_DATA = {
@@ -44,12 +46,14 @@ export async function POST(request: NextRequest) {
 
     const appointmentId =
       typeof body.appointmentId === "string" ? body.appointmentId.trim() : "";
+    const bookingId =
+      typeof body.bookingId === "string" ? body.bookingId.trim() : "";
 
-    if (mode !== "standalone" && mode !== "appointment") {
+    if (mode !== "standalone" && mode !== "appointment" && mode !== "booking") {
       return NextResponse.json(
         {
           error:
-            'Invalid whiteboard mode. Expected "standalone" or "appointment".',
+            'Invalid whiteboard mode. Expected "standalone", "appointment", or "booking".',
         },
         {
           status: 400,
@@ -92,6 +96,104 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         whiteboard,
       });
+    }
+
+
+    /*
+     * ============================================================
+     * CANONICAL BOOKING WHITEBOARD
+     * ============================================================
+     *
+     * New live tutoring sessions are keyed by Booking, not Appointment.
+     */
+
+    if (mode === "booking") {
+      if (!bookingId) {
+        return NextResponse.json(
+          { error: "Booking ID is required." },
+          { status: 400 },
+        );
+      }
+
+      const booking = await prisma.booking.findUnique({
+        where: { id: bookingId },
+        select: {
+          id: true,
+          studentId: true,
+          educatorId: true,
+          status: true,
+        },
+      });
+
+      if (!booking) {
+        return NextResponse.json(
+          { error: "Booking not found." },
+          { status: 404 },
+        );
+      }
+
+      const isLearner = booking.studentId === user.id;
+      const isTutor = booking.educatorId === user.id;
+
+      if (!isLearner && !isTutor) {
+        return NextResponse.json(
+          { error: "You are not authorized to access this session whiteboard." },
+          { status: 403 },
+        );
+      }
+
+      if (isTutor && !(await getVerifiedTutor(user.id))) {
+        return NextResponse.json(
+          { error: "Your tutor verification is not currently active." },
+          { status: 403 },
+        );
+      }
+
+      if (booking.status === "Cancelled" || booking.status === "NoShow") {
+        return NextResponse.json(
+          { error: "This tutoring booking is no longer active." },
+          { status: 409 },
+        );
+      }
+
+      let whiteboard = await prisma.whiteboard.findUnique({
+        where: { bookingId: booking.id },
+      });
+
+      if (whiteboard) {
+        return NextResponse.json({ whiteboard });
+      }
+
+      try {
+        whiteboard = await prisma.whiteboard.create({
+          data: {
+            userId: user.id,
+            bookingId: booking.id,
+            isStandalone: false,
+            name: "Session Whiteboard",
+            data: EMPTY_WHITEBOARD_DATA,
+          },
+        });
+
+        return NextResponse.json({ whiteboard }, { status: 201 });
+      } catch (error: unknown) {
+        if (
+          typeof error === "object" &&
+          error !== null &&
+          "code" in error &&
+          error.code === "P2002"
+        ) {
+          const existing = await prisma.whiteboard.findUnique({
+            where: { bookingId: booking.id },
+          });
+
+          if (existing) {
+            return NextResponse.json({ whiteboard: existing });
+          }
+        }
+
+        throw error;
+      }
     }
 
     /*
@@ -154,6 +256,13 @@ export async function POST(request: NextRequest) {
         {
           status: 403,
         },
+      );
+    }
+
+    if (appointment.educatorId === user.id && !(await getVerifiedTutor(user.id))) {
+      return NextResponse.json(
+        { error: "Your tutor verification is not currently active." },
+        { status: 403 },
       );
     }
 

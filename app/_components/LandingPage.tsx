@@ -1,442 +1,602 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import {
   ArrowRight,
   BookOpen,
-  Brain,
-  Check,
-  ChevronRight,
-  FileText,
+  Calculator,
   GraduationCap,
   Layers3,
   MessageSquareText,
   Sparkles,
   Users,
   Video,
-  WandSparkles,
-  Zap,
 } from "lucide-react";
+import { Instrument_Serif, Inter } from "next/font/google";
 import MarketingNavbar from "./MarketingNavbar";
 import MarketingFooter from "./MarketingFooter";
-import { AuthModal } from "@/app/(auth)/AuthModal";
+import { JustdyChatbot } from "@/app/_components/chat/JustdyChatbot";
+import Image from "next/image";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
+
+const instrumentSerif = Instrument_Serif({
+  weight: "400",
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  variable: "--font-instrument-serif",
+});
 
 const audiences = [
   {
     icon: GraduationCap,
-    title: "Students",
+    title: "Improve Math Skills",
     description:
-      "Understand difficult topics, practice with personalized resources, and get help when you need it.",
-  },
-  {
-    icon: BookOpen,
-    title: "Teachers",
-    description:
-      "Create worksheets, lessons, quizzes, activities, and other teaching resources with AI.",
+      "Build stronger mathematical skills through personalized instruction, guided practice, and consistent support.",
   },
   {
     icon: Users,
-    title: "Parents",
+    title: "Catch Up & Fill Learning Gaps",
     description:
-      "Give children better learning support with engaging resources and access to trusted tutoring.",
-  },
-  {
-    icon: Layers3,
-    title: "Schools",
-    description:
-      "Bring AI-powered content creation, learning resources, and tutoring into one ecosystem.",
-  },
-];
-
-const aiTools = [
-  {
-    icon: FileText,
-    title: "Worksheets",
-    description: "Generate polished, classroom-ready worksheets in minutes.",
-    href: "/create/worksheet",
+      "Identify learning gaps and give your child the focused support needed to strengthen foundational concepts.",
   },
   {
     icon: BookOpen,
-    title: "Lessons",
-    description: "Turn ideas and topics into structured learning experiences.",
-    href: "/create/lesson",
+    title: "Prepare for Tests & Exams",
+    description:
+      "Prepare with targeted review, guided problem solving, and practice designed around upcoming assessments.",
   },
   {
-    icon: Brain,
-    title: "Quizzes",
+    icon: Layers3,
+    title: "Build Confidence",
     description:
-      "Create questions, practice activities, and assessments with AI.",
-    href: "/create/quiz",
+      "Develop the confidence to approach challenging mathematics independently and understand the reasoning behind each solution.",
+  },
+];
+
+const tutoringFeatures = [
+  {
+    icon: Video,
+    title: "Live video sessions",
+    description:
+      "Learn face-to-face with a tutor in a focused online math session.",
+    href: "/tutoring",
   },
   {
-    icon: WandSparkles,
-    title: "More with AI",
+    icon: Calculator,
+    title: "Step-by-step math",
     description:
-      "Create videos, images, documents, audio, and other learning content.",
-    href: "/dashboard",
+      "Work through problems together instead of only receiving an answer.",
+    href: "/tutoring",
+  },
+  {
+    icon: MessageSquareText,
+    title: "Ask questions live",
+    description:
+      "Get immediate explanations when a concept, formula, or problem feels confusing.",
+    href: "/tutoring",
+  },
+  {
+    icon: BookOpen,
+    title: "Practice & review",
+    description:
+      "Use guided practice to reinforce what was covered during the session.",
+    href: "/tutoring",
   },
 ];
 
 const steps = [
   {
     number: "01",
-    title: "Tell Justdy what you need",
+    title: "Choose your math support",
     description:
-      "Describe a topic, grade level, learning objective, lesson idea, or resource you want to create.",
+      "Tell us the grade level, topic, homework, exam, or specific math problem you want help with.",
   },
   {
     number: "02",
-    title: "AI builds it for you",
+    title: "Meet your tutor online",
     description:
-      "Justdy transforms your idea into useful educational content that you can review and refine.",
+      "Join a live video session where you can ask questions and work through mathematics together.",
   },
   {
     number: "03",
-    title: "Teach, learn, or share",
+    title: "Solve it together",
     description:
-      "Use your creation immediately, save it to your library, or turn to a tutor for live support.",
+      "Learn the reasoning step by step, practice with guidance, and build confidence for the next problem.",
   },
 ];
 
-export default function LandingPage() {
-  const [authOpen, setAuthOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<"signin" | "signup">("signup");
+const showcaseGroups = [
+  {
+    title: "1-on-1 Math Tutoring",
+    href: "/tutoring",
+    media: [
+      {
+        type: "image" as const,
+        src:
+          "https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=900&q=85",
+        label: "One-on-one online math tutoring",
+      },
+    ],
+  },
+  {
+    title: "Live Problem Solving",
+    href: "/tutoring",
+    media: [
+      {
+        type: "image" as const,
+        src:
+          "https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=900&q=85",
+        label: "Math problem solving",
+      },
+    ],
+  },
+  {
+    title: "Shared Whiteboard",
+    href: "/tutoring",
+    media: [
+      {
+        type: "image" as const,
+        src:
+          "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=900&q=85",
+        label: "Collaborative online learning",
+      },
+    ],
+  },
+  {
+    title: "Homework Support",
+    href: "/tutoring",
+    media: [
+      {
+        type: "image" as const,
+        src:
+          "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=900&q=85",
+        label: "Homework support",
+      },
+    ],
+  },
+  {
+    title: "Exam Preparation",
+    href: "/tutoring",
+    media: [
+      {
+        type: "image" as const,
+        src:
+          "https://images.unsplash.com/photo-1453738773917-9c3eff1db985?auto=format&fit=crop&w=900&q=85",
+        label: "Math exam preparation",
+      },
+    ],
+  },
+] as const;
 
-  const openSignup = () => {
-    setAuthMode("signup");
-    setAuthOpen(true);
-  };
+
+/* ============================================================
+   STRIPE-INSPIRED COLOR BACKGROUND
+   ============================================================ */
+
+function StripeColorBackground() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+    >
+      {/* Large ambient color fields */}
+      <div className="absolute left-[15%] top-[-18%] h-[520px] w-[760px] rounded-full bg-blue-400/20 blur-[120px]" />
+      <div className="absolute right-[-8%] top-[-5%] h-[620px] w-[620px] rounded-full bg-fuchsia-400/20 blur-[130px]" />
+      <div className="absolute right-[12%] top-[20%] h-[520px] w-[520px] rounded-full bg-orange-400/20 blur-[120px]" />
+      {/* Flowing ribbon */}
+      <svg
+        className="absolute -right-[14%] -top-[18%] h-[115%] w-[88%] min-w-[900px]"
+        viewBox="0 0 1000 900"
+        fill="none"
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <linearGradient
+            id="stripeGradientOne"
+            x1="50"
+            y1="100"
+            x2="900"
+            y2="700"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop offset="0%" stopColor="#60a5fa" />
+            <stop offset="28%" stopColor="#818cf8" />
+            <stop offset="55%" stopColor="#c084fc" />
+            <stop offset="78%" stopColor="#ec4899" />
+            <stop offset="100%" stopColor="#f97316" />
+          </linearGradient>
+
+          <linearGradient
+            id="stripeGradientTwo"
+            x1="100"
+            y1="0"
+            x2="950"
+            y2="800"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop offset="0%" stopColor="#93c5fd" />
+            <stop offset="25%" stopColor="#a78bfa" />
+            <stop offset="50%" stopColor="#d946ef" />
+            <stop offset="72%" stopColor="#f472b6" />
+            <stop offset="100%" stopColor="#fb923c" />
+          </linearGradient>
+
+          <filter
+            id="stripeBlur"
+            x="-30%"
+            y="-30%"
+            width="160%"
+            height="160%"
+          >
+            <feGaussianBlur stdDeviation="12" />
+          </filter>
+        </defs>
+
+        {/* Soft outer ribbon */}
+        <path
+          d="M 130 -80
+             C 300 120, 470 150, 620 310
+             C 780 480, 830 640, 1100 830"
+          stroke="url(#stripeGradientOne)"
+          strokeWidth="170"
+          strokeLinecap="round"
+          opacity="0.22"
+          filter="url(#stripeBlur)"
+        />
+
+        {/* Main colorful ribbon */}
+        <path
+          d="M 80 -100
+             C 280 110, 430 140, 600 300
+             C 790 475, 820 625, 1110 850"
+          stroke="url(#stripeGradientTwo)"
+          strokeWidth="115"
+          strokeLinecap="round"
+          opacity="0.68"
+        />
+
+        {/* Inner ribbon highlight */}
+        <path
+          d="M 90 -110
+             C 285 105, 440 145, 605 295
+             C 790 465, 830 615, 1110 845"
+          stroke="url(#stripeGradientOne)"
+          strokeWidth="34"
+          strokeLinecap="round"
+          opacity="0.58"
+        />
+
+        {/* Secondary flowing ribbon */}
+        <path
+          d="M 360 -120
+             C 520 80, 620 170, 735 330
+             C 850 490, 850 630, 1030 780"
+          stroke="url(#stripeGradientTwo)"
+          strokeWidth="44"
+          strokeLinecap="round"
+          opacity="0.38"
+        />
+      </svg>
+
+      {/* Keep left side clean for text */}
+      <div className="absolute inset-0 bg-linear-to-r from-background via-background/90 via-[52%] to-transparent" />
+      {/* Bottom fade */}
+      <div className="absolute inset-x-0 bottom-0 h-56 bg-linear-to-t from-background via-background/50 to-transparent" />
+    </div>
+  );
+}
+
+
+
+
+
+/* ============================================================
+   SHOWCASE CARD
+   ============================================================ */
+
+function ShowcaseMediaCard({
+  group,
+}: {
+  group: (typeof showcaseGroups)[number];
+}) {
+  const media = group.media[0];
+
+  if (!media) return null;
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
+    <Link
+      href={group.href}
+      className="group relative aspect-9/16 w-full max-w-46.25 justify-self-center overflow-hidden rounded-xl text-left shadow-[0_22px_65px_rgba(15,23,42,0.12)] transition duration-500 hover:-translate-y-1.5 hover:shadow-[0_30px_85px_rgba(15,23,42,0.18)]"
+      aria-label={`Open ${group.title}`}
+    >
+      <div className="absolute inset-0 overflow-hidden bg-background">
+        <Image
+          key={media.src}
+          src={media.src}
+          alt={media.label}
+          width={120}
+          height={120}
+          className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
+        />
+      </div>
+
+      <div className="absolute inset-x-0 bottom-0 z-10 bg-linear-to-t from-slate-950/90 via-slate-950/55 to-transparent px-4 pb-4 pt-20">
+        <h2 className="text-sm font-semibold leading-tight tracking-[-0.02em] text-white">
+          {group.title}
+        </h2>
+      </div>
+    </Link>
+  );
+}
+
+
+/* ============================================================
+   LANDING PAGE
+   ============================================================ */
+
+export default function LandingPage() {
+  return (
+    <div
+      className={`${inter.variable} ${instrumentSerif.variable} min-h-screen overflow-x-hidden bg-background text-foreground`}
+      style={{ fontFamily: "var(--font-inter), sans-serif" }}
+    >
       <MarketingNavbar />
 
-      <main>
-        {/* HERO */}
-        <section className="relative overflow-hidden border-b border-border bg-foreground">
-          <div className="absolute inset-0">
-            <div className="absolute left-[-10%] top-[-30%] h-[600px] w-[600px] rounded-full bg-indigo-500/20 blur-3xl" />
-            <div className="absolute right-[-10%] top-[5%] h-[500px] w-[500px] rounded-full bg-cyan-400/10 blur-3xl" />
-            <div className="absolute bottom-[-30%] left-[35%] h-[500px] w-[500px] rounded-full bg-violet-500/10 blur-3xl" />
-          </div>
+      <main className="relative overflow-hidden">
 
-          <div className="relative mx-auto max-w-7xl px-6 pb-20 pt-16 sm:px-8 lg:px-12 lg:pb-28 lg:pt-24">
-            <div className="mx-auto max-w-4xl text-center">
-              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/10 bg-background/[0.06] px-4py-2 text-sm font-medium text-slate-200 backdrop-blur">
-                <Sparkles className="h-4 w-4 text-cyan-300" />
-                AI-powered learning and development
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        {/* Global subtle background */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.025),transparent_42%)]"
+        />
+
+        {/* ======================================================
+            HERO
+            ====================================================== */}
+
+        <section className="relative overflow-hidden border-b border-black/6 bg-background">
+
+          <StripeColorBackground />
+
+          <div className="relative z-10 mx-auto max-w-6xl px-5 pb-24 pt-10 sm:px-8 lg:px-12 lg:pb-28 lg:pt-14">
+
+            {/* Hero copy */}
+            <div className="mx-auto max-w-5xl text-center">
+
+              {/* Eyebrow */}
+              <div className="mx-auto inline-flex items-center gap-2 rounded-xl border border-black/8 bg-cyan-500 px-3.5 py-1.5 text-xs font-medium text-slate-600 shadow-sm backdrop-blur-xl">
+                <span className="h-1.5 w-1.5 rounded-xl bg-amber-400 shadow-[0_0_10px_rgba(16,185,129,0.55)]" />
+                Live Math Tutoring
               </div>
 
-              <h1 className="text-balance text-5xl font-semibold tracking-[-0.04em] text-background sm:text-6xl lg:text-7xl">
-                Build better learning
-                <span className="block bg-gradient-to-r from-cyan-300 via-indigo-300 to-violet-300 bg-clip-text text-transparent">
-                  with AI and expert tutoring.
-                </span>
-              </h1>
+            {/* Headline */}
+            <h1
+              className="mx-auto mt-8 max-w-6xl text-balance text-[3.0rem] font-bold leading-[0.9] tracking-[-0.07em] text-slate-950 sm:text-[5rem] lg:text-[3rem]"
+            >
+              Personalized Math{" "}
+              <span
+                className="font-normal italic"
+                style={{
+                  fontFamily: "var(--font-instrument-serif), Georgia, serif",
+                }}
+              >
+                Learning
+              </span>
+              <br />
+              That Works.
+            </h1>
 
-              <p className="mx-auto mt-7 max-w-2xl text-lg leading-8 text-slate-300 sm:text-xl">
-                Justdy brings AI-powered educational creation, learning
-                resources, and live tutoring together in one modern learning
-                ecosystem.
-              </p>
+            {/* Description */}
+            <p className="mx-auto mt-5 max-w-3xl text-base leading-7 text-slate-500 sm:text-md sm:leading-5">
+              Structured, one-on-one mathematics instruction designed to
+              strengthen skills, improve problem-solving, and build lasting
+              confidence.
+            </p>
 
-              <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={openSignup}
-                  className="group inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-background px-6 text-sm font-semibold text-foreground shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:bg-background/90"
-                >
-                  Start creating with AI
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                </button>
+              {/* CTA */}
+              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
 
                 <Link
                   href="/tutoring"
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-white/15 bg-background/[0.06] px-6 text-sm font-semibold text-background backdrop-blur transition hover:bg-background/[0.1]"
+                  className="group inline-flex h-11 items-center justify-center gap-2 rounded-md bg-emerald-900 px-6 text-sm font-semibold text-white shadow-[0_14px_35px_rgba(79,70,229,0.22)] transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-950 hover:shadow-[0_18px_40px_rgba(79,70,229,0.28)]"
                 >
-                  <Video className="h-4 w-4" />
-                  Find a tutor
+                  Explore Services
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </Link>
-              </div>
 
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-muted-foreground">
-                <span className="inline-flex items-center gap-2">
-                  <Check className="h-4 w-4 text-cyan-300" />
-                  Create faster
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <Check className="h-4 w-4 text-cyan-300" />
-                  Learn smarter
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <Check className="h-4 w-4 text-cyan-300" />
-                  Get expert help
-                </span>
+                <Link
+                  href="/videos"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-emerald-900/20 bg-background px-6 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-xl transition hover:border-black/[0.14] hover:bg-white"
+                >
+                  <GraduationCap className="h-4 w-4 text-indigo-600" />
+                  Free Lessons
+                </Link>
+
               </div>
             </div>
 
-            {/* PRODUCT PREVIEW */}
-            <div className="mx-auto mt-16 max-w-6xl">
-              <div className="rounded-3xl border border-white/10 bg-background/[0.06] p-2 shadow-2xl shadow-black/30 backdrop-blur">
-                <div className="overflow-hidden rounded-[22px] border border-border/10 bg-slate-900">
-                  <div className="flex h-12 items-center border-b border-white/10 px-4">
-                    <div className="flex gap-1.5">
-                      <span className="h-2.5 w-2.5 rounded-full bg-background/20" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-background/20" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-background/20" />
-                    </div>
 
-                    <div className="mx-auto rounded-lg border border-white/10 bg-background/[0.04] px-4 py-1 text-xs text-muted-foreground">
-                      justdy.com
-                    </div>
+            {/* LIVE TUTORING SHOWCASE */}
+            <div className="relative mx-auto mt-12 max-w-245 sm:mt-14">
 
-                    <div className="w-10" />
-                  </div>
+              <div className="grid grid-cols-2 items-start justify-center gap-3 sm:gap-4 md:grid-cols-5">
+                {showcaseGroups.map((group) => (
+                  <ShowcaseMediaCard
+                    key={group.title}
+                    group={group}
+                  />
+                ))}
+              </div>
 
-                  <div className="grid min-h-[380px] lg:grid-cols-[220px_1fr]">
-                    <div className="hidden border-r border-white/10 bg-background/[0.025] p-5 lg:block">
-                      <div className="mb-7 flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-background text-foreground">
-                          <Sparkles className="h-4 w-4" />
-                        </div>
-                        <span className="font-semibold text-background">
-                          Justdy
-                        </span>
-                      </div>
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-slate-500">
 
-                      <div className="space-y-2">
-                        {["AI Workspace", "Create", "Library", "Projects"].map(
-                          (item, index) => (
-                            <div
-                              key={item}
-                              className={`rounded-lg px-3 py-2 text-sm ${
-                                index === 0
-                                  ? "bg-background/10 text-background"
-                                  : "text-muted-foreground"
-                              }`}
-                            >
-                              {item}
-                            </div>
-                          ),
-                        )}
-                      </div>
-                    </div>
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                  Live tutoring
+                </span>
 
-                    <div className="p-6 sm:p-8">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300">
-                            AI Workspace
-                          </p>
-                          <h2 className="mt-2 text-2xl font-semibold text-background">
-                            What would you like to create?
-                          </h2>
-                        </div>
+                <span className="hidden h-3 w-px bg-black/10 sm:block" />
 
-                        <div className="hidden rounded-xl border border-white/10 bg-background/[0.04] px-3 py-2 text-xs text-muted-foreground sm:block">
-                          AI Copilot
-                        </div>
-                      </div>
+                <span>
+                  Live video · Math tutoring · Whiteboard · Practice · Exam prep
+                </span>
 
-                      <div className="mt-8 rounded-2xl border border-white/10 bg-background/[0.035] p-4">
-                        <div className="flex gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-brfrom-cyan-400 to-indigo-500 text-background">
-                            <Sparkles className="h-5 w-5" />
-                          </div>
-
-                          <div className="flex-1">
-                            <p className="text-sm leading-6 text-slate-300">
-                              Create a Grade 4 mathematics worksheet about
-                              fractions with examples, practice questions, and
-                              an answer key.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4">
-                          <div className="flex gap-2">
-                            <span className="rounded-lg bg-background/5 px-3 py-1.5 text-xs text-muted-foreground">
-                              Grade 4
-                            </span>
-                            <span className="rounded-lg bg-background/5 px-3 py-1.5 text-xs text-muted-foreground">
-                              Mathematics
-                            </span>
-                          </div>
-
-                          <div className="rounded-lg bg-background px-4 py-2 text-xs font-semibold text-foreground">
-                            Generate
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                        {[
-                          ["Worksheet", "Create"],
-                          ["Lesson", "Build"],
-                          ["Quiz", "Generate"],
-                        ].map(([title, action]) => (
-                          <div
-                            key={title}
-                            className="rounded-xl border border-white/10 bg-background/[0.025] p-4"
-                          >
-                            <div className="text-sm font-medium text-background">
-                              {title}
-                            </div>
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              {action} with AI
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
+
           </div>
         </section>
 
-        {/* POSITIONING */}
-        <section className="border-b border-border bg-background">
-          <div className="mx-auto max-w-7xl px-6 py-16 sm:px-8 lg:px-12">
-            <div className="grid gap-10 lg:grid-cols-[1fr_2fr] lg:items-center">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-600">
-                  One ecosystem
-                </p>
-                <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                  Everything you need to move learning forward.
-                </h2>
-              </div>
 
-              <p className="max-w-3xl text-lg leading-8 text-muted-foreground">
-                From creating educational content with AI to finding a tutor for
-                one-on-one support, Justdy connects the tools people need to
-                create, teach, learn, practice, and grow.
-              </p>
-            </div>
-          </div>
-        </section>
+        {/* ======================================================
+            AUDIENCES
+            ====================================================== */}
 
-        {/* AUDIENCES */}
-        <section className="bg-muted/40">
-          <div className="mx-auto max-w-7xl px-6 py-20 sm:px-8 lg:px-12">
+        <section className="relative border-b border-black/6 bg-background">
+          <div className="relative z-10 mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
+
             <div className="mx-auto max-w-2xl text-center">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-600">
-                Built for education
-              </p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                One platform. Different learning needs.
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-emerald-950 sm:text-4xl">
+                Math support for every learning moment.
               </h2>
-              <p className="mt-4 text-lg leading-8 text-muted-foreground">
-                Justdy supports the people who make learning happen every day.
+
+              <p className="mt-4 text-lg leading-6 text-slate-600">
+                Whether the need is homework help, concept review, exam
+                preparation, or extra practice, live tutoring gives learners a
+                place to ask, solve, and understand.
               </p>
             </div>
 
             <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+
               {audiences.map((audience) => {
                 const Icon = audience.icon;
 
                 return (
                   <div
                     key={audience.title}
-                    className="group rounded-2xl border border-border bg-background p-6 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg"
+                    className="group rounded-2xl border border-black/[0.07] bg-white p-6 shadow-[0_18px_55px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-[0_24px_65px_rgba(15,23,42,0.10)]"
                   >
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-foreground text-background">
+
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-inset ring-indigo-100">
                       <Icon className="h-5 w-5" />
                     </div>
 
-                    <h3 className="mt-5 text-lg font-semibold text-foreground">
+                    <h3 className="mt-5 text-lg font-semibold text-slate-950">
                       {audience.title}
                     </h3>
 
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
                       {audience.description}
                     </p>
+
                   </div>
                 );
               })}
+
             </div>
           </div>
         </section>
 
-        {/* AI CREATION */}
-        <section className="bg-background">
-          <div className="mx-auto max-w-7xl px-6 py-20 sm:px-8 lg:px-12">
+
+        {/* ======================================================
+            TUTORING FEATURES
+            ====================================================== */}
+
+        <section className="relative bg-background">
+
+          <div className="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
+
             <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+
               <div>
-                <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-foreground text-background">
+
+                <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-inset ring-indigo-100">
                   <Sparkles className="h-5 w-5" />
                 </div>
 
                 <p className="mt-6 text-sm font-semibold uppercase tracking-[0.18em] text-indigo-600">
-                  Justdy AI
+                  What you get
                 </p>
 
-                <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                  Turn an idea into an educational resource.
+                <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                  More than just an answer.
                 </h2>
 
-                <p className="mt-5 text-lg leading-8 text-muted-foreground">
-                  Stop starting from a blank page. Use AI to create useful
-                  educational materials faster, then refine them to fit your
-                  exact needs.
+                <p className="mt-5 text-lg leading-8 text-slate-600">
+                  A live session is built around understanding. Your tutor can
+                  explain the concept, demonstrate the steps, answer questions,
+                  and guide you through practice until the process makes sense.
                 </p>
 
                 <Link
-                  href="/dashboard"
-                  className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-foreground"
+                  href="/tutoring"
+                  className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 transition hover:text-indigo-700"
                 >
-                  Explore AI creation
+                  View 12-Week Program
                   <ArrowRight className="h-4 w-4" />
                 </Link>
+
               </div>
 
+
               <div className="grid gap-4 sm:grid-cols-2">
-                {aiTools.map((tool) => {
+
+                {tutoringFeatures.map((tool) => {
                   const Icon = tool.icon;
 
                   return (
                     <Link
                       key={tool.title}
                       href={tool.href}
-                      className="group rounded-2xl border border-border bg-background p-6 shadow-sm transition hover:-translate-y-1 hover:border-border hover:shadow-xl"
+                      className="group rounded-2xl border border-black/[0.07] bg-white p-6 shadow-[0_18px_55px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-[0_24px_65px_rgba(15,23,42,0.10)]"
                     >
+
                       <div className="flex items-start justify-between">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-foreground">
+
+                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                           <Icon className="h-5 w-5" />
                         </div>
 
-                        <ArrowRight className="h-4 w-4 text-slate-300 transition group-hover:translate-x-1 group-hover:text-muted-foreground" />
+                        <ArrowRight className="h-4 w-4 text-slate-300 transition group-hover:translate-x-1 group-hover:text-indigo-600" />
+
                       </div>
 
-                      <h3 className="mt-5 font-semibold text-foreground">
+                      <h3 className="mt-5 font-semibold text-slate-950">
                         {tool.title}
                       </h3>
 
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      <p className="mt-2 text-sm leading-6 text-slate-600">
                         {tool.description}
                       </p>
+
                     </Link>
                   );
                 })}
+
               </div>
             </div>
           </div>
         </section>
 
-        {/* HOW IT WORKS */}
-        <section className="border-y border-border bg-muted/40">
-          <div className="mx-auto max-w-7xl px-6 py-20 sm:px-8 lg:px-12">
+
+
+        {/* ======================================================
+            HOW IT WORKS
+            ====================================================== */}
+
+        <section className="relative border-y border-black/6 bg-background">
+          <div className="relative z-10 mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
             <div className="mx-auto max-w-2xl text-center">
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-600">
-                Simple workflow
+                How tutoring works
               </p>
-
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                From idea to impact in minutes.
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                From stuck to understanding.
               </h2>
             </div>
 
@@ -444,214 +604,242 @@ export default function LandingPage() {
               {steps.map((step) => (
                 <div
                   key={step.number}
-                  className="relative rounded-2xl border border-border bg-background p-7"
+                  className="relative rounded-2xl border border-black/[0.07] bg-white p-7 shadow-[0_18px_55px_rgba(15,23,42,0.05)]"
                 >
                   <span className="text-sm font-bold text-indigo-600">
                     {step.number}
                   </span>
-
-                  <h3 className="mt-5 text-xl font-semibold text-foreground">
+                  <h3 className="mt-5 text-xl font-semibold text-slate-950">
                     {step.title}
                   </h3>
-
-                  <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                  <p className="mt-3 text-sm leading-7 text-slate-600">
                     {step.description}
                   </p>
                 </div>
               ))}
+
             </div>
           </div>
         </section>
 
-        {/* TUTORING */}
+
+        {/* ======================================================
+            TUTORING
+            ====================================================== */}
+
         <section className="bg-background">
-          <div className="mx-auto max-w-7xl px-6 py-20 sm:px-8 lg:px-12">
-            <div className="overflow-hidden rounded-3xl bg-foreground">
+          <div className="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
+            <div className="overflow-hidden rounded-2xl border border-black/[0.07] bg-white shadow-[0_25px_80px_rgba(15,23,42,0.09)]">
               <div className="grid lg:grid-cols-2">
                 <div className="p-8 sm:p-12 lg:p-14">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-background text-foreground">
-                    <Video className="h-5 w-5" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                    <GraduationCap className="h-5 w-5" />
                   </div>
-
-                  <p className="mt-7 text-sm font-semibold uppercase tracking-[0.18em] text-cyan-300">
+                  <p className="mt-7 text-sm font-semibold uppercase tracking-[0.18em] text-indigo-600">
                     Live tutoring
                   </p>
-
-                  <h2 className="mt-3 text-3xl font-semibold tracking-tight text-background sm:text-4xl">
-                    When AI isn&apos;t enough, get a real person.
+                  <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                    Learn with a real person, in real time.
                   </h2>
-
-                  <p className="mt-5 text-lg leading-8 text-slate-300">
-                    Book a live one-on-one tutoring session with a verified
-                    tutor. Learn face-to-face with live video and a shared
-                    whiteboard.
+                  <p className="mt-5 text-lg leading-8 text-slate-600">
+                    Book a live one-on-one math tutoring session. Learn
+                    face-to-face with live video, guided problem solving, and a
+                    shared whiteboard.
                   </p>
-
                   <Link
                     href="/tutoring"
-                    className="mt-8 inline-flex h-11 items-center gap-2 rounded-xl bg-background px-5 text-sm font-semibold text-foreground transition hover:bg-muted"
+                    className="mt-8 inline-flex h-11 items-center gap-2 rounded-md bg-emerald-900 px-5 text-sm font-semibold text-white shadow-[0_10px_25px_rgba(79,70,229,0.16)] transition hover:bg-emerald-950"
                   >
-                    Book live tutoring
+                    Start a tutoring session
                     <ArrowRight className="h-4 w-4" />
                   </Link>
+
                 </div>
 
-                <div className="relative min-h-[330px] overflow-hidden border-t border-white/10 lg:border-l lg:border-t-0">
-                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 via-transparent to-cyan-400/10" />
 
-                  <div className="absolute left-8 top-10 w-[calc(100%-4rem)] rounded-2xl border border-white/10 bg-background/[0.06] p-5 shadow-2xl backdrop-blur">
+                <div className="relative min-h-82.5 overflow-hidden border-t border-black/[0.06] bg-slate-50 lg:border-l lg:border-t-0">
+                  <div className="absolute left-8 top-10 w-[calc(100%-4rem)] rounded-2xl border border-black/[0.07] bg-white p-5 shadow-[0_20px_55px_rgba(15,23,42,0.08)]">
+
                     <div className="flex items-center justify-between">
+
                       <div>
-                        <p className="text-xs text-muted-foreground">
+
+                        <p className="text-xs text-slate-400">
                           Upcoming session
                         </p>
-                        <p className="mt-1 font-semibold text-background">
-                          Mathematics · Grade 6
+
+                        <p className="mt-1 font-semibold text-slate-950">
+                          Mathematics · Live session
                         </p>
+
                       </div>
 
-                      <div className="rounded-lg bg-emerald-400/10 px-2.5 py-1.5 text-xs font-medium text-emerald-300">
+                      <div className="rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700">
                         Scheduled
                       </div>
+
                     </div>
+
 
                     <div className="mt-5 grid grid-cols-2 gap-3">
-                      <div className="rounded-xl border border-white/10 bg-black/10 p-4">
-                        <p className="text-xs text-muted-foreground">Tutor</p>
-                        <p className="mt-1 text-sm font-medium text-background">
-                          Verified tutor
+
+                      <div className="rounded-xl border border-black/[0.06] bg-slate-50 p-4">
+
+                        <p className="text-xs text-slate-400">
+                          Tutor
                         </p>
+
+                        <p className="mt-1 text-sm font-medium text-slate-900">
+                          Math tutor
+                        </p>
+
                       </div>
 
-                      <div className="rounded-xl border border-white/10 bg-black/10 p-4">
-                        <p className="text-xs text-muted-foreground">Format</p>
-                        <p className="mt-1 text-sm font-medium text-background">
-                          Live video
+
+                      <div className="rounded-xl border border-black/[0.06] bg-slate-50 p-4">
+
+                        <p className="text-xs text-slate-400">
+                          Format
                         </p>
+
+                        <p className="mt-1 text-sm font-medium text-slate-900">
+                          Online
+                        </p>
+
                       </div>
+
                     </div>
 
-                    <div className="mt-4 flex items-center gap-2 rounded-xl border border-white/10 bg-background/[0.03] px-4 py-3">
-                      <MessageSquareText className="h-4 w-4 text-cyan-300" />
-                      <span className="text-xs text-muted-foreground">
-                        Shared whiteboard available during the session
+
+                    <div className="mt-4 flex items-center gap-2 rounded-xl border border-black/[0.06] bg-white px-4 py-3">
+
+                      <MessageSquareText className="h-4 w-4 text-indigo-600" />
+
+                      <span className="text-xs text-slate-500">
+                        Work through math problems together in real time
                       </span>
+
                     </div>
+
                   </div>
 
-                  <div className="absolute bottom-[-35px] right-[-35px] h-40 w-40 rounded-full border border-cyan-300/10 bg-cyan-300/5 blur-2xl" />
                 </div>
+
               </div>
             </div>
           </div>
         </section>
 
-        {/* RESOURCE ECOSYSTEM */}
-        <section className="bg-muted/40">
-          <div className="mx-auto max-w-7xl px-6 py-20 sm:px-8 lg:px-12">
-            <div className="grid gap-12 lg:grid-cols-[1fr_1fr] lg:items-center">
+
+
+        {/* ======================================================
+            WHY CHOOSE US
+            ====================================================== */}
+
+        <section className="border-y border-black/[0.06] bg-background">
+          <div className="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
+            <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-600">
-                  Learning resources
+                  Why choose personalized tutoring
                 </p>
-
-                <h2 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                  Discover resources that make learning easier.
+                <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                  Learn the math, not just the answer.
                 </h2>
-
-                <p className="mt-5 text-lg leading-8 text-muted-foreground">
-                  Combine AI-powered creation with quality educational
-                  resources. Find materials for teaching, practice, revision,
-                  and continued learning.
+                <p className="mt-5 text-lg leading-8 text-slate-600">
+                  Students learn more effectively when they can ask questions,
+                  receive immediate feedback, and work through challenging
+                  problems with guidance.
                 </p>
-
-                <Link
-                  href="/products"
-                  className="mt-7 inline-flex items-center gap-2 text-sm font-semibold text-foreground"
-                >
-                  Explore resources
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+
                 {[
-                  {
-                    icon: FileText,
-                    title: "Worksheets",
-                    text: "Practice and printable resources",
-                  },
-                  {
-                    icon: BookOpen,
-                    title: "Learning content",
-                    text: "Resources for different needs",
-                  },
-                  {
-                    icon: Brain,
-                    title: "AI-generated",
-                    text: "Create exactly what you need",
-                  },
-                  {
-                    icon: Zap,
-                    title: "Instant access",
-                    text: "Get started without the wait",
-                  },
-                ].map((item) => {
-                  const Icon = item.icon;
+                  [
+                    "Personalized instruction",
+                    "Lessons adapt to the student's needs, pace, and learning goals.",
+                  ],
+                  [
+                    "Live 1-on-1 learning",
+                    "Focused sessions with direct interaction and real-time support.",
+                  ],
+                  [
+                    "Structured progress",
+                    "Consistent weekly instruction creates a clear path for improvement.",
+                  ],
+                  [
+                    "Real understanding",
+                    "Build reasoning and problem-solving skills instead of memorizing answers.",
+                  ],
+                ].map(([title, text]) => (
 
-                  return (
-                    <div
-                      key={item.title}
-                      className="rounded-2xl border border-border bg-background p-5 shadow-sm"
-                    >
-                      <Icon className="h-5 w-5 text-indigo-600" />
+                  <div
+                    key={title}
+                    className="rounded-2xl border border-black/[0.07] bg-white p-5 shadow-[0_12px_35px_rgba(15,23,42,0.04)]"
+                  >
 
-                      <h3 className="mt-4 text-sm font-semibold text-foreground">
-                        {item.title}
-                      </h3>
+                    <h3 className="text-sm font-semibold text-slate-950">
+                      {title}
+                    </h3>
 
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                        {item.text}
-                      </p>
-                    </div>
-                  );
-                })}
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      {text}
+                    </p>
+
+                  </div>
+
+                ))}
+
               </div>
+
             </div>
           </div>
         </section>
 
-        {/* FINAL CTA */}
-        <section className="bg-background">
-          <div className="mx-auto max-w-5xl px-6 py-24 text-center sm:px-8">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-foreground text-background shadow-lg">
-              <Sparkles className="h-6 w-6" />
+
+        {/* ======================================================
+            FINAL CTA
+            ====================================================== */}
+
+        <section className="relative overflow-hidden bg-background">
+
+          {/* Small decorative color fields */}
+          <div className="pointer-events-none absolute left-[15%] top-0 h-72 w-72 rounded-full bg-indigo-300/15 blur-[100px]" />
+          <div className="pointer-events-none absolute right-[15%] bottom-0 h-72 w-72 rounded-full bg-pink-300/15 blur-[100px]" />
+
+
+          <div className="relative z-10 mx-auto max-w-6xl px-6 py-28 text-center sm:px-8">
+
+            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3.5 py-1.5 text-xs font-medium text-indigo-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+              Personalized Math Support
             </div>
 
-            <h2 className="mt-7 text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
-              The future of learning starts with a better toolkit.
+            <h2 className="mt-7 text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+              Ready to build stronger math skills?
             </h2>
 
-            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-muted-foreground">
-              Create with AI, discover educational resources, and connect with
-              tutors—all through one learning ecosystem.
+            <p className="mx-auto mt-5 max-w-2xl text-sm leading-8 text-slate-600">
+              Give your child personalized instruction, consistent practice,
+              and the support they need to grow in mathematics.
             </p>
 
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <button
-                type="button"
-                onClick={openSignup}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-foreground px-6 text-sm font-semibold text-background transition hover:bg-foreground/90"
-              >
-                Start with Justdy
-                <ArrowRight className="h-4 w-4" />
-              </button>
 
               <Link
                 href="/tutoring"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-border bg-background px-6 text-sm font-semibold text-foreground transition hover:bg-muted/40"
+                className="group inline-flex h-12 items-center justify-center gap-2 rounded-md bg-emerald-900 px-6 text-sm font-semibold text-white shadow-[0_14px_35px_rgba(79,70,229,0.20)] transition hover:-translate-y-0.5 hover:bg-emerald-950"
               >
-                Explore tutoring
+                Explore Tutoring Programs
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+
+              <Link
+                href="/tutoring"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-md border border-black/9 bg-white px-6 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-black/[0.14] hover:bg-slate-50"
+              >
+                Find a math tutor
               </Link>
             </div>
           </div>
@@ -659,12 +847,7 @@ export default function LandingPage() {
       </main>
 
       <MarketingFooter />
-
-      <AuthModal
-        open={authOpen}
-        onOpenChange={setAuthOpen}
-        defaultMode={authMode}
-      />
+      <JustdyChatbot />
     </div>
   );
 }

@@ -3,26 +3,27 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+
 import {
-  Archive,
-  AudioLines,
-  BookOpen,
   ChevronDown,
-  ClipboardCheck,
-  Code2,
-  FileText,
-  FolderKanban,
-  ImageIcon,
-  LibraryBig,
-  MessageSquare,
-  MoreHorizontal,
-  Plus,
+  BarChart3,
+  CalendarDays,
+  CreditCard,
+  HelpCircle,
+  History,
+  LayoutDashboard,
+  LogOut,
+
   Search,
   Settings2,
-  SlidersHorizontal,
+
   Video,
   WalletCards,
-  WandSparkles,
+  GraduationCap,
+  SlidersHorizontal,
+
+  UserRound,
+  TrendingUp,
 } from "lucide-react";
 
 import {
@@ -37,113 +38,178 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "../ui/sidebar";
-
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-
 import { authClient } from "@/lib/auth-client";
 import MyLogo from "../Logo";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+
+
+
+export type NavCapability = "CAN_LEARN" | "CAN_TEACH";
 
 export interface NavItem {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
+  capability?: NavCapability;
 }
 
-/* ============================================================
-   MAIN NAVIGATION
-============================================================ */
+export interface NavigationGroup {
+  title: string;
+  items: NavItem[];
+}
 
-const mainNavigation: NavItem[] = [
+const adminNavigation: NavigationGroup = {
+  title: "Administration",
+  items: [
+    {
+      title: "Dashboard",
+      url: "/admin",
+      icon: LayoutDashboard,
+    },
+     {
+      title: "My Profile",
+      url: "/admin/profile",
+      icon: BarChart3,
+    },
+     {
+      title: "Availability",
+      url: "/admin/availability",
+      icon: BarChart3,
+    },
+     {
+      title: "Services",
+      url: "/admin/services",
+      icon: BarChart3,
+    },
+    {
+      title: "Bookings",
+      url: "/admin/bookings",
+      icon: CalendarDays,
+    },
+    {
+      title: "Sessions",
+      url: "/admin/sessions",
+      icon: Video,
+    },
+  
+    {
+      title: "Payouts",
+      url: "/admin/payouts",
+      icon: WalletCards,
+    },
+    {
+      title: "Reports",
+      url: "/admin/reports",
+      icon: BarChart3,
+    },
+    
+     
+    {
+      title: "Settings",
+      url: "/admin/settings",
+      icon: Settings2,
+    },
+  ],
+};
+
+const userNavigation: NavigationGroup[] = [
   {
-    title: "New",
-    url: "/dashboard",
-    icon: Plus,
+    title: "Learning",
+    items: [
+      {
+        title: "Dashboard",
+        url: "/dashboard",
+        icon: LayoutDashboard,
+        capability: "CAN_LEARN",
+      },
+      {
+        title: "Find a Tutor",
+        url: "/tutor",
+        icon: Search,
+        capability: "CAN_LEARN",
+      },
+      {
+        title: "My Sessions",
+        url: "/dashboard/tutoring/sessions",
+        icon: CalendarDays,
+        capability: "CAN_LEARN",
+      },
+      {
+        title: "Progress",
+        url: "/dashboard/progress",
+        icon: TrendingUp,
+        capability: "CAN_LEARN",
+      },
+      {
+        title: "History",
+        url: "/dashboard/history",
+        icon: History,
+        capability: "CAN_LEARN",
+      },
+    ],
   },
+
   {
-    title: "Projects",
-    url: "/projects",
-    icon: FolderKanban,
+    title: "Teaching",
+    items: [
+      {
+        title: "Teaching Workspace",
+        url: "/educator",
+        icon: GraduationCap,
+        capability: "CAN_TEACH",
+      },
+      {
+        title: "Availability",
+        url: "/educator?tab=availability",
+        icon: CalendarDays,
+        capability: "CAN_TEACH",
+      },
+      {
+        title: "Tutoring Services",
+        url: "/educator?tab=services",
+        icon: SlidersHorizontal,
+        capability: "CAN_TEACH",
+      },
+      {
+        title: "Teaching Profile",
+        url: "/educator?tab=profile",
+        icon: UserRound,
+        capability: "CAN_TEACH",
+      },
+      {
+        title: "Teaching Sessions",
+        url: "/educator/sessions",
+        icon: Video,
+        capability: "CAN_TEACH",
+      },
+      {
+        title: "Earnings",
+        url: "/earnings",
+        icon: WalletCards,
+        capability: "CAN_TEACH",
+      },
+    ],
   },
+
   {
-    title: "Artifacts",
-    url: "/library",
-    icon: LibraryBig,
-  },
-  {
-    title: "Customize",
-    url: "/settings",
-    icon: Settings2,
+    title: "Account",
+    items: [
+      {
+        title: "Settings",
+        url: "/dashboard/settings",
+        icon: Settings2,
+      },
+    ],
   },
 ];
 
-/* ============================================================
-   CREATION NAVIGATION
-============================================================ */
-
-const creationNavigation: NavItem[] = [
-  {
-    title: "All creations",
-    url: "/create",
-    icon: WandSparkles,
-  },
-  {
-    title: "Worksheet",
-    url: "/create/worksheet",
-    icon: ClipboardCheck,
-  },
-  {
-    title: "Video",
-    url: "/create/video",
-    icon: Video,
-  },
-  {
-    title: "Image",
-    url: "/create/image",
-    icon: ImageIcon,
-  },
-  {
-    title: "Audio",
-    url: "/create/audio",
-    icon: AudioLines,
-  },
-  {
-    title: "Document",
-    url: "/create/document",
-    icon: FileText,
-  },
-  {
-    title: "Lesson",
-    url: "/create/lesson",
-    icon: BookOpen,
-  },
-  {
-    title: "Quiz",
-    url: "/create/quiz",
-    icon: ClipboardCheck,
-  },
-];
-
-/* ============================================================
-   ACCOUNT NAVIGATION
-============================================================ */
-
-const accountNavigation: NavItem[] = [
-  {
-    title: "Credits",
-    url: "/credits",
-    icon: WalletCards,
-  },
-];
-
-/* ============================================================
-   CONVERSATION TYPES
-============================================================ */
 
 interface Conversation {
   id: string;
@@ -155,39 +221,23 @@ interface Conversation {
   messageCount: number;
 }
 
-/* ============================================================
-   HELPERS
-============================================================ */
-
 function formatRelativeTime(value: string) {
   const timestamp = new Date(value).getTime();
-
-  if (!Number.isFinite(timestamp)) {
-    return "";
-  }
+  if (!Number.isFinite(timestamp)) return "";
 
   const diff = Math.max(0, Date.now() - timestamp);
   const minutes = Math.floor(diff / 60000);
 
-  if (minutes < 1) {
-    return "now";
-  }
-
-  if (minutes < 60) {
-    return `${minutes}m`;
-  }
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${minutes}m`;
 
   const hours = Math.floor(minutes / 60);
 
-  if (hours < 24) {
-    return `${hours}h`;
-  }
+  if (hours < 24) return `${hours}h`;
 
   const days = Math.floor(hours / 24);
 
-  if (days < 7) {
-    return `${days}d`;
-  }
+  if (days < 7) return `${days}d`;
 
   return new Date(timestamp).toLocaleDateString(undefined, {
     month: "short",
@@ -199,22 +249,46 @@ function getConversationTitle(title: string) {
   return title.trim() || "New conversation";
 }
 
-/* ============================================================
-   CHAT HISTORY
-============================================================ */
+function NavIcon({
+  icon: Icon,
+  active,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  active: boolean;
+}) {
+  return (
+    <Icon
+      className={`size-[17px] shrink-0 ${
+        active ? "text-primary" : "text-muted-foreground"
+      }`}
+    />
+  );
+}
 
 function ChatHistorySection({ projectId }: { projectId: string | null }) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-
   const activeConversationId = searchParams.get("conversationId");
 
   const [conversations, setConversations] = React.useState<Conversation[]>([]);
-
   const [search, setSearch] = React.useState("");
   const [loading, setLoading] = React.useState(true);
-  const [archivingId, setArchivingId] = React.useState<string | null>(null);
+
+  const [actionConversationId, setActionConversationId] = React.useState<
+    string | null
+  >(null);
+
+  const [deleteConversation, setDeleteConversation] =
+    React.useState<Conversation | null>(null);
+
+  const [pinnedIds, setPinnedIds] = React.useState<Set<string>>(
+    () => new Set(),
+  );
+
+  const [pinsLoaded, setPinsLoaded] = React.useState(false);
+
+  const deleteCancelRef = React.useRef<HTMLButtonElement>(null);
 
   const loadConversations = React.useCallback(async () => {
     setLoading(true);
@@ -247,43 +321,115 @@ function ChatHistorySection({ projectId }: { projectId: string | null }) {
     }
   }, [projectId]);
 
-  /*
-   * Defer the initial load so the effect does not synchronously
-   * trigger a cascading render through setLoading/setConversations.
-   */
   React.useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const stored = window.localStorage.getItem("justdy:pinned-chats");
+
+        if (!stored) return;
+
+        const parsed = JSON.parse(stored);
+
+        if (!Array.isArray(parsed)) return;
+
+        setPinnedIds(
+          new Set(
+            parsed.filter(
+              (value): value is string => typeof value === "string",
+            ),
+          ),
+        );
+
+        setPinsLoaded(true);
+      } catch (error) {
+        console.error("Failed to load pinned chats:", error);
+      } finally {
+        setPinsLoaded(true);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  React.useEffect(() => {
+    if (!pinsLoaded) return;
+
+    try {
+      window.localStorage.setItem(
+        "justdy:pinned-chats",
+        JSON.stringify(Array.from(pinnedIds)),
+      );
+    } catch (error) {
+      console.error("Failed to save pinned chats:", error);
+    }
+  }, [pinnedIds, pinsLoaded]);
+
+  React.useEffect(() => {
+    // Defer the initial state update to the next task so the effect itself
+    // does not synchronously trigger a cascading render.
     const timer = window.setTimeout(() => {
       void loadConversations();
     }, 0);
 
-    return () => {
-      window.clearTimeout(timer);
-    };
+    return () => window.clearTimeout(timer);
   }, [loadConversations]);
 
   React.useEffect(() => {
-    const refresh = () => {
-      void loadConversations();
+    if (!deleteConversation) return;
+
+    const previousOverflow = document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+
+    const focusTimer = window.setTimeout(() => {
+      deleteCancelRef.current?.focus();
+    }, 0);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !actionConversationId) {
+        setDeleteConversation(null);
+      }
     };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [deleteConversation, actionConversationId]);
+
+  React.useEffect(() => {
+    const refresh = () => void loadConversations();
 
     window.addEventListener("justdy:chat-updated", refresh);
 
-    return () => {
-      window.removeEventListener("justdy:chat-updated", refresh);
-    };
+    return () => window.removeEventListener("justdy:chat-updated", refresh);
   }, [loadConversations]);
 
   const filteredConversations = React.useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    if (!query) {
-      return conversations;
-    }
+    if (!query) return conversations;
 
     return conversations.filter((conversation) =>
       getConversationTitle(conversation.title).toLowerCase().includes(query),
     );
   }, [conversations, search]);
+
+  const orderedConversations = React.useMemo(() => {
+    return [...filteredConversations].sort((a, b) => {
+      const aPinned = pinnedIds.has(a.id);
+      const bPinned = pinnedIds.has(b.id);
+
+      if (aPinned !== bPinned) {
+        return aPinned ? -1 : 1;
+      }
+
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+  }, [filteredConversations, pinnedIds]);
 
   const chatHref = projectId
     ? `/chat?projectId=${encodeURIComponent(projectId)}`
@@ -301,22 +447,24 @@ function ChatHistorySection({ projectId }: { projectId: string | null }) {
     return `/chat?${params.toString()}`;
   };
 
-  async function archiveConversation(conversation: Conversation) {
-    if (archivingId) {
-      return;
-    }
+  function requestDeleteConversation(conversation: Conversation) {
+    if (actionConversationId) return;
+    setDeleteConversation(conversation);
+  }
 
-    const title = getConversationTitle(conversation.title);
+  async function performConversationAction(
+    conversation: Conversation,
+  ): Promise<boolean> {
+    // The function explicitly promises boolean, so the busy-state guard
+    // must return false rather than undefined.
+    if (actionConversationId) return false;
 
-    if (!window.confirm(`Archive "${title}"?`)) {
-      return;
-    }
-
-    setArchivingId(conversation.id);
+    setActionConversationId(conversation.id);
 
     try {
       const params = new URLSearchParams({
         conversationId: conversation.id,
+        action: "delete",
       });
 
       if (projectId) {
@@ -327,205 +475,137 @@ function ChatHistorySection({ projectId }: { projectId: string | null }) {
         method: "DELETE",
       });
 
-      if (!response.ok) {
-        const data = (await response.json()) as {
-          error?: string;
-        };
+      const data = (await response.json()) as {
+        error?: string;
+      };
 
-        throw new Error(data.error ?? "Unable to archive conversation.");
+      if (!response.ok) {
+        throw new Error(data.error ?? "Unable to delete conversation.");
       }
 
       setConversations((current) =>
         current.filter((item) => item.id !== conversation.id),
       );
 
+      setPinnedIds((current) => {
+        if (!current.has(conversation.id)) return current;
+
+        const next = new Set(current);
+        next.delete(conversation.id);
+
+        return next;
+      });
+
       if (activeConversationId === conversation.id) {
         router.push(chatHref);
       }
 
       window.dispatchEvent(new Event("justdy:chat-updated"));
+
+      return true;
     } catch (error) {
-      console.error("Failed to archive conversation:", error);
+      console.error("Failed to delete conversation:", error);
+      return false;
     } finally {
-      setArchivingId(null);
+      setActionConversationId(null);
     }
   }
 
-  if (pathname !== "/chat" && pathname !== "/dashboard") {
-    return null;
-  }
-
-  return (
-    <SidebarGroup className="mt-4 min-h-0 flex-1 p-0">
-      <div className="flex items-center justify-between px-3 pb-2">
-        <SidebarGroupLabel className="p-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-          Chats and tasks
-        </SidebarGroupLabel>
-
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            className="rounded-md p-1 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
-            aria-label="Chat options"
-            title="Chat options"
-          >
-            <SlidersHorizontal className="size-3.5" />
-          </button>
-
-          <Link
-            href={chatHref}
-            className="rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-            aria-label="New chat"
-            title="New chat"
-          >
-            <Plus className="size-4" />
-          </Link>
-        </div>
-      </div>
-
-      <SidebarGroupContent className="min-h-0 flex-1">
-        <div className="px-2 pb-2">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
-
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search chats"
-              className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50/80 pl-9 pr-3 text-xs text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:ring-2 focus:ring-slate-100"
-            />
-          </div>
-        </div>
-
-        <div className="max-h-[min(42vh,420px)] overflow-y-auto px-1.5 [scrollbar-width:thin]">
-          {loading ? (
-            <div className="space-y-1 px-1 py-1">
-              {Array.from({ length: 5 }).map((_, index) => (
-                <div
-                  key={index}
-                  className="h-10 animate-pulse rounded-lg bg-slate-100"
-                />
-              ))}
-            </div>
-          ) : filteredConversations.length === 0 ? (
-            <div className="px-3 py-6 text-center">
-              <MessageSquare className="mx-auto size-4 text-slate-300" />
-
-              <p className="mt-2 text-xs font-medium text-slate-600">
-                {search ? "No chats found" : "No conversations yet"}
-              </p>
-
-              <p className="mt-1 text-[11px] leading-4 text-slate-400">
-                {search ? "Try another search." : "Start a new chat."}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-0.5">
-              {filteredConversations.map((conversation) => {
-                const active = conversation.id === activeConversationId;
-
-                return (
-                  <div
-                    key={conversation.id}
-                    className={`group flex min-w-0 items-center rounded-lg transition ${
-                      active
-                        ? "bg-slate-100 text-slate-900"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                    }`}
-                  >
-                    <Link
-                      href={conversationHref(conversation.id)}
-                      className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2"
-                      aria-current={active ? "page" : undefined}
-                    >
-                      <MessageSquare
-                        className={`size-3.5 shrink-0 ${
-                          active ? "text-slate-700" : "text-slate-400"
-                        }`}
-                      />
-
-                      <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                        {getConversationTitle(conversation.title)}
-                      </span>
-
-                      <span className="shrink-0 text-[10px] text-slate-400">
-                        {formatRelativeTime(conversation.updatedAt)}
-                      </span>
-                    </Link>
-
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          disabled={archivingId === conversation.id}
-                          className="mr-1 rounded-md p-1.5 text-slate-400 opacity-0 transition hover:bg-white hover:text-slate-700 focus:opacity-100 group-hover:opacity-100 disabled:opacity-50"
-                          aria-label={`Actions for ${getConversationTitle(
-                            conversation.title,
-                          )}`}
-                        >
-                          <MoreHorizontal className="size-3.5" />
-                        </button>
-                      </DropdownMenuTrigger>
-
-                      <DropdownMenuContent
-                        align="end"
-                        side="right"
-                        className="w-36 rounded-xl"
-                      >
-                        <DropdownMenuItem
-                          onClick={() => void archiveConversation(conversation)}
-                          className="gap-2 text-xs text-slate-600 focus:text-red-600"
-                        >
-                          <Archive className="size-3.5" />
-                          Archive
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </SidebarGroupContent>
-    </SidebarGroup>
-  );
+  
 }
 
-/* ============================================================
-   SIDEBAR
-============================================================ */
+type AppSidebarProps = React.ComponentProps<typeof Sidebar>;
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ ...props }: AppSidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const { data: session } = authClient.useSession();
-
   const user = session?.user;
 
   const projectId = searchParams.get("projectId");
   const conversationId = searchParams.get("conversationId");
-
   const isChat = pathname === "/chat" || pathname === "/dashboard";
 
-  /*
-   * Create is independent from Projects.
-   *
-   * The initial value automatically opens the menu when the
-   * sidebar is first rendered on a creation route.
-   *
-   * No effect is needed here.
-   */
-  const isCreationRoute =
-    pathname === "/create" || pathname?.startsWith("/create/");
-
-  const [createOpen, setCreateOpen] = React.useState(isCreationRoute);
-
   const userName = user?.name || "Justdy User";
-
   const userImage = user?.image || "";
+  const userEmail = user?.email || "";
+
+  /*
+   * Better Auth custom fields can be serialized differently across
+   * versions/configurations. Normalize the role before comparing it.
+   *
+   * This role check is for navigation UI only. Protected server routes
+   * must continue to authorize using the authenticated server session
+   * and database-backed authorization.
+   */
+  const normalizedRole = String(
+    (user as { role?: unknown } | null | undefined)?.role ?? "",
+  )
+    .trim()
+    .toUpperCase();
+
+  const isAdmin = normalizedRole === "ADMIN";
+
+  const [capabilityKeys, setCapabilityKeys] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    if (!user?.id || isAdmin) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void fetch("/api/user/capabilities", {
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        if (!response.ok) return;
+
+        const data = (await response.json()) as {
+          capabilities?: string[];
+        };
+
+        if (!cancelled) {
+          setCapabilityKeys(data.capabilities ?? []);
+        }
+      })
+      .catch((error) => {
+        console.error(
+          "Failed to load account capabilities:",
+          error,
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, user?.id]);
+
+  const canLearn = capabilityKeys.includes("CAN_LEARN");
+  const canTeach = capabilityKeys.includes("CAN_TEACH");
+
+  const visibleUserNavigation = React.useMemo<NavigationGroup[]>(
+    () =>
+      userNavigation
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) => {
+            if (!item.capability) return true;
+
+            return item.capability === "CAN_LEARN"
+              ? canLearn
+              : canTeach;
+          }),
+        }))
+        .filter((group) => group.items.length > 0),
+    [canLearn, canTeach],
+  );
+
+  const visibleNavigation: NavigationGroup[] = isAdmin
+    ? [adminNavigation]
+    : visibleUserNavigation;
 
   const userInitials =
     userName
@@ -538,331 +618,218 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       .toUpperCase() || "JU";
 
   const isActive = (url: string) => {
-    if (url === "/dashboard") {
+    const [targetPath, targetQuery] = url.split("?", 2);
+
+    if (targetPath === "/dashboard") {
       return (
         (pathname === "/dashboard" || pathname === "/chat") && !conversationId
       );
     }
 
-    if (url === "/projects") {
+    if (targetPath === "/educator") {
+      const requestedTab = targetQuery
+        ? new URLSearchParams(targetQuery).get("tab")
+        : null;
+      const currentTab = searchParams.get("tab");
+
+      if (pathname !== "/educator") return false;
+      return (requestedTab ?? null) === (currentTab ?? null);
+    }
+
+    if (targetPath === "/projects") {
       return pathname === "/projects" || pathname?.startsWith("/projects/");
     }
 
-    if (url === "/library") {
+    if (targetPath === "/library") {
       return pathname === "/library" || pathname?.startsWith("/library/");
     }
 
-    if (url === "/settings") {
+    if (targetPath === "/settings") {
       return pathname === "/settings" || pathname?.startsWith("/settings/");
     }
 
-    return pathname === url || pathname?.startsWith(`${url}/`);
+    return pathname === targetPath || pathname?.startsWith(`${targetPath}/`);
   };
 
-  const renderNavigation = (items: NavItem[]) =>
-    items.map((item) => {
-      const Icon = item.icon;
-      const active = isActive(item.url);
+  const renderNavigation = (groups: NavigationGroup[]) =>
+    groups.map((group) => (
+      <SidebarGroup key={group.title} className="p-0">
+        <SidebarGroupLabel className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+          {group.title}
+        </SidebarGroupLabel>
 
-      return (
-        <SidebarMenuItem key={item.url}>
-          <SidebarMenuButton
-            asChild
-            isActive={active}
-            tooltip={item.title}
-            className={`h-10 rounded-lg px-3 text-[13px] font-medium transition-colors ${
-              active
-                ? "bg-slate-100 text-slate-950"
-                : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
-            }`}
-          >
-            <Link href={item.url}>
-              <Icon
-                className={`size-[17px] shrink-0 ${
-                  active ? "text-slate-800" : "text-slate-400"
-                }`}
-              />
+        <SidebarGroupContent>
+          <SidebarMenu className="space-y-0.5">
+            {group.items.map((item) => {
+              const active = isActive(item.url);
 
-              <span>{item.title}</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      );
-    });
+              return (
+                <SidebarMenuItem
+                  key={`${item.title}-${item.url}`}
+                >
+                  <SidebarMenuButton
+                    asChild
+                    isActive={active}
+                    tooltip={item.title}
+                    className={`h-10 rounded-xl px-3 text-[13px] font-medium transition-colors ${
+                      active
+                        ? "bg-muted text-[#e0e7ff]"
+                        : "text-[#e0e7ff] hover:bg-muted hover:text-foreground"
+                    }`}
+                  >
+                    <Link href={item.url}>
+                      <NavIcon icon={item.icon} active={active} />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            })}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    ));
 
-  function handleNewChat() {
-    const params = new URLSearchParams();
-
-    if (projectId) {
-      params.set("projectId", projectId);
+  async function handleSignOut() {
+    try {
+      await authClient.signOut();
+      router.push("/login");
+      router.refresh();
+    } catch (error) {
+      console.error("Failed to sign out:", error);
     }
-
-    /*
-     * A unique token makes every click a real navigation,
-     * even when the user is already on /dashboard.
-     */
-    params.set("new", Date.now().toString());
-
-    router.push(`/dashboard?${params.toString()}`);
   }
 
   return (
     <Sidebar
       collapsible="offcanvas"
-      className="border-r border-slate-200 bg-white text-slate-900 [--sidebar-width:280px]"
+      className="border-r border-border/80 bg-background text-foreground [--sidebar-width:264px] shadow-[4px_0_24px_-24px_hsl(var(--foreground)/0.25)]"
       {...props}
     >
-      {/* ======================================================
-          HEADER
-      ====================================================== */}
-
-      <SidebarHeader className="shrink-0 border-b border-slate-100 bg-white px-4 py-4">
-        <div className="flex min-w-0 items-center">
-          <MyLogo />
+      <SidebarHeader className="shrink-0 border-b border-border/50 bg-card px-3.5 py-2.5">
+        <div className="flex h-7 min-w-0 items-center overflow-hidden">
+          <div className="origin-left scale-[0.78]">
+            <MyLogo />
+          </div>
         </div>
       </SidebarHeader>
 
-      {/* ======================================================
-          CONTENT
-      ====================================================== */}
-
-      <SidebarContent className="min-h-0 bg-white px-2 py-3">
-        <SidebarGroup className="p-0">
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-0.5">
-              {/* ==================================================
-                  NEW
-              ================================================== */}
-
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  type="button"
-                  onClick={handleNewChat}
-                  isActive={isActive("/dashboard")}
-                  tooltip="New"
-                  className={`h-10 rounded-lg px-3 text-[13px] font-medium transition-colors ${
-                    isActive("/dashboard")
-                      ? "bg-slate-100 text-slate-950"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
-                  }`}
-                >
-                  <Plus
-                    className={`size-[17px] shrink-0 ${
-                      isActive("/dashboard")
-                        ? "text-slate-800"
-                        : "text-slate-400"
-                    }`}
-                  />
-
-                  <span>New</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* ==================================================
-                  PROJECTS
-              ================================================== */}
-
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive("/projects")}
-                  tooltip="Projects"
-                  className={`h-10 rounded-lg px-3 text-[13px] font-medium transition-colors ${
-                    isActive("/projects")
-                      ? "bg-slate-100 text-slate-950"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
-                  }`}
-                >
-                  <Link href="/projects">
-                    <FolderKanban
-                      className={`size-[17px] shrink-0 ${
-                        isActive("/projects")
-                          ? "text-slate-800"
-                          : "text-slate-400"
-                      }`}
-                    />
-
-                    <span>Projects</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* ==================================================
-                  CREATE
-              ================================================== */}
-
-              <SidebarMenuItem>
-                <div className="flex items-center gap-1">
-                  <SidebarMenuButton
-                    type="button"
-                    onClick={() => setCreateOpen((value) => !value)}
-                    isActive={isCreationRoute}
-                    tooltip="Create"
-                    className={`h-10 min-w-0 flex-1 rounded-lg px-3 text-[13px] font-medium transition-colors ${
-                      isCreationRoute
-                        ? "bg-slate-100 text-slate-950"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
-                    }`}
-                  >
-                    <WandSparkles
-                      className={`size-[17px] shrink-0 ${
-                        isCreationRoute ? "text-slate-800" : "text-slate-400"
-                      }`}
-                    />
-
-                    <span>Create</span>
-                  </SidebarMenuButton>
-
-                  <button
-                    type="button"
-                    onClick={() => setCreateOpen((value) => !value)}
-                    className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
-                    aria-label={
-                      createOpen ? "Collapse create menu" : "Expand create menu"
-                    }
-                    aria-expanded={createOpen}
-                  >
-                    <ChevronDown
-                      className={`size-4 transition-transform ${
-                        createOpen ? "" : "-rotate-90"
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                {createOpen && (
-                  <div className="ml-4 mt-1 border-l border-slate-200 pl-2">
-                    <SidebarMenu className="space-y-0.5">
-                      {creationNavigation.map((item) => {
-                        const Icon = item.icon;
-
-                        const active =
-                          pathname === item.url ||
-                          pathname?.startsWith(`${item.url}/`);
-
-                        return (
-                          <SidebarMenuItem key={item.url}>
-                            <SidebarMenuButton
-                              asChild
-                              isActive={active}
-                              tooltip={item.title}
-                              className={`h-9 rounded-lg px-3 text-[12px] font-medium transition-colors ${
-                                active
-                                  ? "bg-slate-100 text-slate-900"
-                                  : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                              }`}
-                            >
-                              <Link href={item.url}>
-                                <Icon
-                                  className={`size-3.5 shrink-0 ${
-                                    active ? "text-slate-700" : "text-slate-400"
-                                  }`}
-                                />
-
-                                <span>{item.title}</span>
-                              </Link>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                        );
-                      })}
-                    </SidebarMenu>
-                  </div>
-                )}
-              </SidebarMenuItem>
-
-              {/* ==================================================
-                  ARTIFACTS
-              ================================================== */}
-
-              {renderNavigation(
-                mainNavigation.filter((item) => item.title === "Artifacts"),
-              )}
-
-              {/* ==================================================
-                  CODE
-              ================================================== */}
-
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  type="button"
-                  tooltip="Code"
-                  className="h-10 rounded-lg px-3 text-[13px] font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-950"
-                >
-                  <Code2 className="size-[17px] shrink-0 text-slate-400" />
-
-                  <span>Code</span>
-
-                  <span className="ml-auto rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-400">
-                    Soon
-                  </span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* ==================================================
-                  CUSTOMIZE
-              ================================================== */}
-
-              {renderNavigation(
-                mainNavigation.filter((item) => item.title === "Customize"),
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* ======================================================
-            CHAT HISTORY
-        ====================================================== */}
-
-        {isChat && <ChatHistorySection projectId={projectId} />}
-
-        {/* ======================================================
-            ACCOUNT
-        ====================================================== */}
-
-        <SidebarGroup className="mt-4 p-0">
-          <SidebarGroupLabel className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-            Account
-          </SidebarGroupLabel>
-
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-0.5">
-              {renderNavigation(accountNavigation)}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      <SidebarContent className="min-h-0 bg-card px-2 py-2.5">
+        {renderNavigation(visibleNavigation)}
       </SidebarContent>
 
-      {/* ========================================================
-          FOOTER
-      ======================================================== */}
+      <SidebarFooter className="border-t border-border/70 bg-card p-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left outline-none transition hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/30"
+              aria-label="Open account menu"
+            >
+              <Avatar className="size-8 shrink-0 border border-border">
+                <AvatarImage
+                  src={userImage}
+                  alt={userName}
+                  className="object-cover"
+                />
 
-      <SidebarFooter className="border-t border-slate-100 bg-white p-3">
-        <Link
-          href="/settings"
-          className="flex items-center gap-2.5 rounded-xl p-2 transition hover:bg-slate-50"
-        >
-          <Avatar className="size-8 border border-slate-200">
-            <AvatarImage
-              src={userImage}
-              alt={userName}
-              className="object-cover"
-            />
+                <AvatarFallback className="bg-muted text-[11px] font-semibold text-foreground">
+                  {userInitials}
+                </AvatarFallback>
+              </Avatar>
 
-            <AvatarFallback className="bg-slate-100 text-[11px] font-semibold text-slate-700">
-              {userInitials}
-            </AvatarFallback>
-          </Avatar>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-foreground">
+                  {userName}
+                </p>
 
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold text-slate-900">
-              {userName}
-            </p>
+                <p className="truncate text-[10px] text-muted-foreground">
+                  {userEmail || "Personal workspace"}
+                </p>
+              </div>
 
-            <p className="truncate text-[10px] text-slate-400">
-              Justdy account
-            </p>
-          </div>
-        </Link>
+              <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent
+            align="start"
+            side="top"
+            sideOffset={8}
+            className="w-[248px] rounded-xl border-border bg-popover p-1.5 text-popover-foreground shadow-xl"
+          >
+            <div className="flex items-center gap-3 px-2.5 py-2.5">
+              <Avatar className="size-9 border border-border">
+                <AvatarImage
+                  src={userImage}
+                  alt={userName}
+                  className="object-cover"
+                />
+
+                <AvatarFallback className="bg-muted text-xs font-semibold text-foreground">
+                  {userInitials}
+                </AvatarFallback>
+              </Avatar>
+
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {userName}
+                </p>
+
+                <p className="truncate text-[11px] text-muted-foreground">
+                  {userEmail || "Personal workspace"}
+                </p>
+              </div>
+            </div>
+
+            <DropdownMenuSeparator />
+
+            <DropdownMenuItem asChild className="gap-2 rounded-lg">
+              <Link href="/dashboard/settings">
+                <Settings2 className="size-4" />
+                Settings
+              </Link>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem asChild className="gap-2 rounded-lg">
+              <Link href="/dashboard/settings#appearance">
+                <SlidersHorizontal className="size-4" />
+                Appearance
+              </Link>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem asChild className="gap-2 rounded-lg">
+              <Link href="/credits">
+                <CreditCard className="size-4" />
+                Credits
+              </Link>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem asChild className="gap-2 rounded-lg">
+              <Link href="/dashboard/settings#profile">
+                <UserRound className="size-4" />
+                Profile
+              </Link>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem asChild className="gap-2 rounded-lg">
+              <Link href="/dashboard/settings#help">
+                <HelpCircle className="size-4" />
+                Help & support
+              </Link>
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+
+            <DropdownMenuItem
+              onClick={() => void handleSignOut()}
+              className="gap-2 rounded-lg text-muted-foreground focus:bg-destructive/10 focus:text-destructive"
+            >
+              <LogOut className="size-4" />
+              Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarFooter>
     </Sidebar>
   );

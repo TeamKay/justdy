@@ -2,516 +2,285 @@
 
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { canReceivePayouts } from "@/lib/auth/capabilities";
+import { getVerifiedTutor } from "@/lib/tutoring/authorization";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 
-// ===============================
-// FLEXPAY SESSION CONFIGURATION
-// ===============================
+const TUTOR_SHARE_PERCENTAGE = 60;
 
-const SESSION_PRICING = {
-  THIRTY_MIN: {
-    studentPays: 15,
-    educatorPercentage: 0.6,
-  },
-  FORTY_FIVE_MIN: {
-    studentPays: 25,
-    educatorPercentage: 0.6,
-  },
-  SIXTY_MIN: {
-    studentPays: 35,
-    educatorPercentage: 0.6,
-  },
-  MONTHLY_SUBSCRIPTION: {
-    studentPays: 200,
-    sessions: 8,
-    educatorPercentage: 0.6,
-  },
-};
+function calculateEarnings(grossAmount: number) {
+  const educatorPay = Math.floor(
+    (grossAmount * TUTOR_SHARE_PERCENTAGE) / 100,
+  );
+  const platformFee = grossAmount - educatorPay;
 
-// ===============================
-// HELPER FUNCTION
-// ===============================
-
-function calculateSessionEarnings(sessionType: string) {
-  switch (sessionType) {
-    case "THIRTY_MIN": {
-      const total = SESSION_PRICING.THIRTY_MIN.studentPays;
-      const educatorPay = total * SESSION_PRICING.THIRTY_MIN.educatorPercentage;
-      const platformFee = total - educatorPay;
-
-      return {
-        total,
-        educatorPay,
-        platformFee,
-      };
-    }
-
-    case "FORTY_FIVE_MIN": {
-      const total = SESSION_PRICING.FORTY_FIVE_MIN.studentPays;
-      const educatorPay =
-        total * SESSION_PRICING.FORTY_FIVE_MIN.educatorPercentage;
-      const platformFee = total - educatorPay;
-
-      return {
-        total,
-        educatorPay,
-        platformFee,
-      };
-    }
-
-    case "SIXTY_MIN": {
-      const total = SESSION_PRICING.SIXTY_MIN.studentPays;
-      const educatorPay = total * SESSION_PRICING.SIXTY_MIN.educatorPercentage;
-      const platformFee = total - educatorPay;
-
-      return {
-        total,
-        educatorPay,
-        platformFee,
-      };
-    }
-
-    case "MONTHLY_SUBSCRIPTION": {
-      // $200 / 8 sessions = $25 per session
-      const perSession =
-        SESSION_PRICING.MONTHLY_SUBSCRIPTION.studentPays /
-        SESSION_PRICING.MONTHLY_SUBSCRIPTION.sessions;
-
-      const educatorPay =
-        perSession * SESSION_PRICING.MONTHLY_SUBSCRIPTION.educatorPercentage;
-
-      const platformFee = perSession - educatorPay;
-
-      return {
-        total: perSession,
-        educatorPay,
-        platformFee,
-      };
-    }
-
-    default:
-      throw new Error("Invalid session type");
-  }
+  return { grossAmount, educatorPay, platformFee };
 }
 
-// ===============================
-// REQUEST PAYOUT
-// ===============================
-
-export async function requestPayout(formData: FormData) {
+async function getAuthenticatedUserId() {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
 
-  if (!session?.user) {
+  if (!session?.user?.id) {
     throw new Error("Unauthorized");
   }
 
+  return session.user.id;
+}
+
+async function requirePayoutEligibleTutor(userId: string) {
+  const tutor = await getVerifiedTutor(userId);
+
+  if (!tutor) {
+    throw new Error("Your verified tutor status is not currently active.");
+  }
+
+  if (!(await canReceivePayouts(userId))) {
+    throw new Error("You are not authorized to receive tutoring payouts.");
+  }
+
+  return tutor;
+}
+
+/**
+ * Request one payout for all completed, unpaid canonical tutoring bookings.
+ *
+ * Canonical money source:
+ *   Booking -> Service.price (integer cents)
+ *
+ * A booking only becomes payout-eligible after the canonical tutoring
+ * lifecycle marks both the TutoringSession and Booking as completed.
+ */
+export async function requestPayout(formData: FormData) {
+  const userId = await getAuthenticatedUserId();
+  const tutor = await requirePayoutEligibleTutor(userId);
+
+  const paypalValue = formData.get("paypalEmail");
+  if (typeof paypalValue !== "string") {
+    throw new Error("A valid PayPal email is required.");
+  }
+
+  const paypalEmail = paypalValue.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paypalEmail)) {
+    throw new Error("A valid PayPal email is required.");
+  }
+
   try {
-    const educator = await prisma.user.findUnique({
-      where: {
-        id: session.user.id,
-        role: "Educator",
-      },
-    });
+    const result = await prisma.$transaction(
+      async (tx) => {
+        // Serialize payout requests for this tutor so two concurrent
+        // requests cannot reserve the same completed bookings.
+        await tx.$queryRaw`
+          SELECT id
+          FROM "User"
+          WHERE id = ${tutor.id}
+          FOR UPDATE
+        `;
 
-    if (!educator) {
-      throw new Error("Educator not found");
-    }
-
-    const paypalEmail = formData.get("paypalEmail");
-
-    if (!paypalEmail || typeof paypalEmail !== "string") {
-      throw new Error("A valid PayPal email is required");
-    }
-
-    // Check existing processing payout
-    const existingPendingPayout = await prisma.payout.findFirst({
-      where: {
-        educatorId: educator.id,
-        status: "Processing",
-      },
-    });
-
-    if (existingPendingPayout) {
-      throw new Error("You already have a pending payout request.");
-    }
-
-    // Get unpaid completed appointments
-    const completedAppointments = await prisma.appointment.findMany({
-      where: {
-        educatorId: educator.id,
-        status: "Completed",
-        payoutStatus: "Unpaid",
-      },
-    });
-
-    if (completedAppointments.length === 0) {
-      throw new Error("No completed unpaid sessions available");
-    }
-
-    let grossAmount = 0;
-    let educatorEarnings = 0;
-    let platformFees = 0;
-
-    for (const appointment of completedAppointments) {
-      const earnings = calculateSessionEarnings(appointment.payoutStatus);
-
-      grossAmount += earnings.total;
-      educatorEarnings += earnings.educatorPay;
-      platformFees += earnings.platformFee;
-    }
-
-    // Create payout -> Cleaned of credits field!
-    const payout = await prisma.payout.create({
-      data: {
-        educator: {
-          connect: {
-            id: educator.id,
+        const existingPendingPayout = await tx.payout.findFirst({
+          where: {
+            educatorId: tutor.id,
+            status: "Processing",
           },
-        },
-        amount: grossAmount,
-        netAmount: educatorEarnings,
-        platformFee: platformFees,
-        paypalEmail,
-        status: "Processing",
-      },
-    });
+          select: { id: true },
+        });
 
-    // Mark appointments as processing payout
-    await prisma.appointment.updateMany({
-      where: {
-        id: {
-          in: completedAppointments.map((a) => a.id),
-        },
+        if (existingPendingPayout) {
+          throw new Error("PENDING_PAYOUT");
+        }
+
+        const completedBookings = await tx.booking.findMany({
+          where: {
+            educatorId: tutor.id,
+            status: "Completed",
+            payoutStatus: "Unpaid",
+            tutoringSession: {
+              status: "COMPLETED",
+            },
+            service: {
+              type: "TUTORING",
+            },
+          },
+          include: {
+            service: {
+              select: {
+                price: true,
+              },
+            },
+          },
+          orderBy: { endTime: "asc" },
+        });
+
+        const eligible = completedBookings.filter(
+          (booking) =>
+            typeof booking.service?.price === "number" &&
+            booking.service.price > 0,
+        );
+
+        if (eligible.length === 0) {
+          throw new Error("NO_COMPLETED_SESSIONS");
+        }
+
+        const grossAmount = eligible.reduce(
+          (total, booking) => total + (booking.service?.price ?? 0),
+          0,
+        );
+
+        const earnings = calculateEarnings(grossAmount);
+
+        const payout = await tx.payout.create({
+          data: {
+            educatorId: tutor.id,
+            amount: earnings.grossAmount,
+            netAmount: earnings.educatorPay,
+            platformFee: earnings.platformFee,
+            paypalEmail,
+            status: "Processing",
+          },
+        });
+
+        const updateResult = await tx.booking.updateMany({
+          where: {
+            id: { in: eligible.map((booking) => booking.id) },
+            educatorId: tutor.id,
+            status: "Completed",
+            payoutStatus: "Unpaid",
+          },
+          data: {
+            payoutStatus: "Processing",
+          },
+        });
+
+        if (updateResult.count !== eligible.length) {
+          throw new Error("PAYOUT_BOOKINGS_CHANGED");
+        }
+
+        return {
+          payout,
+          sessions: eligible.length,
+          grossAmount: earnings.grossAmount,
+          educatorEarnings: earnings.educatorPay,
+          platformFee: earnings.platformFee,
+        };
       },
-      data: {
-        payoutStatus: "Processing",
-      },
-    });
+      { isolationLevel: "Serializable" },
+    );
 
     revalidatePath("/educator");
+    revalidatePath("/tutoring/sessions");
 
     return {
       success: true,
-      payout,
+      payout: result.payout,
+      sessions: result.sessions,
+      grossAmount: result.grossAmount,
+      educatorEarnings: result.educatorEarnings,
+      platformFee: result.platformFee,
     };
   } catch (error) {
-    console.error("Failed to request payout:", error);
-    throw new Error("Failed to request payout: " + error);
+    if (error instanceof Error) {
+      if (error.message === "PENDING_PAYOUT") {
+        throw new Error("You already have a pending payout request.");
+      }
+      if (error.message === "NO_COMPLETED_SESSIONS") {
+        throw new Error("No completed unpaid tutoring sessions available.");
+      }
+      if (error.message === "PAYOUT_BOOKINGS_CHANGED") {
+        throw new Error(
+          "The eligible tutoring sessions changed. Please refresh and try again.",
+        );
+      }
+    }
+
+    console.error("Failed to request tutoring payout:", error);
+    throw new Error("Failed to request tutoring payout.");
   }
 }
 
-// ===============================
-// GET EDUCATOR PAYOUTS
-// ===============================
-
 export async function getEducatorPayouts() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    throw new Error("Unauthorized");
-  }
+  const userId = await getAuthenticatedUserId();
+  const tutor = await requirePayoutEligibleTutor(userId);
 
   try {
-    const educator = await prisma.user.findUnique({
-      where: {
-        id: session.user.id,
-        role: "Educator",
-      },
-    });
-
-    if (!educator) {
-      throw new Error("Educator not found");
-    }
-
     const payouts = await prisma.payout.findMany({
-      where: {
-        educatorId: educator.id,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+      where: { educatorId: tutor.id },
+      orderBy: { createdAt: "desc" },
     });
 
     return { payouts };
   } catch (error) {
-    throw new Error("Failed to fetch payouts: " + error);
+    console.error("Failed to fetch tutoring payouts:", error);
+    throw new Error("Failed to fetch tutoring payouts.");
   }
 }
 
-// ===============================
-// GET EDUCATOR EARNINGS
-// ===============================
-
 export async function getEducatorEarnings() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    throw new Error("Unauthorized");
-  }
+  const userId = await getAuthenticatedUserId();
+  const tutor = await requirePayoutEligibleTutor(userId);
 
   try {
-    const educator = await prisma.user.findUnique({
+    const completedBookings = await prisma.booking.findMany({
       where: {
-        id: session.user.id,
-        role: "Educator",
-      },
-    });
-
-    if (!educator) {
-      throw new Error("Educator not found");
-    }
-
-    const completedAppointments = await prisma.appointment.findMany({
-      where: {
-        educatorId: educator.id,
+        educatorId: tutor.id,
         status: "Completed",
+        tutoringSession: { status: "COMPLETED" },
+        service: { type: "TUTORING" },
       },
+      select: {
+        id: true,
+        createdAt: true,
+        endTime: true,
+        payoutStatus: true,
+        service: {
+          select: { price: true },
+        },
+      },
+      orderBy: { endTime: "asc" },
     });
+
+    const currentMonthStart = new Date();
+    currentMonthStart.setDate(1);
+    currentMonthStart.setHours(0, 0, 0, 0);
 
     let totalEarnings = 0;
     let totalPlatformFees = 0;
-
-    // Current month
-    const currentMonth = new Date();
-    currentMonth.setDate(1);
-    currentMonth.setHours(0, 0, 0, 0);
-
     let thisMonthEarnings = 0;
+    let availablePayout = 0;
 
-    for (const appointment of completedAppointments) {
-      const earnings = calculateSessionEarnings(appointment.payoutStatus);
+    for (const booking of completedBookings) {
+      const gross = booking.service?.price ?? 0;
+      if (gross <= 0) continue;
 
+      const earnings = calculateEarnings(gross);
       totalEarnings += earnings.educatorPay;
       totalPlatformFees += earnings.platformFee;
 
-      if (new Date(appointment.createdAt) >= currentMonth) {
+      if (booking.endTime >= currentMonthStart) {
         thisMonthEarnings += earnings.educatorPay;
+      }
+
+      if (booking.payoutStatus === "Unpaid") {
+        availablePayout += earnings.educatorPay;
       }
     }
 
-    // Available unpaid sessions
-    const unpaidAppointments = completedAppointments.filter(
-      (a) => a.payoutStatus === "Unpaid",
-    );
-
-    let availablePayout = 0;
-
-    for (const appointment of unpaidAppointments) {
-      const earnings = calculateSessionEarnings(appointment.payoutStatus);
-
-      availablePayout += earnings.educatorPay;
-    }
-
-    const averageEarningsPerMonth =
-      totalEarnings > 0
-        ? totalEarnings / Math.max(1, new Date().getMonth() + 1)
-        : 0;
+    const monthsElapsed = Math.max(1, new Date().getMonth() + 1);
 
     return {
       earnings: {
         totalEarnings,
         thisMonthEarnings,
-        completedAppointments: completedAppointments.length,
-        averageEarningsPerMonth,
+        completedAppointments: completedBookings.length,
+        completedSessions: completedBookings.length,
+        averageEarningsPerMonth: totalEarnings / monthsElapsed,
         availablePayout,
         totalPlatformFees,
       },
     };
   } catch (error) {
-    throw new Error("Failed to fetch educator earnings: " + error);
+    console.error("Failed to fetch tutoring earnings:", error);
+    throw new Error("Failed to fetch tutoring earnings.");
   }
 }
-
-// "use server";
-
-// import { auth } from "@/lib/auth";
-// import prisma from "@/lib/prisma";
-// import { headers } from "next/headers";
-
-// export async function requestPayout(formData: FormData) {
-//   const session = await auth.api.getSession({
-//     headers: await headers(),
-//   });
-
-//   if (!session?.user) {
-//     throw new Error("Unauthorized");
-//   }
-
-//   try {
-//     const educator = await prisma.user.findUnique({
-//       where: {
-//         id: session.user.id,
-//         role: "Educator",
-//       },
-//     });
-
-//     if (!educator) {
-//       throw new Error("Educator not found");
-//     }
-
-//     const paypalEmail = formData.get("paypalEmail");
-
-//     // 1. Check for null/undefined and ensure it's not a File object
-//     if (!paypalEmail || typeof paypalEmail !== "string") {
-//       throw new Error("A valid PayPal email is required");
-//     }
-
-//     if (!paypalEmail) {
-//       throw new Error("PayPal email is required");
-//     }
-
-//     // Check if educator has any pending payout requests
-//     const existingPendingPayout = await prisma.payout.findFirst({
-//       where: {
-//         id: educator.id,
-//         status: "Processing",
-//       },
-//     });
-
-//     if (existingPendingPayout) {
-//       throw new Error(
-//         "You already have a pending payout request. Please wait for it to be processed.",
-//       );
-//     }
-
-//     // Get doctor's current credit balance
-//     const creditCount = educator.credits;
-
-//     if (creditCount === 0) {
-//       throw new Error("No credits available for payout");
-//     }
-
-//     if (creditCount < 1) {
-//       throw new Error("Minimum 1 credit required for payout");
-//     }
-
-//     const totalAmount = creditCount * CREDIT_VALUE;
-//     const platformFee = creditCount * PLATFORM_FEE_PER_CREDIT;
-//     const netAmount = creditCount * EDUCATOR_EARNINGS_PER_CREDIT;
-
-//     // Create payout request
-//     const payout = await prisma.payout.create({
-//       data: {
-//         educator: {
-//           connect: {
-//             id: educator.id,
-//           },
-//         },
-//         amount: totalAmount,
-//         credits: creditCount,
-//         platformFee,
-//         netAmount,
-//         paypalEmail,
-//         status: "Processing",
-//       },
-//     });
-
-//     revalidatePath("/educator");
-//     return { success: true, payout };
-//   } catch (error) {
-//     console.error("Failed to request payout:", error);
-//     throw new Error("Failed to request payout: " + error);
-//   }
-// }
-
-// export async function getEducatorPayouts() {
-//   const session = await auth.api.getSession({
-//     headers: await headers(),
-//   });
-
-//   if (!session?.user) {
-//     throw new Error("Unauthorized");
-//   }
-
-//   try {
-//     const educator = await prisma.user.findUnique({
-//       where: {
-//         id: session.user.id,
-//         role: "Educator",
-//       },
-//     });
-
-//     if (!educator) {
-//       throw new Error("Educator not found");
-//     }
-
-//     const payouts = await prisma.payout.findMany({
-//       where: {
-//         id: educator.id,
-//       },
-//       orderBy: {
-//         createdAt: "desc",
-//       },
-//     });
-
-//     return { payouts };
-//   } catch (error) {
-//     throw new Error("Failed to fetch payouts: " + error);
-//   }
-// }
-
-// export async function getEducatorEarnings() {
-//   const session = await auth.api.getSession({
-//     headers: await headers(),
-//   });
-//   if (!session?.user) {
-//     throw new Error("Unauthorized");
-//   }
-//   try {
-//     const educator = await prisma.user.findUnique({
-//       where: {
-//         id: session.user.id,
-//         role: "Educator",
-//       },
-//     });
-//     if (!educator) {
-//       throw new Error("Educator not found");
-//     }
-//     // Get all completed appointments for this doctor
-//     const completedAppointments = await prisma.appointment.findMany({
-//       where: {
-//         id: educator.id,
-//         status: "Completed",
-//       },
-//     });
-//     // Calculate this month's completed appointments
-//     const currentMonth = new Date();
-//     currentMonth.setDate(1);
-//     currentMonth.setHours(0, 0, 0, 0);
-//     const thisMonthAppointments = completedAppointments.filter(
-//       (appointment) => new Date(appointment.createdAt) >= currentMonth,
-//     );
-//     // Use doctor's actual credits from the user model
-//     const totalEarnings = educator.credits * EDUCATOR_EARNINGS_PER_CREDIT; // $8 per credit to doctor
-//     // Calculate this month's earnings (2 credits per appointment * $8 per credit)
-//     const thisMonthEarnings =
-//       thisMonthAppointments.length * 2 * EDUCATOR_EARNINGS_PER_CREDIT;
-//     // Simple average per month calculation
-//     const averageEarningsPerMonth =
-//       totalEarnings > 0
-//         ? totalEarnings / Math.max(1, new Date().getMonth() + 1)
-//         : 0;
-//     // Get current credit balance for payout calculations
-//     const availableCredits = educator.credits;
-//     const availablePayout = availableCredits * EDUCATOR_EARNINGS_PER_CREDIT;
-//     return {
-//       earnings: {
-//         totalEarnings,
-//         thisMonthEarnings,
-//         completedAppointments: completedAppointments.length,
-//         averageEarningsPerMonth,
-//         availableCredits,
-//         availablePayout,
-//       },
-//     };
-//   } catch (error) {
-//     throw new Error("Failed to fetch doctor earnings: " + error);
-//   }
-// }

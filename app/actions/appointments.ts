@@ -9,6 +9,7 @@ import { Vonage } from "@vonage/server-sdk";
 import { MediaMode } from "@vonage/video";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
+import { CAPABILITIES, hasCapability } from "@/lib/auth/capabilities";
 
 export enum PlanType {
   Free = "Free",
@@ -30,7 +31,6 @@ export async function getEducatorById(id: string) {
     const educator = await prisma.user.findFirst({
       where: {
         id,
-        role: "Educator",
         verificationStatus: "Verified",
         status: "Active",
       },
@@ -62,7 +62,7 @@ export async function getEducatorById(id: string) {
       },
     });
 
-    if (!educator) {
+    if (!educator || !(await hasCapability(educator.id, CAPABILITIES.TEACH))) {
       throw new Error("Educator not found");
     }
 
@@ -196,32 +196,36 @@ export async function bookAppointment(formData: FormData) {
       const student = await tx.user.findFirst({
         where: {
           id: learnerId,
-          role: "Learner",
         },
       });
 
-      if (!student) {
-        return {
-          success: false,
-          message: "Learner not found",
-        };
-      }
+     if (
+  !student ||
+  !(await hasCapability(student.id, CAPABILITIES.LEARN))
+) {
+  return {
+    success: false,
+    message: "Learner not found or not authorized to learn",
+  };
+}
 
       // 3. Validate Educator
       const educator = await tx.user.findUnique({
         where: {
           id: educatorId,
-          role: "Educator",
           verificationStatus: "Verified",
         },
       });
 
-      if (!educator) {
-        return {
-          success: false,
-          message: "Educator not found or not verified",
-        };
-      }
+     if (
+  !educator ||
+  !(await hasCapability(educator.id, CAPABILITIES.TEACH))
+) {
+  return {
+    success: false,
+    message: "Educator not found or not authorized to teach",
+  };
+}
 
       // 4. Time Overlap Check for Educator (Unchanged - ensures the educator is free)
       const overLappingAppointment = await tx.appointment.findFirst({

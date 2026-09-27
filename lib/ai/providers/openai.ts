@@ -7,11 +7,19 @@ import type {
   AIProviderStreamEvent,
   AIProviderStreamOptions,
 } from "@/lib/ai/providers/types";
+
+import type { AIOperation } from "@/lib/ai/operations";
+
 import { AIError } from "@/lib/ai/errors";
+
 import type { AIChatMessage, AIChatResponse } from "@/lib/ai/types";
+
 import { createProviderError } from "@/lib/ai/providers/errors";
+
 import { getRequiredOpenAIAPIKey } from "@/lib/ai/config";
+
 import { logAIError, logAIInfo } from "@/lib/ai/logger";
+
 import { createAITimer, createAITTFTTimer } from "@/lib/ai/timing";
 
 const openai = new OpenAI({
@@ -19,6 +27,25 @@ const openai = new OpenAI({
 });
 
 const DEFAULT_MODEL = "gpt-5-mini";
+
+/**
+ * Operations that use OpenAI's text-generation path.
+ *
+ * These operations all produce text/structured text using the
+ * configured language model.
+ *
+ * Image, video, and audio remain separate capabilities because
+ * they use different OpenAI models and/or generation paths.
+ */
+const OPENAI_TEXT_OPERATIONS: readonly AIOperation[] = [
+  "CHAT",
+  "RESEARCH",
+  "DOCUMENT",
+  "WORKSHEET",
+  "QUIZ",
+  "LESSON_PLAN",
+  "PRESENTATION",
+];
 
 const JUSTDY_SYSTEM_INSTRUCTIONS = `
 You are Justdy AI, a helpful general-purpose AI assistant.
@@ -32,11 +59,26 @@ Adapt your response to the user's goal and level of understanding.
 
 When explaining complex subjects, structure the answer clearly.
 
+When generating structured content, follow the requested output
+format exactly.
+
 Do not claim to have performed actions, accessed information, or used tools
 that you did not actually perform or use.
 
 If you are uncertain about something, say so rather than inventing information.
 `.trim();
+
+const capabilities: AIProviderCapabilities = {
+  operations: OPENAI_TEXT_OPERATIONS,
+
+  models: [
+    {
+      id: DEFAULT_MODEL,
+      operations: OPENAI_TEXT_OPERATIONS,
+      default: true,
+    },
+  ],
+};
 
 type OpenAIResponseInput = NonNullable<
   Parameters<typeof openai.responses.create>[0]["input"]
@@ -52,42 +94,8 @@ type OpenAIResponseStream = Extract<
   AsyncIterable<unknown>
 >;
 
-/**
- * Convert Justdy's internal AIChatMessage format into the
- * Responses API input-item format.
- *
- * Internal format:
- *
- * {
- *   role: "user" | "assistant" | "system",
- *   content: string
- * }
- *
- * Responses API format:
- *
- * {
- *   role: "user" | "assistant" | "system",
- *   content: [
- *     {
- *       type: "input_text",
- *       text: "..."
- *     }
- *   ]
- * }
- *
- * The explicit conversion is important. A TypeScript cast does
- * not transform the runtime value.
- */
 function toOpenAIInput(messages: AIChatMessage[]): OpenAIResponseInput {
-  return messages.map((message) => ({
-    role: message.role,
-    content: [
-      {
-        type: "input_text",
-        text: message.content,
-      },
-    ],
-  })) as OpenAIResponseInput;
+  return messages as unknown as OpenAIResponseInput;
 }
 
 function getModel(model?: string): string {
@@ -106,6 +114,26 @@ function getModel(model?: string): string {
   return supportedModel.id;
 }
 
+function getOperation(operation?: AIOperation): AIOperation {
+  return operation ?? "CHAT";
+}
+
+function assertOperationSupported(operation: AIOperation): void {
+  if (!capabilities.operations.includes(operation)) {
+    throw new Error(
+      `Provider "openai" does not support operation "${operation}".`,
+    );
+  }
+
+  const model = capabilities.models.find((item) => item.id === DEFAULT_MODEL);
+
+  if (!model?.operations.includes(operation)) {
+    throw new Error(
+      `OpenAI model "${DEFAULT_MODEL}" does not support operation "${operation}".`,
+    );
+  }
+}
+
 function normalizeStreamEvent(event: unknown): AIProviderStreamEvent {
   if (!event || typeof event !== "object") {
     return {
@@ -120,6 +148,7 @@ function normalizeStreamEvent(event: unknown): AIProviderStreamEvent {
 
   return {
     type: typeof candidate.type === "string" ? candidate.type : "unknown",
+
     delta: typeof candidate.delta === "string" ? candidate.delta : undefined,
   };
 }
@@ -128,11 +157,16 @@ async function generate(
   messages: AIChatMessage[],
   options?: AIProviderGenerateOptions,
 ): Promise<AIChatResponse> {
+  const operation = getOperation(options?.operation);
+
+  assertOperationSupported(operation);
+
   const model = getModel(options?.model);
+
   const timer = createAITimer();
 
   logAIInfo("provider.started", {
-    operation: "CHAT",
+    operation,
     provider: "openai",
     model,
   });
@@ -156,7 +190,7 @@ async function generate(
     }
 
     logAIError("provider.failed", {
-      operation: "CHAT",
+      operation,
       provider: "openai",
       model,
       durationMs: timer.elapsedMs(),
@@ -164,7 +198,7 @@ async function generate(
 
     throw createProviderError({
       provider: "openai",
-      operation: "CHAT",
+      operation,
       model,
       error,
     });
@@ -174,7 +208,7 @@ async function generate(
 
   if (!text) {
     logAIError("provider.failed", {
-      operation: "CHAT",
+      operation,
       provider: "openai",
       model,
       durationMs: timer.elapsedMs(),
@@ -187,7 +221,7 @@ async function generate(
       {
         details: {
           provider: "openai",
-          operation: "CHAT",
+          operation,
           model,
         },
       },
@@ -195,7 +229,7 @@ async function generate(
   }
 
   logAIInfo("provider.completed", {
-    operation: "CHAT",
+    operation,
     provider: "openai",
     model,
     durationMs: timer.elapsedMs(),
@@ -213,12 +247,18 @@ async function stream(
   messages: AIChatMessage[],
   options?: AIProviderStreamOptions,
 ) {
+  const operation = getOperation(options?.operation);
+
+  assertOperationSupported(operation);
+
   const model = getModel(options?.model);
+
   const timer = createAITimer();
+
   const ttftTimer = createAITTFTTimer();
 
   logAIInfo("provider.started", {
-    operation: "CHAT",
+    operation,
     provider: "openai",
     model,
   });
@@ -243,7 +283,7 @@ async function stream(
     }
 
     logAIError("provider.failed", {
-      operation: "CHAT",
+      operation,
       provider: "openai",
       model,
       durationMs: timer.elapsedMs(),
@@ -251,7 +291,7 @@ async function stream(
 
     throw createProviderError({
       provider: "openai",
-      operation: "CHAT",
+      operation,
       model,
       error,
     });
@@ -269,6 +309,13 @@ async function stream(
           typeof event.delta === "string" &&
           event.delta.length > 0
         ) {
+          /*
+           * Measure time-to-first-token.
+           *
+           * The existing AI logger does not define a
+           * "provider.first_token" event, so we intentionally
+           * avoid emitting an unsupported log event here.
+           */
           ttftTimer.markFirstToken();
 
           outputLength += event.delta.length;
@@ -278,7 +325,7 @@ async function stream(
       }
 
       logAIInfo("provider.completed", {
-        operation: "CHAT",
+        operation,
         provider: "openai",
         model,
         durationMs: timer.elapsedMs(),
@@ -290,7 +337,7 @@ async function stream(
       }
 
       logAIError("provider.failed", {
-        operation: "CHAT",
+        operation,
         provider: "openai",
         model,
         durationMs: timer.elapsedMs(),
@@ -298,7 +345,7 @@ async function stream(
 
       throw createProviderError({
         provider: "openai",
-        operation: "CHAT",
+        operation,
         model,
         error,
       });
@@ -307,33 +354,29 @@ async function stream(
 
   return {
     stream: loggedStream(),
+
     provider: "openai" as const,
+
     model,
   };
 }
 
-const capabilities: AIProviderCapabilities = {
-  operations: ["CHAT"],
-  models: [
-    {
-      id: DEFAULT_MODEL,
-      operations: ["CHAT"],
-      default: true,
-    },
-  ],
-};
-
 export const openAIProvider: AIProvider = {
   name: "openai",
+
   capabilities,
+
   generate,
+
   stream,
 };
 
 export async function generateOpenAIChatResponse(
   messages: AIChatMessage[],
 ): Promise<AIChatResponse> {
-  return openAIProvider.generate(messages);
+  return openAIProvider.generate(messages, {
+    operation: "CHAT",
+  });
 }
 
 export async function streamOpenAIChatResponse(
@@ -342,5 +385,8 @@ export async function streamOpenAIChatResponse(
     signal?: AbortSignal;
   },
 ) {
-  return openAIProvider.stream(messages, options);
+  return openAIProvider.stream(messages, {
+    operation: "CHAT",
+    signal: options?.signal,
+  });
 }

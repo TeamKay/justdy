@@ -6,6 +6,11 @@ import {
 } from "@/lib/generated/prisma/enums";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { WorksheetDocumentSchema } from "@/lib/ai/worksheet/schema";
+import {
+  getOrCreateWorksheetResource,
+  getLatestWorksheetVersion,
+  saveWorksheetVersion,
+} from "@/lib/resources/worksheet";
 
 interface RouteContext {
   params: Promise<{
@@ -75,7 +80,6 @@ export async function GET(_request: Request, { params }: RouteContext) {
       id: true,
       status: true,
       outputData: true,
-      updatedAt: true,
       createdAt: true,
     },
   });
@@ -88,11 +92,41 @@ export async function GET(_request: Request, { params }: RouteContext) {
     return errorResponse("This worksheet has not finished generating.", 409);
   }
 
-  const worksheet = readWorksheet(generation.outputData);
+  /*
+   * The original AIGeneration output remains the migration source.
+   * Once a Resource exists, the latest ResourceVersion becomes canonical.
+   */
+  const legacyWorksheet = readWorksheet(generation.outputData);
 
-  if (!worksheet) {
+  if (!legacyWorksheet) {
     return errorResponse(
       "The generated worksheet document is unavailable.",
+      500,
+    );
+  }
+
+  const resource = await getOrCreateWorksheetResource({
+    userId: user.id,
+    generationId: generation.id,
+    worksheet: legacyWorksheet,
+  });
+
+  const latestVersion = await getLatestWorksheetVersion({
+    resourceId: resource.id,
+    userId: user.id,
+  });
+
+  if (!latestVersion?.content) {
+    return errorResponse("The worksheet resource has no usable version.", 500);
+  }
+
+  const parsedWorksheet = WorksheetDocumentSchema.safeParse(
+    latestVersion.content,
+  );
+
+  if (!parsedWorksheet.success) {
+    return errorResponse(
+      "The worksheet resource contains invalid content.",
       500,
     );
   }
@@ -100,9 +134,12 @@ export async function GET(_request: Request, { params }: RouteContext) {
   return NextResponse.json(
     {
       generationId: generation.id,
-      worksheet,
-      updatedAt: generation.updatedAt.toISOString(),
-      createdAt: generation.createdAt.toISOString(),
+      resourceId: resource.id,
+      versionId: latestVersion.id,
+      versionNumber: latestVersion.versionNumber,
+      worksheet: parsedWorksheet.data,
+      updatedAt: resource.updatedAt.toISOString(),
+      createdAt: resource.createdAt.toISOString(),
     },
     {
       headers: {
@@ -163,7 +200,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     select: {
       id: true,
       status: true,
-      updatedAt: true,
+      outputData: true,
     },
   });
 
@@ -176,27 +213,36 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
 
   /*
-   * Optimistic concurrency protection.
-   *
-   * If another browser/tab has already saved the document,
-   * this request must not silently overwrite it.
+   * Existing worksheets may predate the universal Resource system.
+   * Ensure the Resource + initial version exists before saving.
    */
-  const updated = await prisma.aIGeneration.updateMany({
-    where: {
-      id: generation.id,
-      userId: user.id,
-      type: AIGenerationType.WORKSHEET,
-      status: AIGenerationStatus.COMPLETED,
-      updatedAt: expectedUpdatedAt,
-    },
-    data: {
-      outputData: {
-        worksheet: parsedWorksheet.data,
-      },
-    },
+  const existingWorksheet = readWorksheet(generation.outputData);
+
+  if (!existingWorksheet) {
+    return errorResponse(
+      "The generated worksheet document is unavailable.",
+      500,
+    );
+  }
+
+  const resource = await getOrCreateWorksheetResource({
+    userId: user.id,
+    generationId: generation.id,
+    worksheet: existingWorksheet,
   });
 
-  if (updated.count !== 1) {
+  const result = await saveWorksheetVersion({
+    resourceId: resource.id,
+    userId: user.id,
+    worksheet: parsedWorksheet.data,
+    expectedUpdatedAt,
+  });
+
+  if (result.notFound) {
+    return errorResponse("Worksheet resource not found.", 404);
+  }
+
+  if (result.conflict) {
     return NextResponse.json(
       {
         error:
@@ -212,26 +258,18 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     );
   }
 
-  const saved = await prisma.aIGeneration.findUnique({
-    where: {
-      id: generation.id,
-    },
-    select: {
-      id: true,
-      updatedAt: true,
-      outputData: true,
-    },
-  });
-
-  if (!saved) {
+  if (!result.resource) {
     return errorResponse("Worksheet was saved but could not be reloaded.", 500);
   }
 
   return NextResponse.json(
     {
-      generationId: saved.id,
-      worksheet: readWorksheet(saved.outputData),
-      updatedAt: saved.updatedAt.toISOString(),
+      generationId: generation.id,
+      resourceId: result.resource.id,
+      versionId: result.version?.id ?? null,
+      versionNumber: result.version?.versionNumber ?? null,
+      worksheet: parsedWorksheet.data,
+      updatedAt: result.resource.updatedAt.toISOString(),
     },
     {
       headers: {

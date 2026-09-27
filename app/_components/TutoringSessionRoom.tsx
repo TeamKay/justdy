@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CalendarDays,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 
 import dynamic from "next/dynamic";
+import type { WhiteboardRealtimeData } from "@/app/_components/Whiteboard";
 
 const VideoCall = dynamic(() => import("@/app/_components/VideoCall"), {
   ssr: false,
@@ -28,8 +30,8 @@ const VideoCall = dynamic(() => import("@/app/_components/VideoCall"), {
 const Whiteboard = dynamic(() => import("@/app/_components/Whiteboard"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full min-h-[420px] items-center justify-center rounded-2xl bg-card">
-      <Loader2 className="h-7 w-7 animate-spin text-violet-600" />
+    <div className="flex h-full min-h-[520px] items-center justify-center rounded-2xl bg-card text-sm text-muted-foreground">
+      Loading whiteboard…
     </div>
   ),
 });
@@ -37,7 +39,6 @@ const Whiteboard = dynamic(() => import("@/app/_components/Whiteboard"), {
 type SessionData = {
   id: string;
   bookingId: string;
-  appointmentId: string | null;
   role: "customer" | "tutor";
 
   subject: string;
@@ -51,8 +52,6 @@ type SessionData = {
 
   startTime: string;
   endTime: string;
-
-  appointmentStatus: string | null;
 
   videoSessionAvailable: boolean;
 
@@ -124,6 +123,7 @@ export default function TutoringSessionRoom({
 }: {
   bookingId: string;
 }) {
+  const router = useRouter();
   const [session, setSession] = useState<SessionData | null>(null);
 
   const [videoCredentials, setVideoCredentials] =
@@ -133,7 +133,16 @@ export default function TutoringSessionRoom({
 
   const [joining, setJoining] = useState(false);
 
+  // Daily owns the participant sidebar. The whiteboard reserves exactly the
+  // same width so expanding/collapsing the sidebar pushes the board instead
+  // of covering it.
+  const [participantRailWidth, setParticipantRailWidth] = useState(350);
+
   const [error, setError] = useState("");
+  const [remoteWhiteboardData, setRemoteWhiteboardData] =
+    useState<WhiteboardRealtimeData | null>(null);
+  const whiteboardSendRef = useRef<((type: string, data?: unknown) => void) | null>(null);
+  const whiteboardSignalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadSession = useCallback(async () => {
     try {
@@ -173,19 +182,40 @@ export default function TutoringSessionRoom({
     };
   }, [loadSession]);
 
-  /*
-   * Refresh the session state while waiting for
-   * the 30-minute join window.
-   */
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void loadSession();
-    }, 0);
 
+  useEffect(() => {
     return () => {
-      window.clearTimeout(timer);
+      if (whiteboardSignalTimerRef.current) {
+        clearTimeout(whiteboardSignalTimerRef.current);
+      }
     };
-  }, [loadSession]);
+  }, []);
+
+  const handleWhiteboardChange = useCallback((data: WhiteboardRealtimeData) => {
+    const sendSignal = whiteboardSendRef.current;
+    if (!sendSignal) return;
+
+    if (whiteboardSignalTimerRef.current) {
+      clearTimeout(whiteboardSignalTimerRef.current);
+    }
+
+    whiteboardSignalTimerRef.current = setTimeout(() => {
+      const payload = JSON.stringify(data);
+
+      // Persisted whiteboard data is authoritative. Vonage signals are only
+      // an optional low-latency transport for reasonably small board states.
+      if (payload.length <= 50_000) {
+        sendSignal("whiteboard:update", data);
+      }
+    }, 150);
+  }, []);
+
+  const handleWhiteboardSignal = useCallback((signal: { type: string; data?: unknown }) => {
+    if (signal.type !== "whiteboard:update") return;
+    if (!signal.data || typeof signal.data !== "object") return;
+
+    setRemoteWhiteboardData(signal.data as WhiteboardRealtimeData);
+  }, []);
 
   const otherParticipant = useMemo(() => {
     if (!session) {
@@ -196,7 +226,7 @@ export default function TutoringSessionRoom({
   }, [session]);
 
   async function joinSession() {
-    if (joining || !session || !session.canJoin || !session.appointmentId) {
+    if (joining || !session || !session.canJoin) {
       return;
     }
 
@@ -277,58 +307,67 @@ export default function TutoringSessionRoom({
 
   if (videoCredentials) {
     return (
-      <main className="min-h-screen bg-background text-foreground">
-        <header className="flex items-center justify-between border-b border-border/50 bg-background px-5 py-3">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/tutoring/sessions"
-              className="rounded-xl p-2 text-muted-foreground hover:bg-card/10 hover:text-foreground"
-              aria-label="Back to sessions"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
+      <main className="fixed inset-0 overflow-hidden bg-white text-foreground">
+        <section className="absolute inset-0 z-[600]">
+          <VideoCall
+            sessionId={videoCredentials.videoSessionId}
+            token={videoCredentials.token}
+            role={videoCredentials.role === "tutor" ? "educator" : "student"}
+            onSignal={handleWhiteboardSignal}
+            onParticipantRailWidthChange={setParticipantRailWidth}
+            onSignalReady={(sendSignal) => {
+              whiteboardSendRef.current = sendSignal;
+            }}
+            onConnected={() => {
+              void fetch(
+                `/api/tutoring/sessions/${encodeURIComponent(bookingId)}/lifecycle`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "start" }),
+                },
+              ).then(async (response) => {
+                if (!response.ok) {
+                  const data = await response.json().catch(() => null);
+                  console.error(
+                    "Failed to start tutoring lifecycle:",
+                    data?.error ?? response.statusText,
+                  );
+                  return;
+                }
+                void loadSession();
+              });
+            }}
+            onEndSession={async () => {
+              const response = await fetch(
+                `/api/tutoring/sessions/${encodeURIComponent(bookingId)}/lifecycle`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "end" }),
+                },
+              );
 
-            <div>
-              <div className="text-sm font-semibold">{session.subject}</div>
+              if (!response.ok) {
+                const data = await response.json().catch(() => null);
+                throw new Error(
+                  data?.error || "Unable to complete tutoring session.",
+                );
+              }
+            }}
+          />
+        </section>
 
-              <div className="text-xs text-muted-foreground">
-                {otherParticipant?.name}
-                {" · "}
-                {session.role === "tutor" ? "Tutor" : "Customer"}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            Live classroom
-          </div>
-        </header>
-
-        <div className="grid min-h-[calc(100vh-65px)] lg:grid-cols-[1.2fr_1fr]">
-          <section className="min-h-[520px] border-b border-border/50 lg:border-b-0 lg:border-r">
-            <VideoCall
-              sessionId={videoCredentials.videoSessionId}
-              token={videoCredentials.token}
-              role={videoCredentials.role === "tutor" ? "educator" : "student"}
-            />
-          </section>
-
-          <section className="min-h-[520px] bg-muted/50 p-3">
-            {session.appointmentId ? (
-              <div className="h-full overflow-hidden rounded-2xl border border-border bg-card">
-                <Whiteboard
-                  mode="appointment"
-                  appointmentId={session.appointmentId}
-                />
-              </div>
-            ) : (
-              <div className="flex h-full min-h-[520px] items-center justify-center rounded-2xl bg-card text-sm text-muted-foreground">
-                Whiteboard is not available for this session.
-              </div>
-            )}
-          </section>
-        </div>
+        <Whiteboard
+          mode="booking"
+          bookingId={bookingId}
+          rightInset={participantRailWidth}
+          remoteData={remoteWhiteboardData}
+          onRealtimeChange={handleWhiteboardChange}
+          onClose={() => {
+            router.push("/tutoring/sessions");
+          }}
+        />
       </main>
     );
   }

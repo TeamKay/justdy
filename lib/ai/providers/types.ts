@@ -1,4 +1,5 @@
 import type { AIChatMessage, AIChatResponse } from "@/lib/ai/types";
+import { AIOperation } from "../operations";
 
 export type AIProviderName = "openai";
 
@@ -19,11 +20,13 @@ export type AIProviderCapabilities = {
 };
 
 export type AIProviderGenerateOptions = {
+  operation?: AIOperation;
   model?: string;
   signal?: AbortSignal;
 };
 
 export type AIProviderStreamOptions = {
+  operation?: AIOperation;
   model?: string;
   signal?: AbortSignal;
 };

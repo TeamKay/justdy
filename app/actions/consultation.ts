@@ -5,6 +5,7 @@ import {
   PendingEnrollmentStatus,
 } from "@/lib/generated/prisma/client";
 import prisma from "@/lib/prisma";
+import { CAPABILITIES, ensureCapabilities } from "@/lib/auth/capabilities";
 import { Resend } from "resend";
 import FreeConsultationEmail from "../_components/emails/ConsultationEmail";
 
@@ -68,10 +69,21 @@ export async function createFreeConsultation(data: FreeConsultationInput) {
         name: data.name,
         email: data.email.toLowerCase().trim(),
         phoneNumber: data.phoneNumber?.trim() || null,
-        role: "Learner",
         onboardingCompleted: true,
       },
     });
+
+    const consultationUser = await prisma.user.findUnique({
+      where: { email: data.email.toLowerCase().trim() },
+      select: { id: true },
+    });
+
+    if (consultationUser) {
+      await ensureCapabilities(consultationUser.id, [
+        CAPABILITIES.LEARN,
+        CAPABILITIES.BOOK_TUTORING,
+      ]);
+    }
 
     // 3. Format Date and Time strings for the Email
     const formattedDate = baseDate.toLocaleDateString("en-US", {

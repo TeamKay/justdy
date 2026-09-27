@@ -12,6 +12,7 @@ export const env = createEnv({
     STRIPE_WEBHOOK_SECRET: z.string().min(1),
     EMAIL_SENDER_NAME: z.string().min(1),
     EMAIL_SENDER_ADDRESS: z.string().min(1),
+    CRON_SECRET: z.string().min(1),
   },
 
   client: {},

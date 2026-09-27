@@ -41,6 +41,7 @@ export async function executeAI(
   const provider = getAIProvider(resolved.provider);
 
   const response = await provider.generate(resolved.messages, {
+    operation: resolved.context.operation,
     model: resolved.model,
     signal: options?.signal,
   });
@@ -64,11 +65,18 @@ export async function executeAIStream(
   request: AIExecutionRequest,
   options?: AIExecutionOptions,
 ): Promise<AIExecutionStreamResult> {
+  /**
+   * The streaming resolver currently accepts only the request.
+   *
+   * AbortSignal belongs to the provider execution call, so it is
+   * passed below rather than into the resolver.
+   */
   const resolved = resolveAIStreamingExecution(request);
 
   const provider = getAIProvider(resolved.provider);
 
   const response = await provider.stream(resolved.messages, {
+    operation: resolved.context.operation,
     model: resolved.model,
     signal: options?.signal,
   });
