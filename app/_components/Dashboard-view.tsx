@@ -5,13 +5,14 @@ import {
   CalendarDays,
   CheckCircle2,
   BookOpen,
-  Clock3,
   GraduationCap,
   Search,
   TrendingUp,
   Users,
   Video,
-  Wallet,
+  Sparkles,
+  MessageCircle,
+  ChevronRight,
 } from "lucide-react";
 
 import ClientGrowthChart from "@/app/_components/ClientGrowthChart";
@@ -32,6 +33,7 @@ type Service = {
 
 type UpcomingLearnerLesson = {
   id: string;
+  tutoringSessionId: string | null;
   startTime: Date;
   endTime: Date;
   subject: string | null;
@@ -171,7 +173,6 @@ function formatMoney(amount: number, currency = "GHS") {
   }).format(amount);
 }
 
-
 function getInitials(name: string | null | undefined) {
   if (!name) return "J";
 
@@ -205,7 +206,7 @@ function PersonAvatar({
 
   return (
     <div
-      className="flex shrink-0 items-center justify-center bg-amber-400 font-semibold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
+      className="flex shrink-0 items-center justify-center rounded-full bg-emerald-100 font-semibold text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
       style={{ width: size, height: size }}
     >
       {getInitials(person?.name)}
@@ -234,8 +235,14 @@ function canJoinLesson(lesson: {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Shared UI                                                                  */
+/* -------------------------------------------------------------------------- */
+
 function SectionHeader({
+  eyebrow,
   title,
+  description,
   href,
   linkText,
 }: {
@@ -246,15 +253,29 @@ function SectionHeader({
   linkText?: string;
 }) {
   return (
-    <div className="mb-0 flex items-end justify-between gap-4 bg-card">
+    <div className="mb-5 flex items-end justify-between gap-4">
       <div>
-        <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
+        {eyebrow ? (
+          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-400">
+            {eyebrow}
+          </p>
+        ) : null}
+
+        <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+          {title}
+        </h2>
+
+        {description ? (
+          <p className="mt-1 text-sm text-muted-foreground">
+            {description}
+          </p>
+        ) : null}
       </div>
 
       {href && linkText ? (
         <Link
           href={href}
-          className="hidden items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-700 sm:flex dark:text-indigo-400"
+          className="hidden shrink-0 items-center gap-1.5 text-sm font-semibold text-emerald-700 transition hover:text-emerald-900 sm:flex dark:text-emerald-400 dark:hover:text-emerald-300"
         >
           {linkText}
           <ArrowRight className="h-4 w-4" />
@@ -278,18 +299,23 @@ function EmptyState({
   action?: string;
 }) {
   return (
-    <div className="border border-dashed border-border px-6 py-12 text-center">
-      <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-muted">
-        <Icon className="h-5 w-5 text-muted-foreground" />
+    <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 px-6 py-12 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-950/60">
+        <Icon className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
       </div>
-      <h3 className="mt-4 font-semibold">{title}</h3>
+
+      <h3 className="mt-4 font-semibold text-foreground">
+        {title}
+      </h3>
+
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
         {description}
       </p>
+
       {href && action ? (
         <Link
           href={href}
-          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-950"
+          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-emerald-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-950"
         >
           {action}
           <ArrowRight className="h-4 w-4" />
@@ -299,7 +325,25 @@ function EmptyState({
   );
 }
 
+function DashboardCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={`rounded-md border border-border/70 bg-card shadow-[0_8px_30px_-24px_rgba(0,0,0,0.35)] ${className}`}
+    >
+      {children}
+    </section>
+  );
+}
 
+/* -------------------------------------------------------------------------- */
+/* Tutor dashboard                                                            */
+/* -------------------------------------------------------------------------- */
 
 function TeacherAdminDashboard({
   account,
@@ -307,6 +351,7 @@ function TeacherAdminDashboard({
   completedSessions,
   adminStats,
   clientGrowth,
+  latestPayout,
 }: {
   account: DashboardViewProps["account"];
   upcoming: UpcomingTeacherLesson[];
@@ -316,190 +361,133 @@ function TeacherAdminDashboard({
   clientGrowth: ClientGrowthPoint[];
   recentClients: Person[];
 }) {
-  const latestGrowth = clientGrowth[clientGrowth.length - 1]?.value ?? 0;
-  const previousGrowth = clientGrowth[clientGrowth.length - 2]?.value ?? 0;
+  const latestGrowth =
+    clientGrowth[clientGrowth.length - 1]?.value ?? 0;
+
+  const previousGrowth =
+    clientGrowth[clientGrowth.length - 2]?.value ?? 0;
+
   const growthPercent =
     previousGrowth > 0
-      ? Math.round(((latestGrowth - previousGrowth) / previousGrowth) * 100)
+      ? Math.round(
+          ((latestGrowth - previousGrowth) / previousGrowth) *
+            100,
+        )
       : null;
 
+  const firstName = account.name.split(" ")[0] || "there";
+
   return (
-    <div className="space-y-5">
-      <section className="flex flex-col gap-5 p-0 sm:py-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="mt-5 text-3xl font-semibold tracking-tight sm:text-3xl">
-            Welcome back, {account.name.split(" ")[0]}.
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-            A focused view of your tutoring business — clients, bookings,
-            sessions, and growth.
-          </p>
-        </div>
+    <div className="space-y-8">
+      {/* Hero */}
+      <section className="relative overflow-hidden px-0 py-4 text-emerald-950 sm:px-0 lg:px-0 lg:py-0">
+        <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-emerald-400/10 blur-2xl" />
+        <div className="absolute -bottom-28 right-32 h-56 w-56 rounded-full bg-white/5 blur-3xl" />
 
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/tutoring/sessions"
-            className="inline-flex h-11 items-center gap-2 rounded-sm border border-border bg-background px-4 text-sm font-semibold hover:bg-muted"
-          >
-            <CalendarDays className="h-4 w-4" />
-            View bookings
-          </Link>
-          <Link
-            href="/educator"
-            className="inline-flex h-11 items-center gap-2 rounded-sm bg-card px-4 text-sm font-semibold text-white hover:bg-emerald-950"
-          >
-            <GraduationCap className="h-4 w-4" />
-            Teaching workspace
-          </Link>
-        </div>
-      </section>
+        <div className="relative flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <h1 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl lg:text-[2.0rem]">
+              Welcome back, {firstName}.
+            </h1>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.75fr)_minmax(300px,0.7fr)]">
-        <section className="rounded-xl border border-border/70 bg-card p-5 sm:p-6">
-          <div className="mb-6 overflow-hidden rounded-2xl border border-border/70 bg-background shadow-sm">
-            <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
-              <div className="px-5 py-4 sm:px-6">
-                <p className="text-xs font-medium text-muted-foreground">
-                  New clients this month
-                </p>
-                <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-                  {latestGrowth}
-                </p>
-              </div>
-
-              <div className="px-5 py-4 sm:px-6">
-                <p className="text-xs font-medium text-muted-foreground">
-                  Total registered users
-                </p>
-                <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-                  {adminStats?.totalUsers ?? 0}
-                </p>
-              </div>
-
-              <div className="px-5 py-4 sm:px-6">
-                <p className="text-xs font-medium text-muted-foreground">
-                  Scheduled tutoring
-                </p>
-                <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-                  {adminStats?.scheduledBookings ?? upcoming.length}
-                </p>
-              </div>
-
-              <div className="px-5 py-4 sm:px-6">
-                <p className="text-xs font-medium text-muted-foreground">
-                  Completed sessions
-                </p>
-                <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-                  {adminStats?.completedSessions ?? completedSessions.length}
-                </p>
-              </div>
-            </div>
+            <p className="mt-0 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+              Everything you need to manage your learners,
+              sessions, availability, and teaching activity.
+            </p>
           </div>
 
-          <div className="mb-2 flex items-center justify-between gap-4">
-            {growthPercent !== null ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-background px-3 py-1.5 text-xs font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                <TrendingUp className="h-3.5 w-3.5" />
-                {growthPercent}% vs previous month
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/admin/bookings"
+              className="inline-flex h-11 items-center gap-2 rounded-lg border border-white/15 bg-emerald-950 px-4 text-sm font-semibold text-white transition hover:bg-emerald-900"
+            >
+              <CalendarDays className="h-4 w-4" />
+              View bookings
+            </Link>
+
+          
+
+            <Link
+              href="/admin/live-help"
+              className="inline-flex h-11 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+            >
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-60" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
               </span>
-            ) : null}
+              <MessageCircle className="h-4 w-4" />
+              Live Homework Help
+            </Link>
           </div>
-
-          <ClientGrowthChart points={clientGrowth} />
-        </section>
-
-        <section className="rounded-xl border border-border/70 bg-card p-6">
-          <SectionHeader
-            eyebrow="Schedule"
-            title="Upcoming lessons"
-            description="Your upcoming teaching sessions, starting with the next one."
-            href="/tutoring/sessions"
-            linkText="View all"
-          />
-
-          {upcoming.length ? (
-            <div className="mt-5 space-y-3">
-              {upcoming.map((lesson, index) => (
-                <div
-                  key={lesson.id}
-                  className={`rounded-xl border p-4 transition-colors ${
-                    index === 0
-                      ? "border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/60 dark:bg-emerald-950/30"
-                      : "border-border/70 bg-background hover:bg-muted/40"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
-                        index === 0
-                          ? "bg-emerald-900 text-white dark:bg-emerald-500 dark:text-emerald-950"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {index + 1}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold">
-                            {lesson.student?.name ?? "Learner"}
-                          </p>
-                          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                            {lesson.service?.title ?? "Tutoring lesson"}
-                          </p>
-                        </div>
-
-                        {index === 0 ? (
-                          <span className="shrink-0 rounded-full bg-emerald-900 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white dark:bg-emerald-500 dark:text-emerald-950">
-                            Next
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <p className="mt-3 text-xs font-medium text-foreground">
-                        {lesson.subject ?? "Mathematics"}
-                        {lesson.gradeLevel ? ` · ${lesson.gradeLevel}` : ""}
-                      </p>
-
-                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        <span>{formatDate(lesson.startTime)}</span>
-                        <span className="hidden h-3 w-px bg-border sm:block" />
-                        <span className="inline-flex items-center gap-1">
-                          <Clock3 className="h-3 w-3" />
-                          {formatTime(lesson.startTime)} –{" "}
-                          {formatTime(lesson.endTime)}
-                        </span>
-                      </div>
-
-                      <Link
-                        href={`/tutoring/sessions/${lesson.id}`}
-                        className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
-                      >
-                        Open lesson
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-5">
-              <EmptyState
-                icon={CalendarDays}
-                title="No upcoming lessons"
-                description="Scheduled tutoring lessons will appear here when learners book your services."
-                href="/educator/availability"
-                action="Manage availability"
-              />
-            </div>
-          )}
-        </section>
+        </div>
       </section>
+
+      {/* KPI strip */}
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          {
+            value: latestGrowth,
+            icon: Users,
+            detail: "New clients",
+          },
+          {
+            value: adminStats?.totalUsers ?? 0,
+            icon: Users,
+            detail: "Registered users",
+          },
+          {
+            value:
+              adminStats?.scheduledBookings ?? upcoming.length,
+            icon: CalendarDays,
+            detail: "Upcoming lessons",
+          },
+          {
+            value:
+              adminStats?.completedSessions ??
+              completedSessions.length,
+            icon: CheckCircle2,
+            detail: "Sessions completed",
+          },
+        ].map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <DashboardCard key={item.detail} className="p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="mt-2 text-2xl font-semibold tracking-tight">
+                    {item.value}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {item.detail}
+                  </p>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50">
+                  <Icon className="h-4.5 w-4.5 text-emerald-700 dark:text-emerald-400" />
+                </div>
+              </div>
+            </DashboardCard>
+          );
+        })}
+      </section>
+
+      {/* Main workspace */}
+      <section className="grid gap-6">
+      <DashboardCard className="p-5 sm:p-6">
+        <div className="min-h-75">
+          <ClientGrowthChart points={clientGrowth} />
+        </div>
+      </DashboardCard>
+    </section>
+
+     
     </div>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Learner dashboard                                                          */
+/* -------------------------------------------------------------------------- */
 
 function CourseProgressSection({
   enrollments,
@@ -511,31 +499,39 @@ function CourseProgressSection({
       <SectionHeader
         eyebrow="Courses"
         title="Continue learning"
-        description="Pick up where you left off in your enrolled courses."
+        description="Pick up where you left off."
+        href="/products"
+        linkText="Browse courses"
       />
 
       {enrollments.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {enrollments.slice(0, 6).map((enrollment) => {
-            const progress = Math.max(0, Math.min(100, enrollment.progress));
+            const progress = Math.max(
+              0,
+              Math.min(100, enrollment.progress),
+            );
 
             return (
-              <div
+              <Link
+                href={`/courses/${enrollment.course.slug}`}
                 key={enrollment.id}
-                className="rounded-xl border border-border/70 bg-card p-5 "
+                className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
                     <BookOpen className="h-5 w-5" />
                   </div>
-                  <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold">
+
+                  <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                     {enrollment.status}
                   </span>
                 </div>
 
-                <h3 className="mt-5 line-clamp-2 font-semibold">
+                <h3 className="mt-5 line-clamp-2 font-semibold group-hover:text-emerald-800 dark:group-hover:text-emerald-300">
                   {enrollment.course.title}
                 </h3>
+
                 <p className="mt-1 line-clamp-2 min-h-10 text-sm text-muted-foreground">
                   {enrollment.course.smallDescription ??
                     enrollment.course.category ??
@@ -544,9 +540,15 @@ function CourseProgressSection({
 
                 <div className="mt-5">
                   <div className="mb-2 flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Progress</span>
-                    <span className="font-semibold">{Math.round(progress)}%</span>
+                    <span className="text-muted-foreground">
+                      Progress
+                    </span>
+
+                    <span className="font-semibold">
+                      {Math.round(progress)}%
+                    </span>
                   </div>
+
                   <div className="h-2 overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-emerald-500 transition-all"
@@ -557,11 +559,14 @@ function CourseProgressSection({
 
                 <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
                   <span>{enrollment.course.level}</span>
+
                   {enrollment.course.duration ? (
-                    <span>{enrollment.course.duration} min</span>
+                    <span>
+                      {enrollment.course.duration} min
+                    </span>
                   ) : null}
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -592,118 +597,210 @@ function LearnerDashboard({
   completedSessions: CompletedSession[];
 }) {
   const nextLesson = upcoming[0];
+  const firstName = account.name.split(" ")[0] || "there";
+
+  const completedCount = completedSessions.length;
+
+  const averageProgress =
+    courseEnrollments.length
+      ? Math.round(
+          courseEnrollments.reduce(
+            (total, course) =>
+              total +
+              Math.max(0, Math.min(100, course.progress)),
+            0,
+          ) / courseEnrollments.length,
+        )
+      : 0;
 
   return (
-    <div className="space-y-7">
-      <section className="rounded-3xl border border-border/70 bg-card p-6 shadow-sm sm:p-8">
-        <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
-          Learner dashboard
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-          Welcome back, {account.name.split(" ")[0]}.
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Keep your learning moving with focused lessons, progress, and
-          practice.
-        </p>
-      </section>
+    <div className="space-y-8">
+      {/* Learner hero */}
+      <section className="relative overflow-hidden rounded-3xl border border-border/70 bg-card p-6 shadow-sm sm:p-8 lg:p-10">
+        <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-emerald-100/70 blur-3xl dark:bg-emerald-950/30" />
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {account.canBookTutoring ? (
-          <Link
-            href="/tutoring"
-            className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-          >
-            <Search className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            <h2 className="mt-4 font-semibold">Find a tutor</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Find the right teacher and book your next lesson.
+        <div className="relative flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+              <Sparkles className="h-3.5 w-3.5" />
+              Your learning workspace
             </p>
-          </Link>
-        ) : null}
 
-        <Link
-          href="/tutoring/sessions"
-          className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-        >
-          <CalendarDays className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-          <h2 className="mt-4 font-semibold">My lessons</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            View your upcoming and completed tutoring sessions.
-          </p>
-        </Link>
+            <h1 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl lg:text-[2.7rem]">
+              Welcome back, {firstName}.
+            </h1>
 
-        <Link
-          href="/progress"
-          className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-        >
-          <TrendingUp className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-          <h2 className="mt-4 font-semibold">My progress</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Review feedback, practice areas, and learning activity.
-          </p>
-        </Link>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
+              Continue building your skills with tutoring,
+              courses, practice, and personalized learning.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            {account.canBookTutoring ? (
+              <Link
+                href="/tutoring"
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-900 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-950"
+              >
+                <Search className="h-4 w-4" />
+                Find a tutor
+              </Link>
+            ) : null}
+
+            <Link
+              href="/dashboard/create"
+              className="inline-flex h-11 items-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-semibold transition hover:bg-muted"
+            >
+              <Sparkles className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+              Create with AI
+            </Link>
+          </div>
+        </div>
       </section>
 
+      {/* Learner overview */}
+      <section className="grid gap-3 sm:grid-cols-3">
+        <DashboardCard className="p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">
+                Active courses
+              </p>
+
+              <p className="mt-2 text-2xl font-semibold">
+                {courseEnrollments.length}
+              </p>
+            </div>
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50">
+              <BookOpen className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
+            </div>
+          </div>
+        </DashboardCard>
+
+        <DashboardCard className="p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">
+                Course progress
+              </p>
+
+              <p className="mt-2 text-2xl font-semibold">
+                {averageProgress}%
+              </p>
+            </div>
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50">
+              <TrendingUp className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
+            </div>
+          </div>
+        </DashboardCard>
+
+        <DashboardCard className="p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">
+                Lessons completed
+              </p>
+
+              <p className="mt-2 text-2xl font-semibold">
+                {completedCount}
+              </p>
+            </div>
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50">
+              <CheckCircle2 className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
+            </div>
+          </div>
+        </DashboardCard>
+      </section>
+
+      {/* Next lesson */}
       <section>
         <SectionHeader
-          eyebrow="Schedule"
+          eyebrow="Your schedule"
           title="Next lesson"
           href="/tutoring/sessions"
           linkText="View all"
         />
-        {nextLesson ? (
-          <div className="rounded-2xl bg-indigo-600 p-6 text-white shadow-sm">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-indigo-100">
-                  {nextLesson.service?.title ?? "Tutoring lesson"}
-                </p>
-                <h2 className="mt-2 text-xl font-semibold">
-                  {nextLesson.educator?.name ?? "Teacher"}
-                </h2>
-                <p className="mt-1 text-sm text-indigo-100">
-                  {nextLesson.subject ?? "Mathematics"}
-                </p>
-              </div>
-              <div className="sm:text-right">
-                <p className="text-sm font-semibold">
-                  {formatDate(nextLesson.startTime)}
-                </p>
-                <p className="mt-1 text-sm text-indigo-100">
-                  {formatTime(nextLesson.startTime)} –{" "}
-                  {formatTime(nextLesson.endTime)}
-                </p>
-                {(() => {
-  const joinable = canJoinLesson(nextLesson);
 
-  return (
-    <Link
-      href={
-        joinable
-          ? `/tutoring/sessions/${encodeURIComponent(
-              nextLesson.id,
-            )}`
-          : `/dashboard/tutoring/sessions/${encodeURIComponent(
-              nextLesson.id,
-            )}`
-      }
-      className="mt-4 inline-flex items-center gap-2 rounded-lg bg-white px-3.5 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50"
-    >
-      {joinable ? (
-        <>
-          <Video className="h-3.5 w-3.5" />
-          Join now
-        </>
-      ) : (
-        <>
-          Open lesson
-          <ArrowRight className="h-3.5 w-3.5" />
-        </>
-      )}
-    </Link>
-  );
-})()}
+        {nextLesson ? (
+          <div className="relative overflow-hidden rounded-3xl bg-[#063B2B] p-6 text-white shadow-lg sm:p-8">
+            <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-emerald-400/10 blur-3xl" />
+
+            <div className="relative flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-center gap-4">
+                <PersonAvatar
+                  person={nextLesson.educator}
+                  size={56}
+                />
+
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-200">
+                    {nextLesson.service?.title ??
+                      "Tutoring lesson"}
+                  </p>
+
+                  <h2 className="mt-1 text-xl font-semibold">
+                    {nextLesson.educator?.name ?? "Your tutor"}
+                  </h2>
+
+                  <p className="mt-1 text-sm text-emerald-100/80">
+                    {nextLesson.subject ?? "Mathematics"}
+                    {nextLesson.gradeLevel
+                      ? ` · ${nextLesson.gradeLevel}`
+                      : ""}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                  <p className="text-xs text-emerald-100/70">
+                    {formatDate(nextLesson.startTime)}
+                  </p>
+
+                  <p className="mt-1 text-sm font-semibold">
+                    {formatTime(nextLesson.startTime)} –{" "}
+                    {formatTime(nextLesson.endTime)}
+                  </p>
+                </div>
+
+                {(() => {
+                  const joinable =
+                    canJoinLesson(nextLesson);
+
+                  const href = joinable
+                    ? `/tutoring/sessions/${encodeURIComponent(
+                        nextLesson.id,
+                      )}`
+                    : nextLesson.tutoringSessionId
+                      ? `/dashboard/tutoring/sessions/${encodeURIComponent(
+                          nextLesson.tutoringSessionId,
+                        )}`
+                      : `/tutoring/sessions/${encodeURIComponent(
+                          nextLesson.id,
+                        )}`;
+
+                  return (
+                    <Link
+                      href={href}
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
+                    >
+                      {joinable ? (
+                        <>
+                          <Video className="h-4 w-4" />
+                          Join lesson
+                        </>
+                      ) : (
+                        <>
+                          Open lesson
+                          <ArrowRight className="h-4 w-4" />
+                        </>
+                      )}
+                    </Link>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -711,36 +808,58 @@ function LearnerDashboard({
           <EmptyState
             icon={CalendarDays}
             title="No upcoming lessons"
-            description="Find a tutor and book your next tutoring session."
+            description="Find a tutor and book your next tutoring session to start learning."
             href="/tutoring"
             action="Find a tutor"
           />
         )}
       </section>
 
-      <CourseProgressSection enrollments={courseEnrollments} />
+      {/* Courses */}
+      <CourseProgressSection
+        enrollments={courseEnrollments}
+      />
 
+      {/* Activity + history */}
       <section className="grid gap-6 lg:grid-cols-2">
-        <div>
+        <DashboardCard className="p-5 sm:p-6">
           <SectionHeader
             eyebrow="Learning"
             title="Recent activity"
             href="/progress"
             linkText="View progress"
           />
+
           {activities.length ? (
-            <div className="space-y-3">
-              {activities.slice(0, 4).map((activity) => (
+            <div className="space-y-2">
+              {activities.slice(0, 5).map((activity) => (
                 <div
                   key={activity.id}
-                  className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm"
+                  className="flex items-center gap-3 rounded-xl border border-border/60 bg-background p-3.5 transition hover:bg-muted/40"
                 >
-                  <p className="text-sm font-semibold">
-                    {activity.resource?.title ?? "Learning activity"}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {activity.activityType} · {activity.status}
-                  </p>
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50">
+                    <BookOpen className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">
+                      {activity.resource?.title ??
+                        "Learning activity"}
+                    </p>
+
+                    <p className="mt-0.5 text-xs capitalize text-muted-foreground">
+                      {activity.activityType} ·{" "}
+                      {activity.status}
+                    </p>
+                  </div>
+
+                  {activity.score !== null &&
+                  activity.maxScore ? (
+                    <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                      {activity.score}/
+                      {activity.maxScore}
+                    </span>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -751,28 +870,40 @@ function LearnerDashboard({
               description="Your completed learning work will appear here."
             />
           )}
-        </div>
+        </DashboardCard>
 
-        <div>
-          <SectionHeader eyebrow="History" title="Recent lessons" />
+        <DashboardCard className="p-5 sm:p-6">
+          <SectionHeader
+            eyebrow="History"
+            title="Recent lessons"
+          />
+
           {completedSessions.length ? (
-            <div className="space-y-3">
-              {completedSessions.slice(0, 4).map((session) => (
+            <div className="space-y-2">
+              {completedSessions.slice(0, 5).map((session) => (
                 <div
                   key={session.id}
-                  className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-4 shadow-sm"
+                  className="flex items-center gap-3 rounded-xl border border-border/60 bg-background p-3.5"
                 >
-                  <PersonAvatar person={session.educator} size={40} />
-                  <div className="min-w-0">
+                  <PersonAvatar
+                    person={session.educator}
+                    size={40}
+                  />
+
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">
-                      {session.service?.title ?? "Tutoring lesson"}
+                      {session.service?.title ??
+                        "Tutoring lesson"}
                     </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {session.educator?.name ?? "Teacher"} ·{" "}
-                      {formatDate(session.scheduledStart)}
+
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                      {session.educator?.name ??
+                        "Teacher"}{" "}
+                      · {formatDate(session.scheduledStart)}
                     </p>
                   </div>
-                  <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-600" />
+
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
                 </div>
               ))}
             </div>
@@ -783,11 +914,91 @@ function LearnerDashboard({
               description="Your tutoring history will appear here after your first completed lesson."
             />
           )}
+        </DashboardCard>
+      </section>
+
+      {/* Learner actions */}
+      <section>
+        <SectionHeader
+          eyebrow="Explore Justdy"
+          title="What would you like to do?"
+        />
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <Link
+            href="/dashboard/live-help"
+            className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50">
+              <MessageCircle className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
+            </div>
+
+            <h3 className="mt-4 font-semibold">
+              Homework help
+            </h3>
+
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              Get help understanding a difficult problem with a live tutor.
+            </p>
+
+            <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+              Get help
+              <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+            </span>
+          </Link>
+
+          <Link
+            href="/dashboard/create"
+            className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50">
+              <Sparkles className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
+            </div>
+
+            <h3 className="mt-4 font-semibold">
+              Create with AI
+            </h3>
+
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              Create learning materials, assessments, images, and more.
+            </p>
+
+            <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+              Open AI studio
+              <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+            </span>
+          </Link>
+
+          <Link
+            href="/tutoring"
+            className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50">
+              <Search className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
+            </div>
+
+            <h3 className="mt-4 font-semibold">
+              Find a tutor
+            </h3>
+
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              Find a tutor who matches your subject and learning goals.
+            </p>
+
+            <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+              Browse tutors
+              <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+            </span>
+          </Link>
         </div>
       </section>
     </div>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Page entry                                                                 */
+/* -------------------------------------------------------------------------- */
 
 export default function DashboardView({
   account,
@@ -803,7 +1014,7 @@ export default function DashboardView({
 }: DashboardViewProps) {
   if (account.isTeacherAdmin) {
     return (
-      <main className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <main className="mx-auto w-full max-w-6xl mt-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         <TeacherAdminDashboard
           account={account}
           upcoming={teacherUpcoming}
@@ -818,7 +1029,7 @@ export default function DashboardView({
   }
 
   return (
-    <main className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+    <main className="mx-auto w-full max-w-6xl mt-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <LearnerDashboard
         account={account}
         upcoming={learnerUpcoming}

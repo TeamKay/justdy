@@ -97,36 +97,20 @@ export default function EducatorProfileForm({
   const [loading, setLoading] =
     useState(false);
 
-  /*
-   * This is the image currently being displayed.
-   *
-   * It can be:
-   * - the existing UploadThing URL from the database
-   * - a temporary blob URL while the user is selecting a new image
-   */
+
   const [imageUrl, setImageUrl] =
     useState<string | null>(
       initialImageUrl ?? null,
     );
 
-  /*
-   * The actual new image selected by the user.
-   *
-   * This is uploaded to UploadThing only when
-   * the user clicks "Save changes".
-   */
+
   const [selectedImage, setSelectedImage] =
     useState<File | null>(null);
 
   const fileInputRef =
     useRef<HTMLInputElement | null>(null);
 
-  /*
-   * UploadThing uploader.
-   *
-   * This assumes your existing UploadThing
-   * FileRouter contains "mediaUploader".
-   */
+
   const {
     startUpload: startProfileImageUpload,
   } = useUploadThing("mediaUploader");
@@ -194,23 +178,14 @@ export default function EducatorProfileForm({
       return;
     }
 
-    /*
-     * Create a temporary preview URL.
-     *
-     * This URL is NEVER sent to Prisma.
-     * It is only used for the preview until
-     * UploadThing returns the permanent URL.
-     */
+  
     const objectUrl =
       URL.createObjectURL(file);
 
     setSelectedImage(file);
     setImageUrl(objectUrl);
 
-    /*
-     * Reset the input so selecting the same
-     * image again will still trigger onChange.
-     */
+ 
     event.target.value = "";
   }
 
@@ -267,17 +242,11 @@ export default function EducatorProfileForm({
         );
       }
 
-      /*
-       * Keep the existing image if the user
-       * didn't select a replacement.
-       */
+      
       let finalImageUrl =
         initialImageUrl ?? null;
 
-      /*
-       * Only upload when the user actually
-       * selected a new image.
-       */
+    
       if (selectedImage) {
         const uploadResult =
           await startProfileImageUpload([
@@ -293,17 +262,11 @@ export default function EducatorProfileForm({
           );
         }
 
-        /*
-         * This is the permanent UploadThing URL.
-         */
+      
         finalImageUrl =
           uploadResult[0].url;
 
-        /*
-         * Make sure the displayed image now
-         * uses the permanent URL rather than
-         * the temporary blob URL.
-         */
+      
         setImageUrl(finalImageUrl);
       }
 
@@ -325,9 +288,7 @@ export default function EducatorProfileForm({
         subjects: subjectList,
         gradeLevels: gradeLevelList,
 
-        /*
-         * Permanent UploadThing URL.
-         */
+       
         imageUrl: finalImageUrl,
       };
 
@@ -359,10 +320,7 @@ export default function EducatorProfileForm({
         );
       }
 
-      /*
-       * If the API returned a saved image URL,
-       * use it as the canonical image URL.
-       */
+    
       if (
         typeof data?.imageUrl ===
         "string"
@@ -372,10 +330,7 @@ export default function EducatorProfileForm({
         );
       }
 
-      /*
-       * The selected file has now been
-       * successfully persisted.
-       */
+    
       setSelectedImage(null);
 
       toast.success(
@@ -414,13 +369,11 @@ export default function EducatorProfileForm({
       onSubmit={handleSubmit}
       className="space-y-7"
     >
-      {/* Profile completion */}
 
-      {/* Profile editor */}
-      <section className="overflow-hidden rounded-md border border-emerald-900 bg-card shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
-        <div className="border-b border-emerald-900 px-6 py-5">
+      <section className="overflow-hidden bg-white">
+        <div className=" px-0 py-0">
           <div>
-            <h2 className="text-sm font-semibold tracking-tight text-white">
+            <h2 className="text-sm font-semibold tracking-tight text-emerald-950">
               Teaching profile
             </h2>
 
@@ -432,19 +385,14 @@ export default function EducatorProfileForm({
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="mt-5">
           <div className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)]">
             {/* =========================================================
                 LEFT — PROFILE PHOTO
             ========================================================== */}
             <div>
               <div className="sticky top-6">
-                <div className="mb-3">
-                  <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-white">
-                    Profile photo
-                  </h3>
-                </div>
-
+               
                 {/* Clickable photo frame */}
                 <button
                   type="button"
@@ -466,16 +414,16 @@ export default function EducatorProfileForm({
                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                       />
                     ) : (
-                      <div className="flex h-full min-h-65 w-full flex-col items-center justify-center bg-emerald-900">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-md bg-emerald-900 text-slate-400 shadow-sm transition-colors group-hover:border-emerald-200 group-hover:text-emerald-600">
+                      <div className="flex h-full min-h-65 w-full flex-col items-center justify-center bg-white">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-md bg-white text-slate-400 shadow-sm transition-colors group-hover:border-emerald-200 group-hover:text-emerald-600">
                           <ImagePlus className="h-6 w-6" />
                         </div>
 
-                        <p className="mt-4 text-xs font-semibold text-white">
+                        <p className="mt-4 text-xs font-semibold text-emerald-950">
                           Add profile photo
                         </p>
 
-                        <p className="mt-1 px-6 text-center text-[11px] leading-5 text-white">
+                        <p className="mt-1 px-6 text-center text-[11px] leading-5 text-emerald-950">
                           Click anywhere here to upload your photo
                         </p>
                       </div>
@@ -505,11 +453,11 @@ export default function EducatorProfileForm({
 
                 {/* Upload details */}
                 <div className="mt-3 flex items-center justify-between px-1">
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-[10px] text-emerald-950">
                     JPG, PNG or WebP
                   </span>
 
-                  <span className="text-[10px] font-medium text-slate-400">
+                  <span className="text-[10px] font-medium text-emerald-950">
                     Max 5MB
                   </span>
                 </div>
@@ -527,7 +475,7 @@ export default function EducatorProfileForm({
                   <div className="sm:col-span-2">
                     <label
                       htmlFor="headline"
-                      className="mb-1.5 block text-xs font-semibold text-white"
+                      className="mb-1.5 block text-xs font-semibold text-emerald-950"
                     >
                       Professional Profile headline
                     </label>
@@ -541,7 +489,7 @@ export default function EducatorProfileForm({
                         )
                       }
                       placeholder="e.g. Mathematics tutor helping students build confidence"
-                      className="h-11 w-full rounded-none border border-emerald-900 bg-card px-3.5 text-sm text-white outline-none transition placeholder:text-muted-foreground hover:border-emerald-950 focus:border-emerald-950 focus:ring-emerald-950"
+                      className="h-11 w-full rounded-lg border border-emerald-300 bg-card px-3.5 text-sm text-emerald-950 outline-none transition placeholder:text-muted-foreground focus:ring-emerald-950"
                     />
                   </div>
 
@@ -549,7 +497,7 @@ export default function EducatorProfileForm({
                   <div className="sm:col-span-2">
                     <label
                       htmlFor="description"
-                      className="mb-1.5 block text-xs font-semibold text-white"
+                      className="mb-1.5 block text-xs font-semibold text-emerald-950"
                     >
                       About your teaching
                     </label>
@@ -564,7 +512,7 @@ export default function EducatorProfileForm({
                       }
                       rows={5}
                       placeholder="Tell students about your teaching approach, experience, and what they can expect."
-                      className="h-30 w-full resize-none rounded-none border border-emerald-900 bg-card px-3.5 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-muted-foreground hover:border-emerald-950 focus:border-emerald-950 focus:ring-emerald-950"
+                      className="h-30 w-full resize-none rounded-lg border border-emerald-300 bg-card px-3.5 py-3 text-sm leading-6 text-emerald-950 outline-none transition placeholder:text-muted-foreground focus:border-emerald-950 focus:ring-emerald-950"
                     />
                   </div>
 
@@ -572,7 +520,7 @@ export default function EducatorProfileForm({
                   <div>
                     <label
                       htmlFor="specialty"
-                      className="mb-1.5 block text-xs font-semibold text-white"
+                      className="mb-1.5 block text-xs font-semibold text-emerald-950"
                     >
                       Specialty
                     </label>
@@ -586,7 +534,7 @@ export default function EducatorProfileForm({
                         )
                       }
                       placeholder="e.g. Algebra & Geometry"
-                      className="h-11 w-full rounded-none border border-emerald-900 bg-card px-3.5 py-3 text-sm text-white outline-none transition placeholder:text-muted-foreground hover:border-emerald-950 focus:border-emerald-950 focus:ring-emerald-950"
+                      className="h-11 w-full rounded-lg border border-emerald-300 bg-card px-3.5 py-3 text-sm text-emerald-950 outline-none transition placeholder:text-muted-foreground focus:border-emerald-950 focus:ring-emerald-950"
                     />
                   </div>
 
@@ -594,7 +542,7 @@ export default function EducatorProfileForm({
                   <div>
                     <label
                       htmlFor="subjects"
-                      className="mb-1.5 block text-xs font-semibold text-white"
+                      className="mb-1.5 block text-xs font-semibold text-emerald-950"
                     >
                       Subjects
                     </label>
@@ -608,7 +556,7 @@ export default function EducatorProfileForm({
                         )
                       }
                       placeholder="Mathematics, Algebra, Geometry"
-                      className="h-11 w-full rounded-none border border-emerald-900 bg-card px-3.5 text-sm text-white outline-none transition placeholder:text-muted-foreground hover:border-emerald-950 focus:border-emerald-950 focus:ring-emerald-950"
+                      className="h-11 w-full rounded-lg border border-emerald-300 bg-card px-3.5 text-sm text-emerald-950 outline-none transition placeholder:text-muted-foreground focus:border-emerald-950 focus:ring-emerald-950"
                     />
                   </div>
 
@@ -616,7 +564,7 @@ export default function EducatorProfileForm({
                   <div>
                     <label
                       htmlFor="gradeLevels"
-                      className="mb-1.5 block text-xs font-semibold text-white"
+                      className="mb-1.5 block text-xs font-semibold text-emerald-950"
                     >
                       Grade levels
                     </label>
@@ -630,7 +578,7 @@ export default function EducatorProfileForm({
                         )
                       }
                       placeholder="Middle School, High School"
-                      className="h-11 w-full rounded-none border border-emerald-900 bg-card px-3.5 text-sm text-white outline-none transition placeholder:text-muted-foreground hover:border-emerald-950 focus:border-emerald-950 focus:ring-emerald-950"
+                      className="h-11 w-full rounded-lg border border-emerald-300 bg-card px-3.5 text-sm text-emerald-950 outline-none transition placeholder:text-muted-foreground focus:border-emerald-950 focus:ring-emerald-950"
                     />
                   </div>
 
@@ -640,7 +588,7 @@ export default function EducatorProfileForm({
                     <div className="min-w-0">
                       <label
                         htmlFor="experience"
-                        className="mb-1.5 block text-xs font-semibold text-white"
+                        className="mb-1.5 block text-xs font-semibold text-emerald-950"
                       >
                         Years of experience
                       </label>
@@ -657,7 +605,7 @@ export default function EducatorProfileForm({
                           )
                         }
                         placeholder="e.g. 5"
-                        className="h-11 w-full rounded-none border border-emerald-900 bg-card px-3.5 text-sm text-white outline-none transition placeholder:text-muted-foreground hover:border-emerald-950 focus:border-emerald-950 focus:ring-emerald-950"
+                        className="h-11 w-full rounded-lg border border-emerald-300 bg-card px-3.5 text-sm text-emerald-950 outline-none transition placeholder:text-muted-foreground focus:border-emerald-950 focus:ring-emerald-950"
                       />
                     </div>
 
@@ -665,7 +613,7 @@ export default function EducatorProfileForm({
                     <div className="min-w-0">
                       <label
                         htmlFor="hourlyRate"
-                        className="mb-1.5 block text-xs font-semibold text-white"
+                        className="mb-1.5 block text-xs font-semibold text-emerald-950"
                       >
                         Hourly rate
                       </label>
@@ -683,7 +631,7 @@ export default function EducatorProfileForm({
                             )
                           }
                           placeholder="0.00"
-                          className="h-11 w-full rounded-none border border-emerald-900 bg-card px-3.5 text-sm text-white outline-none transition placeholder:text-muted-foreground hover:border-emerald-950 focus:border-emerald-950 focus:ring-emerald-950"
+                          className="h-11 w-full rounded-lg border border-emerald-300 bg-card px-3.5 text-sm text-emerald-950 outline-none transition placeholder:text-muted-foreground hover:border-emerald-950 focus:border-emerald-950 focus:ring-emerald-950"
                         />
                       </div>
                     </div>
@@ -691,11 +639,11 @@ export default function EducatorProfileForm({
                 </div>
 
                 {/* Save action */}
-                <div className="mt-7 flex justify-end border-t border-emerald-900 pt-5">
+                <div className="mt-7 flex justify-end pt-5">
                   <button
                     type="submit"
                     disabled={loading}
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-sm bg-emerald-950 px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-900 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-l-lg bg-emerald-950 px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-900 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {loading ? (
                       <>

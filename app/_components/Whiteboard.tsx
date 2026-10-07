@@ -49,6 +49,8 @@ import {
   Settings2,
   Image as ImageIcon,
   Upload,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import MyLogo from "@/app/_components/Logo";
 
@@ -273,8 +275,10 @@ type WhiteboardProps = {
   mode: WhiteboardMode;
   appointmentId?: string;
   bookingId?: string;
-  /** Width reserved on the right for the tutoring participant sidebar. */
-  rightInset?: number;
+  /** Width reserved on the left for an optional participant rail. */
+  leftInset?: number;
+  /** Height reserved at the top for the Zoom-style participant filmstrip. */
+  topInset?: number;
   onClose?: () => void;
   onRealtimeChange?: (data: WhiteboardRealtimeData) => void;
   onReady?: (data: WhiteboardRealtimeData) => void;
@@ -1228,7 +1232,8 @@ export default function Whiteboard({
   mode,
   appointmentId,
   bookingId,
-  rightInset = 0,
+  leftInset = 0,
+  topInset = 0,
   onClose,
   onRealtimeChange,
   onReady,
@@ -1342,6 +1347,7 @@ export default function Whiteboard({
     bottom: 0,
   });
   const [showPagesPanel, setShowPagesPanel] = useState(false);
+  const [showToolbar, setShowToolbar] = useState(true);
   const pageThumbnailRefs = useRef<Record<string, HTMLCanvasElement | null>>({});
   const [showGraphSettings, setShowGraphSettings] = useState(false);
   const [showGraphEditor, setShowGraphEditor] = useState(false);
@@ -1687,7 +1693,7 @@ export default function Whiteboard({
     let left = rect.left + rect.width / 2 - popupWidth / 2;
     let top = rect.bottom + gap;
 
-    left = Math.max(12, Math.min(left, window.innerWidth - popupWidth - 12));
+    left = Math.max(leftInset + 12, Math.min(left, window.innerWidth - popupWidth - 12));
 
     if (top + popupHeight > window.innerHeight - 12) {
       top = Math.max(12, rect.top - popupHeight - gap);
@@ -3748,13 +3754,24 @@ export default function Whiteboard({
   }, [currentPageIndex, duplicatePage]);
 
   const deletePage = (index: number) => {
-    if (pages.length === 1) {
-      clearPage();
-      return;
-    }
+    if (pages.length <= 1) return;
+    if (!pages[index]) return;
+
     pushHistory();
-    setPages((p) => p.filter((_, idx) => idx !== index));
-    setCurrentPageIndex((c) => Math.max(0, Math.min(c, pages.length - 2)));
+
+    const nextPages = pages.filter((_, idx) => idx !== index);
+    const nextIndex =
+      index < currentPageIndex
+        ? currentPageIndex - 1
+        : index === currentPageIndex
+          ? Math.min(currentPageIndex, nextPages.length - 1)
+          : currentPageIndex;
+
+    setPages(nextPages);
+    setCurrentPageIndex(Math.max(0, nextIndex));
+    setSelectedElementId(null);
+    setSelectedElementIds([]);
+    setIsSaved(false);
   };
 
   const goToPreviousPage = useCallback(() => {
@@ -4321,7 +4338,7 @@ export default function Whiteboard({
       return {
         left: Math.min(
           Math.max(margin, left),
-          Math.max(margin, (window.innerWidth - rightInset) - size - margin),
+          Math.max(leftInset + margin, window.innerWidth - size - margin),
         ),
         top: Math.min(
           Math.max(margin, top),
@@ -4329,7 +4346,7 @@ export default function Whiteboard({
         ),
       };
     },
-    [rightInset],
+    [leftInset],
   );
 
   // Put the launcher in the bottom-right corner on first mount.
@@ -4344,7 +4361,7 @@ export default function Whiteboard({
     const margin = 20;
 
     setTeacherControlPosition({
-      left: Math.max(margin, (window.innerWidth - rightInset) - size - margin),
+      left: Math.max(leftInset + margin, window.innerWidth - size - margin),
       top: Math.max(margin, window.innerHeight - size - margin),
     });
   }, []);
@@ -4667,7 +4684,7 @@ export default function Whiteboard({
         aria-label={label}
         className={`group relative flex size-10 shrink-0 items-center justify-center rounded-xl transition-all ${
           active
-            ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25"
+            ? "bg-violet-600 text-white shadow-sm shadow-violet-600/25"
             : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
         }`}
       >
@@ -4886,9 +4903,10 @@ export default function Whiteboard({
   return (
     <main
       ref={rootRef}
-      className="fixed inset-y-0 left-0 z-[700] flex flex-col overflow-hidden bg-slate-50 text-slate-900 antialiased"
+      className="pointer-events-auto fixed left-0 right-0 bottom-0 z-[700] flex flex-col overflow-hidden bg-[#eef2f7] text-slate-900 antialiased"
       style={{
-        right: `${Math.max(0, rightInset)}px`,
+        left: `${Math.max(0, leftInset)}px`,
+        top: `${Math.max(0, topInset)}px`,
       }}
     >
       {showTeacherControls && cropEditor.open && (
@@ -5065,7 +5083,7 @@ export default function Whiteboard({
           className="absolute z-[290] w-80 max-w-[calc(100vw-24px)] rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl"
           style={{
             left: getPopupPosition("graph", {
-              x: Math.max(12, (window.innerWidth - rightInset) - 420),
+              x: Math.max(leftInset + 12, window.innerWidth - 420),
               y: Math.max(80, window.innerHeight / 2 - 220),
             }).x,
             top: getPopupPosition("graph", {
@@ -5673,10 +5691,10 @@ export default function Whiteboard({
       />
 
       {/* Full-screen drawing workspace */}
-      <div className="absolute inset-x-0 bottom-0 top-0">
+      <div className="pointer-events-auto absolute inset-0 bg-[#eef2f7]">
         <section
           ref={containerRef}
-          className="absolute inset-0 overflow-hidden"
+          className="pointer-events-auto absolute inset-0 overflow-hidden bg-[#eef2f7]"
         >
           <div
             className="relative h-full w-full overflow-hidden"
@@ -5684,7 +5702,8 @@ export default function Whiteboard({
           >
             <canvas
               ref={canvasRef}
-              className="absolute inset-0 h-full w-full touch-none select-none"
+              className="pointer-events-auto absolute inset-0 h-full w-full touch-none select-none"
+              draggable={false}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
@@ -5703,9 +5722,16 @@ export default function Whiteboard({
           </div>
         </section>
 
-        {/* LiveBoard-style top toolbar */}
-        <header className="pointer-events-auto absolute inset-x-0 top-0 z-[450] flex h-14 items-center border-b border-slate-200 bg-white/95 px-2 shadow-sm backdrop-blur-xl">
-          <div className="flex min-w-0 shrink-0 items-center gap-0.5">
+        {/* Floating classroom toolbar */}
+        {showToolbar && (
+        <header
+          className="pointer-events-auto absolute top-4 z-[450] flex min-h-16 items-center overflow-visible rounded-2xl border border-white/80 bg-white/96 px-2 shadow-[0_18px_50px_rgba(15,23,42,0.14)] backdrop-blur-2xl"
+          style={{
+            left: "16px",
+            right: "16px",
+          }}
+        >
+          <div className="flex min-w-0 shrink-0 items-center gap-0.5 border-r border-slate-200 pr-2">
             <button
               type="button"
               onClick={() => onClose?.()}
@@ -5790,7 +5816,7 @@ export default function Whiteboard({
             </button>
           </div>
 
-          <div className="mx-auto flex min-w-0 items-center justify-center gap-0.5 overflow-x-auto px-2 scrollbar-none">
+          <div className="flex min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto px-3 scrollbar-none">
             {toolButton(
               "select",
               "Select / move",
@@ -5914,7 +5940,7 @@ export default function Whiteboard({
                     let left = rect.left + rect.width / 2 - popupWidth / 2;
                     let top = rect.bottom + gap;
 
-                    left = Math.max(12, Math.min(left, window.innerWidth - popupWidth - 12));
+                    left = Math.max(leftInset + 12, Math.min(left, window.innerWidth - popupWidth - 12));
 
                     if (top + popupHeight > window.innerHeight - 12) {
                       top = Math.max(12, rect.top - popupHeight - gap);
@@ -6039,7 +6065,7 @@ export default function Whiteboard({
                     let left = rect.left + rect.width / 2 - popupWidth / 2;
                     let top = rect.bottom + gap;
 
-                    left = Math.max(12, Math.min(left, window.innerWidth - popupWidth - 12));
+                    left = Math.max(leftInset + 12, Math.min(left, window.innerWidth - popupWidth - 12));
                     if (top + popupHeight > window.innerHeight - 12) {
                       top = Math.max(12, rect.top - popupHeight - gap);
                     }
@@ -6120,7 +6146,7 @@ export default function Whiteboard({
             </button>
           </div>
 
-          <div className="flex min-w-0 shrink-0 items-center gap-1">
+          <div className="flex min-w-0 shrink-0 items-center gap-1 border-l border-slate-200 pl-2">
             <div className="hidden max-w-44 truncate px-2 text-sm font-semibold text-slate-800 lg:block">
               {currentPage?.name ?? "Untitled board"}
             </div>
@@ -6137,8 +6163,41 @@ export default function Whiteboard({
             >
               <Settings2 className="size-4" />
             </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowToolbar(false);
+                setShowShapeToolsPopup(false);
+                setShowFormulaMenu(false);
+                setShowUploadMenu(false);
+                setShowEraserPopup(false);
+                setShowPenPopup(false);
+                setShowColorPopup(false);
+                setShowToolsPanel(false);
+              }}
+              title="Hide toolbar"
+              aria-label="Hide whiteboard toolbar"
+              className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            >
+              <EyeOff className="size-4" />
+            </button>
           </div>
         </header>
+        )}
+
+        {!showToolbar && showTeacherControls && (
+          <button
+            type="button"
+            onClick={() => setShowToolbar(true)}
+            title="Show toolbar"
+            aria-label="Show whiteboard toolbar"
+            className="pointer-events-auto absolute left-1/2 top-4 z-[470] flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/80 bg-white/95 px-3 py-2 text-xs font-bold text-slate-700 shadow-[0_14px_35px_rgba(15,23,42,0.16)] backdrop-blur-xl transition hover:bg-white hover:text-slate-950"
+          >
+            <Eye className="size-4" />
+            Show toolbar
+          </button>
+        )}
 
         {showFormulaMenu && (
           <div
@@ -6246,18 +6305,18 @@ export default function Whiteboard({
         {/* Full page thumbnail sidebar */}
         {showTeacherControls && showPagesPanel && (
           <aside
-            className="absolute inset-y-0 left-0 z-[560] w-[324px] border-r border-slate-200 bg-white shadow-2xl shadow-slate-900/10"
+            className="absolute bottom-4 right-4 top-24 z-[560] w-[300px] overflow-hidden rounded-2xl border border-white/80 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.14)]"
             aria-label="Whiteboard pages"
             onPointerDown={(event) => event.stopPropagation()}
           >
-            <div className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-3">
+            <div className="flex h-14 items-center justify-between border-b border-slate-200 bg-white/95 px-3">
               <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={addPage}
                   title="Add page"
                   aria-label="Add page"
-                  className="flex size-10 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm transition hover:bg-emerald-700"
+                  className="flex size-10 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm shadow-violet-600/25 transition hover:bg-violet-700"
                 >
                   <Plus className="size-5" />
                 </button>
@@ -6265,23 +6324,41 @@ export default function Whiteboard({
                   Pages({pages.length})
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowPagesPanel(false)}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (pages.length <= 1) return;
+                    const page = pages[currentPageIndex];
+                    if (!page) return;
+                    const confirmed = window.confirm(`Delete ${page.name}? This can be restored with Undo.`);
+                    if (confirmed) deletePage(currentPageIndex);
+                  }}
+                  disabled={pages.length <= 1}
+                  title={pages.length <= 1 ? "At least one page is required" : `Delete ${currentPage?.name ?? "current page"}`}
+                  aria-label={pages.length <= 1 ? "Cannot delete the last page" : "Delete current page"}
+                  className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPagesPanel(false)}
                 title="Close pages"
                 aria-label="Close pages"
                 className="flex size-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
               >
                 <X className="size-5" />
               </button>
+              </div>
             </div>
 
-            <div className="h-[calc(100%-56px)] overflow-y-auto bg-slate-50 px-4 py-5">
+            <div className="h-[calc(100%-56px)] overflow-y-auto bg-slate-50/90 px-3 py-4">
               <div className="flex flex-col gap-3">
                 {pages.map((page, index) => {
                   const isActive = currentPageIndex === index;
                   return (
-                    <div key={page.id} className="flex items-center gap-2">
+                    <div key={page.id} className="group flex items-center gap-2">
                       <div className="flex w-4 shrink-0 items-center justify-center text-slate-500">
                         <span className="text-lg leading-none">=</span>
                       </div>
@@ -6295,7 +6372,7 @@ export default function Whiteboard({
                         title={`Open ${page.name}`}
                         className={`relative block h-[143px] w-[254px] shrink-0 overflow-hidden rounded-[4px] border bg-white shadow-sm transition ${
                           isActive
-                            ? "border-emerald-600 ring-1 ring-emerald-600/20"
+                            ? "border-violet-500 ring-2 ring-violet-500/15"
                             : "border-slate-200 hover:border-slate-300"
                         }`}
                       >
@@ -6306,9 +6383,33 @@ export default function Whiteboard({
                           className="block h-[142px] w-[254px]"
                           aria-label={`${page.name} thumbnail`}
                         />
-                        <span className="absolute right-1.5 top-1.5 flex min-w-6 items-center justify-center rounded-md bg-slate-200/90 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
+                        <span className="absolute left-1.5 top-1.5 flex min-w-6 items-center justify-center rounded-md bg-slate-200/90 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
                           {index + 1}
                         </span>
+                        {pages.length > 1 && (
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              const confirmed = window.confirm(`Delete ${page.name}? This can be restored with Undo.`);
+                              if (confirmed) deletePage(index);
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key !== "Enter" && event.key !== " ") return;
+                              event.preventDefault();
+                              event.stopPropagation();
+                              const confirmed = window.confirm(`Delete ${page.name}? This can be restored with Undo.`);
+                              if (confirmed) deletePage(index);
+                            }}
+                            title={`Delete ${page.name}`}
+                            aria-label={`Delete ${page.name}`}
+                            className="absolute right-1.5 top-1.5 flex size-7 cursor-pointer items-center justify-center rounded-lg bg-white/95 text-slate-400 opacity-0 shadow-sm ring-1 ring-slate-200 transition hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100 focus:opacity-100"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </span>
+                        )}
                       </button>
                     </div>
                   );
@@ -6420,7 +6521,7 @@ export default function Whiteboard({
               style={{
                 left: Math.max(12, Math.min(
                   selectedMediaBounds.left,
-                  window.innerWidth - rightInset - 190,
+                  window.innerWidth - 190,
                 )),
                 top: Math.max(60, selectedMediaBounds.top - 58),
               }}
@@ -6488,7 +6589,7 @@ export default function Whiteboard({
               style={{
                 left: Math.max(12, Math.min(
                   selectedGraphBounds.left,
-                  window.innerWidth - rightInset - 130,
+                  window.innerWidth - 130,
                 )),
                 top: Math.max(60, selectedGraphBounds.top - 58),
               }}
@@ -6541,7 +6642,7 @@ export default function Whiteboard({
               data-equation-selection-toolbar
               className="absolute z-[430] flex items-center gap-1 rounded-xl border border-slate-200 bg-white/98 p-1.5 shadow-xl shadow-slate-900/15 backdrop-blur-xl"
               style={{
-                left: Math.max(12, Math.min(selectedEquationBounds.left, window.innerWidth - rightInset - 190)),
+                left: Math.max(leftInset + 12, Math.min(selectedEquationBounds.left, window.innerWidth - 190)),
                 top: Math.max(60, selectedEquationBounds.top - 58),
               }}
               onPointerDown={(event) => {
@@ -6900,7 +7001,7 @@ export default function Whiteboard({
             className="absolute z-[290] flex max-h-[calc(100vh-32px)] w-72 max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl"
             style={{
               left: getPopupPosition("toolkit", {
-                x: Math.max(12, (window.innerWidth - rightInset) - 420),
+                x: Math.max(leftInset + 12, window.innerWidth - 420),
                 y: Math.max(80, window.innerHeight / 2 - 260),
               }).x,
               top: getPopupPosition("toolkit", {
@@ -7030,7 +7131,7 @@ export default function Whiteboard({
             className="absolute w-[min(420px,calc(100vw-24px))] max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20"
             style={{
               left: getPopupPosition("rename", {
-                x: Math.max(12, (window.innerWidth - rightInset) / 2 - 210),
+                x: Math.max(12, (leftInset + window.innerWidth) / 2 - 210),
                 y: Math.max(70, window.innerHeight / 2 - 180),
               }).x,
               top: getPopupPosition("rename", {

@@ -2,15 +2,11 @@
 
 import {
   ArrowRight,
-  BookOpen,
   CheckCircle2,
   Clock3,
   FileText,
-  GraduationCap,
-  HelpCircle,
   Loader2,
   Paperclip,
-  Send,
   Sparkles,
   X,
 } from "lucide-react";
@@ -97,7 +93,7 @@ function statusTitle(status: string) {
 function statusDescription(status: string) {
   switch (status) {
     case "REQUESTED":
-      return "Your request is being prepared.";
+      return "Your credit balance is checked when a teacher accepts your request. Credits are reserved for up to one hour at that teacher's rate.";
 
     case "WAITING":
       return "Teachers who are currently available can see your request.";
@@ -131,7 +127,7 @@ export default function LiveHomeworkHelpWorkspace({ user }: Props) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
-
+const [attachment, setAttachment] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadRequest = useCallback(async () => {
@@ -147,14 +143,9 @@ export default function LiveHomeworkHelpWorkspace({ user }: Props) {
       }
 
       const nextRequest = data.request ?? null;
-
       setRequest(nextRequest);
 
-      /*
-       * Once a teacher has selected the learner, the API creates
-       * a LiveHomeworkSession. Move the learner directly into
-       * that private classroom.
-       */
+   
       if (
         nextRequest?.sessionId &&
         ["SELECTED", "CONNECTING", "ACTIVE"].includes(nextRequest.status)
@@ -180,9 +171,6 @@ export default function LiveHomeworkHelpWorkspace({ user }: Props) {
     return () => window.clearTimeout(timer);
   }, [loadRequest]);
 
-  /*
-   * While waiting for a teacher, refresh the request state.
-   */
   useEffect(() => {
     if (
       !request ||
@@ -237,7 +225,8 @@ export default function LiveHomeworkHelpWorkspace({ user }: Props) {
         throw new Error(data.error || "Unable to request live help.");
       }
 
-      setRequest(data.request);
+      const createdRequest = data.request as LiveRequest;
+      setRequest(createdRequest);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Unable to request live help.",
@@ -246,6 +235,29 @@ export default function LiveHomeworkHelpWorkspace({ user }: Props) {
       setSubmitting(false);
     }
   }
+
+  const handleAttachmentChange = (
+  event: React.ChangeEvent<HTMLInputElement>,
+) => {
+  const file = event.target.files?.[0];
+
+  if (!file) return;
+
+  const maxSize = 10 * 1024 * 1024;
+
+  if (file.size > maxSize) {
+    setError("Please choose a file smaller than 10 MB.");
+    event.target.value = "";
+    return;
+  }
+
+  setError("");
+  setAttachment(file);
+};
+
+const removeAttachment = () => {
+  setAttachment(null);
+};
 
   async function cancelRequest() {
     if (!request) {
@@ -305,200 +317,198 @@ export default function LiveHomeworkHelpWorkspace({ user }: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-5 py-8 lg:px-8 lg:py-12">
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <section>
-          <div className="inline-flex items-center gap-2 rounded-full bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700">
-            <Sparkles className="h-3.5 w-3.5" />
-            Immediate human help
-          </div>
+    <div className=" w-full">
+      <div className="mx-auto pt-10 flex w-full max-w-6xl flex-col px-3 sm:px-4">
+        <div className="flex flex-1 overflow-hidden rounded-lg">
+          <section className="flex min-h-0 w-full flex-col">
 
-          <h1 className="mt-5 max-w-3xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
-            Stuck on homework?
-            <br />
-            Get help now.
-          </h1>
-
-          <p className="mt-5 max-w-2xl text-base leading-7 text-slate-500">
-            Tell us what you&apos;re working on and enter the live-help queue.
-            An available teacher can review your request and connect with you
-            for one-on-one guidance.
-          </p>
-
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            <Feature
-              icon={<Send className="h-4 w-4" />}
-              title="Tell us"
-              description="Describe the problem."
-            />
-
-            <Feature
-              icon={<Clock3 className="h-4 w-4" />}
-              title="Wait briefly"
-              description="Available teachers see the queue."
-            />
-
-            <Feature
-              icon={<GraduationCap className="h-4 w-4" />}
-              title="Learn live"
-              description="Work through it together."
-            />
-          </div>
-
-          <form
-            onSubmit={submitRequest}
-            className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
-          >
-            <div className="mb-7">
-              <h2 className="text-xl font-semibold text-slate-950">
-                What do you need help with, {learnerName}?
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Give your teacher enough context to understand the problem
-                before connecting.
-              </p>
-            </div>
-
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Subject">
-                <select
-                  value={subject}
-                  onChange={(event) => setSubject(event.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-50"
-                >
-                  <option value="">Select a subject</option>
-
-                  {subjects.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              <Field label="Grade level">
-                <select
-                  value={gradeLevel}
-                  onChange={(event) => setGradeLevel(event.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-50"
-                >
-                  <option value="">Select grade level</option>
-
-                  {gradeLevels.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-
-            <div className="mt-5">
-              <Field label="Topic">
-                <input
-                  value={topic}
-                  onChange={(event) => setTopic(event.target.value)}
-                  placeholder="e.g. Adding fractions"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-50"
-                />
-              </Field>
-            </div>
-
-            <div className="mt-5">
-              <Field label="Describe the problem">
-                <textarea
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                  rows={6}
-                  placeholder="Tell the teacher what you are trying to solve, what you have tried, and where you got stuck..."
-                  className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-50"
-                />
-              </Field>
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-start gap-3">
-                <Paperclip className="mt-0.5 h-4 w-4 text-slate-400" />
-
-                <div>
-                  <p className="text-sm font-medium text-slate-700">
-                    Assignment attachment
-                  </p>
-
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    File/image upload will connect to the existing Justdy file
-                    system in the next layer. For now, describe the problem
-                    above.
-                  </p>
+            {/* Header */}
+            <div className=" px-5 py-5 text-center sm:px-8 sm:py-6">
+              <div className="flex flex-col items-center">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold tracking-[0.14em] text-violet-700">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  LIVE HUMAN SUPPORT
                 </div>
+
+                <h1 className="mt-3 text-2xl font-bold tracking-[-0.035em] text-slate-950 sm:text-3xl">
+                  Get unstuck. Learn it live.
+                </h1>
+
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                  Describe your project, we&apos;ll connect you
+                  with available expert for one-on-one guidance in less than a minute.
+                </p>
               </div>
             </div>
 
-            {error && (
-              <div className="mt-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            {/* Form */}
+            <form
+              onSubmit={submitRequest}
+              className="mx-auto w-full max-w-4xl flex-1 px-5 py-5 sm:px-8 sm:py-6"
             >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Entering live-help queue...
-                </>
-              ) : (
-                <>
-                  Get Live Homework Help
-                  <ArrowRight className="h-4 w-4" />
-                </>
+              {/* Subject / Grade */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Subject">
+                  <select
+                    value={subject}
+                    onChange={(event) => setSubject(event.target.value)}
+                    className="h-11 w-full rounded-lg px-3 text-sm text-slate-900 shadow-sm outline-none transition-all hover:border-slate-300 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-50"
+                  >
+                    <option value="">Select a subject</option>
+
+                    {subjects.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label="Grade level">
+                  <select
+                    value={gradeLevel}
+                    onChange={(event) => setGradeLevel(event.target.value)}
+                    className="h-11 w-full rounded-lg px-3 text-sm text-slate-900 shadow-sm outline-none transition-all hover:border-slate-300 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-50"
+                  >
+                    <option value="">Select grade level</option>
+
+                    {gradeLevels.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+
+              {/* Topic */}
+              <div className="mt-3">
+                <Field label="Topic">
+                  <input
+                    value={topic}
+                    onChange={(event) => setTopic(event.target.value)}
+                    placeholder="e.g. Adding fractions"
+                    className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50/60 px-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-50"
+                  />
+                </Field>
+              </div>
+
+              {/* Description */}
+              <div className="mt-3">
+                <Field label="Describe the problem">
+                  <textarea
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    rows={3}
+                    placeholder="Tell the teacher what you are trying to solve, what you have tried, and where you got stuck..."
+                    className="min-h-24 w-full resize-none rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3 text-sm leading-6 text-slate-900 shadow-sm outline-none transition-all hover:border-slate-300 focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-50"
+                  />
+                </Field>
+              </div>
+
+              {/* Attachment */}
+              <div className="mt-3">
+                <Field label="Assignment attachment">
+                  {!attachment ? (
+                    <label className="group flex cursor-pointer items-center justify-between rounded-lg border border-dashed border-slate-200 bg-slate-50/60 px-4 py-3 transition-all hover:border-violet-300 hover:bg-violet-50/40">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-slate-400 shadow-sm transition-colors group-hover:text-violet-600">
+                          <Paperclip className="h-4 w-4" />
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-slate-700">
+                            Attach an assignment
+                          </p>
+
+                          <p className="mt-0.5 text-[11px] text-slate-400">
+                            PDF, PNG, JPG, or WEBP · Up to 10 MB
+                          </p>
+                        </div>
+                      </div>
+
+                      <span className="ml-3 shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition-colors group-hover:border-violet-200 group-hover:text-violet-700">
+                        Choose file
+                      </span>
+
+                      <input
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp"
+                        onChange={handleAttachmentChange}
+                        className="sr-only"
+                      />
+                    </label>
+                  ) : (
+                    <div className="flex items-center justify-between rounded-lg border border-violet-100 bg-violet-50/50 px-4 py-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-violet-600 shadow-sm">
+                          <Paperclip className="h-4 w-4" />
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-semibold text-slate-800">
+                            {attachment.name}
+                          </p>
+
+                          <p className="mt-0.5 text-[11px] text-slate-400">
+                            {(attachment.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={removeAttachment}
+                        className="ml-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white hover:text-red-500"
+                        aria-label="Remove attachment"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                </Field>
+              </div>
+
+              {/* Error */}
+              {error && (
+                <div className="mt-3 rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 text-xs text-red-700">
+                  {error}
+                </div>
               )}
-            </button>
-          </form>
-        </section>
 
-        <aside className="space-y-5">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-50 text-violet-600">
-              <BookOpen className="h-5 w-5" />
-            </div>
+              {/* Footer / Submit */}
+              <div className="mt-5 flex flex-col items-center gap-3 border-t border-slate-100 pt-4">
+                <p className="text-center text-[11px] leading-5 text-slate-400">
+                  Your request is shared with available teachers only.
+                </p>
 
-            <h3 className="mt-5 text-base font-semibold text-slate-950">
-              Built for homework
-            </h3>
-
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              This isn&apos;t a scheduled tutoring appointment. It&apos;s for
-              the moments when you&apos;re working on something right now and
-              need guidance.
-            </p>
-
-            <div className="mt-5 space-y-3">
-              <SideItem text="One-on-one teacher connection" />
-              <SideItem text="Assignment-focused help" />
-              <SideItem text="Live whiteboard learning" />
-              <SideItem text="Private classroom" />
-            </div>
-          </div>
-
-          <div className="rounded-3xl bg-slate-950 p-6 text-white">
-            <HelpCircle className="h-5 w-5 text-violet-300" />
-
-            <p className="mt-4 text-sm font-semibold">Need immediate help?</p>
-
-            <p className="mt-2 text-xs leading-5 text-slate-400">
-              Available teachers will see your request while you wait.
-            </p>
-          </div>
-        </aside>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="inline-flex h-11 w-full max-w-sm items-center justify-center gap-2 rounded-lg bg-emerald-950 px-6 text-sm font-semibold text-white shadow-[0_12px_30px_-14px_rgba(15,23,42,0.7)] transition-all hover:-translate-y-0.5 hover:bg-slate-800 hover:shadow-[0_16px_34px_-16px_rgba(15,23,42,0.7)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Entering queue...
+                    </>
+                  ) : (
+                    <>
+                      Get Live Homework Help
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
       </div>
     </div>
   );
 }
+
+
 
 function WaitingRoom({
   request,
@@ -518,114 +528,278 @@ function WaitingRoom({
     Boolean(request.sessionId) &&
     ["SELECTED", "CONNECTING", "ACTIVE"].includes(request.status);
 
+  const steps = [
+    {
+      number: 1,
+      title: "Request submitted",
+      description: "Your homework request is ready",
+      complete: true,
+      active: false,
+    },
+    {
+      number: 2,
+      title: "Finding a teacher",
+      description: "Searching for someone available",
+      complete: request.status !== "REQUESTED",
+      active: request.status === "REQUESTED" || request.status === "WAITING",
+    },
+    {
+      number: 3,
+      title: "Teacher selected",
+      description: "Your teacher is joining",
+      complete: ["CONNECTING", "ACTIVE"].includes(request.status),
+      active: request.status === "SELECTED",
+    },
+    {
+      number: 4,
+      title: "Private classroom",
+      description: "Your live session is ready",
+      complete: request.status === "ACTIVE",
+      active: request.status === "CONNECTING",
+    },
+  ];
+
   return (
-    <div className="mx-auto max-w-4xl px-5 py-10 lg:px-8 lg:py-16">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
-        <div className="mx-auto max-w-2xl text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-violet-50 text-violet-600">
-            {isWaiting ? (
-              <Clock3 className="h-7 w-7 animate-pulse" />
-            ) : (
-              <CheckCircle2 className="h-7 w-7" />
-            )}
-          </div>
+    <div className="min-h-[calc(100dvh-64px)] px-4 py-6 sm:px-6">
+      <div className="mx-auto flex min-h-[calc(100dvh-76px)] w-full max-w-6xl items-center">
+        <div className="w-full overflow-hidden rounded-lg">
+          <div className="px-5 py-7 sm:px-8 sm:py-8">
 
-          <p className="mt-6 text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
-            Live Homework Help
-          </p>
+            {/* Visual progress */}
+            <div className="mx-auto max-w-4xl">
+              <div className="rounded-lg border border-slate-200 p-5 shadow-sm sm:p-7">
 
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
-            {statusTitle(request.status)}
-          </h1>
+                <div className="text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                    Your connection
+                  </p>
 
-          <p className="mt-3 text-sm leading-6 text-slate-500">
-            {statusDescription(request.status)}
-          </p>
+                  <h2 className="mt-1.5 text-[25px] font-bold tracking-tight text-slate-950">
+                    We&apos;re getting you connected
+                  </h2>
 
-          {classroomReady && (
-            <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-700">
-              <CheckCircle2 className="h-4 w-4" />
-              Opening your private classroom...
+                  <p className="mt-1 text-xs text-slate-400">
+                    Your request moves through these steps automatically.
+                  </p>
+                </div>
+
+                {/* Progress track */}
+                <div className="relative mt-8">
+
+                  {/* Connecting line */}
+                  <div className="absolute left-[12.5%] right-[12.5%] top-5 hidden h-0.5 bg-slate-200 sm:block" />
+
+                  {/* Completed progress line */}
+                  <div
+                    className="absolute left-[12.5%] top-5 hidden h-0.5 bg-violet-500 transition-all duration-700 sm:block"
+                    style={{
+                      width:
+                        request.status === "REQUESTED"
+                          ? "0%"
+                          : request.status === "WAITING"
+                            ? "33%"
+                            : request.status === "SELECTED"
+                              ? "66%"
+                              : "100%",
+                    }}
+                  />
+
+                  <div className="relative grid gap-5 sm:grid-cols-4 sm:gap-0">
+                    {steps.map((step) => {
+                      const isActive = step.active;
+                      const isComplete = step.complete;
+
+                      return (
+                        <div
+                          key={step.number}
+                          className="flex items-start gap-3 sm:flex-col sm:items-center sm:text-center"
+                        >
+                          {/* Mobile connector */}
+                          {step.number > 1 && (
+                            <div className="absolute left-5 -mt-5 h-5 w-px bg-slate-200 sm:hidden" />
+                          )}
+
+                          {/* Circle */}
+                          <div
+                            className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border-2 text-xs font-bold transition-all duration-500 ${
+                              isComplete
+                                ? "border-violet-500 bg-violet-500 text-white shadow-[0_8px_20px_-8px_rgba(124,58,237,0.8)]"
+                                : isActive
+                                  ? "border-violet-500 bg-white text-violet-600 shadow-[0_0_0_5px_rgba(124,58,237,0.1)]"
+                                  : "border-slate-200 bg-white text-slate-400"
+                            }`}
+                          >
+                            {isComplete ? (
+                              <CheckCircle2 className="h-4 w-4" />
+                            ) : (
+                              step.number
+                            )}
+
+                            {isActive && (
+                              <span className="absolute -inset-1.5 rounded-lg border border-violet-200 opacity-70" />
+                            )}
+                          </div>
+
+                          {/* Text */}
+                          <div className="pt-0.5 sm:mt-3 sm:pt-0">
+                            <p
+                              className={`text-xs font-bold ${
+                                isComplete || isActive
+                                  ? "text-slate-900"
+                                  : "text-slate-400"
+                              }`}
+                            >
+                              {step.title}
+                            </p>
+
+                            <p
+                              className={`mt-1 text-[11px] leading-5 ${
+                                isActive
+                                  ? "text-violet-600"
+                                  : "text-slate-400"
+                              }`}
+                            >
+                              {step.description}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Current status */}
+                {isWaiting && (
+                  <div className="mt-8 flex items-center justify-center gap-3 rounded-lg bg-emerald-950 px-4 py-3">
+                    <div className="relative flex h-7 w-7 items-center justify-center">
+                      <span className="absolute inset-0 animate-ping rounded-full bg-violet-200 opacity-60" />
+                      <span className="relative h-3.5 w-3.5 rounded-full bg-amber-300" />
+                    </div>
+
+                    <p className="text-xs font-medium text-white">
+                      Looking for an available teacher...
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </div>
 
-        <div className="mx-auto mt-8 max-w-2xl rounded-3xl bg-slate-50 p-5">
-          <div className="flex flex-wrap gap-2">
-            <InfoPill>{request.subject}</InfoPill>
+            {/* Request details */}
+            <div className="mx-auto mt-6 max-w-4xl">
+              <div className="rounded-lg border border-slate-200 bg-emerald-950 p-5 sm:p-6">
 
-            {request.gradeLevel && <InfoPill>{request.gradeLevel}</InfoPill>}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white">
+                      Your request
+                    </p>
 
-            {request.topic && <InfoPill>{request.topic}</InfoPill>}
-          </div>
+                    <h3 className="mt-1 text-sm font-bold text-white">
+                      Homework details
+                    </h3>
+                  </div>
 
-          <p className="mt-4 text-sm leading-6 text-slate-700">
-            {request.description}
-          </p>
+                  {isWaiting && (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[12px] font-semibold text-amber-300">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-lg bg-amber-300" />
+                      Waiting
+                    </span>
+                  )}
+                </div>
 
-          {request.assignmentName && (
-            <div className="mt-4 flex items-center gap-2 text-xs font-medium text-slate-500">
-              <FileText className="h-4 w-4" />
-              {request.assignmentName}
-            </div>
-          )}
-        </div>
+                <div className="mt-4 flex flex-wrap gap-2 rounded-lg">
+                  <InfoPill>{request.subject}</InfoPill>
 
-        <div className="mx-auto mt-8 max-w-2xl">
-          <ProgressStep number="1" title="Request submitted" complete />
+                  {request.gradeLevel && (
+                    <InfoPill>{request.gradeLevel}</InfoPill>
+                  )}
 
-          <ProgressStep
-            number="2"
-            title="Waiting for an available teacher"
-            complete={request.status !== "REQUESTED"}
-            active={request.status === "WAITING"}
-          />
+                  {request.topic && (
+                    <InfoPill>{request.topic}</InfoPill>
+                  )}
+                </div>
 
-          <ProgressStep
-            number="3"
-            title="Teacher selected"
-            complete={["SELECTED", "CONNECTING", "ACTIVE"].includes(
-              request.status,
-            )}
-            active={request.status === "SELECTED"}
-          />
+                <div className="mt-4 rounded-lg bg-white px-4 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                    Problem
+                  </p>
 
-          <ProgressStep
-            number="4"
-            title="Private classroom"
-            complete={request.status === "ACTIVE"}
-            active={request.status === "CONNECTING"}
-            last
-          />
-        </div>
+                  <p className="mt-1.5 text-sm leading-6 text-slate-700">
+                    {request.description}
+                  </p>
+                </div>
 
-        {error && (
-          <div className="mx-auto mt-6 max-w-2xl rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+                {request.assignmentName && (
+                  <div className="mt-3 flex items-center gap-3 rounded-lg border border-slate-200/70 bg-white px-4 py-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
+                      <FileText className="h-4 w-4" />
+                    </div>
 
-        {isWaiting && (
-          <div className="mt-8 text-center">
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={cancelling}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-            >
-              {cancelling ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <X className="h-3.5 w-3.5" />
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                        Attachment
+                      </p>
+
+                      <p className="truncate text-xs font-semibold text-slate-700">
+                        {request.assignmentName}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Error */}
+              {error && (
+                <div className="mt-4 rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {error}
+                </div>
               )}
-              Leave waiting room
-            </button>
+
+              {/* Cancel */}
+              {isWaiting && (
+                <div className="mt-5 flex flex-col items-center justify-between gap-3 border-t border-slate-200 pt-5 sm:flex-row">
+                  <div className="text-center sm:text-left">
+                    <p className="text-xs font-medium text-slate-600">
+                      Need to make a change?
+                    </p>
+
+                    <p className="mt-0.5 text-[11px] text-slate-400">
+                      You can leave the queue and submit a new request.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={onCancel}
+                    disabled={cancelling}
+                    className="inline-flex h-9 items-center gap-2 rounded-lg bg-emerald-950 px-3.5 text-xs font-semibold text-white shadow-sm transition-all hover:bg-emerald-900 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {cancelling ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <X className="h-3.5 w-3.5" />
+                    )}
+
+                    {cancelling ? "Leaving..." : "Leave queue"}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        )}
+
+          {/* Footer */}
+          <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-4 text-center">
+            <p className="text-[11px] text-slate-400">
+              Your request is private and only shared with available teachers.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
+
 
 function ProgressStep({
   number,
@@ -693,7 +867,7 @@ function Feature({
   description: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+    <div className="rounded-2xl border border-slate-200/90 bg-slate-50/70 p-4 transition-colors hover:bg-white">
       <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-50 text-slate-500">
         {icon}
       </div>

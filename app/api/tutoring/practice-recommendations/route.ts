@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { canManageChildren } from "@/lib/auth/capabilities";
+
 
 export const dynamic = "force-dynamic";
 
@@ -22,20 +22,15 @@ function termsFromPractice(values: Array<string | null | undefined>) {
   return [...new Set(terms)].slice(0, 10);
 }
 
-async function resolveLearner(userId: string, requestedStudentId: string | null) {
-  if (!requestedStudentId || requestedStudentId === userId) return userId;
-  if (!(await canManageChildren(userId))) return null;
+function resolveLearner(
+  userId: string,
+  requestedStudentId: string | null,
+) {
+  if (!requestedStudentId || requestedStudentId === userId) {
+    return userId;
+  }
 
-  const membership = await prisma.familyMember.findFirst({
-    where: {
-      userId,
-      role: { in: ["PARENT", "GUARDIAN"] },
-      family: { members: { some: { userId: requestedStudentId, role: "CHILD" } } },
-    },
-    select: { familyId: true },
-  });
-
-  return membership ? requestedStudentId : null;
+  return null;
 }
 
 export async function GET(request: Request) {
@@ -45,7 +40,7 @@ export async function GET(request: Request) {
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const requestedStudentId = new URL(request.url).searchParams.get("studentId")?.trim() || null;
-    const learnerId = await resolveLearner(userId, requestedStudentId);
+    const learnerId = resolveLearner(userId, requestedStudentId);
     if (!learnerId) {
       return NextResponse.json({ error: "You are not authorized to view this learner's practice recommendations." }, { status: 403 });
     }

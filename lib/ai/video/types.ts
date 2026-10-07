@@ -1,6 +1,10 @@
 export type VideoModel = "sora-2" | "sora-2-pro";
 
-export type VideoDuration = 4 | 8 | 12;
+/**
+ * Runway Gen-4.5 supports 2–10 second generations.
+ * Keep the UI/API options explicit so billing and provider requests stay in sync.
+ */
+export type VideoDuration = 2 | 4 | 5 | 6 | 8 | 10;
 
 export type VideoAspectRatio = "16:9" | "9:16";
 
@@ -22,7 +26,7 @@ export interface CreateVideoInput {
 }
 
 export interface VideoProviderJob {
-  provider: "openai";
+  provider: "runway";
   providerTaskId: string;
   model: VideoModel;
   status: VideoJobStatus;
@@ -31,7 +35,7 @@ export interface VideoProviderJob {
 }
 
 export interface VideoProviderStatus {
-  provider: "openai";
+  provider: "runway";
   providerTaskId: string;
   model: VideoModel;
   status: VideoJobStatus;

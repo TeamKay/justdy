@@ -60,22 +60,6 @@ async function getAuthenticatedUser() {
   return session?.user ?? null;
 }
 
-async function canManageLearner(userId: string, learnerId: string) {
-  const membership = await prisma.familyMember.findFirst({
-    where: {
-      userId,
-      role: { in: ["PARENT", "GUARDIAN"] },
-      family: {
-        members: {
-          some: { userId: learnerId, role: "CHILD" },
-        },
-      },
-    },
-    select: { userId: true },
-  });
-
-  return Boolean(membership);
-}
 
 async function getSession(id: string, userId: string) {
   const tutoringSession = await prisma.tutoringSession.findUnique({
@@ -98,16 +82,14 @@ async function getSession(id: string, userId: string) {
   if (!tutoringSession) return { session: null, unauthorized: false, isTutor: false };
 
   const directAccess =
-    tutoringSession.learnerId === userId || tutoringSession.educatorId === userId;
-  const parentAccess = directAccess
-    ? false
-    : await canManageLearner(userId, tutoringSession.learnerId);
+  tutoringSession.learnerId === userId ||
+  tutoringSession.educatorId === userId;
 
-  return {
-    session: directAccess || parentAccess ? tutoringSession : null,
-    unauthorized: !directAccess && !parentAccess,
-    isTutor: tutoringSession.educatorId === userId,
-  };
+return {
+  session: directAccess ? tutoringSession : null,
+  unauthorized: !directAccess,
+  isTutor: tutoringSession.educatorId === userId,
+};
 }
 
 export async function GET(_request: NextRequest, context: RouteContext) {

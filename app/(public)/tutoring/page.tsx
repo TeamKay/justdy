@@ -14,10 +14,8 @@ import {
 import { Instrument_Serif, Inter } from "next/font/google";
 
 
-import { JustdyChatbot } from "@/app/_components/chat/JustdyChatbot";
 import prisma from "@/lib/prisma";
 import MarketingNavbar from "@/app/_components/MarketingNavbar";
-import MarketingFooter from "@/app/_components/MarketingFooter";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -261,7 +259,7 @@ export default async function TutoringPage() {
         <section className="relative overflow-hidden border-b border-white/8 bg-background">
           <div className="relative z-10 mx-auto max-w-6xl px-6 pb-20 pt-16 sm:px-8 lg:px-12 lg:pb-24 lg:pt-20">
             <div className="mx-auto max-w-4xl text-center">
-              <h1 className="mt-7 text-balance text-3xl font-extrabold leading-[0.96] tracking-[-0.06em] text-emerald-950 sm:text-4xl lg:text-5xl">
+              <h1 className="mt-0 text-balance text-3xl font-extrabold leading-[0.96] tracking-[-0.06em] text-emerald-950 sm:text-4xl lg:text-5xl">
                 List of learning packages
               </h1>
 
@@ -273,10 +271,17 @@ export default async function TutoringPage() {
 
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Link
-                  href="/tutors"
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-sm bg-emerald-900 px-7 text-sm font-semibold text-white transition hover:bg-emerald-950"
+                  href="/tutoring/tutors"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-900 px-7 text-sm font-semibold text-white transition hover:bg-emerald-950"
                 >
                   Find a Tutor
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                 href="/dashboard/live-help"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-emerald-900 px-7 text-sm font-semibold text-emerald-950 transition hover:bg-white/[0.07]"
+                >
+                  Live Homework Help
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                
@@ -288,8 +293,6 @@ export default async function TutoringPage() {
         {/* SERVICES */}
         <section id="services" className="border-b border-white/8 bg-background">
           <div className="mx-auto max-w-6xl px-6 py-2 sm:px-8 lg:px-10">
-         
-
             {services.length > 0 ? (
               <div className="grid gap-2 lg:grid-cols-3">
                 {services.map((service) => (
@@ -297,9 +300,9 @@ export default async function TutoringPage() {
                 ))}
               </div>
             ) : (
-              <div className="mt- rounded-sm border border-white/10 bg-white/2.5 p-10 text-center">
+              <div className="mt-2 rounded-lg bg-white p-10 text-center">
                 <GraduationCap className="mx-auto h-8 w-8 text-white/30" />
-                <h3 className="mt-4 text-lg font-semibold text-white">
+                <h3 className="mt-4 text-lg font-semibold text-emerald-950">
                   Tutoring services are being prepared.
                 </h3>
                 <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-white/45">
@@ -461,17 +464,19 @@ export default async function TutoringPage() {
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/tutors"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-sm bg-emerald-900 px-7 text-sm font-semibold text-white transition hover:bg-emerald-950"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-none bg-emerald-900 px-7 text-sm font-semibold text-white transition hover:bg-emerald-950"
               >
                 Find a Tutor
                 <ArrowRight className="h-4 w-4" />
               </Link>
-              <a
-                href="#services"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-sm border border-emerald-900 px-7 text-sm font-semibold text-emerald-950 transition hover:bg-white/[0.07]"
+              <Link
+                href="/dashboard/live-help"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-none border border-emerald-900 px-7 text-sm font-semibold text-emerald-950 transition hover:bg-white/[0.07]"
               >
-                View services
-              </a>
+                Live Homework Help
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+             
               <Link
                 href="/"
                 className="inline-flex h-11 items-center justify-center rounded-sm border border-emerald-900 px-7 text-sm font-semibold text-emerald-950 transition hover:bg-white/[0.07]"
@@ -483,8 +488,6 @@ export default async function TutoringPage() {
         </section>
       </main>
 
-      <MarketingFooter />
-      <JustdyChatbot />
     </div>
   );
 }

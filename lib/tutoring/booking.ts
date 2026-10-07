@@ -148,6 +148,9 @@ export async function getAvailableTutoringSlots({
     where: {
       educatorId: tutorId,
       status: "Available",
+      type: {
+        in: ["ONE_OFF", "OCCURRENCE"],
+      },
       startTime: {
         gte: from,
         lt: to,
@@ -176,6 +179,9 @@ export async function getTutoringSlotForBooking(
   const availability = await prisma.availability.findFirst({
     where: {
       id: availabilityId,
+      type: {
+        in: ["ONE_OFF", "OCCURRENCE"],
+      },
       status: "Available",
       educator: {
         status: "Active",
@@ -247,11 +253,17 @@ export async function createTutoringSlot({
     throw new Error("Tutor ID is required.");
   }
 
-  if (!(startTime instanceof Date) || Number.isNaN(startTime.getTime())) {
+  if (
+    !(startTime instanceof Date) ||
+    Number.isNaN(startTime.getTime())
+  ) {
     throw new Error("A valid slot start time is required.");
   }
 
-  if (!(endTime instanceof Date) || Number.isNaN(endTime.getTime())) {
+  if (
+    !(endTime instanceof Date) ||
+    Number.isNaN(endTime.getTime())
+  ) {
     throw new Error("A valid slot end time is required.");
   }
 
@@ -291,6 +303,9 @@ export async function createTutoringSlot({
     await prisma.availability.findFirst({
       where: {
         educatorId: tutorId,
+        type: {
+          in: ["ONE_OFF", "OCCURRENCE"],
+        },
 
         status: {
           not: "Blocked",
@@ -319,6 +334,7 @@ export async function createTutoringSlot({
   return prisma.availability.create({
     data: {
       educatorId: tutorId,
+      type: "ONE_OFF",
       startTime,
       endTime,
       status: "Available",
@@ -354,6 +370,9 @@ export async function blockTutoringSlot({
       where: {
         id: slotId,
         educatorId: tutorId,
+        type: {
+          in: ["ONE_OFF", "OCCURRENCE"],
+        },
       },
 
       select: {
@@ -420,6 +439,9 @@ export async function unblockTutoringSlot({
       where: {
         id: slotId,
         educatorId: tutorId,
+        type: {
+          in: ["ONE_OFF", "OCCURRENCE"],
+        },
       },
 
       select: {
@@ -556,6 +578,9 @@ export async function validateTutoringAvailabilityForService({
       where: {
         id: availabilityId,
         educatorId: tutorId,
+        type: {
+          in: ["ONE_OFF", "OCCURRENCE"],
+        },
         status: "Available",
       },
 
@@ -585,22 +610,37 @@ export async function validateTutoringAvailabilityForService({
     return false;
   }
 
- if (
-  service.durationMinutes === null ||
-  service.durationMinutes <= 0
-) {
-  return false;
-}
+  if (
+    service.durationMinutes === null ||
+    service.durationMinutes <= 0
+  ) {
+    return false;
+  }
 
-const availabilityDurationMinutes =
-  (availability.endTime.getTime() -
-    availability.startTime.getTime()) /
-  (1000 * 60);
+  /*
+   * Availability.startTime/endTime are nullable because
+   * recurring availability rules intentionally do not have
+   * concrete dates.
+   *
+   * This validation is only for concrete bookable slots, so
+   * both values must exist before calculating duration.
+   */
+  if (
+    !availability.startTime ||
+    !availability.endTime
+  ) {
+    return false;
+  }
 
-return (
-  availabilityDurationMinutes >=
-  service.durationMinutes
-);
+  const availabilityDurationMinutes =
+    (availability.endTime.getTime() -
+      availability.startTime.getTime()) /
+    (1000 * 60);
+
+  return (
+    availabilityDurationMinutes >=
+    service.durationMinutes
+  );
 }
 
 /* ============================================================

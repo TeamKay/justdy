@@ -1,0 +1,6 @@
+import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { requireAdminApi } from "@/lib/investments/admin";
+
+export async function GET() { const user = await requireAdminApi(); if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); return NextResponse.json(await prisma.investmentAsset.findMany({ where: { userId: user.id, active: true }, orderBy: { name: "asc" } })); }
+export async function POST(request: Request) { const user = await requireAdminApi(); if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); const b = await request.json(); if (!b.name || !b.assetType || !b.region || !b.currency) return NextResponse.json({ error: "Name, asset type, region and currency are required." }, { status: 400 }); const asset = await prisma.investmentAsset.create({ data: { userId: user.id, name: String(b.name).trim(), symbol: b.symbol ? String(b.symbol).trim().toUpperCase() : null, tickerOrSymbol: b.symbol ? String(b.symbol).trim().toUpperCase() : null, assetType: b.assetType, region: b.region, currency: b.currency, exchange: b.exchange ? String(b.exchange).trim() : null, issuer: b.issuer ? String(b.issuer).trim() : "", accountId: b.accountId || null } }); return NextResponse.json(asset, { status: 201 }); }

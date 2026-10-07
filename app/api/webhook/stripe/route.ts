@@ -9,6 +9,9 @@ import { env } from "@/lib/env";
 import { Resend } from "resend";
 import crypto from "crypto";
 import { processUniversalTutoringBooking } from "@/lib/tutoring-payment-finalization";
+import { getCreditPack } from "@/lib/credits/packages";
+import { fulfillCreditPurchaseInTransaction } from "@/lib/credits/purchases";
+
 
 
 // ============================================================
@@ -424,7 +427,10 @@ export async function POST(req: Request) {
   const isUniversalTutoring =
     session.metadata?.checkoutType === "TUTORING";
 
-  if (!isUniversalTutoring) {
+  const isCreditPurchase =
+    session.metadata?.purchaseType === "credit";
+
+  if (!isUniversalTutoring && !isCreditPurchase) {
     const alreadyProcessed = await prisma.transaction.findFirst({
       where: {
         stripeSessionId: session.id,
@@ -524,6 +530,93 @@ export async function POST(req: Request) {
 
       purchaseType: session.metadata?.purchaseType,
     });
+
+    // ========================================================
+    // CREDIT PURCHASE
+    // ========================================================
+    //
+    // Credit purchases are intentionally handled separately from
+    // normal Justdy products. The pack key is resolved server-side;
+    // the webhook never trusts a client-supplied credit amount.
+    // 1 credit = $0.01 USD, so the pack's credit count is also its
+    // Stripe amount in cents.
+    // ========================================================
+
+    if (session.metadata?.purchaseType === "credit") {
+      const userId = session.metadata.userId?.trim();
+      const packKey = session.metadata.creditPack?.trim();
+
+      if (!userId || !packKey) {
+        throw new Error("Credit checkout is missing user or pack metadata.");
+      }
+
+      const pack = getCreditPack(packKey);
+
+      if (!pack) {
+        throw new Error(`Unknown Justdy credit pack: ${packKey}`);
+      }
+
+      let user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          stripeCustomerId: true,
+        },
+      });
+
+      if (!user) {
+        throw new Error(`Credit purchase user ${userId} does not exist.`);
+      }
+
+      if (
+        typeof session.customer === "string" &&
+        user.stripeCustomerId &&
+        session.customer !== user.stripeCustomerId
+      ) {
+        throw new Error("Stripe customer does not match the credit purchaser.");
+      }
+
+      if (!user.stripeCustomerId && typeof session.customer === "string") {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { stripeCustomerId: session.customer },
+          select: {
+            id: true,
+            email: true,
+            stripeCustomerId: true,
+          },
+        });
+      }
+
+      const result = await prisma.$transaction((tx) =>
+        fulfillCreditPurchaseInTransaction(tx, {
+          userId: user.id,
+          sessionId: session.id,
+          packKey: pack.key,
+          currency: session.currency,
+          amountTotal: session.amount_total,
+        }),
+      );
+
+      console.log("JUSTDY CREDIT PURCHASE FULFILLED:", {
+        sessionId: session.id,
+        userId: user.id,
+        pack: pack.key,
+        credits: result.credits,
+        transactionId: result.transactionId,
+        alreadyProcessed: result.alreadyProcessed,
+        balance: result.balance,
+      });
+
+      return NextResponse.json({
+        received: true,
+        creditPurchaseProcessed: true,
+        alreadyProcessed: result.alreadyProcessed,
+        userId: user.id,
+        credits: result.credits,
+      });
+    }
 
     // ========================================================
     // PRODUCT PURCHASE

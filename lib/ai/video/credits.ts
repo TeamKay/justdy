@@ -11,10 +11,7 @@ export class InsufficientVideoCreditsError extends Error {
   readonly available: number;
 
   constructor(required: number, available: number) {
-    super(
-      `Insufficient AI credits. Required: ${required}. Available: ${available}.`,
-    );
-
+    super(`Insufficient AI credits. Required: ${required}. Available: ${available}.`);
     this.name = "InsufficientVideoCreditsError";
     this.required = required;
     this.available = available;
@@ -37,10 +34,7 @@ export async function consumeVideoCreditsAtomic({
 
   return prisma.$transaction(async (tx) => {
     const generation = await tx.videoGeneration.findFirst({
-      where: {
-        id: generationId,
-        userId,
-      },
+      where: { id: generationId, userId },
       select: {
         id: true,
         status: true,
@@ -50,14 +44,10 @@ export async function consumeVideoCreditsAtomic({
       },
     });
 
-    if (!generation) {
-      throw new Error("Video generation not found.");
-    }
+    if (!generation) throw new Error("Video generation not found.");
 
     if (generation.status !== "PENDING") {
-      throw new Error(
-        `Video generation is already ${generation.status.toLowerCase()}.`,
-      );
+      throw new Error(`Video generation is already ${generation.status.toLowerCase()}.`);
     }
 
     if (generation.creditChargedAt || generation.creditsUsed !== 0) {
@@ -68,9 +58,6 @@ export async function consumeVideoCreditsAtomic({
       throw new Error("Video generation has already been refunded.");
     }
 
-    /*
-     * Claim the generation.
-     */
     const claimed = await tx.videoGeneration.updateMany({
       where: {
         id: generationId,
@@ -87,83 +74,50 @@ export async function consumeVideoCreditsAtomic({
       },
     });
 
-    if (claimed.count !== 1) {
-      throw new Error("Video generation could not be claimed.");
-    }
+    if (claimed.count !== 1) throw new Error("Video generation could not be claimed.");
 
     const account = await tx.userCredit.findUnique({
-      where: {
-        userId,
-      },
-      select: {
-        id: true,
-        balance: true,
-      },
+      where: { userId },
+      select: { id: true, balance: true },
     });
 
-    if (!account) {
-      throw new InsufficientVideoCreditsError(cost, 0);
-    }
+    if (!account) throw new InsufficientVideoCreditsError(cost, 0);
 
-    /*
-     * Atomic balance check + decrement.
-     */
     const updated = await tx.userCredit.updateMany({
-      where: {
-        id: account.id,
-        balance: {
-          gte: cost,
-        },
-      },
-      data: {
-        balance: {
-          decrement: cost,
-        },
-      },
+      where: { id: account.id, balance: { gte: cost } },
+      data: { balance: { decrement: cost } },
     });
 
     if (updated.count !== 1) {
       const current = await tx.userCredit.findUnique({
-        where: {
-          id: account.id,
-        },
-        select: {
-          balance: true,
-        },
+        where: { id: account.id },
+        select: { balance: true },
       });
-
       throw new InsufficientVideoCreditsError(cost, current?.balance ?? 0);
     }
 
     const afterCharge = await tx.userCredit.findUnique({
-      where: {
-        id: account.id,
-      },
-      select: {
-        balance: true,
-      },
+      where: { id: account.id },
+      select: { balance: true },
     });
 
-    if (!afterCharge) {
-      throw new Error("AI credit account disappeared during consumption.");
-    }
+    if (!afterCharge) throw new Error("AI credit account disappeared during consumption.");
 
     await tx.creditTransaction.create({
       data: {
         userId,
         userCreditId: account.id,
         amount: -cost,
-        type: CreditTransactionType.GENERATION,
+        type: CreditTransactionType.CONSUMPTION,
         description: "AI VIDEO generation",
         generationId,
+        referenceType: "AI_GENERATION",
+        referenceId: generationId,
+        idempotencyKey: `video-generation:${generationId}`,
       },
     });
 
-    return {
-      cost,
-      balance: afterCharge.balance,
-      chargedAt,
-    };
+    return { cost, balance: afterCharge.balance, chargedAt };
   });
 }
 
@@ -176,10 +130,7 @@ export async function refundVideoCreditsAtomic({
 }) {
   return prisma.$transaction(async (tx) => {
     const generation = await tx.videoGeneration.findFirst({
-      where: {
-        id: generationId,
-        userId,
-      },
+      where: { id: generationId, userId },
       select: {
         id: true,
         creditsUsed: true,
@@ -188,111 +139,48 @@ export async function refundVideoCreditsAtomic({
       },
     });
 
-    if (!generation) {
-      throw new Error("Video generation not found.");
-    }
+    if (!generation) throw new Error("Video generation not found.");
 
-    /*
-     * Already refunded.
-     */
     if (generation.creditRefundedAt) {
       const account = await tx.userCredit.findUnique({
-        where: {
-          userId,
-        },
-        select: {
-          balance: true,
-        },
+        where: { userId },
+        select: { balance: true },
       });
-
-      return {
-        refunded: false,
-        amount: 0,
-        balance: account?.balance ?? 0,
-      };
+      return { refunded: false, amount: 0, balance: account?.balance ?? 0 };
     }
 
-    /*
-     * Nothing was charged.
-     */
     if (!generation.creditChargedAt || generation.creditsUsed <= 0) {
       const account = await tx.userCredit.findUnique({
-        where: {
-          userId,
-        },
-        select: {
-          balance: true,
-        },
+        where: { userId },
+        select: { balance: true },
       });
-
-      return {
-        refunded: false,
-        amount: 0,
-        balance: account?.balance ?? 0,
-      };
+      return { refunded: false, amount: 0, balance: account?.balance ?? 0 };
     }
 
     const account = await tx.userCredit.findUnique({
-      where: {
-        userId,
-      },
-      select: {
-        id: true,
-        balance: true,
-      },
+      where: { userId },
+      select: { id: true, balance: true },
     });
 
-    if (!account) {
-      throw new Error("AI credit account not found.");
-    }
+    if (!account) throw new Error("AI credit account not found.");
 
-    /*
-     * Check for an existing refund ledger entry.
-     */
     const existingRefund = await tx.creditTransaction.findFirst({
-      where: {
-        userId,
-        generationId,
-        type: CreditTransactionType.REFUND,
-      },
-      select: {
-        id: true,
-      },
+      where: { userId, generationId, type: CreditTransactionType.REFUND },
+      select: { id: true },
     });
 
     if (existingRefund) {
       await tx.videoGeneration.update({
-        where: {
-          id: generationId,
-        },
-        data: {
-          creditRefundedAt: new Date(),
-          status: "FAILED",
-        },
+        where: { id: generationId },
+        data: { creditRefundedAt: new Date(), status: "FAILED" },
       });
-
-      return {
-        refunded: false,
-        amount: 0,
-        balance: account.balance,
-      };
+      return { refunded: false, amount: 0, balance: account.balance };
     }
 
-    /*
-     * Restore the exact historical amount charged.
-     */
     const restored = await tx.userCredit.update({
-      where: {
-        id: account.id,
-      },
-      data: {
-        balance: {
-          increment: generation.creditsUsed,
-        },
-      },
-      select: {
-        balance: true,
-      },
+      where: { id: account.id },
+      data: { balance: { increment: generation.creditsUsed } },
+      select: { balance: true },
     });
 
     await tx.creditTransaction.create({
@@ -303,17 +191,15 @@ export async function refundVideoCreditsAtomic({
         type: CreditTransactionType.REFUND,
         description: "Refund for failed AI VIDEO generation",
         generationId,
+        referenceType: "AI_GENERATION_REFUND",
+        referenceId: generationId,
+        idempotencyKey: `video-generation:${generationId}:refund`,
       },
     });
 
     await tx.videoGeneration.update({
-      where: {
-        id: generationId,
-      },
-      data: {
-        creditRefundedAt: new Date(),
-        status: "FAILED",
-      },
+      where: { id: generationId },
+      data: { creditRefundedAt: new Date(), status: "FAILED" },
     });
 
     return {

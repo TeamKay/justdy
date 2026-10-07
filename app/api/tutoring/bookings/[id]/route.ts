@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
-import { canManageChildren } from "@/lib/auth/capabilities";
+
 import prisma from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 
@@ -38,56 +38,9 @@ async function getUser() {
  * - A parent/guardian who manages children and is linked to the
  *   learner through the same Family
  */
-async function canManageBooking(
-  userId: string,
-  booking: {
-    studentId: string;
-    educatorId: string;
-  },
-): Promise<boolean> {
-  // Learner or tutor can manage their own booking.
-  if (booking.educatorId === userId || booking.studentId === userId) {
-    return true;
-  }
 
-  // Everyone else must have child-management capability.
-  if (!(await canManageChildren(userId))) {
-    return false;
-  }
 
-  const memberships = await prisma.familyMember.findMany({
-    where: {
-      userId,
-      role: {
-        in: ["PARENT", "GUARDIAN"],
-      },
-    },
-    select: {
-      familyId: true,
-    },
-  });
 
-  if (!memberships.length) {
-    return false;
-  }
-
-  const familyIds = memberships.map((membership) => membership.familyId);
-
-  const child = await prisma.familyMember.findFirst({
-    where: {
-      familyId: {
-        in: familyIds,
-      },
-      userId: booking.studentId,
-      role: "CHILD",
-    },
-    select: {
-      userId: true,
-    },
-  });
-
-  return Boolean(child);
-}
 
 /**
  * PATCH /api/tutorings/:id
@@ -199,24 +152,9 @@ export async function PATCH(
       );
     }
 
-    /*
-     * Authorization must happen before allowing any lifecycle
-     * operation.
-     */
-    const authorized = await canManageBooking(user.id, {
-      studentId: booking.studentId,
-      educatorId: booking.educatorId,
-    });
 
-    if (!authorized) {
-      return NextResponse.json(
-        {
-          error:
-            "You are not authorized to change this booking.",
-        },
-        { status: 403 },
-      );
-    }
+
+  
 
     /*
      * Terminal booking states cannot be changed.
@@ -489,60 +427,55 @@ export async function PATCH(
         /*
          * Load the requested canonical availability slot.
          */
-        const slot = await tx.availability.findUnique({
-          where: {
-            id: newAvailabilityId,
-          },
-          select: {
-            id: true,
-            educatorId: true,
-            startTime: true,
-            endTime: true,
-            status: true,
-          },
-        });
+       const slot = await tx.availability.findFirst({
+  where: {
+    id: newAvailabilityId,
+    type: {
+      in: ["ONE_OFF", "OCCURRENCE"],
+    },
+  },
+  select: {
+    id: true,
+    educatorId: true,
+    startTime: true,
+    endTime: true,
+    status: true,
+  },
+});
 
-        if (!slot) {
-          throw new Error("NEW_SLOT_NOT_FOUND");
-        }
+if (!slot) {
+  throw new Error("NEW_SLOT_NOT_FOUND");
+}
 
-        /*
-         * The new slot must belong to the same tutor.
-         */
-        if (slot.educatorId !== current.educatorId) {
-          throw new Error("NEW_SLOT_WRONG_TUTOR");
-        }
+if (!slot.startTime || !slot.endTime) {
+  throw new Error("NEW_SLOT_NOT_BOOKABLE");
+}
 
-        /*
-         * Only currently available slots can be claimed.
-         */
-        if (slot.status !== "Available") {
-          throw new Error("NEW_SLOT_UNAVAILABLE");
-        }
+if (slot.educatorId !== current.educatorId) {
+  throw new Error("NEW_SLOT_WRONG_TUTOR");
+}
 
-        /*
-         * New slot must be in the future.
-         */
-        if (slot.startTime.getTime() <= Date.now()) {
-          throw new Error("NEW_SLOT_IN_PAST");
-        }
+if (slot.status !== "Available") {
+  throw new Error("NEW_SLOT_UNAVAILABLE");
+}
 
-        /*
-         * The availability duration must exactly match the
-         * service duration.
-         */
-        const slotDurationMs =
-          slot.endTime.getTime() -
-          slot.startTime.getTime();
+if (slot.startTime.getTime() <= Date.now()) {
+  throw new Error("NEW_SLOT_IN_PAST");
+}
 
-        const requiredDurationMs =
-          serviceDurationMinutes * 60_000;
+const slotDurationMs =
+  slot.endTime.getTime() -
+  slot.startTime.getTime();
 
-        if (slotDurationMs !== requiredDurationMs) {
-          throw new Error(
-            "NEW_SLOT_DURATION_MISMATCH",
-          );
-        }
+const requiredDurationMs =
+  serviceDurationMinutes * 60_000;
+
+if (slotDurationMs !== requiredDurationMs) {
+  throw new Error(
+    "NEW_SLOT_DURATION_MISMATCH",
+  );
+}
+        
 
         /*
          * Atomically claim the new slot.

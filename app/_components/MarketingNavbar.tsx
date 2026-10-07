@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  BookOpen,
-  Brain,
   ChevronDown,
   Menu,
   Sparkles,
@@ -17,29 +15,16 @@ import { UserDropdown } from "./UserDropdown";
 import { ThemeToggle } from "./themeToggle";
 
 
-
-
 const navigation = [
   {
-    label: "AI Tools",
+    label: "AI Studio",
     items: [
       {
-        label: "AI Workspace",
-        description: "Create educational content with AI",
-        href: "/dashboard",
+        label: "Create with AI",
+        description:
+          "Create worksheets, workbooks, coloring pages, images, and videos",
+        href: "/dashboard/create",
         icon: Sparkles,
-      },
-      {
-        label: "Worksheets",
-        description: "Create worksheets with AI",
-        href: "/create/worksheet",
-        icon: BookOpen,
-      },
-      {
-        label: "Lessons",
-        description: "Build structured lessons",
-        href: "/create/lesson",
-        icon: Brain,
       },
     ],
   },
@@ -172,14 +157,23 @@ export default function MarketingNavbar() {
           HEADER
       ========================================================== */}
       <header
-        className={`fixed top-0 z-100 transition-all duration-300 ease-out ${
+        className={`fixed top-0 z-1000 transition-all duration-300 ease-out ${
          isFloating
-          ? "left-1/2 mt-3 w-[calc(100%-1.5rem)] max-w-230 -translate-x-1/2 rounded-sm border border-border/50 bg-background/80 shadow-lg backdrop-blur-xl sm:w-[calc(100%-3rem)] lg:mt-4"
-          : "inset-x-0 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl"
+          ? "left-1/2 mt-3 w-[calc(100%-1.5rem)] max-w-230 -translate-x-1/2 rounded-sm bg-white shadow-sm backdrop-blur-xl sm:w-[calc(100%-3rem)] lg:mt-4"
+          : "inset-x-0 w-full bg-white "
         }`}
       >
         <div
-          className={`mx-auto flex h-16 items-center justify-between px-4 transition-all duration-300 sm:px-6 ${
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-0"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle, rgba(255, 255, 255, 0.17) 1.35px, transparent 1.35px)",
+            backgroundSize: "32px 32px",
+          }}
+        />
+        <div
+          className={`relative z-10 mx-auto flex h-15 items-center justify-between px-4 transition-all duration-300 sm:px-6 ${
             isFloating
               ? "max-w-230 lg:px-5"
               : "max-w-7xl lg:px-12"
@@ -197,7 +191,7 @@ export default function MarketingNavbar() {
               <Sparkles className="h-4 w-4" />
             </div>
 
-            <span className="text-lg font-semibold tracking-tight text-foreground">
+            <span className="text-lg font-semibold tracking-tight text-black">
               Justdy
             </span>
           </Link>
@@ -223,7 +217,7 @@ export default function MarketingNavbar() {
             {/* Home */}
             <Link
               href="/"
-              className="rounded-sm px-3 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+              className="rounded-sm px-3 py-2 text-sm font-medium text-emerald-950 transition hover:bg-muted"
             >
               Home
             </Link>
@@ -249,10 +243,10 @@ export default function MarketingNavbar() {
                         : menu.label,
                     )
                   }
-                  className={`inline-flex items-center gap-1 rounded-sm px-3 py-2 text-sm font-medium transition ${
+                  className={`inline-flex items-center gap-1 rounded-sm px-3 py-2 text-sm font-medium leading-5 transition ${
                     openMenu === menu.label
-                      ? "bg-muted text-foreground"
-                      : "text-foreground hover:bg-muted hover:text-foreground"
+                      ? "bg-white text-emerald-950"
+                      : "text-emerald-950 hover:bg-muted hover:text-emerald-950"
                   }`}
                   aria-expanded={
                     openMenu === menu.label
@@ -266,7 +260,7 @@ export default function MarketingNavbar() {
 
                 {openMenu === menu.label && (
                   <div
-                    className="absolute left-0 top-full w-80 pt-2"
+                    className="absolute left-0 top-full z-1100 w-80 pt-2"
                     onMouseEnter={() =>
                       setOpenMenu(menu.label)
                     }
@@ -274,7 +268,7 @@ export default function MarketingNavbar() {
                       setOpenMenu(menu.label)
                     }
                   >
-                    <div className="rounded-sm border border-border/80 bg-card p-2 shadow-foreground/10">
+                    <div className="relative z-1100 rounded-sm border border-white/10 bg-white p-2 shadow-2xl shadow-black/30 backdrop-blur-xl">
                       {menu.items.map((item) => {
                         const Icon = item.icon;
 
@@ -290,11 +284,11 @@ export default function MarketingNavbar() {
                             </div>
 
                             <div>
-                              <div className="text-sm font-semibold text-foreground">
+                              <div className="text-sm font-semibold text-emerald-950">
                                 {item.label}
                               </div>
 
-                              <div className="mt-0.5 text-xs leading-5 text-muted-foreground">
+                              <div className="mt-0.5 text-xs leading-5 text-emerald-950">
                                 {item.description}
                               </div>
                             </div>
@@ -310,7 +304,7 @@ export default function MarketingNavbar() {
             {/* Resources */}
             <Link
               href="/products"
-              className="rounded-sm px-3 py-2 text-sm font-medium text-foreground transition hover:bg-muted hover:text-foreground"
+              className="rounded-sm px-3 py-2 text-sm font-medium text-emerald-950 transition hover:bg-muted hover:text-foreground"
             >
               Resources
             </Link>
@@ -323,7 +317,7 @@ export default function MarketingNavbar() {
             {/* =================================================
                 THEME TOGGLE
             ================================================== */}
-            <ThemeToggle />
+    
 
             {sessionPending ? (
               /*
@@ -339,7 +333,7 @@ export default function MarketingNavbar() {
                 {/* Authenticated user */}
                 <Link
                   href={dashboardHref}
-                  className="inline-flex h-10 items-center rounded-sm bg-emerald-900 px-4 text-sm font-semibold text-white transition hover:bg-emerald-950"
+                  className="inline-flex h-10 items-center rounded-lg bg-[#181818] px-4 text-sm font-semibold text-white transition hover:bg-emerald-950"
                 >
                   {dashboardLabel}
                 </Link>
@@ -357,7 +351,7 @@ export default function MarketingNavbar() {
               ================================================== */
               <Link
                 href="/auth?mode=signin"
-                className="group ml-4 inline-flex h-8 rounded-sm items-center gap-2 bg-emerald-900 px-7 py-4.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-emerald-950"
+                className="group ml-4 inline-flex h-8 rounded-lg items-center gap-2 bg-[#181818] px-7 py-4.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-emerald-950"
               >
                 Sign in
               </Link>
@@ -391,7 +385,7 @@ export default function MarketingNavbar() {
               onClick={() =>
                 setMobileOpen(!mobileOpen)
               }
-              className="flex h-10 w-10 items-center justify-center rounded-sm border border-border text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex h-10 w-10 items-center justify-center rounded-sm border border-white/15 text-white/60 transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {mobileOpen ? (
                 <X className="h-5 w-5" />
@@ -406,8 +400,17 @@ export default function MarketingNavbar() {
             MOBILE NAVIGATION
         ======================================================== */}
         {mobileOpen && (
-          <div className="border-t border-border/60 bg-background/98 backdrop-blur-xl lg:hidden">
-            <div className="space-y-1 px-6 py-4 sm:px-8">
+          <div className="relative border-t border-white/10 bg-[#0a0d16]/95 backdrop-blur-xl lg:hidden">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{
+                backgroundImage:
+                  "radial-gradient(circle, rgba(255, 255, 255, 0.17) 1.35px, transparent 1.35px)",
+                backgroundSize: "32px 32px",
+              }}
+            />
+            <div className="relative space-y-1 px-6 py-4 sm:px-8">
               {/* =================================================
                   APPEARANCE
               ================================================== */}
@@ -417,7 +420,7 @@ export default function MarketingNavbar() {
                     Appearance
                   </p>
 
-                  <p className="mt-0.5 text-xs text-muted-foreground">
+                  <p className="mt-0.5 text-xs text-white/60">
                     Choose your theme
                   </p>
                 </div>
@@ -438,7 +441,7 @@ export default function MarketingNavbar() {
               <Link
                 href="/dashboard"
                 onClick={closeMobileMenu}
-                className="block rounded-sm px-3 py-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                className="block rounded-sm px-3 py-3 text-sm font-medium text-white/60 transition hover:bg-muted hover:text-foreground"
               >
                 AI Workspace
               </Link>

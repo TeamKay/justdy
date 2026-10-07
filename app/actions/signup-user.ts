@@ -1,100 +1,156 @@
 "use server";
 
-import prisma from "@/lib/prisma";
-import { auth } from "@/lib/auth";
-import { signupSchema } from "@/lib/zodSchemas";
-import { CAPABILITIES, ensureCapabilities } from "@/lib/auth/capabilities";
+import { z } from "zod";
 
-export async function signupUser(formData: unknown) {
-  const parsed = signupSchema.safeParse(formData);
+import { auth } from "@/lib/auth";
+import { CAPABILITIES, ensureCapabilities } from "@/lib/auth/capabilities";
+import prisma from "@/lib/prisma";
+import { signupSchema } from "@/lib/zodSchemas";
+
+type SignupResult =
+  | {
+      type: "created";
+    }
+  | {
+      type: "exists_verified";
+    }
+  | {
+      type: "exists_unverified";
+    };
+
+type SignupValues = z.infer<typeof signupSchema>;
+
+export async function signupUser(
+  values: SignupValues,
+): Promise<SignupResult> {
+  const parsed = signupSchema.safeParse(values);
 
   if (!parsed.success) {
-    return {
-      ok: false,
-      type: "invalid_data",
-    };
+    throw new Error("Invalid signup information.");
   }
 
-  const { name, email, password } = parsed.data;
+  const name = parsed.data.name.trim();
+  const email = parsed.data.email.trim().toLowerCase();
+  const password = parsed.data.password;
 
-  // IMPORTANT:
-  // Normal signup is ALWAYS for learners.
-  // Never trust a role supplied by the client.
-  const role = "user";
+  if (!name) {
+    throw new Error("Name is required.");
+  }
 
-  try {
-    // 1. Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: {
-        email,
-      },
-      include: {
-        facilitatorProfile: true,
-      },
-    });
+  if (!email) {
+    throw new Error("Email is required.");
+  }
 
-    if (existingUser) {
-      if (
-        existingUser.emailVerified &&
-        existingUser.facilitatorProfile?.verificationStatus ===
-          "Pending"
-      ) {
-        return {
-          ok: false,
-          type: "awaiting_admin_approval",
-        };
-      }
+  if (!password) {
+    throw new Error("Password is required.");
+  }
 
-      if (existingUser.emailVerified) {
-        return {
-          ok: false,
-          type: "exists_verified",
-        };
-      }
+  // ============================================================
+  // CHECK EXISTING ACCOUNT
+  // ============================================================
 
+  const existingUser = await prisma.user.findUnique({
+    where: {
+      email,
+    },
+    select: {
+      id: true,
+      emailVerified: true,
+    },
+  });
+
+  if (existingUser) {
+    if (existingUser.emailVerified) {
       return {
-        ok: false,
-        type: "exists_unverified",
+        type: "exists_verified",
       };
     }
 
-    // 2. Create the base Better Auth user/account
-    const result = await auth.api.signUpEmail({
-      body: {
-        name,
-        email,
-        password,
-
-        // Normal signup always goes to learner onboarding.
-        callbackURL: `/onboarding?role=${role.toLowerCase()}`,
-      },
-    });
-
-    if (!result?.user) {
-      return {
-        ok: false,
-        type: "signup_failed",
-      };
-    }
-
-    // 3. Capability authorization is the source of truth for the tutoring
-    // workflow. A normal account must be able to learn and book tutoring
-    // immediately after signup.
-    await ensureCapabilities(result.user.id, [
-      CAPABILITIES.LEARN,
-      CAPABILITIES.BOOK_TUTORING,
-    ]);
-
     return {
-      ok: true,
-      type: "created",
-    };
-  } catch (error) {
-    console.error("Signup error:", error);
-
-    return {
-      ok: false,
-      type: "signup_failed",
+      type: "exists_unverified",
     };
   }
+
+  // ============================================================
+  // CREATE NORMAL USER
+  // ============================================================
+
+  /*
+   * Normal signup never accepts or assigns a platform role.
+   *
+   * Better Auth / Prisma creates the account using the schema's
+   * default platform role:
+   *
+   *     USER
+   *
+   * There is no Learner/Educator/Tutor role selection during
+   * account creation.
+   */
+  await auth.api.signUpEmail({
+    body: {
+      name,
+      email,
+      password,
+    },
+  });
+
+  // ============================================================
+  // FIND CREATED USER
+  // ============================================================
+
+  const user = await prisma.user.findUnique({
+    where: {
+      email,
+    },
+    select: {
+      id: true,
+      role: true,
+    },
+  });
+
+  if (!user) {
+    throw new Error(
+      "Account creation succeeded, but the user could not be found.",
+    );
+  }
+
+  /*
+   * A normal signup must produce a USER account.
+   *
+   * ADMIN accounts are provisioned separately and should never
+   * be created through the public signup flow.
+   */
+  if (user.role !== "USER") {
+    throw new Error(
+      "Account creation produced an unexpected platform role.",
+    );
+  }
+
+  // ============================================================
+  // INITIAL USER CAPABILITIES
+  // ============================================================
+
+  /*
+   * Every normal Justdy account starts as a learner.
+   *
+   * CAN_BOOK_TUTORING allows the learner to initiate tutoring
+   * bookings.
+   *
+   * Teaching capabilities are intentionally NOT granted here.
+   *
+   * A user must first submit a tutor application and receive
+   * administrator approval before receiving:
+   *
+   *     CAN_TEACH
+   *     CAN_TUTOR
+   *     CAN_RECEIVE_PAYOUTS
+   */
+  await ensureCapabilities(user.id, [
+    CAPABILITIES.LEARN,
+    CAPABILITIES.BOOK_TUTORING,
+  ]);
+
+  return {
+    type: "created",
+  };
 }

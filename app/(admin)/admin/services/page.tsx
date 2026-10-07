@@ -78,12 +78,7 @@ export default async function EducatorServicesPage() {
     },
   });
 
-  /*
-   * Prisma returns Date objects.
-   *
-   * EducatorServicesStudio expects serializable strings.
-   * Convert them here at the server boundary.
-   */
+ 
   const serializedServices = services.map((service) => ({
     id: service.id,
     title: service.title,

@@ -72,7 +72,7 @@ function normalizeRequiredId(value: string, label: string): string {
 /**
  * Race-safe atomic credit consumption.
  *
- * The balance decrement, generation billing metadata, and GENERATION
+ * The balance decrement, generation billing metadata, and CONSUMPTION
  * ledger entry all commit in the same database transaction.
  *
  * creditsUsed and creditChargedAt are written from the actual charge,
@@ -202,7 +202,7 @@ export async function consumeAICreditsAtomic({
         userId: normalizedUserId,
         userCreditId: account.id,
         amount: -cost,
-        type: CreditTransactionType.GENERATION,
+        type: CreditTransactionType.CONSUMPTION,
         description: `AI ${operation} generation`,
         ...(normalizedGenerationId
           ? {
@@ -227,7 +227,7 @@ export async function consumeAICreditsAtomic({
  * Atomically claims a PENDING generation and charges its credits.
  *
  * Generation state, billing metadata, UserCredit balance, and the
- * GENERATION ledger entry are committed together.
+ * CONSUMPTION ledger entry are committed together.
  *
  * Only one concurrent caller can successfully claim the generation.
  */
@@ -392,7 +392,7 @@ export async function startAIGenerationAtomic({
         userId: normalizedUserId,
         userCreditId: account.id,
         amount: -cost,
-        type: CreditTransactionType.GENERATION,
+        type: CreditTransactionType.CONSUMPTION,
         description: `AI ${operation} generation`,
         aiGenerationId: normalizedGenerationId,
       },

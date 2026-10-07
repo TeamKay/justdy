@@ -34,87 +34,6 @@ function stringValue(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-
-function getLocalDateTimeParts(date: Date, timeZone: string) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(date);
-
-  const map = Object.fromEntries(
-    parts
-      .filter((part) => part.type !== "literal")
-      .map((part) => [part.type, part.value]),
-  );
-
-  return {
-    year: Number(map.year),
-    month: Number(map.month),
-    day: Number(map.day),
-    weekday: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(
-      map.weekday,
-    ),
-    minutes: Number(map.hour) * 60 + Number(map.minute),
-    dateKey: `${map.year}-${map.month}-${map.day}`,
-  };
-}
-
-function clockMinutes(value: string) {
-  const [hour, minute] = value.split(":").map(Number);
-  return hour * 60 + minute;
-}
-
-async function findMatchingRecurringRule(
-  educatorId: string,
-  start: Date,
-  end: Date,
-  preferredRuleId?: string,
-) {
-  const rules = await prisma.recurringAvailability.findMany({
-    where: {
-      educatorId,
-      active: true,
-      ...(preferredRuleId ? { id: preferredRuleId } : {}),
-    },
-    select: {
-      id: true,
-      dayOfWeek: true,
-      startTime: true,
-      endTime: true,
-      timeZone: true,
-      excludedDates: true,
-    },
-  });
-
-  for (const rule of rules) {
-    const localStart = getLocalDateTimeParts(start, rule.timeZone);
-    const localEnd = getLocalDateTimeParts(end, rule.timeZone);
-
-    if (localStart.dateKey !== localEnd.dateKey) continue;
-    if (localStart.weekday !== rule.dayOfWeek) continue;
-    if (rule.excludedDates.includes(localStart.dateKey)) continue;
-
-    const ruleStart = clockMinutes(rule.startTime);
-    const ruleEnd = clockMinutes(rule.endTime);
-
-    if (
-      localStart.minutes >= ruleStart &&
-      localEnd.minutes <= ruleEnd &&
-      localEnd.minutes > localStart.minutes
-    ) {
-      return rule;
-    }
-  }
-
-  return null;
-}
-
 export async function POST(request: Request) {
   try {
     // ============================================================
@@ -149,10 +68,10 @@ export async function POST(request: Request) {
 
     const educatorId = stringValue(body.educatorId);
     const serviceId = stringValue(body.serviceId);
-    const availabilityId = stringValue(body.availabilityId);
-    const recurringRuleId = stringValue(body.recurringRuleId);
+    let availabilityId = stringValue(body.availabilityId);
     const requestedStartTimeValue = stringValue(body.startTime);
     const requestedEndTimeValue = stringValue(body.endTime);
+
     const subject = stringValue(body.subject);
     const gradeLevel = stringValue(body.gradeLevel);
     const description = stringValue(body.description);
@@ -160,21 +79,14 @@ export async function POST(request: Request) {
 
     if (!educatorId) {
       return NextResponse.json(
-        {
-          error: "Educator is required.",
-        },
+        { error: "Educator is required." },
         { status: 400 },
       );
     }
 
-    // Find Tutor bookings use a client-selected start/end time. The server
-    // resolves that request to the teacher's actual availability window.
-    // Service/program bookings can continue to use availabilityId.
-    if (!serviceId && (!requestedStartTimeValue || !requestedEndTimeValue)) {
+    if (!requestedStartTimeValue || !requestedEndTimeValue) {
       return NextResponse.json(
-        {
-          error: "Select a date, time, and session length.",
-        },
+        { error: "Select a date, time, and session length." },
         { status: 400 },
       );
     }
@@ -192,8 +104,10 @@ export async function POST(request: Request) {
 
     // ============================================================
     // 4. VERIFY EDUCATOR
+    //
     // Canonical authorization:
     // active account + verified TeachingProfile + CAN_TUTOR.
+    //
     // User.role is intentionally NOT used.
     // ============================================================
 
@@ -241,12 +155,11 @@ export async function POST(request: Request) {
     }
 
     // ============================================================
-    // 5. DETERMINE BOOKING TYPE + PRICE
+    // 5. RESOLVE OPTIONAL TUTORING SERVICE
     //
-    // Find Tutor does not require a Service. A learner is requesting
-    // a unique tutoring session and pays from the tutor's hourly rate.
-    // If serviceId is supplied, preserve the existing program/service
-    // booking flow and use the Service price.
+    // Find Tutor bookings may not use a Service.
+    // If a serviceId is supplied, it must belong to this verified
+    // educator and be a published tutoring service.
     // ============================================================
 
     const service = serviceId
@@ -272,20 +185,31 @@ export async function POST(request: Request) {
 
     if (serviceId && !service) {
       return NextResponse.json(
-        { error: "The selected tutoring service is no longer available." },
+        {
+          error:
+            "The selected tutoring service is no longer available.",
+        },
         { status: 404 },
       );
     }
 
     if (service && (service.price == null || service.price <= 0)) {
       return NextResponse.json(
-        { error: "This tutoring service does not have a valid price." },
+        {
+          error: "This tutoring service does not have a valid price.",
+        },
         { status: 400 },
       );
     }
 
+    // ============================================================
+    // 6. CARD PAYMENT CURRENCY
+    // ============================================================
+
     const currency = String(
-      service?.currency ?? educator.teachingProfile.currency ?? DEFAULT_CURRENCY,
+      service?.currency ??
+        educator.teachingProfile.currency ??
+        DEFAULT_CURRENCY,
     ).toLowerCase();
 
     if (currency !== DEFAULT_CURRENCY) {
@@ -299,32 +223,15 @@ export async function POST(request: Request) {
     }
 
     // ============================================================
-    // 7. RESOLVE THE REQUESTED TIME TO TEACHER AVAILABILITY
-    //
-    // Find Tutor:
-    //   - the learner chooses the exact start/end time;
-    //   - we find an availability window that contains the entire
-    //     requested interval;
-    //   - we do NOT treat the whole availability window as one
-    //     indivisible booking slot.
-    //
-    // Service/program bookings:
-    //   - preserve the existing availabilityId-based flow.
+    // 7. PARSE REQUESTED SESSION TIME
     // ============================================================
 
-    const requestedStartTime = requestedStartTimeValue
-      ? new Date(requestedStartTimeValue)
-      : null;
-    const requestedEndTime = requestedEndTimeValue
-      ? new Date(requestedEndTimeValue)
-      : null;
+    const requestedStartTime = new Date(requestedStartTimeValue);
+    const requestedEndTime = new Date(requestedEndTimeValue);
 
     if (
-      !service &&
-      (!requestedStartTime ||
-        !requestedEndTime ||
-        Number.isNaN(requestedStartTime.getTime()) ||
-        Number.isNaN(requestedEndTime.getTime()))
+      Number.isNaN(requestedStartTime.getTime()) ||
+      Number.isNaN(requestedEndTime.getTime())
     ) {
       return NextResponse.json(
         { error: "The selected date or time is invalid." },
@@ -332,80 +239,87 @@ export async function POST(request: Request) {
       );
     }
 
-    if (
-      !service &&
-      requestedStartTime &&
-      requestedEndTime &&
-      requestedEndTime <= requestedStartTime
-    ) {
+    if (requestedEndTime <= requestedStartTime) {
       return NextResponse.json(
         { error: "The selected session has an invalid duration." },
         { status: 400 },
       );
     }
 
-    if (
-      !service &&
-      requestedStartTime &&
-      requestedEndTime &&
-      requestedStartTime <= new Date()
-    ) {
+    /*
+     * The tutor marketplace exposes recurring availability with a stable
+     * synthetic id: recurring:<ruleId>:<YYYY-MM-DD>.
+     *
+     * IMPORTANT: do not materialize the tutor's entire future schedule here.
+     * We create at most ONE concrete OCCURRENCE row for the date the learner
+     * is actually booking.
+     */
+    let recurringRuleId = "";
+    let recurringOccurrenceDate = "";
+
+    if (availabilityId.startsWith("recurring:")) {
+      const parts = availabilityId.split(":");
+      recurringRuleId = parts[1] || "";
+      recurringOccurrenceDate = parts.slice(2).join(":");
+
+      if (!recurringRuleId || !/^\d{4}-\d{2}-\d{2}$/.test(recurringOccurrenceDate)) {
+        return NextResponse.json(
+          {
+            error:
+              "The selected tutoring availability is invalid. Please refresh and choose another time.",
+          },
+          { status: 400 },
+        );
+      }
+    } else if (!availabilityId) {
+      const fallbackRuleId = stringValue(body.recurringRuleId);
+
+      if (fallbackRuleId) {
+        recurringRuleId = fallbackRuleId;
+        const fallbackDate = new Date(requestedStartTimeValue);
+
+        if (!Number.isNaN(fallbackDate.getTime())) {
+          recurringOccurrenceDate = fallbackDate.toISOString().slice(0, 10);
+          availabilityId = `recurring:${fallbackRuleId}:${recurringOccurrenceDate}`;
+        }
+      }
+    }
+
+    if (!availabilityId) {
+      return NextResponse.json(
+        {
+          error:
+            "A valid tutoring availability must be selected. Please refresh and choose another time.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (requestedStartTime <= new Date()) {
       return NextResponse.json(
         { error: "The selected tutoring time has already started." },
         { status: 400 },
       );
     }
 
-    let availability;
+    // ============================================================
+    // 8. RESOLVE CONCRETE AVAILABILITY
+    //
+    // Availability is now the canonical source of truth.
+    //
+    // The learner may book a shorter session inside the teacher's
+    // availability window.
+    //
+    // Example:
+    //   Availability: 10:00 - 12:00
+    //   Learner books: 10:30 - 11:30
+    //
+    // We do NOT require the learner's session to equal the entire
+    // availability window.
+    // ============================================================
 
-    if (service) {
-      if (!availabilityId) {
-        return NextResponse.json(
-          { error: "Educator and availability slot are required." },
-          { status: 400 },
-        );
-      }
-
-      availability = await prisma.availability.findUnique({
-        where: {
-          id: availabilityId,
-        },
-        select: {
-          id: true,
-          educatorId: true,
-          startTime: true,
-          endTime: true,
-          status: true,
-        },
-      });
-
-      if (!availability || availability.educatorId !== educatorId) {
-        return NextResponse.json(
-          { error: "The selected tutoring slot could not be found." },
-          { status: 404 },
-        );
-      }
-
-      if (availability.endTime <= availability.startTime) {
-        return NextResponse.json(
-          { error: "The selected tutoring slot has an invalid duration." },
-          { status: 400 },
-        );
-      }
-
-      if (availability.startTime <= new Date()) {
-        return NextResponse.json(
-          { error: "The selected tutoring slot has already started." },
-          { status: 400 },
-        );
-      }
-    } else {
-      const start = requestedStartTime!;
-      const end = requestedEndTime!;
-
-      if (availabilityId) {
-        // Compatibility path for older concrete Availability records.
-        availability = await prisma.availability.findFirst({
+    let availability = availabilityId
+      ? await prisma.availability.findFirst({
           where: {
             id: availabilityId,
             educatorId,
@@ -418,68 +332,78 @@ export async function POST(request: Request) {
             endTime: true,
             status: true,
           },
-        });
+        })
+      : null;
 
-        if (!availability) {
-          return NextResponse.json(
-            {
-              error:
-                "The selected tutoring time is no longer available. Please refresh and choose another time.",
-            },
-            { status: 409 },
-          );
-        }
+    if (availabilityId.startsWith("recurring:")) {
+      // The real OCCURRENCE is created lazily, only for the date being booked.
+      // The marketplace can therefore show many future recurring dates without
+      // filling the Availability table with hundreds of rows.
+      availability = null;
+    }
 
-        if (start < availability.startTime || end > availability.endTime) {
-          return NextResponse.json(
-            {
-              error:
-                "The selected time is outside this tutor's availability. Please choose another time.",
-            },
-            { status: 409 },
-          );
-        }
-      } else {
-        // Find Tutor normally uses recurring schedules as the source of
-        // truth. Future Availability rows are not required to exist.
-        const recurringRule = await findMatchingRecurringRule(
-          educatorId,
-          start,
-          end,
-          recurringRuleId || undefined,
+    if (!availability && !availabilityId.startsWith("recurring:")) {
+      return NextResponse.json(
+        {
+          error:
+            "The selected tutoring time is no longer available. Please refresh and choose another time.",
+        },
+        { status: 409 },
+      );
+    }
+
+    if (availability) {
+      if (!availability.startTime || !availability.endTime) {
+        return NextResponse.json(
+          { error: "This availability slot is not bookable." },
+          { status: 400 },
         );
+      }
 
-        if (!recurringRule) {
-          return NextResponse.json(
-            {
-              error:
-                "The selected time is no longer available with this tutor. Please refresh and choose another time.",
-            },
-            { status: 409 },
-          );
-        }
+      // The availability window itself may already have started.
+      // What matters for a flexible tutoring booking is that the
+      // learner's requested session starts in the future and remains
+      // completely inside the availability window.
+      if (availability.endTime <= new Date()) {
+        return NextResponse.json(
+          {
+            error:
+              "The selected tutoring availability has ended. Please choose another time.",
+          },
+          { status: 400 },
+        );
+      }
 
-        availability = {
-          id: "",
-          educatorId,
-          startTime: start,
-          endTime: end,
-          status: "Available" as const,
-        };
+      if (availability.endTime <= availability.startTime) {
+        return NextResponse.json(
+          {
+            error:
+              "The selected tutoring availability has an invalid duration.",
+          },
+          { status: 400 },
+        );
+      }
+
+      if (
+        requestedStartTime < availability.startTime ||
+        requestedEndTime > availability.endTime
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "The selected time is outside this tutor's availability. Please choose another time.",
+          },
+          { status: 409 },
+        );
       }
     }
 
     // ============================================================
-    // 8. CALCULATE AUTHORITATIVE BOOKING PRICE
+    // 9. CALCULATE AUTHORITATIVE BOOKING PRICE
     // ============================================================
 
-    const bookingStartTime = service
-      ? availability.startTime
-      : requestedStartTime!;
-
-    const bookingEndTime = service
-      ? availability.endTime
-      : requestedEndTime!;
+    const bookingStartTime = requestedStartTime;
+    const bookingEndTime = requestedEndTime;
 
     const bookingDurationMinutes = Math.floor(
       (bookingEndTime.getTime() - bookingStartTime.getTime()) / 60000,
@@ -487,7 +411,20 @@ export async function POST(request: Request) {
 
     if (bookingDurationMinutes <= 0) {
       return NextResponse.json(
-        { error: "The selected tutoring session has an invalid duration." },
+        {
+          error: "The selected tutoring session has an invalid duration.",
+        },
+        { status: 400 },
+      );
+    }
+
+    // Keep a sensible minimum session length.
+    if (bookingDurationMinutes < 15) {
+      return NextResponse.json(
+        {
+          error:
+            "Tutoring sessions must be at least 15 minutes long.",
+        },
         { status: 400 },
       );
     }
@@ -513,15 +450,30 @@ export async function POST(request: Request) {
             60,
         );
 
-    if (!service && (!educator.teachingProfile.hourlyRate || amount <= 0)) {
+    if (
+      !service &&
+      (!educator.teachingProfile.hourlyRate || amount <= 0)
+    ) {
       return NextResponse.json(
-        { error: "This tutor does not currently have a valid hourly rate." },
+        {
+          error:
+            "This tutor does not currently have a valid hourly rate.",
+        },
         { status: 400 },
       );
     }
 
     // ============================================================
-    // 9. RESERVE SLOT + CREATE PENDING BOOKING
+    // 10. RESERVE AVAILABILITY + CREATE PENDING BOOKING
+    //
+    // IMPORTANT:
+    // For a flexible Find Tutor booking, we do NOT mark the entire
+    // Availability row as "Booked", because another learner may
+    // legitimately use another non-overlapping portion of the same
+    // availability window.
+    //
+    // Instead, overlapping PendingPayment/Scheduled bookings are
+    // checked transactionally.
     // ============================================================
 
     let booking;
@@ -529,31 +481,224 @@ export async function POST(request: Request) {
     try {
       booking = await prisma.$transaction(
         async (tx) => {
-          // Service bookings lock a concrete Availability row. Find Tutor
-          // bookings use the recurring schedule as their source of truth.
-          let currentAvailability: {
-            id: string;
-            educatorId: string;
-            startTime: Date;
-            endTime: Date;
-            status: string;
-          } | null = null;
+          let concreteAvailabilityId = availability?.id ?? null;
 
-          if (service || availabilityId) {
-            if (!availabilityId) {
+          if (recurringRuleId && recurringOccurrenceDate) {
+            const rule = await tx.availability.findFirst({
+              where: {
+                id: recurringRuleId,
+                educatorId,
+                type: "RECURRING",
+                active: true,
+              },
+              select: {
+                id: true,
+                dayOfWeek: true,
+                weeklyStartTime: true,
+                weeklyEndTime: true,
+                timeZone: true,
+                excludedDates: true,
+                isAlwaysAvailable: true,
+              },
+            });
+
+            if (!rule) {
               throw new Error("SLOT_NOT_FOUND");
             }
 
-            await tx.$queryRaw`
-              SELECT id
-              FROM "Availability"
-              WHERE id = ${availabilityId}
-              FOR UPDATE
-            `;
+            if (rule.excludedDates.includes(recurringOccurrenceDate)) {
+              throw new Error("SLOT_UNAVAILABLE");
+            }
 
-            currentAvailability = await tx.availability.findFirst({
+            const [year, month, day] = recurringOccurrenceDate
+              .split("-")
+              .map(Number);
+
+            const localDate = new Date(Date.UTC(year, month - 1, day));
+
+            if (
+              !Number.isInteger(year) ||
+              !Number.isInteger(month) ||
+              !Number.isInteger(day) ||
+              localDate.toISOString().slice(0, 10) !== recurringOccurrenceDate
+            ) {
+              throw new Error("SLOT_NOT_FOUND");
+            }
+
+            if (!rule.isAlwaysAvailable && localDate.getUTCDay() !== rule.dayOfWeek) {
+              throw new Error("SLOT_NOT_FOUND");
+            }
+
+            const zonedDateTimeToUtc = (time: string) => {
+              const [hour, minute] = time.split(":").map(Number);
+              let guess = new Date(
+                Date.UTC(year, month - 1, day, hour, minute, 0, 0),
+              );
+
+              for (let i = 0; i < 4; i += 1) {
+                const parts = new Intl.DateTimeFormat("en-US", {
+                  timeZone: rule.timeZone,
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hourCycle: "h23",
+                }).formatToParts(guess);
+
+                const map = Object.fromEntries(
+                  parts
+                    .filter((part) => part.type !== "literal")
+                    .map((part) => [part.type, part.value]),
+                );
+
+                const actual = Date.UTC(
+                  Number(map.year),
+                  Number(map.month) - 1,
+                  Number(map.day),
+                  Number(map.hour),
+                  Number(map.minute),
+                );
+                const desired = Date.UTC(
+                  year,
+                  month - 1,
+                  day,
+                  hour,
+                  minute,
+                );
+                const diff = desired - actual;
+
+                if (Math.abs(diff) < 1000) return guess;
+                guess = new Date(guess.getTime() + diff);
+              }
+
+              return guess;
+            };
+
+            let occurrenceStart: Date;
+            let occurrenceEnd: Date;
+
+            if (rule.isAlwaysAvailable) {
+              const nextDate = new Date(localDate.getTime());
+              nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+
+              const nextYear = nextDate.getUTCFullYear();
+              const nextMonth = nextDate.getUTCMonth() + 1;
+              const nextDay = nextDate.getUTCDate();
+
+              occurrenceStart = zonedDateTimeToUtc("00:00");
+
+              const [nextHour, nextMinute] = [0, 0];
+              let guess = new Date(
+                Date.UTC(
+                  nextYear,
+                  nextMonth - 1,
+                  nextDay,
+                  nextHour,
+                  nextMinute,
+                  0,
+                  0,
+                ),
+              );
+
+              for (let i = 0; i < 4; i += 1) {
+                const parts = new Intl.DateTimeFormat("en-US", {
+                  timeZone: rule.timeZone,
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hourCycle: "h23",
+                }).formatToParts(guess);
+
+                const map = Object.fromEntries(
+                  parts
+                    .filter((part) => part.type !== "literal")
+                    .map((part) => [part.type, part.value]),
+                );
+
+                const actual = Date.UTC(
+                  Number(map.year),
+                  Number(map.month) - 1,
+                  Number(map.day),
+                  Number(map.hour),
+                  Number(map.minute),
+                );
+                const desired = Date.UTC(
+                  nextYear,
+                  nextMonth - 1,
+                  nextDay,
+                  0,
+                  0,
+                );
+                const diff = desired - actual;
+
+                if (Math.abs(diff) < 1000) break;
+                guess = new Date(guess.getTime() + diff);
+              }
+
+              occurrenceEnd = guess;
+            } else {
+              if (!rule.weeklyStartTime || !rule.weeklyEndTime) {
+                throw new Error("SLOT_NOT_BOOKABLE");
+              }
+
+              occurrenceStart = zonedDateTimeToUtc(rule.weeklyStartTime);
+              occurrenceEnd = zonedDateTimeToUtc(rule.weeklyEndTime);
+            }
+
+            if (occurrenceEnd <= occurrenceStart || occurrenceEnd <= new Date()) {
+              throw new Error("SLOT_STARTED");
+            }
+
+            const occurrence = await tx.availability.upsert({
               where: {
-                id: availabilityId,
+                recurrenceKey_occurrenceDate: {
+                  recurrenceKey: rule.id,
+                  occurrenceDate: recurringOccurrenceDate,
+                },
+              },
+              create: {
+                educatorId,
+                type: "OCCURRENCE",
+                startTime: occurrenceStart,
+                endTime: occurrenceEnd,
+                dayOfWeek: rule.dayOfWeek,
+                weeklyStartTime: rule.weeklyStartTime,
+                weeklyEndTime: rule.weeklyEndTime,
+                timeZone: rule.timeZone,
+                active: true,
+                isAlwaysAvailable: rule.isAlwaysAvailable,
+                recurrenceKey: rule.id,
+                occurrenceDate: recurringOccurrenceDate,
+                excludedDates: [],
+                status: "Available",
+              },
+              update: {},
+              select: { id: true },
+            });
+
+            concreteAvailabilityId = occurrence.id;
+          }
+
+          if (!concreteAvailabilityId) {
+            throw new Error("SLOT_NOT_FOUND");
+          }
+
+          // Lock the single concrete Availability row. A recurring booking
+          // creates only this one OCCURRENCE row, never an entire schedule.
+          await tx.$queryRaw`
+            SELECT id
+            FROM "Availability"
+            WHERE id = ${concreteAvailabilityId}
+            FOR UPDATE
+          `;
+
+          const currentAvailability =
+            await tx.availability.findFirst({
+              where: {
+                id: concreteAvailabilityId,
                 educatorId,
                 status: "Available",
               },
@@ -566,66 +711,36 @@ export async function POST(request: Request) {
               },
             });
 
-            if (
-              !currentAvailability ||
-              bookingStartTime < currentAvailability.startTime ||
-              bookingEndTime > currentAvailability.endTime
-            ) {
-              throw new Error("SLOT_OUTSIDE_AVAILABILITY");
-            }
-          } else {
-            const matchingRule = await tx.recurringAvailability.findFirst({
-              where: {
-                id: recurringRuleId || undefined,
-                educatorId,
-                active: true,
-              },
-              select: {
-                id: true,
-                dayOfWeek: true,
-                startTime: true,
-                endTime: true,
-                timeZone: true,
-                excludedDates: true,
-              },
-            });
-
-            if (!matchingRule) {
-              throw new Error("SLOT_NOT_FOUND");
-            }
-
-            const localStart = getLocalDateTimeParts(
-              bookingStartTime,
-              matchingRule.timeZone,
-            );
-            const localEnd = getLocalDateTimeParts(
-              bookingEndTime,
-              matchingRule.timeZone,
-            );
-
-            if (
-              localStart.dateKey !== localEnd.dateKey ||
-              localStart.weekday !== matchingRule.dayOfWeek ||
-              matchingRule.excludedDates.includes(localStart.dateKey) ||
-              localStart.minutes < clockMinutes(matchingRule.startTime) ||
-              localEnd.minutes > clockMinutes(matchingRule.endTime)
-            ) {
-              throw new Error("SLOT_OUTSIDE_AVAILABILITY");
-            }
+          if (!currentAvailability) {
+            throw new Error("SLOT_NOT_FOUND");
           }
 
-          if (service) {
-            if (!currentAvailability) {
-              throw new Error("SLOT_NOT_FOUND");
-            }
-
-            if (currentAvailability.startTime <= new Date()) {
-              throw new Error("SLOT_STARTED");
-            }
-          } else if (bookingStartTime <= new Date()) {
-            throw new Error("SLOT_STARTED");
+          // Prisma Availability.startTime/endTime are nullable because
+          // recurring rules intentionally have no concrete timestamps.
+          // A booking, however, must always target a concrete occurrence
+          // with real start/end timestamps.
+          if (
+            !currentAvailability.startTime ||
+            !currentAvailability.endTime
+          ) {
+            throw new Error("SLOT_NOT_BOOKABLE");
           }
 
+          if (
+            bookingStartTime < currentAvailability.startTime ||
+            bookingEndTime > currentAvailability.endTime
+          ) {
+            throw new Error("SLOT_OUTSIDE_AVAILABILITY");
+          }
+
+          // Do not reject the booking merely because the availability
+          // window started earlier today. A learner may book a future
+          // portion of a larger availability window (for example, a
+          // 09:00-17:00 window with a 16:30 session). The requested
+          // session start was already validated against the current time
+          // above.
+
+          // Prevent overlapping pending/scheduled sessions for this tutor.
           const existingBooking = await tx.booking.findFirst({
             where: {
               educatorId,
@@ -648,31 +763,11 @@ export async function POST(request: Request) {
             throw new Error("SLOT_UNAVAILABLE");
           }
 
-          if (service) {
-            if (!currentAvailability) {
-              throw new Error("SLOT_NOT_FOUND");
-            }
-
-            const availabilityToBook = currentAvailability;
-
-            const updatedAvailability = await tx.availability.updateMany({
-              where: {
-                id: availabilityToBook.id,
-                educatorId,
-                status: "Available",
-              },
-              data: {
-                status: "Booked",
-              },
-            });
-
-            if (updatedAvailability.count !== 1) {
-              throw new Error("SLOT_UNAVAILABLE");
-            }
-          }
-
           const bookingDescription =
-            [topic ? `Topic: ${topic}` : "", description]
+            [
+              topic ? `Topic: ${topic}` : "",
+              description,
+            ]
               .filter(Boolean)
               .join("\n\n") || null;
 
@@ -681,17 +776,22 @@ export async function POST(request: Request) {
               studentId: session.user.id,
               educatorId,
               serviceId: service?.id ?? null,
-              availabilityId: service
-                ? currentAvailability?.id ?? null
-                : null,
+
+              // Every tutoring booking now points to the concrete
+              // Availability record that contains the session.
+              availabilityId: currentAvailability.id,
+
               startTime: bookingStartTime,
               endTime: bookingEndTime,
+
               subject,
               gradeLevel,
               description: bookingDescription,
+
               status: "PendingPayment",
               payoutStatus: "Unpaid",
             },
+
             select: {
               id: true,
               studentId: true,
@@ -744,9 +844,19 @@ export async function POST(request: Request) {
           case "SLOT_STARTED":
             return NextResponse.json(
               {
-                error: "The selected tutoring slot has already started.",
+                error:
+                  "The selected tutoring availability has already started.",
               },
               { status: 400 },
+            );
+
+          case "SLOT_NOT_BOOKABLE":
+            return NextResponse.json(
+              {
+                error:
+                  "The selected tutoring availability is not a bookable time slot. Please choose another time.",
+              },
+              { status: 409 },
             );
 
           default:
@@ -758,46 +868,56 @@ export async function POST(request: Request) {
     }
 
     // ============================================================
-    // 10. CREATE CARD-ONLY STRIPE CHECKOUT
+    // 11. CREATE CARD-ONLY STRIPE CHECKOUT
+    //
+    // Phase 1 requirements:
+    // - Card only
+    // - No Link
+    // - No billing address collection
+    // - No shipping address
     // ============================================================
 
     let checkoutSession: Stripe.Checkout.Session;
 
     try {
-      /*
-       * Stripe Checkout Elements uses `ui_mode: "elements"` for a custom
-       * payment UI composed from Checkout Elements. The double assertion
-       * keeps this compatible with projects whose installed Stripe Node SDK
-       * types lag the API.
-       */
       const checkoutParams = {
         mode: "payment",
         ui_mode: "elements",
+
         payment_method_types: ["card"],
+
         wallet_options: {
           link: {
             display: "never",
           },
         },
-        billing_address_collection: "required",
+
+        // Do NOT collect billing address for phase one.
+        billing_address_collection: "auto",
 
         line_items: [
           {
             price_data: {
               currency: DEFAULT_CURRENCY,
               unit_amount: amount,
+
               product_data: {
-                name: service?.title || `Private tutoring with ${educator.name}`,
+                name:
+                  service?.title ||
+                  `Private tutoring with ${educator.name}`,
+
                 description:
                   service?.description ||
                   `${bookingDurationMinutes} minute personalized tutoring session.`,
               },
             },
+
             quantity: 1,
           },
         ],
 
         customer_email: session.user.email || undefined,
+
         client_reference_id: booking.id,
 
         return_url:
@@ -816,50 +936,37 @@ export async function POST(request: Request) {
         },
       } as unknown as Stripe.Checkout.SessionCreateParams;
 
-      checkoutSession = await stripe.checkout.sessions.create(checkoutParams);
+      checkoutSession =
+        await stripe.checkout.sessions.create(checkoutParams);
     } catch (stripeError) {
       console.error(
         "TUTORING STRIPE CHECKOUT CREATION FAILED:",
         stripeError,
       );
 
-      // Stripe did not create a checkout session, so the reservation
-      // can safely be released.
-      await prisma.$transaction(async (tx) => {
-        await tx.booking.updateMany({
-          where: {
-            id: booking.id,
-            status: "PendingPayment",
-          },
-          data: {
-            status: "Cancelled",
-          },
-        });
-
-        if (service) {
-          await tx.availability.updateMany({
-            where: {
-              id: booking.availabilityId ?? undefined,
-              educatorId: booking.educatorId,
-              status: "Booked",
-            },
-            data: {
-              status: "Available",
-            },
-          });
-        }
+      // Stripe did not create a checkout session, so the pending
+      // booking can safely be cancelled.
+      await prisma.booking.updateMany({
+        where: {
+          id: booking.id,
+          status: "PendingPayment",
+        },
+        data: {
+          status: "Cancelled",
+        },
       });
 
       return NextResponse.json(
         {
-          error: "Unable to initialize payment. Please try again.",
+          error:
+            "Unable to initialize payment. Please try again.",
         },
         { status: 500 },
       );
     }
 
     // ============================================================
-    // 11. VERIFY EMBEDDED CHECKOUT CLIENT SECRET
+    // 12. VERIFY EMBEDDED CHECKOUT CLIENT SECRET
     // ============================================================
 
     if (!checkoutSession.client_secret) {
@@ -868,8 +975,9 @@ export async function POST(request: Request) {
         checkoutSession.id,
       );
 
-      // Do not release the slot. Stripe has created a real checkout
-      // session and the learner may still complete payment.
+      // Do not release/cancel the booking here.
+      // Stripe has created a real checkout session and the learner
+      // may still complete payment.
       return NextResponse.json(
         {
           error:
@@ -880,7 +988,7 @@ export async function POST(request: Request) {
     }
 
     // ============================================================
-    // 12. SAVE STRIPE SESSION ID
+    // 13. SAVE STRIPE SESSION ID
     // ============================================================
 
     try {
@@ -888,13 +996,14 @@ export async function POST(request: Request) {
         where: {
           id: booking.id,
         },
+
         data: {
           stripeSessionId: checkoutSession.id,
         },
       });
     } catch (databaseError) {
-      // Stripe already has a valid checkout session. Do not release
-      // the availability slot here.
+      // Stripe already has a valid checkout session.
+      // Do not cancel the booking because payment may still complete.
       console.error(
         "TUTORING STRIPE SESSION SAVE FAILED:",
         databaseError,
@@ -910,7 +1019,7 @@ export async function POST(request: Request) {
     }
 
     // ============================================================
-    // 13. RETURN EMBEDDED CHECKOUT CLIENT SECRET
+    // 14. RETURN EMBEDDED CHECKOUT CLIENT SECRET
     // ============================================================
 
     return NextResponse.json({
@@ -923,7 +1032,10 @@ export async function POST(request: Request) {
       paymentMethods: ["card"],
     });
   } catch (error) {
-    console.error("POST /api/tutoring/book failed:", error);
+    console.error(
+      "POST /api/tutoring/book failed:",
+      error,
+    );
 
     return NextResponse.json(
       {

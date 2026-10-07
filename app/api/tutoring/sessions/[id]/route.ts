@@ -92,57 +92,17 @@ async function getAuthorizedBooking(
     .trim()
     .toUpperCase();
 
-  let role:
-    | "customer"
-    | "tutor"
-    | "parent"
-    | null =
-    booking.studentId === userId
-      ? "customer"
-      : booking.educatorId === userId
-        ? "tutor"
-        : normalizedUserRole === "ADMIN"
-          ? "tutor"
-          : null;
+const role:
+  | "customer"
+  | "tutor"
+  | null =
+  booking.studentId === userId
+    ? "customer"
+    : booking.educatorId === userId
+      ? "tutor"
+      : null;
 
-  /*
-   * Parent/guardian access is allowed for booking
-   * management, but not for entering the classroom
-   * as the learner.
-   */
-  if (!role) {
-    const managedChild =
-      await prisma.familyMember.findFirst({
-        where: {
-          userId,
 
-          role: {
-            in: [
-              "PARENT",
-              "GUARDIAN",
-            ],
-          },
-
-          family: {
-            members: {
-              some: {
-                userId:
-                  booking.studentId,
-                role: "CHILD",
-              },
-            },
-          },
-        },
-
-        select: {
-          userId: true,
-        },
-      });
-
-    if (managedChild) {
-      role = "parent";
-    }
-  }
 
   if (!role) {
     return {
@@ -345,6 +305,18 @@ export async function GET(
         sessionStatus,
       );
 
+    const viewerReview =
+      role === "customer"
+        ? await prisma.tutorReview.findUnique({
+            where: { bookingId: booking.id },
+            select: {
+              id: true,
+              rating: true,
+              comment: true,
+            },
+          })
+        : null;
+
     return NextResponse.json({
       session: {
         id: booking.id,
@@ -381,6 +353,8 @@ export async function GET(
 
         tutoringSessionStatus:
           sessionStatus,
+
+        review: viewerReview,
 
         feedback:
           booking.tutoringSession
@@ -568,17 +542,7 @@ export async function POST(
      * but cannot enter the live classroom as the
      * learner.
      */
-    if (role === "parent") {
-      return NextResponse.json(
-        {
-          error:
-            "Parents and guardians can manage the booking but cannot enter the live classroom as the learner.",
-        },
-        {
-          status: 403,
-        },
-      );
-    }
+
 
     /*
      * Only scheduled bookings may enter the

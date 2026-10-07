@@ -35,37 +35,16 @@ export async function GET() {
     // limited to CHILD members of families they manage.
     // ============================================================
 
-    const managedChildIds = new Set<string>();
-    const familyMemberships = await prisma.familyMember.findMany({
-      where: {
-        userId,
-        role: { in: ["PARENT", "GUARDIAN"] },
-      },
-      select: { familyId: true },
-    });
+ 
 
-    if (familyMemberships.length) {
-      const children = await prisma.familyMember.findMany({
-        where: {
-          familyId: { in: familyMemberships.map((item) => item.familyId) },
-          role: "CHILD",
-        },
-        select: { userId: true },
-      });
-
-      for (const child of children) managedChildIds.add(child.userId);
-    }
 
     const bookings = await prisma.booking.findMany({
-      where: {
-        OR: [
-          { studentId: userId },
-          { educatorId: userId },
-          ...(managedChildIds.size
-            ? [{ studentId: { in: [...managedChildIds] } }]
-            : []),
-        ],
-      },
+    where: {
+  OR: [
+    { studentId: userId },
+    { educatorId: userId },
+  ],
+},
 
       include: {
         student: {
@@ -180,7 +159,7 @@ export async function GET() {
     const serializedBookings = bookings.map((booking) => {
       const isEducator = booking.educatorId === userId;
       const isStudent = booking.studentId === userId;
-      const isParentManager = !isEducator && !isStudent && managedChildIds.has(booking.studentId);
+     
 
       const tutoringSession = booking.tutoringSession
         ? {
@@ -231,17 +210,12 @@ export async function GET() {
         educatorId: booking.educatorId,
         serviceId: booking.serviceId,
 
-        role:
-          isEducator && isStudent
-            ? "both"
-            : isEducator
-              ? "educator"
-              : isParentManager
-                ? "parent"
-                : "learner",
-        managedChild: isParentManager
-          ? { id: booking.student.id, name: booking.student.name }
-          : null,
+       role:
+  isEducator && isStudent
+    ? "both"
+    : isEducator
+      ? "educator"
+      : "learner",
 
         startTime: booking.startTime,
         endTime: booking.endTime,

@@ -83,7 +83,13 @@ export async function GET(_request: Request, { params }: RouteContext) {
       );
     }
 
-    if (generation.provider !== "openai") {
+    /*
+     * Justdy now uses Runway for AI video generation.
+     *
+     * The provider abstraction handles the actual provider request,
+     * task lookup, and temporary Runway output URL.
+     */
+    if (generation.provider !== "runway") {
       return NextResponse.json(
         {
           success: false,
@@ -115,7 +121,8 @@ export async function GET(_request: Request, { params }: RouteContext) {
     const contentType =
       providerResponse.headers.get("content-type") ?? "video/mp4";
 
-    const contentLength = providerResponse.headers.get("content-length");
+    const contentLength =
+      providerResponse.headers.get("content-length");
 
     const responseHeaders = new Headers();
 
@@ -126,12 +133,27 @@ export async function GET(_request: Request, { params }: RouteContext) {
       `inline; filename="justdy-video-${generation.id}.mp4"`,
     );
 
-    responseHeaders.set("Cache-Control", "private, max-age=3600");
+    /*
+     * Keep the video private to the authenticated user.
+     *
+     * The Runway output URL itself is temporary, so the provider
+     * response is streamed through this authenticated Justdy route.
+     */
+    responseHeaders.set(
+      "Cache-Control",
+      "private, max-age=3600",
+    );
 
-    responseHeaders.set("X-Content-Type-Options", "nosniff");
+    responseHeaders.set(
+      "X-Content-Type-Options",
+      "nosniff",
+    );
 
     if (contentLength) {
-      responseHeaders.set("Content-Length", contentLength);
+      responseHeaders.set(
+        "Content-Length",
+        contentLength,
+      );
     }
 
     return new Response(providerResponse.body, {
@@ -139,7 +161,10 @@ export async function GET(_request: Request, { params }: RouteContext) {
       headers: responseHeaders,
     });
   } catch (error) {
-    console.error("[AI Video Content] Failed to serve video:", error);
+    console.error(
+      "[AI Video Content] Failed to serve video:",
+      error,
+    );
 
     return NextResponse.json(
       {

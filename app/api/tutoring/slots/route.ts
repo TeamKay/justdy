@@ -6,7 +6,9 @@ import prisma from "@/lib/prisma";
 import {
   createTutoringSlot,
   getAvailableTutoringSlots,
+  getTutoringTutor,
 } from "@/lib/tutoring/booking";
+import { requireVerifiedTutor } from "@/lib/tutoring/authorization";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +24,46 @@ function parseDate(value: unknown, fieldName: string): Date {
   }
 
   return date;
+}
+
+async function getAuthenticatedUserId() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  return session?.user?.id ?? null;
+}
+
+function errorResponse(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : fallback;
+
+  if (message === "Unauthorized.") {
+    return NextResponse.json({ error: message }, { status: 401 });
+  }
+
+  if (
+    message === "Verified tutor access is required." ||
+    message.toLowerCase().includes("verified tutor")
+  ) {
+    return NextResponse.json({ error: message }, { status: 403 });
+  }
+
+  if (
+    message.toLowerCase().includes("not found") ||
+    message.toLowerCase().includes("does not exist")
+  ) {
+    return NextResponse.json({ error: message }, { status: 404 });
+  }
+
+  if (
+    message.toLowerCase().includes("already") ||
+    message.toLowerCase().includes("overlap") ||
+    message.toLowerCase().includes("booked")
+  ) {
+    return NextResponse.json({ error: message }, { status: 409 });
+  }
+
+  return NextResponse.json({ error: message }, { status: 400 });
 }
 
 export async function GET(request: Request) {
@@ -64,19 +106,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const tutor = await prisma.user.findFirst({
-      where: {
-        id: tutorId,
-        facilitatorProfile: {
-          is: {
-            verificationStatus: "Verified",
-          },
-        },
-      },
-      select: {
-        id: true,
-      },
-    });
+    const tutor = await getTutoringTutor(tutorId);
 
     if (!tutor) {
       return NextResponse.json(
@@ -104,27 +134,18 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Failed to load tutoring availability:", error);
 
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to load tutoring availability.",
-      },
-      {
-        status: 500,
-      },
+    return errorResponse(
+      error,
+      "Failed to load tutoring availability.",
     );
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+    const userId = await getAuthenticatedUserId();
 
-    if (!session?.user?.id) {
+    if (!userId) {
       return NextResponse.json(
         {
           error: "Unauthorized.",
@@ -135,6 +156,8 @@ export async function POST(request: Request) {
       );
     }
 
+    await requireVerifiedTutor(userId);
+
     const body = (await request.json()) as {
       startTime?: unknown;
       endTime?: unknown;
@@ -144,7 +167,7 @@ export async function POST(request: Request) {
     const endTime = parseDate(body.endTime, "endTime");
 
     const slot = await createTutoringSlot({
-      tutorId: session.user.id,
+      tutorId: userId,
       startTime,
       endTime,
     });
@@ -158,22 +181,267 @@ export async function POST(request: Request) {
       },
     );
   } catch (error) {
-    console.error("Failed to create tutoring slot:", error);
+    console.error("Failed to create tutoring availability:", error);
 
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to create tutoring slot.";
+    return errorResponse(
+      error,
+      "Failed to create tutoring availability.",
+    );
+  }
+}
 
-    const status = message === "Unauthorized." ? 401 : 400;
+export async function PATCH(request: Request) {
+  try {
+    const userId = await getAuthenticatedUserId();
 
-    return NextResponse.json(
-      {
-        error: message,
+    if (!userId) {
+      return NextResponse.json(
+        {
+          error: "Unauthorized.",
+        },
+        {
+          status: 401,
+        },
+      );
+    }
+
+    await requireVerifiedTutor(userId);
+
+    const body = (await request.json()) as {
+      id?: unknown;
+      startTime?: unknown;
+      endTime?: unknown;
+    };
+
+    if (typeof body.id !== "string" || !body.id.trim()) {
+      return NextResponse.json(
+        {
+          error: "Availability id is required.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    const startTime = parseDate(body.startTime, "startTime");
+    const endTime = parseDate(body.endTime, "endTime");
+
+    if (startTime <= new Date()) {
+      return NextResponse.json(
+        {
+          error: "Availability must be scheduled for a future time.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    if (endTime <= startTime) {
+      return NextResponse.json(
+        {
+          error: "The end time must be after the start time.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    const durationMinutes =
+      (endTime.getTime() - startTime.getTime()) / 60000;
+
+    if (durationMinutes < 15) {
+      return NextResponse.json(
+        {
+          error: "Availability must be at least 15 minutes long.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    const existing = await prisma.availability.findFirst({
+      where: {
+        id: body.id,
+        educatorId: userId,
       },
-      {
-        status,
+      select: {
+        id: true,
+        educatorId: true,
+        status: true,
+        startTime: true,
+        endTime: true,
       },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        {
+          error: "Availability slot not found.",
+        },
+        {
+          status: 404,
+        },
+      );
+    }
+
+    if (existing.status !== "Available") {
+      return NextResponse.json(
+        {
+          error:
+            existing.status === "Booked"
+              ? "Booked availability cannot be edited."
+              : "Only available slots can be edited.",
+        },
+        {
+          status: 409,
+        },
+      );
+    }
+
+    const overlapping = await prisma.availability.findFirst({
+      where: {
+        educatorId: userId,
+        id: {
+          not: existing.id,
+        },
+        status: "Available",
+        startTime: {
+          lt: endTime,
+        },
+        endTime: {
+          gt: startTime,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (overlapping) {
+      return NextResponse.json(
+        {
+          error:
+            "The updated availability overlaps another available slot.",
+        },
+        {
+          status: 409,
+        },
+      );
+    }
+
+    const availability = await prisma.availability.update({
+      where: {
+        id: existing.id,
+      },
+      data: {
+        startTime,
+        endTime,
+      },
+    });
+
+    return NextResponse.json({
+      availability,
+    });
+  } catch (error) {
+    console.error("Failed to update tutoring availability:", error);
+
+    return errorResponse(
+      error,
+      "Failed to update tutoring availability.",
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const userId = await getAuthenticatedUserId();
+
+    if (!userId) {
+      return NextResponse.json(
+        {
+          error: "Unauthorized.",
+        },
+        {
+          status: 401,
+        },
+      );
+    }
+
+    await requireVerifiedTutor(userId);
+
+    const body = (await request.json()) as {
+      id?: unknown;
+    };
+
+    if (typeof body.id !== "string" || !body.id.trim()) {
+      return NextResponse.json(
+        {
+          error: "Availability id is required.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    const existing = await prisma.availability.findFirst({
+      where: {
+        id: body.id,
+        educatorId: userId,
+      },
+      select: {
+        id: true,
+        status: true,
+        startTime: true,
+        endTime: true,
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        {
+          error: "Availability slot not found.",
+        },
+        {
+          status: 404,
+        },
+      );
+    }
+
+    if (existing.status !== "Available") {
+      return NextResponse.json(
+        {
+          error:
+            existing.status === "Booked"
+              ? "Booked availability cannot be deleted."
+              : "Only available slots can be deleted.",
+        },
+        {
+          status: 409,
+        },
+      );
+    }
+
+    await prisma.availability.delete({
+      where: {
+        id: existing.id,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      deletedId: existing.id,
+    });
+  } catch (error) {
+    console.error("Failed to delete tutoring availability:", error);
+
+    return errorResponse(
+      error,
+      "Failed to delete tutoring availability.",
     );
   }
 }

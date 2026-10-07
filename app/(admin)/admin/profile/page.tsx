@@ -111,29 +111,8 @@ export default async function EducatorProfilePage() {
       : null;
 
   return (
-    <main className="min-h-full bg-background text-white/70">
-      <div className="mx-auto w-full max-w-330 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
-        {/* Header */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-[26px] font-semibold tracking-[-0.035em] text-white/70 sm:text-[30px]">
-              Teaching profile
-            </h1>
-
-            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Manage the information students see when they
-              discover your tutoring profile.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="hidden rounded-sm bg-card px-3.5 py-2 text-xs text-white shadow-sm sm:block">
-              {user.email}
-            </div>
-          </div>
-        </div>
-
-        {/* Workspace */}
+    <main className="min-h-full bg-background text-emerald-950">
+      <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
         <div className="grid gap-5 lg:grid-cols-1">
           <section className="min-w-0">
             <div className="overflow-hidden rounded-sm bg-card">

@@ -11,10 +11,11 @@ import {
   type VideoModel,
 } from "@/lib/ai/video";
 import { AIVideoError } from "@/lib/ai/video/errors";
-
-const VALID_DURATIONS = [4, 8, 12] as const;
-const VALID_ASPECT_RATIOS = ["16:9", "9:16"] as const;
-const VALID_MODELS = ["sora-2", "sora-2-pro"] as const;
+import {
+  VALID_VIDEO_ASPECT_RATIOS,
+  VALID_VIDEO_DURATIONS,
+  VALID_VIDEO_MODELS,
+} from "@/lib/ai/video/validation";
 
 type CreateVideoBody = {
   prompt?: unknown;
@@ -26,21 +27,21 @@ type CreateVideoBody = {
 function isValidDuration(value: unknown): value is VideoDuration {
   return (
     typeof value === "number" &&
-    VALID_DURATIONS.includes(value as (typeof VALID_DURATIONS)[number])
+    VALID_VIDEO_DURATIONS.includes(value as VideoDuration)
   );
 }
 
 function isValidAspectRatio(value: unknown): value is VideoAspectRatio {
   return (
     typeof value === "string" &&
-    VALID_ASPECT_RATIOS.includes(value as (typeof VALID_ASPECT_RATIOS)[number])
+    VALID_VIDEO_ASPECT_RATIOS.includes(value as VideoAspectRatio)
   );
 }
 
 function isValidModel(value: unknown): value is VideoModel {
   return (
     typeof value === "string" &&
-    VALID_MODELS.includes(value as (typeof VALID_MODELS)[number])
+    VALID_VIDEO_MODELS.includes(value as VideoModel)
   );
 }
 
@@ -54,24 +55,17 @@ export async function POST(request: Request) {
 
     if (!userId) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Authentication required.",
-        },
+        { success: false, error: "Authentication required." },
         { status: 401 },
       );
     }
 
     const body = (await request.json()) as CreateVideoBody;
-
     const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
 
     if (!prompt) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "A video prompt is required.",
-        },
+        { success: false, error: "A video prompt is required." },
         { status: 400 },
       );
     }
@@ -90,7 +84,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: "Video duration must be 4, 8, or 12 seconds.",
+          error: "Video duration must be 2, 4, 5, 6, 8, or 10 seconds.",
         },
         { status: 400 },
       );
@@ -110,10 +104,7 @@ export async function POST(request: Request) {
 
     if (!isValidModel(model)) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Unsupported video model.",
-        },
+        { success: false, error: "Unsupported video model." },
         { status: 400 },
       );
     }
@@ -162,11 +153,9 @@ export async function POST(request: Request) {
 
     if (error instanceof AIVideoError) {
       const status =
-        error.code === "INVALID_REQUEST"
+        error.code === "INVALID_REQUEST" || error.code === "UNSUPPORTED"
           ? 400
-          : error.code === "UNSUPPORTED"
-            ? 400
-            : 500;
+          : 500;
 
       return NextResponse.json(
         {

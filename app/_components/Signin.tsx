@@ -250,68 +250,37 @@ export function SigninPage({
       toast.success("Successfully logged in!");
 
       /*
-       * Keep callback URLs inside the authenticated user's workspace.
+       * Preserve safe internal callback URLs after authentication.
        *
-       * ADMIN → /admin/*
-       * USER  → /dashboard/* or the authenticated tutoring booking flow.
+       * ADMIN users may return to admin pages. Learners may return to
+       * their dashboard, tutor workspace, or the public tutoring flow.
        *
-       * The tutoring booking flow also stores its callback temporarily in
-       * sessionStorage. That fallback protects the booking handoff if an
-       * auth container or browser navigation drops the callback query string.
+       * The tutoring paths are important because a learner can reach the
+       * booking page before signing in. Sending that learner to /dashboard
+       * after login would discard the date/time/tutor flow they were in.
        */
-      let redirectCallbackUrl = callbackUrl;
+      const workspaceCallback =
+        role === "ADMIN"
+          ? callbackUrl?.startsWith("/admin")
+            ? callbackUrl
+            : null
+          : callbackUrl &&
+              (callbackUrl.startsWith("/dashboard") ||
+                callbackUrl === "/tutor" ||
+                callbackUrl.startsWith("/tutor?") ||
+                callbackUrl === "/tutoring" ||
+                callbackUrl.startsWith("/tutoring/") ||
+                callbackUrl === "/learner" ||
+                callbackUrl.startsWith("/learner/"))
+            ? callbackUrl
+            : null;
 
-      if (!redirectCallbackUrl) {
-        try {
-          const storedDraft = window.sessionStorage.getItem(
-            "justdy:pending-tutoring-booking",
-          );
+      const destination =
+        workspaceCallback ??
+        (role === "ADMIN" ? "/admin" : "/dashboard");
 
-          if (storedDraft) {
-            const parsed = JSON.parse(storedDraft) as unknown;
-            const candidate =
-              parsed &&
-              typeof parsed === "object" &&
-              typeof (parsed as { callback?: unknown }).callback === "string"
-                ? (parsed as { callback: string }).callback
-                : null;
-
-            if (
-              candidate &&
-              candidate.startsWith("/") &&
-              !candidate.startsWith("//")
-            ) {
-              redirectCallbackUrl = candidate;
-            }
-          }
-        } catch (storageError) {
-          console.error(
-            "Failed to restore pending tutoring callback:",
-            storageError,
-          );
-        }
-      }
-
-const workspaceCallback =
-  role === "ADMIN"
-    ? redirectCallbackUrl?.startsWith("/admin")
-      ? redirectCallbackUrl
-      : null
-    : redirectCallbackUrl &&
-        (
-          redirectCallbackUrl.startsWith("/dashboard") ||
-          redirectCallbackUrl === "/tutors" ||
-          redirectCallbackUrl.startsWith("/tutors?")
-        )
-      ? redirectCallbackUrl
-      : null;
-
-const dashboardUrl =
-  workspaceCallback ??
-  (role === "ADMIN" ? "/admin" : "/dashboard");
-
-router.replace(dashboardUrl);
-router.refresh();
+      router.replace(destination);
+      router.refresh();
     } catch (err) {
       console.error("LOGIN ERROR:", err);
 

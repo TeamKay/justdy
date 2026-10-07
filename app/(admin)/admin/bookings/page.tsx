@@ -507,11 +507,6 @@ export default async function AdminBookingsPage({
     0,
   );
 
-  /*
-   * ------------------------------------------------------------
-   * PAGINATION
-   * ------------------------------------------------------------
-   */
 
   const previousPage =
     safePage > 1 ? safePage - 1 : null;
@@ -554,26 +549,19 @@ export default async function AdminBookingsPage({
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {/* Total */}
-
         <div className="rounded-md border border-border/70 bg-card p-5 shadow-sm">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                Total bookings
-              </p>
-
               <p className="mt-2 text-2xl font-semibold tracking-tight">
                 {totalBookings.toLocaleString()}
               </p>
             </div>
-
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <CalendarDays className="h-5 w-5" />
             </div>
           </div>
-
           <p className="mt-3 text-xs text-muted-foreground">
-            All tutoring bookings
+            Total bookings
           </p>
         </div>
 
@@ -582,22 +570,16 @@ export default async function AdminBookingsPage({
         <div className="rounded-md border border-border/70 bg-card p-5 shadow-sm">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                Pending payment
-              </p>
-
               <p className="mt-2 text-2xl font-semibold tracking-tight">
                 {pendingBookings.toLocaleString()}
               </p>
             </div>
-
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
               <Clock3 className="h-5 w-5" />
             </div>
           </div>
-
           <p className="mt-3 text-xs text-muted-foreground">
-            Awaiting payment
+            Pending payment
           </p>
         </div>
 
@@ -606,20 +588,14 @@ export default async function AdminBookingsPage({
         <div className="rounded-md border border-border/70 bg-card p-5 shadow-sm">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                Scheduled
-              </p>
-
               <p className="mt-2 text-2xl font-semibold tracking-tight">
                 {scheduledBookings.toLocaleString()}
               </p>
             </div>
-
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
               <Video className="h-5 w-5" />
             </div>
           </div>
-
           <p className="mt-3 text-xs text-muted-foreground">
             Upcoming tutoring sessions
           </p>
@@ -630,22 +606,16 @@ export default async function AdminBookingsPage({
         <div className="rounded-md border border-border/70 bg-card p-5 shadow-sm">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                Booking value
-              </p>
-
               <p className="mt-2 text-2xl font-semibold tracking-tight">
                 {formatMoney(totalRevenue)}
               </p>
             </div>
-
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400">
               <UserRound className="h-5 w-5" />
             </div>
           </div>
-
           <p className="mt-3 text-xs text-muted-foreground">
-            Scheduled and completed bookings
+           Booking value
           </p>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { settleCreditReservation } from "@/lib/credits/reservations";
 
 type RouteContext = {
   params: Promise<{
@@ -229,9 +230,26 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       }
 
       if (liveSession.status === "ACTIVE") {
+        await prisma.liveHomeworkRequest.updateMany({
+          where: {
+            id: liveSession.requestId,
+            status: { not: "ENDED" },
+          },
+          data: {
+            status: "ACTIVE",
+            activeAt: liveSession.startedAt ?? now,
+          },
+        });
+
+        const activeSession = await prisma.liveHomeworkSession.findUnique({
+          where: { id: sessionId },
+        });
+
         return NextResponse.json({
           success: true,
-          session: serializeSession(liveSession),
+          session: activeSession
+            ? serializeSession(activeSession)
+            : serializeSession(liveSession),
         });
       }
 
@@ -338,26 +356,136 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     // END
+    // Only the assigned teacher may end a live homework session.
+    const role = user.role?.toLowerCase();
+    const canEnd = user.id === liveSession.teacherId || role === "admin";
+
+    if (!canEnd) {
+      return NextResponse.json(
+        {
+          error: "Only the assigned teacher can end this Live Homework session.",
+        },
+        { status: 403 },
+      );
+    }
+
+    const reservationReferenceType = "LIVE_HOMEWORK_SESSION";
+
+    /*
+     * Billing is credit-based. One credit is one cent (USD), and the
+     * reservation made when the teacher selects the learner covers one
+     * full hour at the teacher's rate. Only connected seconds are billed.
+     * Any unused portion is returned by settleCreditReservation().
+     *
+     * If a previous END request already marked the session as ENDED but
+     * failed before settling credits, retrying END is allowed to finish
+     * the pending reservation. This makes the billing step recoverable.
+     */
     if (liveSession.status === "ENDED") {
+      const activeReservation = await prisma.creditReservation.findFirst({
+        where: {
+          referenceType: reservationReferenceType,
+          referenceId: sessionId,
+          status: "ACTIVE",
+        },
+      });
+
+      if (activeReservation) {
+        const teacherRate = liveSession.teacherRate ?? 0;
+        const billableSeconds = Math.max(0, liveSession.billableSeconds);
+        const actualCredits = Math.max(
+          0,
+          Math.min(
+            activeReservation.amount,
+            Math.round((teacherRate * billableSeconds) / 3600),
+          ),
+        );
+        const configuredFeePercent = Number(
+          process.env.LIVE_HOMEWORK_PLATFORM_FEE_PERCENT ?? "0",
+        );
+        const platformFeePercent = Number.isFinite(configuredFeePercent)
+          ? Math.min(100, Math.max(0, configuredFeePercent))
+          : 0;
+        const platformFee = Math.round(
+          (actualCredits * platformFeePercent) / 100,
+        );
+        const teacherEarnings = Math.max(0, actualCredits - platformFee);
+
+        await settleCreditReservation({
+          reservationId: activeReservation.id,
+          actualAmount: actualCredits,
+        });
+
+        await prisma.liveHomeworkSession.update({
+          where: { id: sessionId },
+          data: {
+            subtotal: actualCredits,
+            platformFee,
+            teacherEarnings,
+            totalAmount: actualCredits,
+            paymentStatus: "Paid",
+          },
+        });
+      } else if (
+        liveSession.paymentStatus !== "Paid" &&
+        liveSession.subtotal == null
+      ) {
+        // Settlement may have completed before a previous END request
+        // failed while writing the final session billing fields. Rebuild
+        // those fields from the authoritative session snapshot.
+        const teacherRate = liveSession.teacherRate ?? 0;
+        const billableSeconds = Math.max(0, liveSession.billableSeconds);
+        const actualCredits = Math.max(
+          0,
+          Math.min(
+            teacherRate,
+            Math.round((teacherRate * billableSeconds) / 3600),
+          ),
+        );
+        const configuredFeePercent = Number(
+          process.env.LIVE_HOMEWORK_PLATFORM_FEE_PERCENT ?? "0",
+        );
+        const platformFeePercent = Number.isFinite(configuredFeePercent)
+          ? Math.min(100, Math.max(0, configuredFeePercent))
+          : 0;
+        const platformFee = Math.round(
+          (actualCredits * platformFeePercent) / 100,
+        );
+        const teacherEarnings = Math.max(0, actualCredits - platformFee);
+
+        await prisma.liveHomeworkSession.update({
+          where: { id: sessionId },
+          data: {
+            subtotal: actualCredits,
+            platformFee,
+            teacherEarnings,
+            totalAmount: actualCredits,
+            paymentStatus: "Paid",
+          },
+        });
+      }
+
+      const endedSession = await prisma.liveHomeworkSession.findUnique({
+        where: { id: sessionId },
+      });
+
       return NextResponse.json({
         success: true,
-        session: serializeSession(liveSession),
+        paymentStatus: endedSession?.paymentStatus ?? "Paid",
+        paymentRequired: false,
+        session: endedSession ? serializeSession(endedSession) : null,
       });
     }
 
-    const startedAt = liveSession.startedAt ?? liveSession.createdAt;
-
-    const durationSeconds = Math.max(
-      0,
-      Math.floor((now.getTime() - startedAt.getTime()) / 1000),
-    );
+    const startedAt = liveSession.startedAt;
+    const durationSeconds = startedAt
+      ? Math.max(0, Math.floor((now.getTime() - startedAt.getTime()) / 1000))
+      : 0;
 
     const endedCount = await prisma.liveHomeworkSession.updateMany({
       where: {
         id: sessionId,
-        status: {
-          not: "ENDED",
-        },
+        status: { not: "ENDED" },
       },
       data: {
         status: "ENDED",
@@ -367,48 +495,211 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       },
     });
 
-    /*
-     * If another participant ended the session first, simply return the
-     * current server state instead of treating the request as an error.
-     */
     if (endedCount.count === 0) {
       const currentSession = await prisma.liveHomeworkSession.findUnique({
-        where: {
-          id: sessionId,
-        },
+        where: { id: sessionId },
       });
 
       if (!currentSession) {
         return NextResponse.json(
-          {
-            error: "Live classroom session not found.",
-          },
-          {
-            status: 404,
-          },
+          { error: "Live classroom session not found." },
+          { status: 404 },
         );
       }
 
+      const activeReservation = await prisma.creditReservation.findFirst({
+        where: {
+          referenceType: reservationReferenceType,
+          referenceId: sessionId,
+          status: "ACTIVE",
+        },
+      });
+
+      if (activeReservation) {
+        const teacherRate = currentSession.teacherRate ?? 0;
+        const actualCredits = Math.max(
+          0,
+          Math.min(
+            activeReservation.amount,
+            Math.round(
+              (teacherRate * Math.max(0, currentSession.billableSeconds)) /
+                3600,
+            ),
+          ),
+        );
+        const configuredFeePercent = Number(
+          process.env.LIVE_HOMEWORK_PLATFORM_FEE_PERCENT ?? "0",
+        );
+        const platformFeePercent = Number.isFinite(configuredFeePercent)
+          ? Math.min(100, Math.max(0, configuredFeePercent))
+          : 0;
+        const platformFee = Math.round(
+          (actualCredits * platformFeePercent) / 100,
+        );
+        const teacherEarnings = Math.max(0, actualCredits - platformFee);
+
+        await settleCreditReservation({
+          reservationId: activeReservation.id,
+          actualAmount: actualCredits,
+        });
+
+        await prisma.liveHomeworkSession.update({
+          where: { id: sessionId },
+          data: {
+            subtotal: actualCredits,
+            platformFee,
+            teacherEarnings,
+            totalAmount: actualCredits,
+            paymentStatus: "Paid",
+          },
+        });
+      } else if (
+        currentSession.paymentStatus !== "Paid" &&
+        currentSession.subtotal == null
+      ) {
+        const teacherRate = currentSession.teacherRate ?? 0;
+        const actualCredits = Math.max(
+          0,
+          Math.min(
+            teacherRate,
+            Math.round(
+              (teacherRate * Math.max(0, currentSession.billableSeconds)) /
+                3600,
+            ),
+          ),
+        );
+        const configuredFeePercent = Number(
+          process.env.LIVE_HOMEWORK_PLATFORM_FEE_PERCENT ?? "0",
+        );
+        const platformFeePercent = Number.isFinite(configuredFeePercent)
+          ? Math.min(100, Math.max(0, configuredFeePercent))
+          : 0;
+        const platformFee = Math.round(
+          (actualCredits * platformFeePercent) / 100,
+        );
+        const teacherEarnings = Math.max(0, actualCredits - platformFee);
+
+        await prisma.liveHomeworkSession.update({
+          where: { id: sessionId },
+          data: {
+            subtotal: actualCredits,
+            platformFee,
+            teacherEarnings,
+            totalAmount: actualCredits,
+            paymentStatus: "Paid",
+          },
+        });
+      }
+
+      const refreshedSession = await prisma.liveHomeworkSession.findUnique({
+        where: { id: sessionId },
+      });
+
       return NextResponse.json({
         success: true,
-        session: serializeSession(currentSession),
+        paymentStatus: refreshedSession?.paymentStatus ?? "Paid",
+        paymentRequired: false,
+        session: refreshedSession ? serializeSession(refreshedSession) : null,
       });
     }
 
     await prisma.liveHomeworkRequest.update({
+      where: { id: liveSession.requestId },
+      data: { status: "ENDED", endedAt: now },
+    });
+
+    const teacherRate = liveSession.teacherRate;
+
+    if (teacherRate == null || teacherRate <= 0) {
+      await prisma.liveHomeworkSession.update({
+        where: { id: sessionId },
+        data: {
+          paymentStatus: "Failed",
+          teacherRate: teacherRate ?? null,
+        },
+      });
+
+      return NextResponse.json(
+        {
+          success: true,
+          paymentRequired: true,
+          paymentStatus: "Failed",
+          error: "This session has no valid teacher rate for credit settlement.",
+          session: await prisma.liveHomeworkSession.findUnique({
+            where: { id: sessionId },
+          }),
+        },
+        { status: 500 },
+      );
+    }
+
+    const subtotal = Math.max(
+      0,
+      Math.min(
+        teacherRate,
+        Math.round((teacherRate * durationSeconds) / 3600),
+      ),
+    );
+
+    const configuredFeePercent = Number(
+      process.env.LIVE_HOMEWORK_PLATFORM_FEE_PERCENT ?? "0",
+    );
+    const platformFeePercent = Number.isFinite(configuredFeePercent)
+      ? Math.min(100, Math.max(0, configuredFeePercent))
+      : 0;
+    const platformFee = Math.round((subtotal * platformFeePercent) / 100);
+    const teacherEarnings = Math.max(0, subtotal - platformFee);
+
+    const activeReservation = await prisma.creditReservation.findFirst({
       where: {
-        id: liveSession.requestId,
+        referenceType: reservationReferenceType,
+        referenceId: sessionId,
+        status: "ACTIVE",
       },
+    });
+
+    if (!activeReservation) {
+      await prisma.liveHomeworkSession.update({
+        where: { id: sessionId },
+        data: {
+          teacherRate,
+          currency: "USD",
+          subtotal,
+          platformFee,
+          teacherEarnings,
+          totalAmount: subtotal,
+          paymentStatus: "Failed",
+        },
+      });
+
+      return NextResponse.json(
+        {
+          error: "The Live Homework credit reservation could not be found for this session.",
+        },
+        { status: 500 },
+      );
+    }
+
+    await settleCreditReservation({
+      reservationId: activeReservation.id,
+      actualAmount: subtotal,
+    });
+
+    await prisma.liveHomeworkSession.update({
+      where: { id: sessionId },
       data: {
-        status: "ENDED",
-        endedAt: now,
+        teacherRate,
+        currency: "USD",
+        subtotal,
+        platformFee,
+        teacherEarnings,
+        totalAmount: subtotal,
+        paymentStatus: "Paid",
       },
     });
 
     const endedSession = await prisma.liveHomeworkSession.findUnique({
-      where: {
-        id: sessionId,
-      },
+      where: { id: sessionId },
     });
 
     if (!endedSession) {
@@ -416,16 +707,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         {
           error: "Live classroom session could not be loaded after ending.",
         },
-        {
-          status: 500,
-        },
+        { status: 500 },
       );
     }
 
     return NextResponse.json({
       success: true,
+      paymentStatus: "Paid",
+      paymentRequired: false,
+      creditsConsumed: subtotal,
       session: serializeSession(endedSession),
     });
+
   } catch (error) {
     const message =
       error instanceof Error

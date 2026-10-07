@@ -111,9 +111,7 @@ export default function ClientGrowthChart({
       <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <div className="mt-0 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            <span>
-              Showing <strong className="font-semibold text-foreground">{chartPoints.length}</strong> data points
-            </span>
+            <h1>Client Growth Chart</h1>
             {change !== null ? (
               <span className={change >= 0 ? "font-semibold text-emerald-600 dark:text-emerald-400" : "font-semibold text-red-600 dark:text-red-400"}>
                 {change >= 0 ? "+" : ""}{change}% across selected range

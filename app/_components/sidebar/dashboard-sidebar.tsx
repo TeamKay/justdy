@@ -13,17 +13,17 @@ import {
   History,
   LayoutDashboard,
   LogOut,
-
-  Search,
   Settings2,
-
   Video,
   WalletCards,
   GraduationCap,
   SlidersHorizontal,
-
   UserRound,
   TrendingUp,
+  Headphones,
+  Sparkles,
+  LibraryBig,
+  BookAIcon,
 } from "lucide-react";
 
 import {
@@ -32,12 +32,13 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from "../ui/sidebar";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,11 +46,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+
 import { authClient } from "@/lib/auth-client";
 import MyLogo from "../Logo";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-
-
 
 export type NavCapability = "CAN_LEARN" | "CAN_TEACH";
 
@@ -73,17 +73,27 @@ const adminNavigation: NavigationGroup = {
       url: "/admin",
       icon: LayoutDashboard,
     },
-     {
+    {
+      title: "Educators",
+      url: "/admin/educators",
+      icon: GraduationCap,
+    },
+    {
       title: "My Profile",
       url: "/admin/profile",
       icon: BarChart3,
     },
-     {
+    {
+      title: "Live Help",
+      url: "/admin/live-help",
+      icon: Headphones,
+    },
+    {
       title: "Availability",
       url: "/admin/availability",
       icon: BarChart3,
     },
-     {
+    {
       title: "Services",
       url: "/admin/services",
       icon: BarChart3,
@@ -98,7 +108,6 @@ const adminNavigation: NavigationGroup = {
       url: "/admin/sessions",
       icon: Video,
     },
-  
     {
       title: "Payouts",
       url: "/admin/payouts",
@@ -109,13 +118,16 @@ const adminNavigation: NavigationGroup = {
       url: "/admin/reports",
       icon: BarChart3,
     },
-    
-     
     {
       title: "Settings",
       url: "/admin/settings",
       icon: Settings2,
     },
+    {
+  title: "Investments",
+  url: "/admin/investments",
+  icon: WalletCards,
+},
   ],
 };
 
@@ -130,15 +142,27 @@ const userNavigation: NavigationGroup[] = [
         capability: "CAN_LEARN",
       },
       {
-        title: "Find a Tutor",
-        url: "/tutor",
-        icon: Search,
+        title: "Create with AI",
+        url: "/dashboard/create",
+        icon: Sparkles,
+        capability: "CAN_LEARN",
+      },
+      {
+        title: "My Library",
+        url: "/dashboard/library",
+        icon: LibraryBig,
         capability: "CAN_LEARN",
       },
       {
         title: "My Sessions",
-        url: "/dashboard/tutoring/sessions",
+        url: "/dashboard/sessions",
         icon: CalendarDays,
+        capability: "CAN_LEARN",
+      },
+      {
+        title: "Homework Live",
+        url: "/live-help",
+        icon: BookAIcon,
         capability: "CAN_LEARN",
       },
       {
@@ -151,6 +175,12 @@ const userNavigation: NavigationGroup[] = [
         title: "History",
         url: "/dashboard/history",
         icon: History,
+        capability: "CAN_LEARN",
+      },
+      {
+        title: "Credits",
+        url: "/dashboard/credits",
+        icon: CreditCard,
         capability: "CAN_LEARN",
       },
     ],
@@ -190,6 +220,12 @@ const userNavigation: NavigationGroup[] = [
         capability: "CAN_TEACH",
       },
       {
+        title: "Live Homework Help",
+        url: "/live-help",
+        icon: Headphones,
+        capability: "CAN_TEACH",
+      },
+      {
         title: "Earnings",
         url: "/earnings",
         icon: WalletCards,
@@ -210,7 +246,6 @@ const userNavigation: NavigationGroup[] = [
   },
 ];
 
-
 interface Conversation {
   id: string;
   title: string;
@@ -223,21 +258,33 @@ interface Conversation {
 
 function formatRelativeTime(value: string) {
   const timestamp = new Date(value).getTime();
-  if (!Number.isFinite(timestamp)) return "";
+
+  if (!Number.isFinite(timestamp)) {
+    return "";
+  }
 
   const diff = Math.max(0, Date.now() - timestamp);
   const minutes = Math.floor(diff / 60000);
 
-  if (minutes < 1) return "now";
-  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 1) {
+    return "now";
+  }
+
+  if (minutes < 60) {
+    return `${minutes}m`;
+  }
 
   const hours = Math.floor(minutes / 60);
 
-  if (hours < 24) return `${hours}h`;
+  if (hours < 24) {
+    return `${hours}h`;
+  }
 
   const days = Math.floor(hours / 24);
 
-  if (days < 7) return `${days}d`;
+  if (days < 7) {
+    return `${days}d`;
+  }
 
   return new Date(timestamp).toLocaleDateString(undefined, {
     month: "short",
@@ -259,25 +306,32 @@ function NavIcon({
   return (
     <Icon
       className={`size-[17px] shrink-0 ${
-        active ? "text-primary" : "text-muted-foreground"
+        active ? "text-white" : "text-white/75"
       }`}
     />
   );
 }
 
-function ChatHistorySection({ projectId }: { projectId: string | null }) {
+function ChatHistorySection({
+  projectId,
+}: {
+  projectId: string | null;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+
   const activeConversationId = searchParams.get("conversationId");
 
-  const [conversations, setConversations] = React.useState<Conversation[]>([]);
+  const [conversations, setConversations] = React.useState<
+    Conversation[]
+  >([]);
+
   const [search, setSearch] = React.useState("");
   const [loading, setLoading] = React.useState(true);
 
-  const [actionConversationId, setActionConversationId] = React.useState<
-    string | null
-  >(null);
+  const [actionConversationId, setActionConversationId] =
+    React.useState<string | null>(null);
 
   const [deleteConversation, setDeleteConversation] =
     React.useState<Conversation | null>(null);
@@ -301,7 +355,9 @@ function ChatHistorySection({ projectId }: { projectId: string | null }) {
       }
 
       const response = await fetch(
-        `/api/ai/chat${params.toString() ? `?${params.toString()}` : ""}`,
+        `/api/ai/chat${
+          params.toString() ? `?${params.toString()}` : ""
+        }`,
         {
           cache: "no-store",
         },
@@ -324,18 +380,25 @@ function ChatHistorySection({ projectId }: { projectId: string | null }) {
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
-        const stored = window.localStorage.getItem("justdy:pinned-chats");
+        const stored = window.localStorage.getItem(
+          "justdy:pinned-chats",
+        );
 
-        if (!stored) return;
+        if (!stored) {
+          return;
+        }
 
         const parsed = JSON.parse(stored);
 
-        if (!Array.isArray(parsed)) return;
+        if (!Array.isArray(parsed)) {
+          return;
+        }
 
         setPinnedIds(
           new Set(
             parsed.filter(
-              (value): value is string => typeof value === "string",
+              (value): value is string =>
+                typeof value === "string",
             ),
           ),
         );
@@ -352,7 +415,9 @@ function ChatHistorySection({ projectId }: { projectId: string | null }) {
   }, []);
 
   React.useEffect(() => {
-    if (!pinsLoaded) return;
+    if (!pinsLoaded) {
+      return;
+    }
 
     try {
       window.localStorage.setItem(
@@ -365,8 +430,6 @@ function ChatHistorySection({ projectId }: { projectId: string | null }) {
   }, [pinnedIds, pinsLoaded]);
 
   React.useEffect(() => {
-    // Defer the initial state update to the next task so the effect itself
-    // does not synchronously trigger a cascading render.
     const timer = window.setTimeout(() => {
       void loadConversations();
     }, 0);
@@ -375,7 +438,9 @@ function ChatHistorySection({ projectId }: { projectId: string | null }) {
   }, [loadConversations]);
 
   React.useEffect(() => {
-    if (!deleteConversation) return;
+    if (!deleteConversation) {
+      return;
+    }
 
     const previousOverflow = document.body.style.overflow;
 
@@ -405,16 +470,21 @@ function ChatHistorySection({ projectId }: { projectId: string | null }) {
 
     window.addEventListener("justdy:chat-updated", refresh);
 
-    return () => window.removeEventListener("justdy:chat-updated", refresh);
+    return () =>
+      window.removeEventListener("justdy:chat-updated", refresh);
   }, [loadConversations]);
 
   const filteredConversations = React.useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    if (!query) return conversations;
+    if (!query) {
+      return conversations;
+    }
 
     return conversations.filter((conversation) =>
-      getConversationTitle(conversation.title).toLowerCase().includes(query),
+      getConversationTitle(conversation.title)
+        .toLowerCase()
+        .includes(query),
     );
   }, [conversations, search]);
 
@@ -427,7 +497,10 @@ function ChatHistorySection({ projectId }: { projectId: string | null }) {
         return aPinned ? -1 : 1;
       }
 
-      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      return (
+        new Date(b.updatedAt).getTime() -
+        new Date(a.updatedAt).getTime()
+      );
     });
   }, [filteredConversations, pinnedIds]);
 
@@ -447,17 +520,22 @@ function ChatHistorySection({ projectId }: { projectId: string | null }) {
     return `/chat?${params.toString()}`;
   };
 
-  function requestDeleteConversation(conversation: Conversation) {
-    if (actionConversationId) return;
+  function requestDeleteConversation(
+    conversation: Conversation,
+  ) {
+    if (actionConversationId) {
+      return;
+    }
+
     setDeleteConversation(conversation);
   }
 
   async function performConversationAction(
     conversation: Conversation,
   ): Promise<boolean> {
-    // The function explicitly promises boolean, so the busy-state guard
-    // must return false rather than undefined.
-    if (actionConversationId) return false;
+    if (actionConversationId) {
+      return false;
+    }
 
     setActionConversationId(conversation.id);
 
@@ -471,16 +549,21 @@ function ChatHistorySection({ projectId }: { projectId: string | null }) {
         params.set("projectId", projectId);
       }
 
-      const response = await fetch(`/api/ai/chat?${params.toString()}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/ai/chat?${params.toString()}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       const data = (await response.json()) as {
         error?: string;
       };
 
       if (!response.ok) {
-        throw new Error(data.error ?? "Unable to delete conversation.");
+        throw new Error(
+          data.error ?? "Unable to delete conversation.",
+        );
       }
 
       setConversations((current) =>
@@ -488,7 +571,9 @@ function ChatHistorySection({ projectId }: { projectId: string | null }) {
       );
 
       setPinnedIds((current) => {
-        if (!current.has(conversation.id)) return current;
+        if (!current.has(conversation.id)) {
+          return current;
+        }
 
         const next = new Set(current);
         next.delete(conversation.id);
@@ -511,7 +596,19 @@ function ChatHistorySection({ projectId }: { projectId: string | null }) {
     }
   }
 
-  
+  /*
+   * Chat history is intentionally kept available for the existing
+   * dashboard/chat implementation. It does not affect sidebar styling.
+   */
+
+  void pathname;
+  void search;
+  void loading;
+  void orderedConversations;
+  void conversationHref;
+  void requestDeleteConversation;
+  void performConversationAction;
+  void deleteCancelRef;
 }
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar>;
@@ -526,6 +623,7 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
 
   const projectId = searchParams.get("projectId");
   const conversationId = searchParams.get("conversationId");
+
   const isChat = pathname === "/chat" || pathname === "/dashboard";
 
   const userName = user?.name || "Justdy User";
@@ -548,7 +646,8 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
 
   const isAdmin = normalizedRole === "ADMIN";
 
-  const [capabilityKeys, setCapabilityKeys] = React.useState<string[]>([]);
+  const [capabilityKeys, setCapabilityKeys] =
+    React.useState<string[]>([]);
 
   React.useEffect(() => {
     if (!user?.id || isAdmin) {
@@ -561,7 +660,9 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
       cache: "no-store",
     })
       .then(async (response) => {
-        if (!response.ok) return;
+        if (!response.ok) {
+          return;
+        }
 
         const data = (await response.json()) as {
           capabilities?: string[];
@@ -592,7 +693,9 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
         .map((group) => ({
           ...group,
           items: group.items.filter((item) => {
-            if (!item.capability) return true;
+            if (!item.capability) {
+              return true;
+            }
 
             return item.capability === "CAN_LEARN"
               ? canLearn
@@ -618,77 +721,102 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
       .toUpperCase() || "JU";
 
   const isActive = (url: string) => {
-    const [targetPath, targetQuery] = url.split("?", 2);
+  const [targetPath, targetQuery] = url.split("?", 2);
 
-    if (targetPath === "/dashboard") {
-      return (
-        (pathname === "/dashboard" || pathname === "/chat") && !conversationId
-      );
+  // Dashboard should only be active on the exact dashboard route.
+  if (targetPath === "/dashboard") {
+    return pathname === "/dashboard";
+  }
+
+  // Admin Dashboard should only be active on the exact admin route.
+  if (targetPath === "/admin") {
+    return pathname === "/admin";
+  }
+
+  if (targetPath === "/educator") {
+    const requestedTab = targetQuery
+      ? new URLSearchParams(targetQuery).get("tab")
+      : null;
+
+    const currentTab = searchParams.get("tab");
+
+    if (pathname !== "/educator") {
+      return false;
     }
 
-    if (targetPath === "/educator") {
-      const requestedTab = targetQuery
-        ? new URLSearchParams(targetQuery).get("tab")
-        : null;
-      const currentTab = searchParams.get("tab");
+    return (
+      (requestedTab ?? null) === (currentTab ?? null)
+    );
+  }
 
-      if (pathname !== "/educator") return false;
-      return (requestedTab ?? null) === (currentTab ?? null);
-    }
+  if (targetPath === "/projects") {
+    return (
+      pathname === "/projects" ||
+      pathname?.startsWith("/projects/")
+    );
+  }
 
-    if (targetPath === "/projects") {
-      return pathname === "/projects" || pathname?.startsWith("/projects/");
-    }
+  if (targetPath === "/dashboard/library") {
+    return (
+      pathname === "/dashboard/library" ||
+      pathname?.startsWith("/dashboard/library/")
+    );
+  }
 
-    if (targetPath === "/library") {
-      return pathname === "/library" || pathname?.startsWith("/library/");
-    }
+  if (targetPath === "/settings") {
+    return (
+      pathname === "/settings" ||
+      pathname?.startsWith("/settings/")
+    );
+  }
 
-    if (targetPath === "/settings") {
-      return pathname === "/settings" || pathname?.startsWith("/settings/");
-    }
+  return (
+    pathname === targetPath ||
+    pathname?.startsWith(`${targetPath}/`)
+  );
+};
 
-    return pathname === targetPath || pathname?.startsWith(`${targetPath}/`);
-  };
+const renderNavigation = (groups: NavigationGroup[]) =>
+  groups.map((group) => (
+    <SidebarGroup
+      key={group.title}
+      className="p-0"
+    >
+      <SidebarGroupContent>
+        <SidebarMenu className="space-y-0.5">
+          {group.items.map((item) => {
+            const active = isActive(item.url);
 
-  const renderNavigation = (groups: NavigationGroup[]) =>
-    groups.map((group) => (
-      <SidebarGroup key={group.title} className="p-0">
-        <SidebarGroupLabel className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
-          {group.title}
-        </SidebarGroupLabel>
-
-        <SidebarGroupContent>
-          <SidebarMenu className="space-y-0.5">
-            {group.items.map((item) => {
-              const active = isActive(item.url);
-
-              return (
-                <SidebarMenuItem
-                  key={`${item.title}-${item.url}`}
+            return (
+              <SidebarMenuItem
+                key={`${item.title}-${item.url}`}
+              >
+                <SidebarMenuButton
+                  asChild
+                  tooltip={item.title}
+                  data-active={active ? "true" : "false"}
+                  className={`h-10 rounded-xl px-3 text-[13px] font-medium transition-colors ${
+                    active
+                      ? "!bg-white/10 !text-white shadow-sm hover:!bg-white/10 hover:!text-white"
+                      : "!bg-transparent !text-white/75 hover:!bg-white/10 hover:!text-white"
+                  }`}
                 >
-                  <SidebarMenuButton
-                    asChild
-                    isActive={active}
-                    tooltip={item.title}
-                    className={`h-10 rounded-xl px-3 text-[13px] font-medium transition-colors ${
-                      active
-                        ? "bg-muted text-[#e0e7ff]"
-                        : "text-[#e0e7ff] hover:bg-muted hover:text-foreground"
-                    }`}
+                  <Link
+                    href={item.url}
+                    aria-current={active ? "page" : undefined}
+                    className="flex h-full w-full items-center gap-3"
                   >
-                    <Link href={item.url}>
-                      <NavIcon icon={item.icon} active={active} />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              );
-            })}
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-    ));
+                    <NavIcon icon={item.icon} active={active} />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  ));
 
   async function handleSignOut() {
     try {
@@ -703,52 +831,62 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
   return (
     <Sidebar
       collapsible="offcanvas"
-      className="border-r border-border/80 bg-background text-foreground [--sidebar-width:264px] shadow-[4px_0_24px_-24px_hsl(var(--foreground)/0.25)]"
+      className="border-r border-emerald-900/50 bg-[#181818] text-white [--sidebar-width:264px] shadow-[4px_0_24px_-24px_hsl(var(--foreground)/0.25)]"
       {...props}
     >
-      <SidebarHeader className="shrink-0 border-b border-border/50 bg-card px-3.5 py-2.5">
-        <div className="flex h-7 min-w-0 items-center overflow-hidden">
-          <div className="origin-left scale-[0.78]">
+      {/* Sidebar Header */}
+      <SidebarHeader className="shrink-0 border-b border-emerald-900/50 bg-[#181818] px-3.5 py-2.5">
+        <div className="flex h-8 min-w-0 items-center gap-2 overflow-hidden">
+          <div className="min-w-0 flex-1 origin-left scale-[0.78]">
             <MyLogo />
           </div>
+
+          <SidebarTrigger
+            className="size-8 shrink-0 rounded-lg text-white/70 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/30"
+            aria-label="Close sidebar"
+            title="Close sidebar"
+          />
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="min-h-0 bg-card px-2 py-2.5">
+      {/* Sidebar Navigation */}
+      <SidebarContent className="min-h-0 bg-[#181818] px-2 py-2.5">
         {renderNavigation(visibleNavigation)}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-border/70 bg-card p-2">
+      {/* Sidebar Footer */}
+      <SidebarFooter className="border-t border-emerald-900/50 bg-[#181818] p-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
+              id="account-menu-trigger"
               type="button"
-              className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left outline-none transition hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/30"
+              className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left outline-none transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/30"
               aria-label="Open account menu"
             >
-              <Avatar className="size-8 shrink-0 border border-border">
+              <Avatar className="size-8 shrink-0 border border-white/20">
                 <AvatarImage
                   src={userImage}
                   alt={userName}
                   className="object-cover"
                 />
 
-                <AvatarFallback className="bg-muted text-[11px] font-semibold text-foreground">
+                <AvatarFallback className="bg-white/10 text-[11px] font-semibold text-white">
                   {userInitials}
                 </AvatarFallback>
               </Avatar>
 
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold text-foreground">
+                <p className="truncate text-xs font-semibold text-white">
                   {userName}
                 </p>
 
-                <p className="truncate text-[10px] text-muted-foreground">
+                <p className="truncate text-[10px] text-white/60">
                   {userEmail || "Personal workspace"}
                 </p>
               </div>
 
-              <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+              <ChevronDown className="size-4 shrink-0 text-white/60" />
             </button>
           </DropdownMenuTrigger>
 
@@ -756,7 +894,7 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
             align="start"
             side="top"
             sideOffset={8}
-            className="w-[248px] rounded-xl border-border bg-popover p-1.5 text-popover-foreground shadow-xl"
+            className="w-62 rounded-lg border-border bg-popover p-1.5 text-popover-foreground shadow-xl"
           >
             <div className="flex items-center gap-3 px-2.5 py-2.5">
               <Avatar className="size-9 border border-border">
@@ -784,35 +922,50 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
 
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem asChild className="gap-2 rounded-lg">
+            <DropdownMenuItem
+              asChild
+              className="gap-2 rounded-lg"
+            >
               <Link href="/dashboard/settings">
                 <Settings2 className="size-4" />
                 Settings
               </Link>
             </DropdownMenuItem>
 
-            <DropdownMenuItem asChild className="gap-2 rounded-lg">
+            <DropdownMenuItem
+              asChild
+              className="gap-2 rounded-lg"
+            >
               <Link href="/dashboard/settings#appearance">
                 <SlidersHorizontal className="size-4" />
                 Appearance
               </Link>
             </DropdownMenuItem>
 
-            <DropdownMenuItem asChild className="gap-2 rounded-lg">
+            <DropdownMenuItem
+              asChild
+              className="gap-2 rounded-lg"
+            >
               <Link href="/credits">
                 <CreditCard className="size-4" />
                 Credits
               </Link>
             </DropdownMenuItem>
 
-            <DropdownMenuItem asChild className="gap-2 rounded-lg">
+            <DropdownMenuItem
+              asChild
+              className="gap-2 rounded-lg"
+            >
               <Link href="/dashboard/settings#profile">
                 <UserRound className="size-4" />
                 Profile
               </Link>
             </DropdownMenuItem>
 
-            <DropdownMenuItem asChild className="gap-2 rounded-lg">
+            <DropdownMenuItem
+              asChild
+              className="gap-2 rounded-lg"
+            >
               <Link href="/dashboard/settings#help">
                 <HelpCircle className="size-4" />
                 Help & support

@@ -1,330 +1,283 @@
-
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { Prisma } from "@/lib/generated/prisma/client";
+import {
+  CAPABILITIES,
+  ensureCapabilities,
+} from "@/lib/auth/capabilities";
 
-const TEACH = "CAN_TEACH";
-const TUTOR = "CAN_TUTOR";
-
-async function requireAdmin() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    return {
-      error: NextResponse.json(
-        { error: "Authentication required." },
-        { status: 401 },
-      ),
-    };
-  }
-
-  const role = String(session.user.role ?? "").toUpperCase();
-
-  if (role !== "ADMIN") {
-    return {
-      error: NextResponse.json(
-        { error: "Administrator access required." },
-        { status: 403 },
-      ),
-    };
-  }
-
-  return { session };
-}
-
-/**
- * Add a capability to a user if it does not already exist.
- *
- * Prisma.$transaction() provides a TransactionClient rather than the
- * full PrismaClient, so these helpers intentionally accept
- * Prisma.TransactionClient.
- */
-async function ensureCapability(
-  tx: Prisma.TransactionClient,
-  userId: string,
-  key: string,
-  name: string,
-  description: string,
-) {
-  const capability = await tx.capability.upsert({
-    where: { key },
-    update: {
-      name,
-      description,
-    },
-    create: {
-      key,
-      name,
-      description,
-    },
-    select: {
-      id: true,
-    },
-  });
-
-  await tx.userCapability.upsert({
-    where: {
-      userId_capabilityId: {
-        userId,
-        capabilityId: capability.id,
-      },
-    },
-    update: {},
-    create: {
-      userId,
-      capabilityId: capability.id,
-    },
-  });
-}
-
-/**
- * Remove a capability from a user if it exists.
- */
-async function removeCapability(
-  tx: Prisma.TransactionClient,
-  userId: string,
-  key: string,
-) {
-  const capability = await tx.capability.findUnique({
-    where: { key },
-    select: {
-      id: true,
-    },
-  });
-
-  if (!capability) {
-    return;
-  }
-
-  await tx.userCapability.deleteMany({
-    where: {
-      userId,
-      capabilityId: capability.id,
-    },
-  });
-}
+type VerificationAction =
+  | "verify"
+  | "reject";
 
 export async function POST(
-  request: Request,
-  context: {
+  req: Request,
+  {
+    params,
+  }: {
     params: Promise<{ id: string }>;
   },
 ) {
-  const admin = await requireAdmin();
-
-  if (admin.error) {
-    return admin.error;
-  }
-
   try {
-    const { id } = await context.params;
+    /*
+     * Only authenticated administrators may approve
+     * or reject tutor applications.
+     */
+    const session =
+      await auth.api.getSession({
+        headers: await headers(),
+      });
 
-    const body = (await request.json()) as {
-      action?: string;
-    };
-
-    const action =
-      body.action === "verify"
-        ? "verify"
-        : body.action === "reject"
-          ? "reject"
-          : null;
-
-    if (!action) {
+    if (
+      !session?.user?.id ||
+      session.user.role !== "ADMIN"
+    ) {
       return NextResponse.json(
         {
-          error: "Action must be 'verify' or 'reject'.",
+          error:
+            "Administrator access required.",
+        },
+        { status: 403 },
+      );
+    }
+
+    const { id } = await params;
+
+    const body =
+      (await req
+        .json()
+        .catch(() => ({}))) as {
+        action?: string;
+      };
+
+    if (
+      body.action !== "verify" &&
+      body.action !== "reject"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Action must be verify or reject.",
         },
         { status: 400 },
       );
     }
 
-    /**
-     * Find the target user and their teaching profile.
-     *
-     * IMPORTANT:
-     * We do not use the user's role to determine whether they can teach.
-     * An ADMIN can also be a teacher/tutor.
+    const action =
+      body.action as VerificationAction;
+
+    /*
+     * Load the teaching profile together with
+     * the associated account.
      */
-    const user = await prisma.user.findUnique({
-      where: {
-        id,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        status: true,
-        role: true,
-        teachingProfile: {
+    const profile =
+      await prisma.teachingProfile.findUnique(
+        {
+          where: {
+            id,
+          },
+
           select: {
             id: true,
+            userId: true,
             verificationStatus: true,
+
+            user: {
+              select: {
+                id: true,
+                role: true,
+                status: true,
+              },
+            },
           },
         },
+      );
+
+    if (!profile) {
+      return NextResponse.json(
+        {
+          error:
+            "Teaching application not found.",
+        },
+        { status: 404 },
+      );
+    }
+
+    /*
+     * Administrators are platform operators.
+     *
+     * They do not need to go through the normal
+     * tutor approval process.
+     */
+    if (
+      profile.user.role === "ADMIN"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Administrator teaching profiles do not require approval.",
+        },
+        { status: 400 },
+      );
+    }
+
+    /*
+     * Only active learner accounts can be approved
+     * as tutors.
+     */
+    if (
+      profile.user.status !== "Active"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "This user's account is not currently eligible for tutor approval.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const verified =
+      action === "verify";
+
+    /*
+     * ---------------------------------------------------------
+     * APPROVE
+     * ---------------------------------------------------------
+     *
+     * The account remains:
+     *
+     *   User.role = USER
+     *
+     * and gains:
+     *
+     *   CAN_LEARN
+     *   CAN_TEACH
+     *   CAN_TUTOR
+     *   CAN_RECEIVE_PAYOUTS
+     */
+    if (verified) {
+      await prisma.teachingProfile.update({
+        where: {
+          id: profile.id,
+        },
+
+        data: {
+          verificationStatus:
+            "Verified",
+        },
+      });
+
+      await ensureCapabilities(
+        profile.userId,
+        [
+          CAPABILITIES.LEARN,
+          CAPABILITIES.TEACH,
+          CAPABILITIES.TUTOR,
+          CAPABILITIES.RECEIVE_PAYOUTS,
+        ],
+      );
+
+      return NextResponse.json({
+        success: true,
+        status: "Verified",
+        userId: profile.userId,
+      });
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * REJECT
+     * ---------------------------------------------------------
+     *
+     * The account remains:
+     *
+     *   User.role = USER
+     *
+     * and keeps:
+     *
+     *   CAN_LEARN
+     *
+     * but loses:
+     *
+     *   CAN_TEACH
+     *   CAN_TUTOR
+     *   CAN_RECEIVE_PAYOUTS
+     *
+     * The applicant may later submit a new application.
+     */
+    await prisma.teachingProfile.update({
+      where: {
+        id: profile.id,
+      },
+
+      data: {
+        verificationStatus:
+          "Rejected",
       },
     });
 
-    if (!user) {
-      return NextResponse.json(
-        {
-          error: "User not found.",
-        },
-        { status: 404 },
-      );
-    }
-
-    if (!user.teachingProfile) {
-      return NextResponse.json(
-        {
-          error: "This user does not have a teaching profile.",
-        },
-        { status: 404 },
-      );
-    }
-
-    /**
-     * Perform the verification/rejection and capability changes
-     * atomically.
-     */
-    const result = await prisma.$transaction(async (tx) => {
-      /*
-       * ============================================================
-       * VERIFY
-       * ============================================================
-       */
-      if (action === "verify") {
-        const profile = await tx.teachingProfile.update({
-          where: {
-            id: user.teachingProfile!.id,
-          },
-          data: {
-            verificationStatus: "Verified",
-          },
-          select: {
-            id: true,
-            verificationStatus: true,
-          },
-        });
-
-        /**
-         * Teaching and tutoring are capabilities, not account roles.
-         *
-         * This deliberately does NOT change User.role.
-         *
-         * Therefore:
-         *
-         * ADMIN + teaching capability
-         *
-         * remains:
-         *
-         * ADMIN
-         *
-         * while also being able to teach and tutor.
-         */
-
-        await ensureCapability(
-          tx,
-          user.id,
-          TEACH,
-          "Teach",
-          "Can maintain and use a teaching profile.",
-        );
-
-        await ensureCapability(
-          tx,
-          user.id,
-          TUTOR,
-          "Tutor",
-          "Can provide paid tutoring when otherwise verified.",
-        );
-
-        /**
-         * Keep the existing legacy boolean fields synchronized
-         * during the migration to the capability system.
-         */
-        await tx.user.update({
-          where: {
-            id: user.id,
-          },
-          data: {
-            canTeach: true,
-            canTutor: true,
-          },
-        });
-
-        return profile;
-      }
-
-      /*
-       * ============================================================
-       * REJECT
-       * ============================================================
-       */
-
-      const profile = await tx.teachingProfile.update({
+    const teachingCapabilities =
+      await prisma.capability.findMany({
         where: {
-          id: user.teachingProfile!.id,
+          key: {
+            in: [
+              CAPABILITIES.TEACH,
+              CAPABILITIES.TUTOR,
+              CAPABILITIES.RECEIVE_PAYOUTS,
+            ],
+          },
         },
-        data: {
-          verificationStatus: "Rejected",
-        },
+
         select: {
           id: true,
-          verificationStatus: true,
         },
       });
 
-      /**
-       * Remove paid tutoring capability.
-       */
-      await removeCapability(
-        tx,
-        user.id,
-        TUTOR,
+    if (
+      teachingCapabilities.length > 0
+    ) {
+      await prisma.userCapability.deleteMany(
+        {
+          where: {
+            userId: profile.userId,
+
+            capabilityId: {
+              in: teachingCapabilities.map(
+                (capability) =>
+                  capability.id,
+              ),
+            },
+          },
+        },
       );
+    }
 
-      /**
-       * Keep teaching capability available so the user can remain
-       * in the teaching workflow and revise/resubmit their profile.
-       */
-      await tx.user.update({
-        where: {
-          id: user.id,
-        },
-        data: {
-          canTutor: false,
-          canTeach: true,
-        },
-      });
-
-      return profile;
-    });
+    /*
+     * Explicitly preserve learner access.
+     */
+    await ensureCapabilities(
+      profile.userId,
+      [CAPABILITIES.LEARN],
+    );
 
     return NextResponse.json({
       success: true,
-      action,
-      userId: user.id,
-      profile: result,
+      status: "Rejected",
+      userId: profile.userId,
     });
   } catch (error) {
     console.error(
-      "Admin educator verification error:",
+      "Tutor verification error:",
       error,
     );
 
     return NextResponse.json(
       {
-        error: "Unable to update educator verification.",
-        details:
-          error instanceof Error
-            ? error.message
-            : String(error),
+        error:
+          "Unable to update tutor application.",
       },
       { status: 500 },
     );

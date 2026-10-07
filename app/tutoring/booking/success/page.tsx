@@ -161,12 +161,12 @@ export default async function TutoringBookingSuccessPage({
   const sessionDetails = booking.tutoringSession;
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-12 sm:py-16">
+    <main className="min-h-screen bg-slate-50 px-6 py-10 sm:py-12">
       <div className="mx-auto max-w-3xl">
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           {/* Success header */}
-          <div className="border-b border-slate-200 px-6 py-10 text-center sm:px-10">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+          <div className="border-b border-slate-200 px-6 py-5 text-center sm:px-10">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-100">
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -183,15 +183,11 @@ export default async function TutoringBookingSuccessPage({
               </svg>
             </div>
 
-            <p className="mt-6 text-sm font-semibold uppercase tracking-[0.16em] text-emerald-600">
+            <h1 className="mt-2 text-[15px] font-semibold uppercase tracking-[0.16em] text-emerald-600">
               Booking confirmed
-            </p>
-
-            <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-              Your tutoring session is booked
             </h1>
 
-            <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-slate-600">
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
               Your payment was successfully processed and your tutoring
               session has been scheduled.
             </p>
@@ -200,7 +196,7 @@ export default async function TutoringBookingSuccessPage({
           {/* Booking details */}
           <div className="px-6 py-8 sm:px-10">
             <div className="grid gap-6 sm:grid-cols-2">
-              <div className="rounded-2xl bg-slate-50 p-5">
+              <div className="rounded-lg bg-slate-50 p-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Tutoring service
                 </p>
@@ -216,7 +212,7 @@ export default async function TutoringBookingSuccessPage({
                 ) : null}
               </div>
 
-              <div className="rounded-2xl bg-slate-50 p-5">
+              <div className="rounded-lg bg-slate-50 p-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Tutor
                 </p>
@@ -224,17 +220,9 @@ export default async function TutoringBookingSuccessPage({
                 <p className="mt-2 text-lg font-semibold text-slate-900">
                   {booking.educator.name || "Your tutor"}
                 </p>
-
-                {booking.educator.teachingProfile?.headline ||
-                booking.educator.teachingProfile?.specialty ? (
-                  <p className="mt-1 text-sm text-slate-500">
-                    {booking.educator.teachingProfile.headline ??
-                      booking.educator.teachingProfile.specialty}
-                  </p>
-                ) : null}
               </div>
 
-              <div className="rounded-2xl bg-slate-50 p-5">
+              <div className="rounded-lg bg-slate-50 p-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Date & time
                 </p>
@@ -252,7 +240,7 @@ export default async function TutoringBookingSuccessPage({
                 </p>
               </div>
 
-              <div className="rounded-2xl bg-slate-50 p-5">
+              <div className="rounded-lg bg-slate-50 p-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Subject & level
                 </p>
@@ -270,7 +258,7 @@ export default async function TutoringBookingSuccessPage({
             </div>
 
             {/* Session status */}
-            <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+            <div className="mt-8 rounded-lg border border-emerald-200 bg-emerald-50 p-5">
               <div className="flex items-start gap-4">
                 <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-emerald-600 shadow-sm">
                   <svg
@@ -333,25 +321,21 @@ export default async function TutoringBookingSuccessPage({
             {/* Actions */}
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
-                href="/tutoring/sessions"
-                className="inline-flex flex-1 items-center justify-center rounded-xl bg-slate-900 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                href="/dashboard/sessions"
+                className="inline-flex flex-1 items-center justify-center rounded-lg bg-slate-900 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-slate-800"
               >
                 View my tutoring sessions
               </Link>
 
               <Link
                 href="/tutoring"
-                className="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="inline-flex flex-1 items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               >
                 Browse more tutoring
               </Link>
             </div>
           </div>
         </div>
-
-        <p className="mt-6 text-center text-sm text-slate-500">
-          Need help with your booking? Contact Justdy support.
-        </p>
       </div>
     </main>
   );

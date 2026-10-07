@@ -3,7 +3,6 @@ import { headers } from "next/headers";
 
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { CAPABILITIES, hasCapability } from "@/lib/auth/capabilities";
 
 type LiveHomeworkStatus =
   | "REQUESTED"
@@ -44,9 +43,10 @@ async function getCurrentUser(): Promise<AuthUser | null> {
     : null;
 }
 
-async function isTeacherOrAdmin(user: AuthUser) {
-  if (user.role === "ADMIN") return true;
-  return hasCapability(user.id, CAPABILITIES.TEACH);
+function isTeacherOrAdmin(user: AuthUser) {
+  const role = user.role?.trim().toLowerCase();
+
+  return role === "educator" || role === "admin";
 }
 
 function serializeRequest(
@@ -133,7 +133,7 @@ export async function GET() {
      * request object. Only teachers who have explicitly enabled
      * Live Homework Help should receive waiting learners.
      */
-  if (await isTeacherOrAdmin(user)) {
+    if (isTeacherOrAdmin(user)) {
       const availability =
         await prisma.liveHomeworkTeacherAvailability.findUnique({
           where: {
@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-   if (await isTeacherOrAdmin(user)) {
+    if (isTeacherOrAdmin(user)) {
       return NextResponse.json(
         {
           error: "Teachers cannot create learner homework-help requests.",
@@ -268,14 +268,17 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
 
-    const subject = typeof body.subject === "string" ? body.subject.trim() : "";
+    const subject =
+      typeof body.subject === "string" ? body.subject.trim() : "";
     const gradeLevel =
       typeof body.gradeLevel === "string" ? body.gradeLevel.trim() : "";
     const topic = typeof body.topic === "string" ? body.topic.trim() : "";
     const description =
       typeof body.description === "string" ? body.description.trim() : "";
     const assignmentUrl =
-      typeof body.assignmentUrl === "string" ? body.assignmentUrl.trim() : null;
+      typeof body.assignmentUrl === "string"
+        ? body.assignmentUrl.trim()
+        : null;
     const assignmentName =
       typeof body.assignmentName === "string"
         ? body.assignmentName.trim()
@@ -431,7 +434,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const requestId = typeof body.id === "string" ? body.id.trim() : "";
+    const requestId =
+      typeof body.id === "string" ? body.id.trim() : "";
 
     if (!requestId) {
       return NextResponse.json(
@@ -473,12 +477,13 @@ export async function DELETE(request: NextRequest) {
     }
 
     if (
-      !["REQUESTED", "WAITING"].includes(existingRequest.status.toUpperCase())
+      !["REQUESTED", "WAITING"].includes(
+        existingRequest.status.toUpperCase(),
+      )
     ) {
       return NextResponse.json(
         {
-          error:
-            "This request can no longer be cancelled from the waiting room.",
+          error: "This request can no longer be cancelled from the waiting room.",
         },
         {
           status: 409,

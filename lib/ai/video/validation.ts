@@ -6,11 +6,9 @@ import type {
 } from "./types";
 import { AIVideoError } from "./errors";
 
-const VALID_DURATIONS: readonly VideoDuration[] = [4, 8, 12];
-
-const VALID_ASPECT_RATIOS: readonly VideoAspectRatio[] = ["16:9", "9:16"];
-
-const VALID_MODELS: readonly VideoModel[] = ["sora-2", "sora-2-pro"];
+export const VALID_VIDEO_DURATIONS = [2, 4, 5, 6, 8, 10] as const;
+export const VALID_VIDEO_ASPECT_RATIOS = ["16:9", "9:16"] as const;
+export const VALID_VIDEO_MODELS = ["sora-2", "sora-2-pro"] as const;
 
 export function validateVideoRequest(
   input: CreateVideoInput,
@@ -28,14 +26,14 @@ export function validateVideoRequest(
     );
   }
 
-  if (!VALID_DURATIONS.includes(input.duration)) {
+  if (!VALID_VIDEO_DURATIONS.includes(input.duration as VideoDuration)) {
     throw new AIVideoError(
-      "Video duration must be 4, 8, or 12 seconds.",
+      "Video duration must be 2, 4, 5, 6, 8, or 10 seconds.",
       "INVALID_REQUEST",
     );
   }
 
-  if (!VALID_ASPECT_RATIOS.includes(input.aspectRatio)) {
+  if (!VALID_VIDEO_ASPECT_RATIOS.includes(input.aspectRatio as VideoAspectRatio)) {
     throw new AIVideoError(
       "Video aspect ratio must be 16:9 or 9:16.",
       "INVALID_REQUEST",
@@ -44,7 +42,7 @@ export function validateVideoRequest(
 
   const model = input.model ?? "sora-2";
 
-  if (!VALID_MODELS.includes(model)) {
+  if (!VALID_VIDEO_MODELS.includes(model as VideoModel)) {
     throw new AIVideoError("Unsupported video model.", "INVALID_REQUEST");
   }
 

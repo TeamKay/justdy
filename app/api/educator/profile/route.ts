@@ -5,7 +5,6 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import {
   CAPABILITIES,
-  ensureCapabilities,
   hasCapability,
 } from "@/lib/auth/capabilities";
 
@@ -18,32 +17,47 @@ type ProfileBody = {
   currency?: unknown;
   subjects?: unknown;
   gradeLevels?: unknown;
-  imageUrl?: unknown;
 };
 
-async function getCurrentUser() {
+type CurrentUser = {
+  id: string;
+  role?: string | null;
+};
+
+async function getCurrentUser(): Promise<CurrentUser | null> {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
 
-  return session?.user ?? null;
+  if (!session?.user?.id) {
+    return null;
+  }
+
+  return {
+    id: session.user.id,
+    role: session.user.role,
+  };
 }
 
-function isAdmin(user: {
-  role?: string | null;
-}) {
-  const normalizedRole = String(user.role ?? "")
-    .trim()
-    .toUpperCase();
+async function canManageTeachingProfile(
+  user: CurrentUser,
+): Promise<boolean> {
+  if (
+    String(user.role ?? "").toUpperCase() ===
+    "ADMIN"
+  ) {
+    return true;
+  }
 
-  return normalizedRole === "ADMIN";
+  return hasCapability(
+    user.id,
+    CAPABILITIES.TEACH,
+  );
 }
 
-async function hasTeachingCapability(userId: string) {
-  return hasCapability(userId, CAPABILITIES.TEACH);
-}
-
-function cleanString(value: unknown): string | null {
+function cleanString(
+  value: unknown,
+): string | null {
   if (typeof value !== "string") {
     return null;
   }
@@ -53,34 +67,9 @@ function cleanString(value: unknown): string | null {
   return trimmed || null;
 }
 
-function cleanImageUrl(value: unknown): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const trimmed = value.trim();
-
-  if (!trimmed) {
-    return null;
-  }
-
-  /*
-   * Only accept actual HTTP(S) URLs.
-   *
-   * This prevents blob URLs such as:
-   *
-   * blob:http://localhost:3000/...
-   *
-   * from ever being stored in the database.
-   */
-  if (!/^https?:\/\//i.test(trimmed)) {
-    return null;
-  }
-
-  return trimmed;
-}
-
-function cleanStringArray(value: unknown): string[] {
+function cleanStringArray(
+  value: unknown,
+): string[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -91,7 +80,8 @@ function cleanStringArray(value: unknown): string[] {
         typeof item === "string",
     )
     .map((item) => item.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .slice(0, 50);
 }
 
 function parseExperience(
@@ -114,9 +104,24 @@ function parseExperience(
     return null;
   }
 
-  return Math.floor(parsed);
+  return Math.min(
+    80,
+    Math.floor(parsed),
+  );
 }
 
+/*
+ * TeachingProfile.hourlyRate is stored in cents.
+ *
+ * Examples:
+ *
+ *     25     -> $0.25
+ *     2500   -> $25.00
+ *     5000   -> $50.00
+ *
+ * The tutor application endpoint converts the public
+ * dollar amount into cents before saving it.
+ */
 function parseHourlyRateInCents(
   value: unknown,
 ): number | null {
@@ -148,13 +153,25 @@ function parseCurrency(
     : "USD";
 }
 
-/**
+/*
+ * ============================================================
  * GET
+ * ============================================================
  *
- * Loads the current user's teaching profile.
+ * Any authenticated user can read their own teaching profile.
  *
- * ADMIN users always have access.
- * Regular users need CAN_TEACH.
+ * This is important for the tutor application flow:
+ *
+ *     Learner
+ *        ↓
+ *     /tutoring/apply
+ *        ↓
+ *     GET /api/educator/profile
+ *
+ * The learner does NOT need CAN_TEACH merely to view an
+ * existing application/profile.
+ *
+ * No teaching capability is granted by this request.
  */
 export async function GET() {
   try {
@@ -163,109 +180,52 @@ export async function GET() {
     if (!user) {
       return NextResponse.json(
         {
-          error: "Authentication required.",
-        },
-        {
-          status: 401,
-        },
-      );
-    }
-
-    const allowed =
-      isAdmin(user) ||
-      (await hasTeachingCapability(user.id));
-
-    if (!allowed) {
-      return NextResponse.json(
-        {
           error:
-            "Teaching workspace access is required.",
+            "Authentication required.",
         },
-        {
-          status: 403,
-        },
+        { status: 401 },
       );
     }
 
-    /*
-     * Repair capability state if the profile exists
-     * but CAN_TEACH is somehow missing.
-     */
-    if (!isAdmin(user)) {
-      const existingProfile =
-        await prisma.teachingProfile.findUnique({
-          where: {
-            userId: user.id,
-          },
-          select: {
-            id: true,
-          },
-        });
-
-      if (existingProfile) {
-        await ensureCapabilities(
-          user.id,
-          [CAPABILITIES.TEACH],
-        );
-      }
-    }
-
-    const [
-      profile,
-      currentUser,
-    ] = await Promise.all([
-      prisma.teachingProfile.findUnique({
+    const profile =
+      await prisma.teachingProfile.findUnique({
         where: {
           userId: user.id,
         },
-      }),
-
-      prisma.user.findUnique({
-        where: {
-          id: user.id,
-        },
-        select: {
-          imageUrl: true,
-        },
-      }),
-    ]);
+      });
 
     return NextResponse.json({
       profile,
-      imageUrl:
-        currentUser?.imageUrl ?? null,
     });
   } catch (error) {
     console.error(
-      "Get educator profile error:",
+      "Get teaching profile error:",
       error,
     );
 
     return NextResponse.json(
       {
         error:
-          "Unable to load educator profile.",
+          "Unable to load teaching profile.",
       },
-      {
-        status: 500,
-      },
+      { status: 500 },
     );
   }
 }
 
-/**
+/*
+ * ============================================================
  * POST
+ * ============================================================
  *
- * Creates a teaching profile.
+ * Direct teaching-profile creation is restricted to users who
+ * already have teaching access.
  *
- * IMPORTANT:
- * A normal authenticated USER does not need CAN_TEACH
- * before creating their first teaching profile.
+ * Normal learners should use:
  *
- * Creating the profile establishes the teaching workflow,
- * after which CAN_TEACH is assigned.
+ *     POST /api/educator/apply
  *
- * ADMIN users continue to have unrestricted access.
+ * to submit a tutor application.
  */
 export async function POST(
   req: Request,
@@ -276,73 +236,49 @@ export async function POST(
     if (!user) {
       return NextResponse.json(
         {
-          error: "Authentication required.",
+          error:
+            "Authentication required.",
         },
-        {
-          status: 401,
-        },
+        { status: 401 },
       );
     }
 
-    /*
-     * Check whether a teaching profile already exists
-     * before deciding whether this is first-time setup.
-     */
+    if (
+      !(await canManageTeachingProfile(user))
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Teaching access is required to create a teaching profile.",
+        },
+        { status: 403 },
+      );
+    }
+
     const existingProfile =
       await prisma.teachingProfile.findUnique({
         where: {
           userId: user.id,
         },
-        select: {
-          id: true,
-        },
       });
 
-    /*
-     * If a profile already exists, the user must use PATCH.
-     *
-     * This check is intentionally performed before the
-     * CAN_TEACH check so an existing profile can also be
-     * repaired if the capability assignment is missing.
-     */
     if (existingProfile) {
-      /*
-       * Keep the capability assignment synchronized.
-       */
-      if (!isAdmin(user)) {
-        await ensureCapabilities(
-          user.id,
-          [CAPABILITIES.TEACH],
-        );
-      }
-
       return NextResponse.json(
         {
           error:
-            "An educator profile already exists. Use PATCH to update your profile.",
+            "A teaching profile already exists. Use PATCH to update your profile.",
         },
-        {
-          status: 409,
-        },
+        { status: 409 },
       );
     }
 
-    /*
-     * This is first-time teaching-profile creation.
-     *
-     * A regular authenticated USER is allowed to create
-     * the profile. CAN_TEACH will be granted after the
-     * profile is successfully created.
-     *
-     * ADMIN users are naturally allowed as well.
-     */
     const body =
-      (await req.json()) as ProfileBody;
+      (await req.json().catch(
+        () => ({}),
+      )) as ProfileBody;
 
     const experience =
-      parseExperience(
-        body.experience,
-      );
+      parseExperience(body.experience);
 
     const hourlyRate =
       parseHourlyRateInCents(
@@ -360,9 +296,7 @@ export async function POST(
           error:
             "Years of experience must be a valid non-negative number.",
         },
-        {
-          status: 400,
-        },
+        { status: 400 },
       );
     }
 
@@ -377,112 +311,43 @@ export async function POST(
           error:
             "Hourly rate must be a valid non-negative amount.",
         },
-        {
-          status: 400,
-        },
+        { status: 400 },
       );
     }
 
-    /*
-     * imageUrl is optional.
-     *
-     * If the user has not selected a new image,
-     * we leave the existing User.imageUrl alone.
-     */
-    const imageUrl =
-      body.imageUrl === undefined
-        ? undefined
-        : cleanImageUrl(
-            body.imageUrl,
-          );
-
-    /*
-     * Create the teaching profile first.
-     */
     const profile =
       await prisma.teachingProfile.create({
         data: {
           userId: user.id,
-
-          headline:
-            cleanString(
-              body.headline,
-            ),
-
-          specialty:
-            cleanString(
-              body.specialty,
-            ),
-
+          headline: cleanString(
+            body.headline,
+          ),
+          specialty: cleanString(
+            body.specialty,
+          ),
           experience,
-
-          description:
-            cleanString(
-              body.description,
-            ),
-
+          description: cleanString(
+            body.description,
+          ),
           hourlyRate,
+          currency: parseCurrency(
+            body.currency,
+          ),
+          subjects: cleanStringArray(
+            body.subjects,
+          ),
+          gradeLevels: cleanStringArray(
+            body.gradeLevels,
+          ),
 
-          currency:
-            parseCurrency(
-              body.currency,
-            ),
-
-          subjects:
-            cleanStringArray(
-              body.subjects,
-            ),
-
-          gradeLevels:
-            cleanStringArray(
-              body.gradeLevels,
-            ),
-
-          verificationStatus:
-            "Pending",
-        },
-      });
-
-    /*
-     * Now that the user has successfully created
-     * a teaching profile, grant the teaching capability.
-     *
-     * This is the important fix for the bootstrap problem.
-     */
-    if (!isAdmin(user)) {
-      await ensureCapabilities(
-        user.id,
-        [CAPABILITIES.TEACH],
-      );
-    }
-
-    /*
-     * Save the permanent UploadThing URL
-     * to User.imageUrl.
-     */
-    if (imageUrl !== undefined) {
-      await prisma.user.update({
-        where: {
-          id: user.id,
-        },
-        data: {
-          imageUrl,
-        },
-      });
-    }
-
-    /*
-     * Retrieve the final saved image URL
-     * so the response always contains the
-     * canonical database value.
-     */
-    const savedUser =
-      await prisma.user.findUnique({
-        where: {
-          id: user.id,
-        },
-        select: {
-          imageUrl: true,
+          /*
+           * Direct profile creation is only available to
+           * users who already have teaching access.
+           *
+           * The normal tutor application flow is responsible
+           * for creating/updating pending applications.
+           */
+          verificationStatus: "Pending",
         },
       });
 
@@ -490,38 +355,39 @@ export async function POST(
       {
         success: true,
         profile,
-        imageUrl:
-          savedUser?.imageUrl ?? null,
       },
-      {
-        status: 201,
-      },
+      { status: 201 },
     );
   } catch (error) {
     console.error(
-      "Create educator profile error:",
+      "Create teaching profile error:",
       error,
     );
 
     return NextResponse.json(
       {
         error:
-          "Unable to create educator profile.",
+          "Unable to create teaching profile.",
       },
-      {
-        status: 500,
-      },
+      { status: 500 },
     );
   }
 }
 
-/**
+/*
+ * ============================================================
  * PATCH
+ * ============================================================
  *
- * Updates an existing teaching profile.
+ * Updating an active teaching profile requires teaching
+ * capability.
  *
- * ADMIN users always have access.
- * Regular users must have CAN_TEACH.
+ * Tutor application updates should continue to go through:
+ *
+ *     POST /api/educator/apply
+ *
+ * so that the application workflow controls the verification
+ * status correctly.
  */
 export async function PATCH(
   req: Request,
@@ -532,20 +398,25 @@ export async function PATCH(
     if (!user) {
       return NextResponse.json(
         {
-          error: "Authentication required.",
+          error:
+            "Authentication required.",
         },
-        {
-          status: 401,
-        },
+        { status: 401 },
       );
     }
 
-    /*
-     * Find the profile first.
-     *
-     * If it exists, we can safely synchronize the
-     * user's teaching capability before continuing.
-     */
+    if (
+      !(await canManageTeachingProfile(user))
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Teaching access is required to update a teaching profile.",
+        },
+        { status: 403 },
+      );
+    }
+
     const profile =
       await prisma.teachingProfile.findUnique({
         where: {
@@ -557,50 +428,16 @@ export async function PATCH(
       return NextResponse.json(
         {
           error:
-            "Teaching profile not found. Create your profile first.",
+            "Teaching profile not found. Submit a tutor application first.",
         },
-        {
-          status: 404,
-        },
-      );
-    }
-
-    /*
-     * A user with an existing teaching profile should
-     * always have CAN_TEACH.
-     *
-     * This repairs older records created before the
-     * capability system was fully synchronized.
-     */
-    if (!isAdmin(user)) {
-      await ensureCapabilities(
-        user.id,
-        [CAPABILITIES.TEACH],
-      );
-    }
-
-    /*
-     * ADMIN users and users whose profile has now been
-     * synchronized are allowed to update.
-     */
-    const allowed =
-      isAdmin(user) ||
-      (await hasTeachingCapability(user.id));
-
-    if (!allowed) {
-      return NextResponse.json(
-        {
-          error:
-            "Teaching workspace access is required.",
-        },
-        {
-          status: 403,
-        },
+        { status: 404 },
       );
     }
 
     const body =
-      (await req.json()) as ProfileBody;
+      (await req.json().catch(
+        () => ({}),
+      )) as ProfileBody;
 
     const data: {
       headline?: string | null;
@@ -617,27 +454,21 @@ export async function PATCH(
       body.headline !== undefined
     ) {
       data.headline =
-        cleanString(
-          body.headline,
-        );
+        cleanString(body.headline);
     }
 
     if (
       body.specialty !== undefined
     ) {
       data.specialty =
-        cleanString(
-          body.specialty,
-        );
+        cleanString(body.specialty);
     }
 
     if (
       body.description !== undefined
     ) {
       data.description =
-        cleanString(
-          body.description,
-        );
+        cleanString(body.description);
     }
 
     if (
@@ -660,9 +491,7 @@ export async function PATCH(
               error:
                 "Years of experience must be a valid non-negative number.",
             },
-            {
-              status: 400,
-            },
+            { status: 400 },
           );
         }
 
@@ -691,9 +520,7 @@ export async function PATCH(
               error:
                 "Hourly rate must be a valid non-negative amount.",
             },
-            {
-              status: 400,
-            },
+            { status: 400 },
           );
         }
 
@@ -729,21 +556,6 @@ export async function PATCH(
         );
     }
 
-    /*
-     * Only modify User.imageUrl if
-     * imageUrl was actually included
-     * in the request.
-     */
-    const imageUrl =
-      body.imageUrl === undefined
-        ? undefined
-        : cleanImageUrl(
-            body.imageUrl,
-          );
-
-    /*
-     * Update teaching profile.
-     */
     const updatedProfile =
       await prisma.teachingProfile.update({
         where: {
@@ -752,55 +564,22 @@ export async function PATCH(
         data,
       });
 
-    /*
-     * Save the permanent UploadThing
-     * URL to the User record.
-     */
-    if (imageUrl !== undefined) {
-      await prisma.user.update({
-        where: {
-          id: user.id,
-        },
-        data: {
-          imageUrl,
-        },
-      });
-    }
-
-    /*
-     * Read the final value from the database.
-     */
-    const updatedUser =
-      await prisma.user.findUnique({
-        where: {
-          id: user.id,
-        },
-        select: {
-          imageUrl: true,
-        },
-      });
-
     return NextResponse.json({
       success: true,
-      profile:
-        updatedProfile,
-      imageUrl:
-        updatedUser?.imageUrl ?? null,
+      profile: updatedProfile,
     });
   } catch (error) {
     console.error(
-      "Update educator profile error:",
+      "Update teaching profile error:",
       error,
     );
 
     return NextResponse.json(
       {
         error:
-          "Unable to update educator profile.",
+          "Unable to update teaching profile.",
       },
-      {
-        status: 500,
-      },
+      { status: 500 },
     );
   }
 }

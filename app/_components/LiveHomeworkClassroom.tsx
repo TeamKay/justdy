@@ -1,1210 +1,2621 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+
+
 "use client";
 
-import type { ReactNode } from "react";
+
+
+
+
+
+
 import { useCallback, useEffect, useRef, useState } from "react";
+
+
+
 import {
-  Camera,
-  CameraOff,
+
+
+
+  BookOpen,
+
+
+
   Clock3,
+
+
+
   FileText,
+
+
+
   Loader2,
+
+
+
   MessageCircle,
-  Mic,
-  MicOff,
-  MonitorUp,
+
+
+
   PhoneOff,
-  Send,
+
+
+
   ShieldCheck,
+
+
+
   Sparkles,
-  VideoOff,
-  Wifi,
+
+
+
   X,
+
+
+
 } from "lucide-react";
 
+
+
+
+
+
+
+import VideoCall from "@/app/_components/VideoCall";
+
+
+
+import Whiteboard, {
+
+
+
+  type WhiteboardRealtimeData,
+
+
+
+} from "@/app/_components/Whiteboard";
+
+
+
+
+
+
+
 type ClassroomUser = {
+
+
+
   id: string;
+
+
+
   name: string;
+
+
+
   role: string | null;
+
+
+
 };
+
+
+
+
+
+
 
 type ClassroomSession = {
+
+
+
   id: string;
+
+
+
   requestId: string;
+
+
+
   learnerId: string;
+
+
+
   teacherId: string;
+
+
+
   status: string;
+
+
+
   startedAt: string | null;
+
+
+
   endedAt: string | null;
+
+
+
   durationSeconds: number;
+
+
+
 };
+
+
+
+
+
+
 
 type HomeworkRequest = {
+
+
+
   id: string;
+
+
+
   subject: string;
+
+
+
   gradeLevel: string | null;
+
+
+
   topic: string | null;
+
+
+
   description: string;
+
+
+
   assignmentUrl: string | null;
+
+
+
   assignmentName: string | null;
+
+
+
   assignmentType: string | null;
+
+
+
 };
+
+
+
+
+
+
+
+type DailyCredentials = {
+
+
+
+  videoSessionId: string;
+
+
+
+  token: string;
+
+
+
+  roomUrl?: string;
+
+
+
+  role: "tutor" | "customer";
+
+
+
+};
+
+
+
+
+
+
+
+type WhiteboardChunkPayload = {
+
+
+
+  id: string;
+
+
+
+  index: number;
+
+
+
+  total: number;
+
+
+
+  chunk: string;
+
+
+
+};
+
+
+
+
+
+
+
+type WhiteboardChunkBuffer = {
+
+
+
+  total: number;
+
+
+
+  chunks: Map<number, string>;
+
+
+
+  expiresAt: number;
+
+
+
+};
+
+
+
+
+
+
 
 type Props = {
+
+
+
   user: ClassroomUser;
+
+
+
   session: ClassroomSession;
+
+
+
   request: HomeworkRequest;
+
+
+
 };
 
-/**
- * The Vonage browser SDK exposes OpenTok-compatible objects.
- *
- * We intentionally keep these local interfaces instead of augmenting
- * Window.OT globally. The project already contains opentok.d.ts, and
- * globally declaring OT here creates incompatible duplicate SDK types.
- */
 
-type VonageStream = object;
 
-type VonagePublisher = {
-  destroy?: () => void;
-  publishAudio: (enabled: boolean) => void;
-  publishVideo: (enabled: boolean) => void;
-};
 
-type VonageSignalEvent = {
-  type?: string;
-  data?: string;
-  from?: { connectionId?: string };
-};
 
-type VonageSessionEventMap = {
-  streamCreated: {
-    stream: VonageStream;
-  };
-  streamDestroyed: {
-    stream?: VonageStream;
-  };
-  sessionDisconnected: {
-    reason?: string;
-  };
-  exception: Error;
-  signal: VonageSignalEvent;
-};
 
-type VonageSession = {
-  connect: (token: string, callback: (error?: Error) => void) => void;
 
-  publish: (
-    publisher: VonagePublisher,
-    callback?: (error?: Error) => void,
-  ) => void;
+const WHITEBOARD_MESSAGE_CHUNK_SIZE = 2800;
 
-  unpublish?: (publisher: VonagePublisher) => void;
 
-  signal?: (
-    type: string,
-    data: string,
-    callback?: (error?: Error) => void,
-  ) => void;
 
-  subscribe: (
-    stream: VonageStream,
-    element: HTMLElement,
-    options?: Record<string, unknown>,
-    callback?: (error?: Error) => void,
-  ) => unknown;
+const WHITEBOARD_MESSAGE_MAX_CHUNKS = 512;
 
-  disconnect: () => void;
 
-  on: <K extends keyof VonageSessionEventMap>(
-    event: K,
-    callback: (event: VonageSessionEventMap[K]) => void,
-  ) => void;
 
-  off?: <K extends keyof VonageSessionEventMap>(
-    event: K,
-    callback: (event: VonageSessionEventMap[K]) => void,
-  ) => void;
-};
+const WHITEBOARD_MESSAGE_TTL_MS = 15_000;
 
-type VonageOT = {
-  initSession: (applicationId: string, sessionId: string) => VonageSession;
 
-  initPublisher: (
-    targetElement: HTMLElement,
-    options: Record<string, unknown>,
-    callback?: (error?: Error) => void,
-  ) => VonagePublisher;
 
-  checkSystemRequirements?: () => number;
-};
 
-type ChatMessage = {
-  id: string;
-  sender: "me" | "other";
-  text: string;
-  createdAt: number;
-};
 
-const VONAGE_SCRIPT =
-  "https://unpkg.com/@vonage/client-sdk-video@2.28.2/dist/js/opentok.js";
 
-function getVonageSDK(): VonageOT | undefined {
-  return (
-    window as unknown as {
-      OT?: VonageOT;
-    }
-  ).OT;
+
+function encodeWhiteboardPayload(value: unknown) {
+
+
+
+  const json = JSON.stringify(value);
+
+
+
+  const bytes = new TextEncoder().encode(json);
+
+
+
+  let binary = "";
+
+
+
+
+
+
+
+  for (let index = 0; index < bytes.length; index += 0x8000) {
+
+
+
+    binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+
+
+
+  }
+
+
+
+
+
+
+
+  return btoa(binary);
+
+
+
 }
+
+
+
+
+
+
+
+function decodeWhiteboardPayload(value: string): unknown {
+
+
+
+  const binary = atob(value);
+
+
+
+  const bytes = new Uint8Array(binary.length);
+
+
+
+
+
+
+
+  for (let index = 0; index < binary.length; index += 1) {
+
+
+
+    bytes[index] = binary.charCodeAt(index);
+
+
+
+  }
+
+
+
+
+
+
+
+  return JSON.parse(new TextDecoder().decode(bytes));
+
+
+
+}
+
+
+
+
+
+
+
+function createWhiteboardMessageId() {
+
+
+
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+
+
+
+    return crypto.randomUUID();
+
+
+
+  }
+
+
+
+
+
+
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+
+
+}
+
+
+
+
+
+
 
 function formatDuration(totalSeconds: number) {
+
+
+
   const seconds = Math.max(0, totalSeconds);
+
+
+
   const minutes = Math.floor(seconds / 60);
+
+
+
   const remainingSeconds = seconds % 60;
 
+
+
+
+
+
+
   return `${String(minutes).padStart(2, "0")}:${String(
+
+
+
     remainingSeconds,
+
+
+
   ).padStart(2, "0")}`;
+
+
+
 }
 
-function loadVonageScript(): Promise<VonageOT> {
-  if (typeof window === "undefined") {
-    return Promise.reject(new Error("Vonage can only be loaded in a browser."));
-  }
 
-  const existingSDK = getVonageSDK();
 
-  if (existingSDK) {
-    return Promise.resolve(existingSDK);
-  }
 
-  return new Promise<VonageOT>((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>(
-      'script[data-justdy-vonage="true"]',
-    );
 
-    if (existing) {
-      const handleLoad = () => {
-        const loadedSDK = getVonageSDK();
 
-        if (loadedSDK) {
-          resolve(loadedSDK);
-        } else {
-          reject(new Error("Vonage Video SDK failed to initialize."));
-        }
-      };
-
-      const handleError = () => {
-        reject(new Error("Unable to load Vonage Video SDK."));
-      };
-
-      existing.addEventListener("load", handleLoad, {
-        once: true,
-      });
-
-      existing.addEventListener("error", handleError, {
-        once: true,
-      });
-
-      return;
-    }
-
-    const script = document.createElement("script");
-
-    script.src = VONAGE_SCRIPT;
-    script.async = true;
-    script.dataset.justdyVonage = "true";
-
-    script.onload = () => {
-      const loadedSDK = getVonageSDK();
-
-      if (loadedSDK) {
-        resolve(loadedSDK);
-      } else {
-        reject(new Error("Vonage Video SDK failed to initialize."));
-      }
-    };
-
-    script.onerror = () => {
-      reject(new Error("Unable to load Vonage Video SDK."));
-    };
-
-    document.head.appendChild(script);
-  });
-}
 
 export default function LiveHomeworkClassroom({
+
+
+
   user,
+
+
+
   session,
+
+
+
   request,
+
+
+
 }: Props) {
-  const publisherContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const subscriberContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const vonageSessionRef = useRef<VonageSession | null>(null);
 
-  const publisherRef = useRef<VonagePublisher | null>(null);
+  const [videoCredentials, setVideoCredentials] =
 
-  const screenSharePublisherRef = useRef<VonagePublisher | null>(null);
 
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const initializationTimerRef = useRef<number | null>(null);
+    useState<DailyCredentials | null>(null);
 
-  const [connectionState, setConnectionState] = useState<
-    "loading" | "connecting" | "connected" | "error"
-  >("loading");
 
-  const [connectionError, setConnectionError] = useState<string | null>(null);
 
-  const [micEnabled, setMicEnabled] = useState(true);
+  const [connectionError, setConnectionError] = useState("");
 
-  const [cameraEnabled, setCameraEnabled] = useState(true);
 
-  const [screenSharing, setScreenSharing] = useState(false);
 
   const [sessionStatus, setSessionStatus] = useState(session.status);
 
+
+
   const [startedAt, setStartedAt] = useState<string | null>(session.startedAt);
 
-  const [elapsedSeconds, setElapsedSeconds] = useState(session.durationSeconds);
+
+
+  const [elapsedSeconds, setElapsedSeconds] = useState(
+
+
+
+    session.durationSeconds,
+
+
+
+  );
+
+
 
   const [showAssignment, setShowAssignment] = useState(true);
 
-  const [showChat, setShowChat] = useState(true);
 
-  const [chatInput, setChatInput] = useState("");
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [showHomeworkPanel, setShowHomeworkPanel] = useState(true);
 
-  const [showEndDialog, setShowEndDialog] = useState(false);
 
-  const [ending, setEnding] = useState(false);
+
+
+
+
+
+  const [remoteWhiteboardData, setRemoteWhiteboardData] =
+
+
+
+    useState<WhiteboardRealtimeData | null>(null);
+
+
+
+  const [participantRailWidth, setParticipantRailWidth] = useState(350);
+
+
+
+
+
+
+
+  const whiteboardSendRef = useRef<
+
+
+
+    ((type: string, data?: unknown) => void) | null
+
+
+
+  >(null);
+
+
+
+  const whiteboardSignalTimerRef =
+
+
+
+    useRef<ReturnType<typeof setTimeout> | null>(null);
+
+
+
+  const whiteboardChunkBuffersRef = useRef<
+
+
+
+    Map<string, WhiteboardChunkBuffer>
+
+
+
+  >(new Map());
+
+
+
+
+
+
 
   const isTeacher =
+
+
+
     user.id === session.teacherId || user.role?.toLowerCase() === "admin";
+
+
+
+
+
+
 
   const otherPersonLabel = isTeacher ? "Learner" : "Teacher";
 
+
+
+
+
+
+
   const startOfficialSession = useCallback(async () => {
+
+
+
     const response = await fetch(
-      `/api/live-homework-help/session/${session.id}`,
+
+
+
+      `/api/live-homework-help/session/${encodeURIComponent(session.id)}`,
+
+
+
       {
+
+
+
         method: "PATCH",
+
+
+
         headers: {
+
+
+
           "Content-Type": "application/json",
+
+
+
         },
-        body: JSON.stringify({
-          action: "START",
-        }),
+
+
+
+        body: JSON.stringify({ action: "START" }),
+
+
+
       },
+
+
+
     );
 
-    const data = await response.json();
+
+
+
+
+
+
+    const data = await response.json().catch(() => null);
+
+
+
+
+
+
 
     if (!response.ok) {
-      throw new Error(data.error ?? "Unable to start classroom session.");
+
+
+
+      throw new Error(
+
+
+
+        data?.error ?? "Unable to start the live homework session.",
+
+
+
+      );
+
+
+
     }
+
+
+
+
+
+
 
     setSessionStatus(data.session.status);
+
+
+
     setStartedAt(data.session.startedAt);
 
+
+
+
+
+
+
     return data.session;
+
+
+
   }, [session.id]);
 
-  const initializeVonage = useCallback(async () => {
+
+
+
+
+
+
+  const loadDailyCredentials = useCallback(async () => {
+
+
+
+    setConnectionError("");
+
+
+
+
+
+
+
     try {
-      setConnectionState("loading");
-      setConnectionError(null);
 
-      const vonage = await loadVonageScript();
 
-      if (
-        vonage.checkSystemRequirements &&
-        vonage.checkSystemRequirements() !== 1
-      ) {
-        throw new Error(
-          "This browser does not support the required live classroom video features.",
-        );
-      }
 
       const response = await fetch(
-        `/api/live-homework-help/session/${session.id}/vonage`,
+
+
+
+        `/api/live-homework-help/session/${encodeURIComponent(
+
+
+
+          session.id,
+
+
+
+        )}/daily`,
+
+
+
         {
+
+
+
           method: "POST",
+
+
+
+          headers: {
+
+
+
+            "Content-Type": "application/json",
+
+
+
+          },
+
+
+
         },
+
+
+
       );
 
-      const data = await response.json();
+
+
+
+
+
+
+      const data = await response.json().catch(() => null);
+
+
+
+
+
+
 
       if (!response.ok) {
+
+
+
         throw new Error(
-          data.error ?? "Unable to initialize the live classroom.",
+
+
+
+          data?.error ?? "Unable to prepare the Daily classroom.",
+
+
+
         );
+
+
+
       }
 
-      if (!publisherContainerRef.current || !subscriberContainerRef.current) {
-        throw new Error("Classroom video containers are not ready.");
-      }
 
-      const vonageSession = vonage.initSession(
-        data.applicationId,
-        data.sessionId,
-      );
 
-      vonageSessionRef.current = vonageSession;
 
-      const handleStreamCreated = (
-        event: VonageSessionEventMap["streamCreated"],
-      ) => {
-        const subscriber = subscriberContainerRef.current;
 
-        if (!subscriber) {
-          return;
-        }
 
-        subscriber.innerHTML = "";
 
-        vonageSession.subscribe(
-          event.stream,
-          subscriber,
-          {
-            insertMode: "append",
-            width: "100%",
-            height: "100%",
-          },
-          (error?: Error) => {
-            if (error) {
-              console.error("Vonage subscription error:", error);
-            }
-          },
-        );
-      };
+      setVideoCredentials({
 
-      const handleStreamDestroyed = () => {
-        const subscriber = subscriberContainerRef.current;
 
-        if (subscriber) {
-          subscriber.innerHTML = "";
-        }
-      };
 
-      const handleSessionDisconnected = () => {
-        setConnectionState("error");
-        setConnectionError("The live classroom connection was disconnected.");
-      };
+        videoSessionId: data.videoSessionId,
 
-      const handleException = (error: VonageSessionEventMap["exception"]) => {
-        console.error("Vonage classroom exception:", error);
 
-        setConnectionError(
-          error?.message ?? "A video classroom error occurred.",
-        );
-      };
 
-      const handleSignal = (event: VonageSessionEventMap["signal"]) => {
-        if (event.type !== "justdy-chat" || !event.data) {
-          return;
-        }
+        token: data.token,
 
-        try {
-          const payload = JSON.parse(event.data) as {
-            senderId?: string;
-            text?: string;
-            createdAt?: number;
-          };
 
-          if (!payload.text || payload.senderId === user.id) {
-            return;
-          }
 
-          const text = payload.text;
-          if (!text) {
-            return;
-          }
+        roomUrl: data.roomUrl,
 
-          setMessages((current) => [
-            ...current,
-            {
-              id: crypto.randomUUID(),
-              sender: "other",
-              text,
-              createdAt: payload.createdAt ?? Date.now(),
-            },
-          ]);
-        } catch (error) {
-          console.error("Unable to read classroom chat message:", error);
-        }
-      };
 
-      vonageSession.on("streamCreated", handleStreamCreated);
 
-      vonageSession.on("streamDestroyed", handleStreamDestroyed);
+        role: data.role,
 
-      vonageSession.on("sessionDisconnected", handleSessionDisconnected);
 
-      vonageSession.on("exception", handleException);
 
-      vonageSession.on("signal", handleSignal);
-
-      const publisher = vonage.initPublisher(
-        publisherContainerRef.current,
-        {
-          insertMode: "replace",
-          width: "100%",
-          height: "100%",
-          resolution: "1280x720",
-          publishAudio: true,
-          publishVideo: true,
-          name: user.name,
-        },
-        (error?: Error) => {
-          if (error) {
-            console.error("Vonage publisher error:", error);
-          }
-        },
-      );
-
-      publisherRef.current = publisher;
-
-      setConnectionState("connecting");
-
-      await new Promise<void>((resolve, reject) => {
-        vonageSession.connect(data.token, (error?: Error) => {
-          if (error) {
-            reject(error);
-            return;
-          }
-
-          resolve();
-        });
       });
 
-      await new Promise<void>((resolve, reject) => {
-        vonageSession.publish(publisher, (error?: Error) => {
-          if (error) {
-            reject(error);
-            return;
-          }
 
-          resolve();
-        });
-      });
 
-      /*
-       * Only after the actual Vonage connection and
-       * publishing succeed do we mark the Justdy
-       * session ACTIVE.
-       */
-      if (sessionStatus !== "ACTIVE" && sessionStatus !== "ENDED") {
-        const started = await startOfficialSession();
-
-        setElapsedSeconds(started.durationSeconds ?? 0);
-      }
-
-      setConnectionState("connected");
     } catch (error) {
-      console.error("Live Homework Help Vonage initialization failed:", error);
 
-      setConnectionState("error");
+
 
       setConnectionError(
+
+
+
         error instanceof Error
+
+
+
           ? error.message
+
+
+
           : "Unable to connect to the live classroom.",
+
+
+
       );
+
+
+
     }
-  }, [session.id, user.id, sessionStatus, startOfficialSession, user.name]);
+
+
+
+  }, [session.id]);
+
+
+
+
+
+
 
   useEffect(() => {
-    initializationTimerRef.current = window.setTimeout(() => {
-      void initializeVonage();
+
+
+
+    const timer = window.setTimeout(() => {
+
+
+
+      void loadDailyCredentials();
+
+
+
     }, 0);
 
-    return () => {
-      if (initializationTimerRef.current) {
-        window.clearTimeout(initializationTimerRef.current);
-        initializationTimerRef.current = null;
-      }
 
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
 
-      try {
-        vonageSessionRef.current?.disconnect();
-      } catch (error) {
-        console.error("Unable to disconnect Vonage classroom:", error);
-      }
 
-      try {
-        if (
-          screenSharePublisherRef.current &&
-          vonageSessionRef.current?.unpublish
-        ) {
-          vonageSessionRef.current.unpublish(screenSharePublisherRef.current);
-        }
-      } catch (error) {
-        console.error("Unable to unpublish screen share:", error);
-      }
 
-      try {
-        screenSharePublisherRef.current?.destroy?.();
-      } catch (error) {
-        console.error("Unable to destroy screen-share publisher:", error);
-      }
 
-      try {
-        publisherRef.current?.destroy?.();
-      } catch (error) {
-        console.error("Unable to destroy Vonage publisher:", error);
-      }
 
-      vonageSessionRef.current = null;
-      publisherRef.current = null;
-      screenSharePublisherRef.current = null;
-    };
-  }, [initializeVonage]);
+    return () => window.clearTimeout(timer);
+
+
+
+  }, [loadDailyCredentials]);
+
+
+
+
+
+
 
   useEffect(() => {
-    if (sessionStatus !== "ACTIVE" || !startedAt) {
+
+
+
+    return () => {
+
+
+
+      if (whiteboardSignalTimerRef.current) {
+
+
+
+        clearTimeout(whiteboardSignalTimerRef.current);
+
+
+
+      }
+
+
+
+
+
+
+
+      whiteboardChunkBuffersRef.current.clear();
+
+
+
+    };
+
+
+
+  }, []);
+
+
+
+
+
+
+
+  const sendWhiteboardSnapshot = useCallback(
+
+
+
+    (data: WhiteboardRealtimeData) => {
+
+
+
+      const sendSignal = whiteboardSendRef.current;
+
+
+
+      if (!sendSignal) return;
+
+
+
+
+
+
+
+      try {
+
+
+
+        const encoded = encodeWhiteboardPayload(data);
+
+
+
+        const total = Math.ceil(
+
+
+
+          encoded.length / WHITEBOARD_MESSAGE_CHUNK_SIZE,
+
+
+
+        );
+
+
+
+
+
+
+
+        if (total < 1 || total > WHITEBOARD_MESSAGE_MAX_CHUNKS) {
+
+
+
+          console.warn(
+
+
+
+            "Live Homework whiteboard snapshot is too large for Daily app-message transport.",
+
+
+
+          );
+
+
+
+          return;
+
+
+
+        }
+
+
+
+
+
+
+
+        const id = createWhiteboardMessageId();
+
+
+
+
+
+
+
+        for (let index = 0; index < total; index += 1) {
+
+
+
+          const payload: WhiteboardChunkPayload = {
+
+
+
+            id,
+
+
+
+            index,
+
+
+
+            total,
+
+
+
+            chunk: encoded.slice(
+
+
+
+              index * WHITEBOARD_MESSAGE_CHUNK_SIZE,
+
+
+
+              (index + 1) * WHITEBOARD_MESSAGE_CHUNK_SIZE,
+
+
+
+            ),
+
+
+
+          };
+
+
+
+
+
+
+
+          sendSignal("whiteboard:update:chunk", payload);
+
+
+
+        }
+
+
+
+      } catch (error) {
+
+
+
+        console.error(
+
+
+
+          "Failed to send Live Homework whiteboard snapshot:",
+
+
+
+          error,
+
+
+
+        );
+
+
+
+      }
+
+
+
+    },
+
+
+
+    [],
+
+
+
+  );
+
+
+
+
+
+
+
+  const handleWhiteboardChange = useCallback(
+
+
+
+    (data: WhiteboardRealtimeData) => {
+
+
+
+      if (whiteboardSignalTimerRef.current) {
+
+
+
+        clearTimeout(whiteboardSignalTimerRef.current);
+
+
+
+      }
+
+
+
+
+
+
+
+      whiteboardSignalTimerRef.current = setTimeout(() => {
+
+
+
+        sendWhiteboardSnapshot(data);
+
+
+
+      }, 200);
+
+
+
+    },
+
+
+
+    [sendWhiteboardSnapshot],
+
+
+
+  );
+
+
+
+
+
+
+
+  const handleWhiteboardSignal = useCallback(
+
+
+
+    (signal: { type: string; data?: unknown }) => {
+
+
+
+      if (signal.type === "whiteboard:update") {
+
+
+
+        if (!signal.data || typeof signal.data !== "object") return;
+
+
+
+        setRemoteWhiteboardData(signal.data as WhiteboardRealtimeData);
+
+
+
+        return;
+
+
+
+      }
+
+
+
+
+
+
+
+      if (signal.type !== "whiteboard:update:chunk") return;
+
+
+
+      if (!signal.data || typeof signal.data !== "object") return;
+
+
+
+
+
+
+
+      const chunk = signal.data as Partial<WhiteboardChunkPayload>;
+
+
+
+
+
+
+
+      if (
+
+
+
+        typeof chunk.id !== "string" ||
+
+
+
+        typeof chunk.index !== "number" ||
+
+
+
+        typeof chunk.total !== "number" ||
+
+
+
+        typeof chunk.chunk !== "string"
+
+
+
+      ) {
+
+
+
+        return;
+
+
+
+      }
+
+
+
+
+
+
+
+      if (
+
+
+
+        chunk.total < 1 ||
+
+
+
+        chunk.total > WHITEBOARD_MESSAGE_MAX_CHUNKS ||
+
+
+
+        chunk.index < 0 ||
+
+
+
+        chunk.index >= chunk.total
+
+
+
+      ) {
+
+
+
+        return;
+
+
+
+      }
+
+
+
+
+
+
+
+      const now = Date.now();
+
+
+
+      const buffers = whiteboardChunkBuffersRef.current;
+
+
+
+
+
+
+
+      for (const [id, buffer] of buffers) {
+
+
+
+        if (buffer.expiresAt <= now) {
+
+
+
+          buffers.delete(id);
+
+
+
+        }
+
+
+
+      }
+
+
+
+
+
+
+
+      let buffer = buffers.get(chunk.id);
+
+
+
+
+
+
+
+      if (!buffer || buffer.total !== chunk.total) {
+
+
+
+        buffer = {
+
+
+
+          total: chunk.total,
+
+
+
+          chunks: new Map(),
+
+
+
+          expiresAt: now + WHITEBOARD_MESSAGE_TTL_MS,
+
+
+
+        };
+
+
+
+        buffers.set(chunk.id, buffer);
+
+
+
+      }
+
+
+
+
+
+
+
+      buffer.chunks.set(chunk.index, chunk.chunk);
+
+
+
+      buffer.expiresAt = now + WHITEBOARD_MESSAGE_TTL_MS;
+
+
+
+
+
+
+
+      if (buffer.chunks.size !== buffer.total) return;
+
+
+
+
+
+
+
+      try {
+
+
+
+        const encoded = Array.from(
+
+
+
+          { length: buffer.total },
+
+
+
+          (_, index) => buffer?.chunks.get(index) ?? "",
+
+
+
+        ).join("");
+
+
+
+
+
+
+
+        const decoded = decodeWhiteboardPayload(encoded);
+
+
+
+
+
+
+
+        if (decoded && typeof decoded === "object") {
+
+
+
+          setRemoteWhiteboardData(decoded as WhiteboardRealtimeData);
+
+
+
+        }
+
+
+
+      } catch (error) {
+
+
+
+        console.error(
+
+
+
+          "Failed to decode Live Homework whiteboard snapshot:",
+
+
+
+          error,
+
+
+
+        );
+
+
+
+      } finally {
+
+
+
+        buffers.delete(chunk.id);
+
+
+
+      }
+
+
+
+    },
+
+
+
+    [],
+
+
+
+  );
+
+
+
+
+
+
+
+  const handleConnected = useCallback(() => {
+
+
+
+    void startOfficialSession().catch((error) => {
+
+
+
+      setConnectionError(
+
+
+
+        error instanceof Error
+
+
+
+          ? error.message
+
+
+
+          : "Unable to start the live homework session.",
+
+
+
+      );
+
+
+
+    });
+
+
+
+  }, [startOfficialSession]);
+
+
+
+
+
+
+
+  const handleEndSession = useCallback(async () => {
+
+
+
+    if (!isTeacher) {
+
+
+
       return;
+
+
+
     }
 
+
+
+
+
+
+
+    const response = await fetch(
+
+
+
+      `/api/live-homework-help/session/${encodeURIComponent(session.id)}`,
+
+
+
+      {
+
+
+
+        method: "PATCH",
+
+
+
+        headers: {
+
+
+
+          "Content-Type": "application/json",
+
+
+
+        },
+
+
+
+        body: JSON.stringify({ action: "END" }),
+
+
+
+      },
+
+
+
+    );
+
+
+
+
+
+
+
+    const data = await response.json().catch(() => null);
+
+
+
+
+
+
+
+    if (!response.ok) {
+
+
+
+      throw new Error(
+
+
+
+        data?.error ?? "Unable to end the live homework session.",
+
+
+
+      );
+
+
+
+    }
+
+
+
+
+
+
+
+    setSessionStatus("ENDED");
+
+
+
+    setElapsedSeconds(data.session?.durationSeconds ?? elapsedSeconds);
+
+
+
+  }, [elapsedSeconds, isTeacher, session.id]);
+
+
+
+
+
+
+
+  useEffect(() => {
+
+
+
+    if (sessionStatus !== "ACTIVE" || !startedAt) {
+
+
+
+      return;
+
+
+
+    }
+
+
+
+
+
+
+
     const updateTimer = () => {
+
+
+
       const started = new Date(startedAt).getTime();
 
-      const seconds = Math.max(0, Math.floor((Date.now() - started) / 1000));
 
-      setElapsedSeconds(seconds);
+
+
+
+
+
+      if (!Number.isFinite(started)) return;
+
+
+
+
+
+
+
+      setElapsedSeconds(
+
+
+
+        Math.max(0, Math.floor((Date.now() - started) / 1000)),
+
+
+
+      );
+
+
+
     };
+
+
+
+
+
+
 
     updateTimer();
 
+
+
+
+
+
+
     const timer = window.setInterval(updateTimer, 1000);
 
-    return () => {
-      window.clearInterval(timer);
-    };
+
+
+
+
+
+
+    return () => window.clearInterval(timer);
+
+
+
   }, [sessionStatus, startedAt]);
 
-  const toggleMic = () => {
-    const publisher = publisherRef.current;
 
-    if (!publisher) {
-      return;
-    }
 
-    const next = !micEnabled;
 
-    publisher.publishAudio(next);
-    setMicEnabled(next);
-  };
 
-  const toggleCamera = () => {
-    const publisher = publisherRef.current;
 
-    if (!publisher) {
-      return;
-    }
 
-    const next = !cameraEnabled;
+  const homeworkPanel = (
 
-    publisher.publishVideo(next);
-    setCameraEnabled(next);
-  };
 
-  const toggleScreenShare = async () => {
-    const classroom = vonageSessionRef.current;
 
-    if (!classroom) {
-      return;
-    }
+    <aside
 
-    if (screenSharing) {
-      const screenPublisher = screenSharePublisherRef.current;
 
-      if (screenPublisher) {
-        try {
-          classroom.unpublish?.(screenPublisher);
-          screenPublisher.destroy?.();
-        } catch (error) {
-          console.error("Unable to stop screen sharing:", error);
-        }
-      }
 
-      screenSharePublisherRef.current = null;
-      setScreenSharing(false);
-      return;
-    }
+      className={`fixed bottom-4 right-4 z-[950] w-[min(380px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl transition ${
 
-    const container = publisherContainerRef.current;
 
-    if (!container) {
-      setConnectionError("The classroom video area is not ready.");
-      return;
-    }
 
-    try {
-      const vonage = getVonageSDK();
+        showHomeworkPanel ? "" : "w-auto"
 
-      if (!vonage) {
-        throw new Error("The Vonage Video SDK is not ready.");
-      }
 
-      const screenPublisher = vonage.initPublisher(
-        container,
-        {
-          insertMode: "append",
-          width: "100%",
-          height: "100%",
-          videoSource: "screen",
-          publishAudio: false,
-          publishVideo: true,
-          name: `${user.name} screen`,
-        },
-        (error?: Error) => {
-          if (error) {
-            console.error("Vonage screen-share publisher error:", error);
-          }
-        },
-      );
 
-      screenSharePublisherRef.current = screenPublisher;
+      }`}
 
-      await new Promise<void>((resolve, reject) => {
-        classroom.publish(screenPublisher, (error?: Error) => {
-          if (error) {
-            reject(error);
-            return;
-          }
 
-          resolve();
-        });
-      });
 
-      setScreenSharing(true);
-    } catch (error) {
-      screenSharePublisherRef.current = null;
-      setScreenSharing(false);
+    >
 
-      setConnectionError(
-        error instanceof Error
-          ? error.message
-          : "Unable to start screen sharing.",
-      );
-    }
-  };
 
-  const sendChatMessage = () => {
-    const text = chatInput.trim();
 
-    if (!text) {
-      return;
-    }
+      {showHomeworkPanel ? (
 
-    const message = {
-      id: crypto.randomUUID(),
-      sender: "me" as const,
-      text,
-      createdAt: Date.now(),
-    };
 
-    setMessages((current) => [...current, message]);
 
-    const classroom = vonageSessionRef.current;
+        <>
 
-    if (classroom?.signal) {
-      const payload = JSON.stringify({
-        senderId: user.id,
-        text,
-        createdAt: message.createdAt,
-      });
 
-      classroom.signal("justdy-chat", payload, (error?: Error) => {
-        if (error) {
-          console.error("Unable to send classroom chat message:", error);
-        }
-      });
-    }
 
-    setChatInput("");
-  };
+          <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
 
-  const endSession = async () => {
-    if (ending) {
-      return;
-    }
 
-    setEnding(true);
-
-    try {
-      const response = await fetch(
-        `/api/live-homework-help/session/${session.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            action: "END",
-          }),
-        },
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error ?? "Unable to end the classroom session.");
-      }
-
-      setSessionStatus("ENDED");
-
-      try {
-        vonageSessionRef.current?.disconnect();
-      } catch (error) {
-        console.error("Unable to disconnect Vonage session:", error);
-      }
-
-      window.location.href = `/live-help?completed=${session.id}`;
-    } catch (error) {
-      console.error("Unable to end Live Homework Help session:", error);
-
-      alert(
-        error instanceof Error ? error.message : "Unable to end the session.",
-      );
-    } finally {
-      setEnding(false);
-      setShowEndDialog(false);
-    }
-  };
-
-  return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <header className="border-b border-white/10 bg-slate-950/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-[1800px] items-center justify-between px-4 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300">
-              <Sparkles className="h-5 w-5" />
-            </div>
 
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">
-                Justdy Live Homework Help
+
+
+
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-700">
+
+
+
+                Live Homework Help
+
+
+
               </p>
 
-              <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                <span>Private 1-on-1 classroom</span>
-              </div>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs sm:flex">
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  connectionState === "connected"
-                    ? "bg-emerald-400"
-                    : connectionState === "error"
-                      ? "bg-red-400"
-                      : "bg-amber-400"
-                }`}
-              />
 
-              <span className="text-slate-300">
-                {connectionState === "connected"
-                  ? "Connected"
-                  : connectionState === "connecting"
-                    ? "Connecting"
-                    : connectionState === "loading"
-                      ? "Loading"
-                      : "Connection issue"}
-              </span>
-            </div>
+              <h2 className="mt-1 truncate text-sm font-semibold text-slate-950">
 
-            <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
-              <Clock3 className="h-3.5 w-3.5 text-violet-300" />
 
-              <span className="font-mono text-sm tabular-nums">
-                {formatDuration(elapsedSeconds)}
-              </span>
-            </div>
-          </div>
-        </div>
-      </header>
 
-      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-[1800px] grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="flex min-h-[calc(100vh-4rem)] min-w-0 flex-col">
-          <div className="relative flex-1 p-3 sm:p-5">
-            <div className="relative h-full min-h-[520px] overflow-hidden rounded-3xl border border-white/10 bg-slate-900 shadow-2xl">
-              <div
-                ref={subscriberContainerRef}
-                className="absolute inset-0 bg-slate-900"
-              />
+                {request.subject}
 
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
 
-              <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-black/50 px-3 py-2 text-xs backdrop-blur">
-                <Wifi className="h-3.5 w-3.5 text-emerald-400" />
-                <span>{otherPersonLabel}</span>
-              </div>
 
-              <div
-                ref={publisherContainerRef}
-                className="absolute bottom-4 right-4 h-36 w-52 overflow-hidden rounded-2xl border border-white/20 bg-slate-800 shadow-xl sm:h-44 sm:w-64"
-              />
+              </h2>
 
-              {connectionState !== "connected" && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm">
-                  <div className="max-w-sm px-6 text-center">
-                    {connectionState === "error" ? (
-                      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-500/10 text-red-300">
-                        <VideoOff className="h-6 w-6" />
-                      </div>
-                    ) : (
-                      <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-violet-300" />
-                    )}
 
-                    <h2 className="text-lg font-semibold">
-                      {connectionState === "error"
-                        ? "Unable to connect"
-                        : "Connecting you to the classroom"}
-                    </h2>
 
-                    <p className="mt-2 text-sm leading-6 text-slate-400">
-                      {connectionError ??
-                        "Please allow camera and microphone access when your browser asks."}
-                    </p>
+              <div className="mt-1 flex flex-wrap gap-1.5">
 
-                    {connectionState === "error" && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void initializeVonage();
-                        }}
-                        className="mt-5 rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-400"
-                      >
-                        Try again
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
 
-          <div className="border-t border-white/10 bg-slate-950 px-4 py-4 sm:px-6">
-            <div className="mx-auto flex max-w-3xl items-center justify-center gap-2 sm:gap-3">
-              <ControlButton
-                label={micEnabled ? "Mute" : "Unmute"}
-                active={micEnabled}
-                onClick={toggleMic}
-                icon={
-                  micEnabled ? (
-                    <Mic className="h-5 w-5" />
-                  ) : (
-                    <MicOff className="h-5 w-5" />
-                  )
-                }
-              />
 
-              <ControlButton
-                label={cameraEnabled ? "Camera" : "Camera off"}
-                active={cameraEnabled}
-                onClick={toggleCamera}
-                icon={
-                  cameraEnabled ? (
-                    <Camera className="h-5 w-5" />
-                  ) : (
-                    <CameraOff className="h-5 w-5" />
-                  )
-                }
-              />
+                {request.gradeLevel && (
 
-              <ControlButton
-                label={screenSharing ? "Stop sharing" : "Share screen"}
-                active={screenSharing}
-                onClick={() => {
-                  void toggleScreenShare();
-                }}
-                icon={<MonitorUp className="h-5 w-5" />}
-              />
 
-              <button
-                type="button"
-                onClick={() => setShowEndDialog(true)}
-                className="ml-2 flex h-12 items-center gap-2 rounded-full bg-red-500 px-5 text-sm font-semibold text-white transition hover:bg-red-400"
-              >
-                <PhoneOff className="h-5 w-5" />
 
-                <span className="hidden sm:inline">End session</span>
-              </button>
-            </div>
-          </div>
-        </section>
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600">
 
-        <aside className="flex min-h-0 flex-col border-t border-white/10 bg-slate-900 lg:border-l lg:border-t-0">
-          <div className="border-b border-white/10 p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">
-                  Homework help
-                </p>
 
-                <h1 className="mt-1 text-lg font-semibold">
-                  {request.subject}
-                </h1>
-              </div>
 
-              <div className="rounded-xl bg-white/5 p-2">
-                <FileText className="h-5 w-5 text-slate-300" />
-              </div>
-            </div>
+                    {request.gradeLevel}
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              {request.gradeLevel && (
-                <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300">
-                  {request.gradeLevel}
-                </span>
-              )}
 
-              {request.topic && (
-                <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300">
-                  {request.topic}
-                </span>
-              )}
-            </div>
-          </div>
 
-          <div className="border-b border-white/10 p-5">
-            <button
-              type="button"
-              onClick={() => setShowAssignment((current) => !current)}
-              className="flex w-full items-center justify-between text-left"
-            >
-              <span className="text-sm font-semibold">Assignment</span>
+                  </span>
 
-              <span className="text-xs text-slate-500">
-                {showAssignment ? "Hide" : "Show"}
-              </span>
-            </button>
 
-            {showAssignment && (
-              <div className="mt-4">
-                {request.assignmentName && (
-                  <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
-                    <FileText className="h-4 w-4 text-violet-300" />
 
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">
-                        {request.assignmentName}
-                      </p>
-
-                      {request.assignmentType && (
-                        <p className="mt-0.5 text-xs text-slate-500">
-                          {request.assignmentType}
-                        </p>
-                      )}
-                    </div>
-
-                    {request.assignmentUrl && (
-                      <a
-                        href={request.assignmentUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/15"
-                      >
-                        Open
-                      </a>
-                    )}
-                  </div>
                 )}
 
-                <div className="mt-3 rounded-xl bg-black/20 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Learner&apos;s question
-                  </p>
 
-                  <p className="mt-2 text-sm leading-6 text-slate-300">
-                    {request.description}
-                  </p>
-                </div>
+
+                {request.topic && (
+
+
+
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600">
+
+
+
+                    {request.topic}
+
+
+
+                  </span>
+
+
+
+                )}
+
+
+
               </div>
-            )}
-          </div>
 
-          <div className="flex min-h-0 flex-1 flex-col">
-            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-              <div className="flex items-center gap-2">
-                <MessageCircle className="h-4 w-4 text-violet-300" />
 
-                <span className="text-sm font-semibold">Classroom chat</span>
-              </div>
 
-              <button
-                type="button"
-                onClick={() => setShowChat((current) => !current)}
-                className="text-xs text-slate-500 hover:text-slate-300"
-              >
-                {showChat ? "Hide" : "Show"}
-              </button>
             </div>
 
-            {showChat && (
-              <>
-                <div className="flex-1 overflow-y-auto p-5">
-                  {messages.length === 0 ? (
-                    <div className="flex h-full min-h-40 flex-col items-center justify-center text-center">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/5">
-                        <MessageCircle className="h-5 w-5 text-slate-500" />
-                      </div>
 
-                      <p className="mt-3 text-sm text-slate-400">
-                        Use chat for quick notes, questions, or links.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {messages.map((message) => (
-                        <div
-                          key={message.id}
-                          className={`flex ${
-                            message.sender === "me"
-                              ? "justify-end"
-                              : "justify-start"
-                          }`}
-                        >
-                          <div
-                            className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
-                              message.sender === "me"
-                                ? "bg-violet-500 text-white"
-                                : "bg-white/5 text-slate-300"
-                            }`}
-                          >
-                            {message.text}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
 
-                <div className="border-t border-white/10 p-4">
-                  <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-2">
-                    <input
-                      value={chatInput}
-                      onChange={(event) => setChatInput(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" && !event.shiftKey) {
-                          event.preventDefault();
-                          sendChatMessage();
-                        }
-                      }}
-                      placeholder="Message..."
-                      className="min-w-0 flex-1 bg-transparent px-2 text-sm text-white outline-none placeholder:text-slate-600"
-                    />
 
-                    <button
-                      type="button"
-                      onClick={sendChatMessage}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500 text-white transition hover:bg-violet-400"
-                    >
-                      <Send className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
+
+
+
+            <button
+
+
+
+              type="button"
+
+
+
+              onClick={() => setShowHomeworkPanel(false)}
+
+
+
+              className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+
+
+
+              aria-label="Hide homework panel"
+
+
+
+            >
+
+
+
+              <X className="size-4" />
+
+
+
+            </button>
+
+
+
           </div>
-        </aside>
+
+
+
+
+
+
+
+          <div className="max-h-[55vh] overflow-y-auto p-4">
+
+
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+
+
+
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+
+
+
+                <BookOpen className="size-4 text-emerald-700" />
+
+
+
+                Learner&apos;s question
+
+
+
+              </div>
+
+
+
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+
+
+
+                {request.description}
+
+
+
+              </p>
+
+
+
+            </div>
+
+
+
+
+
+
+
+            {request.assignmentName && (
+
+
+
+              <div className="mt-3 rounded-xl border border-slate-200 p-3">
+
+
+
+                <div className="flex items-center gap-3">
+
+
+
+                  <FileText className="size-4 shrink-0 text-emerald-700" />
+
+
+
+                  <div className="min-w-0 flex-1">
+
+
+
+                    <p className="truncate text-sm font-medium text-slate-800">
+
+
+
+                      {request.assignmentName}
+
+
+
+                    </p>
+
+
+
+                    {request.assignmentType && (
+
+
+
+                      <p className="mt-0.5 text-xs text-slate-500">
+
+
+
+                        {request.assignmentType}
+
+
+
+                      </p>
+
+
+
+                    )}
+
+
+
+                  </div>
+
+
+
+
+
+
+
+                  {request.assignmentUrl && (
+
+
+
+                    <a
+
+
+
+                      href={request.assignmentUrl}
+
+
+
+                      target="_blank"
+
+
+
+                      rel="noreferrer"
+
+
+
+                      className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+
+
+
+                    >
+
+
+
+                      Open
+
+
+
+                    </a>
+
+
+
+                  )}
+
+
+
+                </div>
+
+
+
+              </div>
+
+
+
+            )}
+
+
+
+
+
+
+
+            <div className="mt-3 border-t border-slate-100 pt-3">
+
+
+
+              <button
+
+
+
+                type="button"
+
+
+
+                onClick={() => setShowAssignment((value) => !value)}
+
+
+
+                className="text-xs font-semibold text-slate-500 hover:text-slate-900"
+
+
+
+              >
+
+
+
+                {showAssignment ? "Hide assignment details" : "Show assignment details"}
+
+
+
+              </button>
+
+
+
+
+
+
+
+              {showAssignment && (
+
+
+
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+
+
+
+                  Work through the problem together on the shared whiteboard.
+
+
+
+                </p>
+
+
+
+              )}
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+
+
+
+
+          <div className="border-t border-slate-100 px-4 py-3">
+
+
+
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+
+
+
+              <Clock3 className="size-3.5" />
+
+
+
+              <span>{formatDuration(elapsedSeconds)}</span>
+
+
+
+              <span className="text-slate-300">•</span>
+
+
+
+              <span>{otherPersonLabel} connected</span>
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+        </>
+
+
+
+      ) : (
+
+
+
+        <button
+
+
+
+          type="button"
+
+
+
+          onClick={() => setShowHomeworkPanel(true)}
+
+
+
+          className="flex items-center gap-2 px-4 py-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+
+
+
+        >
+
+
+
+          <MessageCircle className="size-4 text-emerald-700" />
+
+
+
+          Homework
+
+
+
+        </button>
+
+
+
+      )}
+
+
+
+    </aside>
+
+
+
+  );
+
+
+
+
+
+
+
+  if (!videoCredentials) {
+
+
+
+    return (
+
+
+
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-white">
+
+
+
+        <div className="max-w-md text-center">
+
+
+
+          {connectionError ? (
+
+
+
+            <>
+
+
+
+              <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-300">
+
+
+
+                <PhoneOff className="size-6" />
+
+
+
+              </div>
+
+
+
+              <h1 className="mt-5 text-xl font-semibold">
+
+
+
+                Unable to prepare the classroom
+
+
+
+              </h1>
+
+
+
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+
+
+
+                {connectionError}
+
+
+
+              </p>
+
+
+
+              <button
+
+
+
+                type="button"
+
+
+
+                onClick={() => void loadDailyCredentials()}
+
+
+
+                className="mt-5 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500"
+
+
+
+              >
+
+
+
+                Try again
+
+
+
+              </button>
+
+
+
+            </>
+
+
+
+          ) : (
+
+
+
+            <>
+
+
+
+              <Loader2 className="mx-auto size-8 animate-spin text-emerald-300" />
+
+
+
+              <h1 className="mt-5 text-lg font-semibold">
+
+
+
+                Preparing your live classroom…
+
+
+
+              </h1>
+
+
+
+              <p className="mt-2 text-sm text-slate-400">
+
+
+
+                Setting up your private Daily room.
+
+
+
+              </p>
+
+
+
+            </>
+
+
+
+          )}
+
+
+
+        </div>
+
+
+
+      </main>
+
+
+
+    );
+
+
+
+  }
+
+
+
+
+
+
+
+  return (
+
+
+
+    <main className="fixed inset-0 overflow-hidden bg-white text-slate-900">
+
+
+
+      <div className="absolute inset-0 z-0">
+
+
+
+        <Whiteboard
+
+
+
+          mode="standalone"
+
+
+
+          leftInset={participantRailWidth}
+
+
+
+          remoteData={remoteWhiteboardData}
+
+
+
+          onRealtimeChange={handleWhiteboardChange}
+
+
+
+          onClose={() => {
+
+
+
+            window.location.href = "/live-help";
+
+
+
+          }}
+
+
+
+        />
+
+
+
       </div>
 
-      {showEndDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">End this session?</h2>
 
-                <p className="mt-2 text-sm leading-6 text-slate-400">
-                  Justdy will record the official session duration. Billing and
-                  the learning record will use the server-side session
-                  timestamps.
-                </p>
-              </div>
 
-              <button
-                type="button"
-                onClick={() => setShowEndDialog(false)}
-                className="rounded-lg p-2 text-slate-500 hover:bg-white/5 hover:text-white"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
 
-            <div className="mt-5 rounded-2xl bg-white/5 p-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">Session time</span>
 
-                <span className="font-mono font-semibold">
-                  {formatDuration(elapsedSeconds)}
-                </span>
-              </div>
-            </div>
 
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setShowEndDialog(false)}
-                className="flex-1 rounded-xl border border-white/10 px-4 py-3 text-sm font-semibold text-slate-300 hover:bg-white/5"
-              >
-                Continue
-              </button>
 
-              <button
-                type="button"
-                disabled={ending}
-                onClick={() => {
-                  void endSession();
-                }}
-                className="flex-1 rounded-xl bg-red-500 px-4 py-3 text-sm font-semibold text-white hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {ending ? "Ending..." : "End session"}
-              </button>
-            </div>
-          </div>
+      <section className="pointer-events-none absolute inset-0 z-[800]">
+
+
+
+        <VideoCall
+
+
+
+          sessionId={videoCredentials.videoSessionId}
+
+
+
+          token={videoCredentials.token}
+
+
+
+          roomUrl={videoCredentials.roomUrl}
+
+
+
+          role={videoCredentials.role === "tutor" ? "educator" : "student"}
+
+
+
+          onParticipantRailWidthChange={setParticipantRailWidth}
+
+
+
+          onSignal={handleWhiteboardSignal}
+
+
+
+          onSignalReady={(sendSignal) => {
+
+
+
+            whiteboardSendRef.current = sendSignal;
+
+
+
+          }}
+
+
+
+          onConnected={handleConnected}
+
+
+
+          onEndSession={handleEndSession}
+
+
+
+        />
+
+
+
+      </section>
+
+
+
+
+
+
+
+      {homeworkPanel}
+
+
+
+
+
+
+
+      {connectionError && (
+
+
+
+        <div className="pointer-events-auto fixed bottom-5 left-1/2 z-[1000] -translate-x-1/2 rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-rose-700 shadow-xl">
+
+
+
+          {connectionError}
+
+
+
         </div>
+
+
+
       )}
+
+
+
+
+
+
+
+      {isTeacher && sessionStatus === "ENDED" && (
+
+
+
+        <div className="pointer-events-auto fixed inset-0 z-[1100] flex items-center justify-center bg-slate-950/70 p-6">
+
+
+
+          <div className="w-full max-w-md rounded-2xl bg-white p-7 text-center shadow-2xl">
+
+
+
+            <ShieldCheck className="mx-auto size-10 text-emerald-600" />
+
+
+
+            <h2 className="mt-4 text-xl font-semibold text-slate-950">
+
+
+
+              Live homework session ended
+
+
+
+            </h2>
+
+
+
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+
+
+
+              The session has been saved. You can return to Live Homework Help.
+
+
+
+            </p>
+
+
+
+            <button
+
+
+
+              type="button"
+
+
+
+              onClick={() => {
+
+
+
+                window.location.href = "/live-help";
+
+
+
+              }}
+
+
+
+              className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-slate-900 px-5 text-sm font-semibold text-white hover:bg-slate-800"
+
+
+
+            >
+
+
+
+              <Sparkles className="size-4" />
+
+
+
+              Return to Live Homework Help
+
+
+
+            </button>
+
+
+
+          </div>
+
+
+
+        </div>
+
+
+
+      )}
+
+
+
+
+
+
+
     </main>
+
+
+
   );
+
+
+
 }
 
-function ControlButton({
-  label,
-  icon,
-  active,
-  onClick,
-}: {
-  label: string;
-  icon: ReactNode;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      title={label}
-      onClick={onClick}
-      className={`flex h-12 w-12 items-center justify-center rounded-full transition ${
-        active
-          ? "bg-white/10 text-white hover:bg-white/15"
-          : "bg-red-500/15 text-red-300 hover:bg-red-500/25"
-      }`}
-    >
-      {icon}
-    </button>
-  );
-}
+
+
+

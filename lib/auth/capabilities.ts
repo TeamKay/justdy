@@ -2,41 +2,8 @@
 
 import prisma from "@/lib/prisma";
 
-/**
- * Justdy capability system.
- *
- * IMPORTANT:
- * Capabilities describe what a user can DO.
- * They are not permanent account identities.
- *
- * A single User may have multiple capabilities simultaneously.
- *
- * Examples:
- *
- * CAN_LEARN
- * CAN_MANAGE_CHILDREN
- * CAN_TEACH
- * CAN_TUTOR
- * CAN_BOOK_TUTORING
- * CAN_RECEIVE_PAYOUTS
- * CAN_CREATE_RESOURCES
- * CAN_PUBLISH
- * CAN_SELL
- *
- * User.role is intentionally NOT used here for normal
- * learning/tutoring authorization.
- *
- * Architectural rule:
- *
- * ONE USER
- *   ↓
- * MULTIPLE CAPABILITIES
- *   ↓
- * CONTEXT-SPECIFIC AUTHORIZATION
- */
 export const CAPABILITIES = {
   LEARN: "CAN_LEARN",
-  MANAGE_CHILDREN: "CAN_MANAGE_CHILDREN",
   TEACH: "CAN_TEACH",
   TUTOR: "CAN_TUTOR",
   BOOK_TUTORING: "CAN_BOOK_TUTORING",
@@ -49,13 +16,6 @@ export const CAPABILITIES = {
 export type CapabilityKey =
   (typeof CAPABILITIES)[keyof typeof CAPABILITIES];
 
-/**
- * Ensure a user has the supplied capabilities.
- *
- * Capability rows are created on demand so a fresh environment does not
- * depend on a separate seed step just to make the core learner/tutor flow
- * usable. Existing assignments are left untouched.
- */
 export async function ensureCapabilities(
   userId: string,
   keys: readonly CapabilityKey[],
@@ -66,10 +26,6 @@ export async function ensureCapabilities(
     [CAPABILITIES.LEARN]: {
       name: "Learn",
       description: "Can participate as a learner.",
-    },
-    [CAPABILITIES.MANAGE_CHILDREN]: {
-      name: "Manage Children",
-      description: "Can manage learner profiles for children or dependents.",
     },
     [CAPABILITIES.TEACH]: {
       name: "Teach",
@@ -133,18 +89,6 @@ export async function ensureCapabilities(
   }
 }
 
-
-/**
- * Check whether a user has a specific capability.
- *
- * This is the database-backed authorization source.
- *
- * IMPORTANT:
- * This function does NOT inspect User.role.
- *
- * That means a person can remain the same User while
- * gaining or using different capabilities.
- */
 export async function hasCapability(
   userId: string,
   key: CapabilityKey,
@@ -181,23 +125,7 @@ export async function hasCapability(
   return Boolean(assignment);
 }
 
-/**
- * Check whether a user has at least one of the supplied
- * capabilities.
- *
- * This is useful when an action can legitimately be performed
- * through more than one capability.
- *
- * Example:
- *
- * hasAnyCapability(userId, [
- *   CAPABILITIES.LEARN,
- *   CAPABILITIES.BOOK_TUTORING,
- * ])
- *
- * This does NOT grant anything by itself.
- * It only checks existing database assignments.
- */
+
 export async function hasAnyCapability(
   userId: string,
   keys: readonly CapabilityKey[],
@@ -236,13 +164,7 @@ export async function hasAnyCapability(
   return Boolean(assignment);
 }
 
-/**
- * Require a capability.
- *
- * Throws when the user does not have the requested capability.
- *
- * This helper is useful inside server-side actions/services.
- */
+
 export async function requireCapability(
   userId: string,
   key: CapabilityKey,
@@ -292,11 +214,7 @@ export async function canLearn(userId: string): Promise<boolean> {
 /**
  * Check whether the user can manage children/family learners.
  */
-export async function canManageChildren(
-  userId: string,
-): Promise<boolean> {
-  return hasCapability(userId, CAPABILITIES.MANAGE_CHILDREN);
-}
+
 
 /**
  * Check whether the user can enter the teaching workflow.

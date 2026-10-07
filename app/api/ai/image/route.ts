@@ -32,35 +32,63 @@ const VALID_SIZES: ImageSize[] = [
   "auto",
 ];
 
-const VALID_QUALITIES: ImageQuality[] = ["low", "medium", "high", "auto"];
+const VALID_QUALITIES: ImageQuality[] = [
+  "low",
+  "medium",
+  "high",
+  "auto",
+];
 
-const VALID_FORMATS: ImageOutputFormat[] = ["png", "jpeg"];
+const VALID_FORMATS: ImageOutputFormat[] = [
+  "png",
+  "jpeg",
+];
 
-const VALID_BACKGROUNDS: ImageBackground[] = ["auto", "opaque"];
+const VALID_BACKGROUNDS: ImageBackground[] = [
+  "auto",
+  "opaque",
+];
 
 function isString(value: unknown): value is string {
   return typeof value === "string";
 }
 
 function isValidModel(value: unknown): value is ImageModel {
-  return isString(value) && VALID_MODELS.includes(value as ImageModel);
+  return (
+    isString(value) &&
+    VALID_MODELS.includes(value as ImageModel)
+  );
 }
 
 function isValidSize(value: unknown): value is ImageSize {
-  return isString(value) && VALID_SIZES.includes(value as ImageSize);
+  return (
+    isString(value) &&
+    VALID_SIZES.includes(value as ImageSize)
+  );
 }
 
 function isValidQuality(value: unknown): value is ImageQuality {
-  return isString(value) && VALID_QUALITIES.includes(value as ImageQuality);
-}
-
-function isValidFormat(value: unknown): value is ImageOutputFormat {
-  return isString(value) && VALID_FORMATS.includes(value as ImageOutputFormat);
-}
-
-function isValidBackground(value: unknown): value is ImageBackground {
   return (
-    isString(value) && VALID_BACKGROUNDS.includes(value as ImageBackground)
+    isString(value) &&
+    VALID_QUALITIES.includes(value as ImageQuality)
+  );
+}
+
+function isValidFormat(
+  value: unknown,
+): value is ImageOutputFormat {
+  return (
+    isString(value) &&
+    VALID_FORMATS.includes(value as ImageOutputFormat)
+  );
+}
+
+function isValidBackground(
+  value: unknown,
+): value is ImageBackground {
+  return (
+    isString(value) &&
+    VALID_BACKGROUNDS.includes(value as ImageBackground)
   );
 }
 
@@ -72,35 +100,119 @@ function createRequestId(): string {
     return crypto.randomUUID();
   }
 
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2)}`;
+}
+
+function getErrorCode(error: unknown): string {
+  if (
+    !error ||
+    typeof error !== "object" ||
+    !("code" in error)
+  ) {
+    return "";
+  }
+
+  return String(
+    (error as { code?: unknown }).code ?? "",
+  );
+}
+
+function getProviderRequestId(
+  error: unknown,
+): string | null {
+  if (
+    !error ||
+    typeof error !== "object" ||
+    !("providerRequestId" in error)
+  ) {
+    return null;
+  }
+
+  const value = (
+    error as {
+      providerRequestId?: unknown;
+    }
+  ).providerRequestId;
+
+  return typeof value === "string" && value.trim()
+    ? value.trim()
+    : null;
+}
+
+function getProviderStatus(
+  error: unknown,
+): number | null {
+  if (
+    !error ||
+    typeof error !== "object" ||
+    !("providerStatus" in error)
+  ) {
+    return null;
+  }
+
+  const value = Number(
+    (error as { providerStatus?: unknown })
+      .providerStatus,
+  );
+
+  return Number.isFinite(value) ? value : null;
+}
+
+function isSafetyRejection(
+  error: unknown,
+): boolean {
+  const errorCode = getErrorCode(error);
+
+  if (errorCode === "IMAGE_SAFETY_REJECTED") {
+    return true;
+  }
+
+  const message =
+    error instanceof Error
+      ? error.message
+      : String(error ?? "");
+
+  const normalized = message.toLowerCase();
+
+  return (
+    normalized.includes("safety system") ||
+    normalized.includes("safety policy") ||
+    normalized.includes("safety filter") ||
+    normalized.includes("content policy") ||
+    normalized.includes("policy violation") ||
+    normalized.includes("content violation") ||
+    normalized.includes("image safety") ||
+    (
+      normalized.includes("safety") &&
+      normalized.includes("rejected")
+    )
+  );
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : "Image generation failed.";
 }
 
 export async function POST(request: Request) {
-  try {
-    /*
-     * ==========================================================
-     * AUTHENTICATION
-     * ==========================================================
-     */
+  let requestId: string | null = null;
 
+  try {
     const user = await getAuthenticatedUser();
 
     if (!user) {
       return NextResponse.json(
         {
+          success: false,
           error: "Unauthorized.",
+          code: "UNAUTHORIZED",
         },
-        {
-          status: 401,
-        },
+        { status: 401 },
       );
     }
-
-    /*
-     * ==========================================================
-     * REQUEST BODY
-     * ==========================================================
-     */
 
     let body: ImageRequestBody;
 
@@ -109,28 +221,25 @@ export async function POST(request: Request) {
     } catch {
       return NextResponse.json(
         {
+          success: false,
           error: "Invalid JSON request body.",
+          code: "INVALID_JSON",
         },
-        {
-          status: 400,
-        },
+        { status: 400 },
       );
     }
 
-    /*
-     * ==========================================================
-     * PROMPT
-     * ==========================================================
-     */
-
-    if (!isString(body.prompt) || !body.prompt.trim()) {
+    if (
+      !isString(body.prompt) ||
+      !body.prompt.trim()
+    ) {
       return NextResponse.json(
         {
+          success: false,
           error: "Image prompt cannot be empty.",
+          code: "INVALID_REQUEST",
         },
-        {
-          status: 400,
-        },
+        { status: 400 },
       );
     }
 
@@ -139,59 +248,46 @@ export async function POST(request: Request) {
     if (prompt.length > 10000) {
       return NextResponse.json(
         {
+          success: false,
           error:
             "Image prompt is too long. Maximum length is 10,000 characters.",
+          code: "INVALID_REQUEST",
         },
-        {
-          status: 400,
-        },
+        { status: 400 },
       );
     }
 
-    /*
-     * ==========================================================
-     * REQUEST ID
-     * ==========================================================
-     *
-     * The client normally supplies this so repeated requests
-     * can be made idempotent.
-     *
-     * We also generate one server-side when it is missing.
-     */
-
-    const requestId =
-      isString(body.requestId) && body.requestId.trim()
+    requestId =
+      isString(body.requestId) &&
+      body.requestId.trim()
         ? body.requestId.trim()
         : createRequestId();
 
     if (requestId.length > 255) {
       return NextResponse.json(
         {
+          success: false,
           error: "Request ID is too long.",
+          code: "INVALID_REQUEST",
         },
-        {
-          status: 400,
-        },
+        { status: 400 },
       );
     }
-
-    /*
-     * ==========================================================
-     * OPTIONAL PROJECT ID
-     * ==========================================================
-     */
 
     let projectId: string | undefined;
 
     if (body.projectId !== undefined) {
-      if (!isString(body.projectId) || !body.projectId.trim()) {
+      if (
+        !isString(body.projectId) ||
+        !body.projectId.trim()
+      ) {
         return NextResponse.json(
           {
+            success: false,
             error: "Invalid project ID.",
+            code: "INVALID_REQUEST",
           },
-          {
-            status: 400,
-          },
+          { status: 400 },
         );
       }
 
@@ -200,20 +296,14 @@ export async function POST(request: Request) {
       if (projectId.length > 255) {
         return NextResponse.json(
           {
+            success: false,
             error: "Project ID is too long.",
+            code: "INVALID_REQUEST",
           },
-          {
-            status: 400,
-          },
+          { status: 400 },
         );
       }
     }
-
-    /*
-     * ==========================================================
-     * MODEL
-     * ==========================================================
-     */
 
     let model: ImageModel | undefined;
 
@@ -221,22 +311,16 @@ export async function POST(request: Request) {
       if (!isValidModel(body.model)) {
         return NextResponse.json(
           {
+            success: false,
             error: "Invalid image model.",
+            code: "INVALID_REQUEST",
           },
-          {
-            status: 400,
-          },
+          { status: 400 },
         );
       }
 
       model = body.model;
     }
-
-    /*
-     * ==========================================================
-     * SIZE
-     * ==========================================================
-     */
 
     let size: ImageSize | undefined;
 
@@ -244,22 +328,16 @@ export async function POST(request: Request) {
       if (!isValidSize(body.size)) {
         return NextResponse.json(
           {
+            success: false,
             error: "Invalid image size.",
+            code: "INVALID_REQUEST",
           },
-          {
-            status: 400,
-          },
+          { status: 400 },
         );
       }
 
       size = body.size;
     }
-
-    /*
-     * ==========================================================
-     * QUALITY
-     * ==========================================================
-     */
 
     let quality: ImageQuality | undefined;
 
@@ -267,84 +345,54 @@ export async function POST(request: Request) {
       if (!isValidQuality(body.quality)) {
         return NextResponse.json(
           {
+            success: false,
             error: "Invalid image quality.",
+            code: "INVALID_REQUEST",
           },
-          {
-            status: 400,
-          },
+          { status: 400 },
         );
       }
 
       quality = body.quality;
     }
 
-    /*
-     * ==========================================================
-     * OUTPUT FORMAT
-     * ==========================================================
-     */
-
-    let outputFormat: ImageOutputFormat | undefined;
+    let outputFormat:
+      | ImageOutputFormat
+      | undefined;
 
     if (body.outputFormat !== undefined) {
       if (!isValidFormat(body.outputFormat)) {
         return NextResponse.json(
           {
+            success: false,
             error: "Invalid image output format.",
+            code: "INVALID_REQUEST",
           },
-          {
-            status: 400,
-          },
+          { status: 400 },
         );
       }
 
       outputFormat = body.outputFormat;
     }
 
-    /*
-     * ==========================================================
-     * BACKGROUND
-     * ==========================================================
-     */
-
-    let background: ImageBackground | undefined;
+    let background:
+      | ImageBackground
+      | undefined;
 
     if (body.background !== undefined) {
       if (!isValidBackground(body.background)) {
         return NextResponse.json(
           {
+            success: false,
             error: "Invalid image background.",
+            code: "INVALID_REQUEST",
           },
-          {
-            status: 400,
-          },
+          { status: 400 },
         );
       }
 
       background = body.background;
     }
-
-    /*
-     * ==========================================================
-     * GENERATE IMAGE
-     * ==========================================================
-     *
-     * The API route does not contain generation logic.
-     *
-     * Everything goes through the centralized image service:
-     *
-     * POST /api/ai/image
-     *       ↓
-     * generateImage()
-     *       ↓
-     * OpenAI
-     *       ↓
-     * UploadThing
-     *       ↓
-     * AIAsset
-     *       ↓
-     * AIGeneration
-     */
 
     const image = await generateImage({
       userId: user.id,
@@ -358,58 +406,62 @@ export async function POST(request: Request) {
       projectId,
     });
 
-    /*
-     * ==========================================================
-     * RESPONSE
-     * ==========================================================
-     */
-
     return NextResponse.json(
       {
         success: true,
         image,
+        requestId,
       },
-      {
-        status: 200,
-      },
+      { status: 200 },
     );
   } catch (error) {
-    /*
-     * ==========================================================
-     * ERROR HANDLING
-     * ==========================================================
-     */
+    const message = getErrorMessage(error);
+    const errorCode = getErrorCode(error);
+    const providerRequestId =
+      getProviderRequestId(error);
+    const providerStatus =
+      getProviderStatus(error);
 
-    const message =
-      error instanceof Error ? error.message : "Image generation failed.";
+    const safetyRejected =
+      isSafetyRejection(error);
 
-    /*
-     * ----------------------------------------------------------
-     * Known image-generation errors
-     * ----------------------------------------------------------
-     */
+    console.error(
+      "POST /api/ai/image failed:",
+      {
+        error,
+        errorCode,
+        requestId,
+        providerRequestId,
+        providerStatus,
+        safetyRejected,
+      },
+    );
 
-    const errorCode =
-      error && typeof error === "object" && "code" in error
-        ? String(
-            (
-              error as {
-                code?: unknown;
-              }
-            ).code ?? "",
-          )
-        : "";
+    if (safetyRejected) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "IMAGE_SAFETY_REJECTED",
+          error:
+            "The image request was rejected by the image safety system. Try changing the wording of your prompt or, if you are redesigning an image, try a different source image.",
+          requestId:
+            providerRequestId ?? requestId,
+        },
+        { status: 400 },
+      );
+    }
 
-    if (errorCode === "GENERATION_IN_PROGRESS") {
+    if (
+      errorCode === "GENERATION_IN_PROGRESS"
+    ) {
       return NextResponse.json(
         {
           success: false,
           error: message,
           code: errorCode,
+          requestId,
         },
-        {
-          status: 409,
-        },
+        { status: 409 },
       );
     }
 
@@ -419,71 +471,67 @@ export async function POST(request: Request) {
           success: false,
           error: message,
           code: errorCode,
+          requestId,
         },
-        {
-          status: 500,
-        },
+        { status: 500 },
       );
     }
 
     if (
-      errorCode === "PROVIDER_EMPTY_RESPONSE" ||
-      errorCode === "PROVIDER_INVALID_RESPONSE"
+      errorCode ===
+        "PROVIDER_EMPTY_RESPONSE" ||
+      errorCode ===
+        "PROVIDER_INVALID_RESPONSE"
     ) {
       return NextResponse.json(
         {
           success: false,
           error: message,
           code: errorCode,
+          requestId:
+            providerRequestId ?? requestId,
         },
-        {
-          status: 502,
-        },
+        { status: 502 },
       );
     }
 
-    /*
-     * ----------------------------------------------------------
-     * Validation / generation errors
-     * ----------------------------------------------------------
-     */
-
     if (
-      error instanceof Error &&
-      (message.includes("required") ||
-        message.includes("cannot be empty") ||
-        message.includes("Invalid") ||
-        message.includes("too long"))
+      errorCode === "INVALID_REQUEST" ||
+      message.includes("required") ||
+      message.includes("cannot be empty") ||
+      message.includes("Invalid") ||
+      message.includes("too long")
     ) {
       return NextResponse.json(
         {
           success: false,
           error: message,
-          code: errorCode || "INVALID_REQUEST",
+          code:
+            errorCode || "INVALID_REQUEST",
+          requestId,
         },
-        {
-          status: 400,
-        },
+        { status: 400 },
       );
     }
 
-    /*
-     * ----------------------------------------------------------
-     * Generic failure
-     * ----------------------------------------------------------
-     */
-
-    console.error("POST /api/ai/image failed:", error);
+    const status =
+      providerStatus &&
+      providerStatus >= 400 &&
+      providerStatus < 500
+        ? providerStatus
+        : 500;
 
     return NextResponse.json(
       {
         success: false,
         error: message,
-        code: errorCode || "IMAGE_GENERATION_FAILED",
+        code:
+          errorCode ||
+          "IMAGE_GENERATION_FAILED",
+        requestId:
+          providerRequestId ?? requestId,
       },
-      {
-        status: 500,
-      },
+      { status },
     );
   }
 }

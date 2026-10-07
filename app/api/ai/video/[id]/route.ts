@@ -5,7 +5,6 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
 import { refundVideoCreditsAtomic } from "@/lib/ai/video/credits";
-
 import { getVideoJobStatus } from "@/lib/ai/video/provider";
 
 interface RouteContext {
@@ -55,7 +54,10 @@ function serializeGeneration(generation: {
   };
 }
 
-export async function GET(_request: Request, { params }: RouteContext) {
+export async function GET(
+  _request: Request,
+  { params }: RouteContext,
+) {
   try {
     // ------------------------------------------------------------
     // 1. Authenticate
@@ -109,7 +111,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
     }
 
     // ------------------------------------------------------------
-    // 3. If already completed, return authoritative local state
+    // 3. Already completed
     // ------------------------------------------------------------
 
     if (generation.status === "COMPLETED") {
@@ -120,12 +122,14 @@ export async function GET(_request: Request, { params }: RouteContext) {
     }
 
     // ------------------------------------------------------------
-    // 4. If permanently cancelled, make sure refund has happened
-    //    before treating it as terminal.
+    // 4. Cancelled generation
     // ------------------------------------------------------------
 
     if (generation.status === "CANCELLED") {
-      if (generation.creditsUsed > 0 && !generation.creditRefundedAt) {
+      if (
+        generation.creditsUsed > 0 &&
+        !generation.creditRefundedAt
+      ) {
         await refundVideoCreditsAtomic({
           userId: session.user.id,
           generationId: generation.id,
@@ -146,14 +150,16 @@ export async function GET(_request: Request, { params }: RouteContext) {
     }
 
     // ------------------------------------------------------------
-    // 5. Failed generations also need refund reconciliation.
+    // 5. Failed generation
     //
-    // This protects against a process crash occurring after the
-    // generation was marked FAILED but before the refund completed.
+    // Reconcile any outstanding credit refund.
     // ------------------------------------------------------------
 
     if (generation.status === "FAILED") {
-      if (generation.creditsUsed > 0 && !generation.creditRefundedAt) {
+      if (
+        generation.creditsUsed > 0 &&
+        !generation.creditRefundedAt
+      ) {
         await refundVideoCreditsAtomic({
           userId: session.user.id,
           generationId: generation.id,
@@ -174,7 +180,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
     }
 
     // ------------------------------------------------------------
-    // 6. Provider task must exist before polling
+    // 6. Provider task must exist
     // ------------------------------------------------------------
 
     if (!generation.providerTaskId) {
@@ -187,7 +193,13 @@ export async function GET(_request: Request, { params }: RouteContext) {
       );
     }
 
-    if (generation.provider !== "openai") {
+    // ------------------------------------------------------------
+    // 7. Verify provider
+    //
+    // Justdy now uses Runway for AI video generation.
+    // ------------------------------------------------------------
+
+    if (generation.provider !== "runway") {
       return NextResponse.json(
         {
           success: false,
@@ -198,16 +210,15 @@ export async function GET(_request: Request, { params }: RouteContext) {
     }
 
     // ------------------------------------------------------------
-    // 7. Ask the provider for the current state
+    // 8. Ask Runway for current task state
     // ------------------------------------------------------------
 
-    const providerStatus = await getVideoJobStatus(generation.providerTaskId);
+    const providerStatus = await getVideoJobStatus(
+      generation.providerTaskId,
+    );
 
     // ------------------------------------------------------------
-    // 8. Provider completed
-    //
-    // Only one concurrent poller should be allowed to transition the
-    // local generation into COMPLETED.
+    // 9. Provider completed
     // ------------------------------------------------------------
 
     if (providerStatus.status === "COMPLETED") {
@@ -227,8 +238,10 @@ export async function GET(_request: Request, { params }: RouteContext) {
         },
       });
 
-      // Always re-read after the conditional update so the response
-      // reflects the authoritative database state.
+      /*
+       * Re-read after the conditional update so the response
+       * reflects the authoritative database state.
+       */
       generation = await prisma.videoGeneration.findFirstOrThrow({
         where: {
           id: generation.id,
@@ -243,17 +256,17 @@ export async function GET(_request: Request, { params }: RouteContext) {
     }
 
     // ------------------------------------------------------------
-    // 9. Provider failed
+    // 10. Provider failed
     //
-    // Refund FIRST.
-    //
-    // This is intentional. If the process crashes after refunding but
-    // before updating the generation, the refund operation is designed
-    // to be idempotent and the next poll can reconcile the state.
+    // Refund first. The refund operation is designed to be
+    // idempotent so a subsequent poll can safely reconcile state.
     // ------------------------------------------------------------
 
     if (providerStatus.status === "FAILED") {
-      if (generation.creditsUsed > 0 && !generation.creditRefundedAt) {
+      if (
+        generation.creditsUsed > 0 &&
+        !generation.creditRefundedAt
+      ) {
         await refundVideoCreditsAtomic({
           userId: session.user.id,
           generationId: generation.id,
@@ -270,7 +283,9 @@ export async function GET(_request: Request, { params }: RouteContext) {
         },
         data: {
           status: "FAILED",
-          errorMessage: providerStatus.error ?? "Video generation failed.",
+          errorMessage:
+            providerStatus.error ??
+            "Runway video generation failed.",
         },
       });
 
@@ -288,29 +303,20 @@ export async function GET(_request: Request, { params }: RouteContext) {
     }
 
     // ------------------------------------------------------------
-    // 10. Provider cancelled
+    // 11. Provider still processing
+    //
+    // Keep the local generation in PROCESSING.
     // ------------------------------------------------------------
 
-    if (providerStatus.status === "CANCELLED") {
-      if (generation.creditsUsed > 0 && !generation.creditRefundedAt) {
-        await refundVideoCreditsAtomic({
-          userId: session.user.id,
-          generationId: generation.id,
-        });
-      }
-
+    if (generation.status === "PENDING") {
       await prisma.videoGeneration.updateMany({
         where: {
           id: generation.id,
           userId: session.user.id,
-          status: {
-            in: ["PENDING", "PROCESSING"],
-          },
+          status: "PENDING",
         },
         data: {
-          status: "CANCELLED",
-          errorMessage:
-            providerStatus.error ?? "Video generation was cancelled.",
+          status: "PROCESSING",
         },
       });
 
@@ -320,51 +326,29 @@ export async function GET(_request: Request, { params }: RouteContext) {
           userId: session.user.id,
         },
       });
-
-      return NextResponse.json({
-        success: true,
-        generation: serializeGeneration(generation),
-      });
     }
 
     // ------------------------------------------------------------
-    // 11. Provider is still processing
-    //
-    // Do not blindly overwrite a terminal local state that another
-    // concurrent poller may already have committed.
+    // 12. Return current state
     // ------------------------------------------------------------
-
-    await prisma.videoGeneration.updateMany({
-      where: {
-        id: generation.id,
-        userId: session.user.id,
-        status: {
-          in: ["PENDING", "PROCESSING"],
-        },
-      },
-      data: {
-        status: "PROCESSING",
-      },
-    });
-
-    generation = await prisma.videoGeneration.findFirstOrThrow({
-      where: {
-        id: generation.id,
-        userId: session.user.id,
-      },
-    });
 
     return NextResponse.json({
       success: true,
       generation: serializeGeneration(generation),
     });
   } catch (error) {
-    console.error("[AI Video Status] Failed to process video status:", error);
+    console.error(
+      "[GET /api/ai/video/:id] Failed to retrieve video generation:",
+      error,
+    );
 
     return NextResponse.json(
       {
         success: false,
-        error: "Unable to retrieve video generation status.",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unable to retrieve video generation.",
       },
       { status: 500 },
     );

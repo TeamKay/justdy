@@ -11,6 +11,7 @@ import {
 } from "@/app/_components/ui/sidebar";
 
 import { AppSidebar } from "@/app/_components/sidebar/dashboard-sidebar";
+import { SidebarReopenTrigger } from "@/app/_components/sidebar/SidebarReopenTrigger";
 
 interface LayoutProps {
   children: ReactNode;
@@ -45,14 +46,6 @@ export default async function AdminLayout({
     redirect("/auth?mode=signin");
   }
 
-  /*
-   * Normalize the database role.
-   *
-   * This supports values such as:
-   *   ADMIN
-   *   Admin
-   *   admin
-   */
   const normalizedRole = String(currentUser.role ?? "")
     .trim()
     .toUpperCase();
@@ -64,12 +57,7 @@ export default async function AdminLayout({
     emailVerified: currentUser.emailVerified,
   });
 
-  /*
-   * Only ADMIN accounts can access /admin.
-   *
-   * We intentionally do NOT redirect non-admin users to
-   * /dashboard because that can create a redirect loop.
-   */
+
   if (normalizedRole !== "ADMIN") {
     return (
       <div className="min-h-screen bg-background p-10">
@@ -98,15 +86,22 @@ export default async function AdminLayout({
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      defaultOpen={true}
+      className="flex h-dvh min-h-0 bg-background text-foreground"
+    >
       <AppSidebar />
 
-      <SidebarInset>
-        <main className="min-h-screen bg-background">
+      <SidebarInset className="relative flex min-h-0 flex-1 flex-col bg-background text-foreground">
+        {/* Only appears when the sidebar is closed */}
+        <SidebarReopenTrigger />
+
+        <main className="min-h-0 flex-1 bg-background">
           {children}
         </main>
       </SidebarInset>
     </SidebarProvider>
   );
 }
+
 

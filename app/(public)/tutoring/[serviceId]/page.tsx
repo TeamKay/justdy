@@ -14,7 +14,6 @@ import { Instrument_Serif, Inter } from "next/font/google";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 
-import { JustdyChatbot } from "@/app/_components/chat/JustdyChatbot";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import MarketingFooter from "@/app/_components/MarketingFooter";
@@ -330,7 +329,6 @@ export default async function TutoringServiceDetailPage({ params }: PageProps) {
       </main>
 
       <MarketingFooter />
-      <JustdyChatbot />
     </div>
   );
 }

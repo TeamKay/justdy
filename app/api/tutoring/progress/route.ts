@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { canManageChildren } from "@/lib/auth/capabilities";
 
 export const dynamic = "force-dynamic";
 
@@ -20,32 +19,16 @@ export async function GET(request: Request) {
     }
 
     const requestedStudentId = new URL(request.url).searchParams.get("studentId")?.trim() || null;
-    let learnerId = userId;
+    const learnerId = userId;
 
-    if (requestedStudentId && requestedStudentId !== userId) {
-      if (!(await canManageChildren(userId))) {
-        return NextResponse.json({ error: "You are not authorized to view this learner's progress." }, { status: 403 });
-      }
-
-      const membership = await prisma.familyMember.findFirst({
-        where: {
-          userId,
-          role: { in: ["PARENT", "GUARDIAN"] },
-          family: {
-            members: {
-              some: { userId: requestedStudentId, role: "CHILD" },
-            },
-          },
-        },
-        select: { familyId: true },
-      });
-
-      if (!membership) {
-        return NextResponse.json({ error: "You are not authorized to view this learner's progress." }, { status: 403 });
-      }
-
-      learnerId = requestedStudentId;
-    }
+if (requestedStudentId && requestedStudentId !== userId) {
+  return NextResponse.json(
+    {
+      error: "You are not authorized to view this learner's progress.",
+    },
+    { status: 403 },
+  );
+}
 
     const [sessions, activities] = await Promise.all([
       prisma.tutoringSession.findMany({

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  AlertCircle,
   BookOpen,
   CheckCircle2,
   Clock3,
@@ -14,10 +13,10 @@ import {
   Search,
   Sparkles,
   Users,
-  X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 type User = {
   id: string;
@@ -161,35 +160,49 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
-function StatCard({
+function StatItem({
   icon,
   label,
   value,
   description,
+  active = false,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string | number;
   description: string;
+  active?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-            {label}
-          </p>
+    <div
+      className={`group flex min-w-0 flex-1 items-center gap-3 px-5 py-4 transition ${
+        active ? "bg-emerald-50/60" : "hover:bg-slate-50/80"
+      }`}
+    >
+      <div
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition ${
+          active
+            ? "bg-emerald-100 text-emerald-600"
+            : "bg-slate-100 text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700"
+        }`}
+      >
+        {icon}
+      </div>
 
-          <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+      <div className="min-w-0">
+        <div className="flex items-baseline gap-2">
+          <p className="text-xl font-semibold tracking-tight text-slate-950">
             {value}
           </p>
 
-          <p className="mt-1 text-sm text-slate-500">{description}</p>
+          <p className="truncate text-xs font-semibold uppercase tracking-[0.1em] text-slate-400">
+            {label}
+          </p>
         </div>
 
-        <div className="rounded-xl bg-slate-100 p-2.5 text-slate-600">
-          {icon}
-        </div>
+        <p className="mt-0.5 truncate text-xs text-slate-500">
+          {description}
+        </p>
       </div>
     </div>
   );
@@ -239,19 +252,24 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
 
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-
   // Prevent an availability GET that started before a toggle from
   // overwriting the newer state returned by the toggle request.
   const availabilityRequestVersionRef = useRef(0);
   const availabilityMutationRef = useRef(false);
 
-  const loadAvailability = useCallback(async () => {
+  const loadAvailability = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
+
+    if (availabilityMutationRef.current) {
+      return;
+    }
+
     const requestVersion = ++availabilityRequestVersionRef.current;
 
     try {
-      setLoadingAvailability(true);
+      if (!silent) {
+        setLoadingAvailability(true);
+      }
 
       const response = await fetch("/api/live-homework-help/availability", {
         method: "GET",
@@ -291,21 +309,27 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
         return;
       }
 
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to load Live Homework Help availability.",
-      );
+      if (!silent) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Unable to load Live Homework Help availability.",
+        );
+      }
     } finally {
-      if (requestVersion === availabilityRequestVersionRef.current) {
+      if (requestVersion === availabilityRequestVersionRef.current && !silent) {
         setLoadingAvailability(false);
       }
     }
   }, []);
 
-  const loadQueue = useCallback(async () => {
+  const loadQueue = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
+
     try {
-      setLoadingQueue(true);
+      if (!silent) {
+        setLoadingQueue(true);
+      }
 
       const response = await fetch("/api/live-homework-help", {
         method: "GET",
@@ -334,13 +358,17 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
         );
       });
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to load the Live Homework Help queue.",
-      );
+      if (!silent) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Unable to load the Live Homework Help queue.",
+        );
+      }
     } finally {
-      setLoadingQueue(false);
+      if (!silent) {
+        setLoadingQueue(false);
+      }
     }
   }, []);
 
@@ -356,10 +384,12 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
   }, [loadAvailability, loadQueue]);
 
   useEffect(() => {
+    // Background polling stays fast, but is completely silent so the
+    // primary Go Live control never enters a loading state on each tick.
     const interval = window.setInterval(() => {
-      void loadQueue();
-      void loadAvailability();
-    }, 5000);
+      void loadQueue({ silent: true });
+      void loadAvailability({ silent: true });
+    }, 1000);
 
     return () => {
       window.clearInterval(interval);
@@ -375,9 +405,6 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
 
       // Invalidate every availability GET that was already in flight.
       availabilityRequestVersionRef.current += 1;
-
-      setError(null);
-      setSuccess(null);
 
       const method = currentAvailability ? "DELETE" : "POST";
 
@@ -406,13 +433,13 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
 
       setIsAvailable(nextAvailability);
 
-      setSuccess(
+      toast.success(
         nextAvailability
           ? "You are now available for Live Homework Help."
           : "You are now offline for Live Homework Help.",
       );
     } catch (err) {
-      setError(
+      toast.error(
         err instanceof Error
           ? err.message
           : "Unable to update Live Homework Help availability.",
@@ -433,9 +460,6 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
 
     try {
       setSelectingRequestId(request.id);
-      setError(null);
-      setSuccess(null);
-
       const response = await fetch("/api/live-homework-help/select", {
         method: "POST",
         headers: {
@@ -475,7 +499,7 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
         current.filter((item) => item.id !== request.id),
       );
 
-      setSuccess(
+      toast.success(
         `You selected ${
           request.learner?.name || "this learner"
         }. Preparing the live classroom...`,
@@ -490,7 +514,7 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
        */
       router.push(`/live-help/classroom/${sessionId}`);
     } catch (err) {
-      setError(
+      toast.error(
         err instanceof Error ? err.message : "Unable to select this learner.",
       );
 
@@ -549,144 +573,133 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
   ).length;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8 lg:py-10">
-        {/* Header */}
-        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
-          <div className="relative px-6 py-7 sm:px-8 sm:py-9">
-            <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-violet-100/50 blur-3xl" />
+    <div className="min-h-screen bg-white">
+      <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+        {/* Live Help hero */}
+      <section className="relative overflow-hidden">
+        <div className="flex flex-col gap-8 p-5 sm:p-9 lg:flex-row lg:items-center lg:justify-between lg:p-5">
+          {/* Left content */}
+          <div className="max-w-2xl">
+            <h1 className="mt-5 text-3xl font-semibold tracking-[-0.03em] text-emerald-950 sm:text-4xl lg:text-[46px] lg:leading-[1.05]">
+              Live tutoring command center
+            </h1>
 
-            <div className="relative flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
-              <div className="max-w-3xl">
-                <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Justdy Live Homework Help
-                </div>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400 sm:text-base">
+              Go live when you&apos;re ready. New learners appear automatically,
+              and you can jump into a request without leaving this workspace.
+            </p>
+          </div>
 
-                <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-                  Help learners when they need you most.
-                </h1>
-
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500 sm:text-base">
-                  Turn on your availability, review learners who are waiting for
-                  immediate homework support, and connect with the learner you
-                  can help.
-                </p>
-
-                <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  <span className="rounded-full bg-slate-100 px-3 py-1.5">
-                    Signed in as {user.name}
-                  </span>
-
-                  <span className="rounded-full bg-slate-100 px-3 py-1.5">
-                    {user.role || "Educator"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="relative w-full lg:w-auto">
-                <button
-                  type="button"
-                  onClick={toggleAvailability}
-                  disabled={loadingAvailability || changingAvailability}
-                  className={`flex w-full min-w-[230px] items-center justify-center gap-3 rounded-2xl px-5 py-4 text-sm font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto ${
-                    isAvailable
-                      ? "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                      : "bg-slate-950 text-white hover:bg-slate-800"
-                  }`}
-                >
-                  {changingAvailability ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Power className="h-5 w-5" />
-                  )}
-
-                  {loadingAvailability
-                    ? "Checking availability..."
+          {/* Right content */}
+          <div className="flex shrink-0 items-center justify-center lg:ml-12">
+            <div className="flex items-center justify-center">
+              <button
+                type="button"
+                onClick={() => void toggleAvailability()}
+                disabled={changingAvailability}
+                aria-label={
+                  changingAvailability
+                    ? isAvailable
+                      ? "Going offline"
+                      : "Going live"
                     : isAvailable
-                      ? "Available for Live Help"
-                      : "Go Available for Live Help"}
-                </button>
+                      ? "Live and accepting learners"
+                      : "Go live"
+                }
+                className={`group relative mt-0 flex h-40 w-40 shrink-0 flex-col items-center justify-center gap-2 overflow-hidden rounded-lg text-center text-base font-extrabold tracking-tight transition duration-200 disabled:cursor-not-allowed disabled:opacity-70 ${
+                  isAvailable
+                    ? "border border-emerald-400/30 bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/20"
+                    : "bg-emerald-400 text-slate-950 hover:-translate-y-1 hover:bg-emerald-300"
+                }`}
+              >
+                {/* Hover shine */}
+                {!isAvailable && !changingAvailability ? (
+                  <span className="pointer-events-none absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/30 to-transparent transition duration-700 group-hover:translate-x-full" />
+                ) : null}
 
-                <p className="mt-2 text-center text-xs text-slate-400">
-                  {isAvailable
-                    ? "Learners can now see you in the live-help pool."
-                    : "You won't receive immediate-help requests while offline."}
-                </p>
-              </div>
+                {/* Icon / status */}
+                {changingAvailability ? (
+                  <Loader2 className="relative h-8 w-8 animate-spin" />
+                ) : isAvailable ? (
+                  <Power className="relative h-8 w-8" />
+                ) : (
+                  <span className="relative flex h-5 w-5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-lg bg-slate-950/30" />
+                    <span className="relative h-5 w-5 rounded-full bg-slate-950" />
+                  </span>
+                )}
+
+                {/* Main label */}
+                <span className="relative text-lg leading-tight">
+                  {changingAvailability
+                    ? isAvailable
+                      ? "Going offline..."
+                      : "Going live..."
+                    : isAvailable
+                      ? "LIVE"
+                      : "GO LIVE"}
+                </span>
+
+                {/* Secondary label */}
+                {!changingAvailability ? (
+                  <span
+                    className={`relative text-[9px] font-black uppercase tracking-[0.16em] ${
+                      isAvailable
+                        ? "text-emerald-300/70"
+                        : "text-slate-950/60"
+                    }`}
+                  >
+                    {isAvailable ? "Accepting learners" : "Start"}
+                  </span>
+                ) : null}
+              </button>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Feedback */}
-        {(error || success) && (
-          <div
-            className={`mt-5 flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm ${
-              error
-                ? "border-red-200 bg-red-50 text-red-700"
-                : "border-emerald-200 bg-emerald-50 text-emerald-700"
-            }`}
-          >
-            {error ? (
-              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-            ) : (
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
-            )}
+  
+       {/* Stats */}
+        <section className="mt-3 overflow-hidden rounded-lg border border-emerald-400 bg-white shadow-[0_10px_30px_-24px_rgba(15,23,42,0.25)]">
+          <div className="flex flex-col divide-y divide-slate-500 md:flex-row md:divide-x md:divide-y-0">
+            <StatItem
+              icon={<Users className="h-5 w-5" />}
+              label="Waiting"
+              value={waitingCount}
+              description="Learners needing help"
+            />
 
-            <p className="flex-1 leading-6">{error || success}</p>
+            <StatItem
+              icon={<Clock3 className="h-5 w-5" />}
+              label="Connecting"
+              value={connectingCount}
+              description="Requests being connected"
+            />
 
-            <button
-              type="button"
-              onClick={() => {
-                setError(null);
-                setSuccess(null);
-              }}
-              className="rounded-lg p-1 transition hover:bg-black/5"
-              aria-label="Dismiss message"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <StatItem
+              icon={<BookOpen className="h-5 w-5" />}
+              label="Subjects"
+              value={subjects.length}
+              description="Subjects currently requested"
+            />
+
+            <StatItem
+              icon={<GraduationCap className="h-5 w-5" />}
+              label="Availability"
+              value={isAvailable ? "ON" : "OFF"}
+              description={
+                isAvailable
+                  ? "Visible to waiting learners"
+                  : "Not accepting requests"
+              }
+              active={isAvailable}
+            />
           </div>
-        )}
-
-        {/* Stats */}
-        <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            icon={<Users className="h-5 w-5" />}
-            label="Waiting"
-            value={waitingCount}
-            description="Learners needing help"
-          />
-
-          <StatCard
-            icon={<Clock3 className="h-5 w-5" />}
-            label="Connecting"
-            value={connectingCount}
-            description="Requests being connected"
-          />
-
-          <StatCard
-            icon={<BookOpen className="h-5 w-5" />}
-            label="Subjects"
-            value={subjects.length}
-            description="Subjects currently requested"
-          />
-
-          <StatCard
-            icon={<GraduationCap className="h-5 w-5" />}
-            label="Availability"
-            value={isAvailable ? "ON" : "OFF"}
-            description={
-              isAvailable
-                ? "Visible to waiting learners"
-                : "Not accepting requests"
-            }
-          />
         </section>
 
         {/* Selected learner */}
         {selectedRequest && (
-          <section className="mt-6 overflow-hidden rounded-3xl border border-violet-200 bg-white shadow-sm">
+          <section className="mt-6 overflow-hidden rounded-lg border border-violet-200 bg-white shadow-sm">
             <div className="border-b border-violet-100 bg-violet-50/60 px-6 py-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -748,7 +761,7 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
                 <button
                   type="button"
                   disabled
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white opacity-60"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-950 px-5 py-3 text-sm font-semibold text-white opacity-60"
                 >
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Preparing classroom
@@ -759,14 +772,10 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
         )}
 
         {/* Queue */}
-        <section className="mt-6">
-          <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <section className="mt-8">
+          <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-600">
-                Live queue
-              </p>
-
-              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
+              <h2 className="mt-1 text-xl font-semibold tracking-tight text-blue-700">
                 Learners waiting for help
               </h2>
 
@@ -781,7 +790,7 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
                 void loadQueue();
               }}
               disabled={loadingQueue}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
             >
               <RefreshCw
                 className={`h-4 w-4 ${loadingQueue ? "animate-spin" : ""}`}
@@ -791,7 +800,7 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
           </div>
 
           {/* Filters */}
-          <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:flex-row">
+          <div className="mb-5 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:flex-row">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
@@ -800,14 +809,14 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search learners, subjects, topics..."
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-violet-300 focus:bg-white focus:ring-2 focus:ring-violet-100"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-violet-300 focus:bg-white focus:ring-2 focus:ring-violet-100"
               />
             </div>
 
             <select
               value={subjectFilter}
               onChange={(event) => setSubjectFilter(event.target.value)}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
             >
               <option value="all">All subjects</option>
 
@@ -820,7 +829,7 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
           </div>
 
           {loadingQueue && requests.length === 0 ? (
-            <div className="flex min-h-[420px] items-center justify-center rounded-3xl border border-slate-200 bg-white">
+            <div className="flex min-h-105 items-center justify-center rounded-lg border border-slate-200 bg-white">
               <div className="flex flex-col items-center text-center">
                 <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
 
@@ -839,7 +848,7 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
                 return (
                   <article
                     key={request.id}
-                    className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md"
+                    className="group rounded-lg border border-slate-200/80 bg-white p-5 shadow-[0_10px_35px_-24px_rgba(15,23,42,0.3)] transition duration-200 hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-[0_20px_45px_-25px_rgba(76,29,149,0.22)] sm:p-6"
                   >
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0 flex-1">
@@ -852,7 +861,7 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
                         </div>
 
                         <div className="mt-4 flex items-start gap-3">
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-semibold text-slate-600">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-sm font-semibold text-slate-600">
                             {(request.learner?.name || "L")[0]?.toUpperCase()}
                           </div>
 
@@ -875,7 +884,7 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
                           </div>
                         </div>
 
-                        <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+                        <div className="mt-5 rounded-lg bg-slate-50 p-4">
                           <div className="flex items-start gap-3">
                             <MessageCircleQuestion className="mt-0.5 h-5 w-5 shrink-0 text-violet-600" />
 
@@ -899,21 +908,21 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
 
                         <div className="mt-4 flex flex-wrap gap-2">
                           {request.subject && (
-                            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600">
+                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600">
                               <BookOpen className="h-3.5 w-3.5" />
                               {request.subject}
                             </span>
                           )}
 
                           {request.gradeLevel && (
-                            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600">
+                            <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600">
                               <GraduationCap className="h-3.5 w-3.5" />
                               {request.gradeLevel}
                             </span>
                           )}
 
                           {request.assignmentName && (
-                            <span className="inline-flex max-w-full items-center gap-1.5 truncate rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600">
+                            <span className="inline-flex max-w-full items-center gap-1.5 truncate rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600">
                               <FileText className="h-3.5 w-3.5 shrink-0" />
                               {request.assignmentName}
                             </span>
@@ -932,7 +941,7 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
                             Boolean(selectingRequestId) ||
                             request.status?.toUpperCase() !== "WAITING"
                           }
-                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-600/20 transition hover:-translate-y-0.5 hover:bg-violet-700 hover:shadow-xl disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
                         >
                           {isSelecting ? (
                             <>
@@ -957,91 +966,6 @@ export default function LiveHomeworkTeacherWorkspace({ user }: Props) {
               })}
             </div>
           )}
-        </section>
-
-        {/* How it works */}
-        <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-          <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-600">
-              Teacher workflow
-            </p>
-
-            <h2 className="mt-2 text-xl font-semibold text-slate-950">
-              From waiting learner to live classroom
-            </h2>
-
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Live Homework Help is designed for immediate assistance. Scheduled
-              tutoring remains the place for planned lessons and recurring
-              support.
-            </p>
-          </div>
-
-          <div className="mt-6 grid gap-3 md:grid-cols-4">
-            {[
-              {
-                number: "01",
-                title: "Go available",
-                text: "Tell Justdy you are ready to help.",
-              },
-              {
-                number: "02",
-                title: "Review requests",
-                text: "See the learner's subject and homework need.",
-              },
-              {
-                number: "03",
-                title: "Select learner",
-                text: "Reserve the learner you can help.",
-              },
-              {
-                number: "04",
-                title: "Enter classroom",
-                text: "Guide the learner through their homework.",
-              },
-            ].map((step) => (
-              <div key={step.number} className="rounded-2xl bg-slate-50 p-4">
-                <span className="text-xs font-bold text-violet-600">
-                  {step.number}
-                </span>
-
-                <h3 className="mt-2 text-sm font-semibold text-slate-950">
-                  {step.title}
-                </h3>
-
-                <p className="mt-1 text-xs leading-5 text-slate-500">
-                  {step.text}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Future classroom note */}
-        <section className="mt-6 rounded-3xl border border-slate-200 bg-slate-950 p-6 text-white sm:p-7">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10">
-              <Sparkles className="h-5 w-5" />
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-300">
-                Next classroom layer
-              </p>
-
-              <h2 className="mt-2 text-xl font-semibold">
-                Whiteboard + assignment viewer + live session
-              </h2>
-
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-                Once a learner is selected, the LiveHomeworkSession record
-                becomes the foundation for the private classroom. The next layer
-                will connect the learner and teacher through the classroom with
-                the assignment viewer, whiteboard, chat, audio/video, session
-                timer, and end-session workflow.
-              </p>
-            </div>
-          </div>
         </section>
       </div>
     </div>

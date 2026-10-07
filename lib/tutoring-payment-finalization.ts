@@ -1,6 +1,28 @@
 import Stripe from "stripe";
 import prisma from "@/lib/prisma";
 
+/**
+ * Finalizes a paid universal tutoring Checkout Session.
+ *
+ * Canonical payment flow:
+ *
+ * Stripe paid
+ *   ↓
+ * Transaction = Paid
+ *   ↓
+ * Booking = Scheduled
+ *   ↓
+ * TutoringSession = SCHEDULED
+ *   ↓
+ * Whiteboard = created
+ *
+ * All canonical database records are finalized inside one serializable
+ * transaction so a successful payment does not leave the booking partially
+ * finalized.
+ *
+ * Daily video rooms are intentionally NOT created here.
+ * The video room is created lazily when the learner or tutor joins.
+ */
 export async function processUniversalTutoringBooking(
   session: Stripe.Checkout.Session,
 ) {
@@ -108,24 +130,24 @@ export async function processUniversalTutoringBooking(
     throw new Error("Stripe educator metadata does not match booking.");
   }
 
-const stripeAvailabilityId =
-  session.metadata?.availabilityId?.trim() || null;
+  const stripeAvailabilityId =
+    session.metadata?.availabilityId?.trim() || null;
 
-const stripeServiceId =
-  session.metadata?.serviceId?.trim() || null;
+  const stripeServiceId = session.metadata?.serviceId?.trim() || null;
 
-if (stripeAvailabilityId !== (booking.availabilityId ?? null)) {
-  throw new Error("Stripe availability metadata does not match booking.");
-}
+  if (stripeAvailabilityId !== (booking.availabilityId ?? null)) {
+    throw new Error("Stripe availability metadata does not match booking.");
+  }
 
-if (stripeServiceId !== (booking.serviceId ?? null)) {
-  throw new Error("Stripe service metadata does not match booking.");
-}
+  if (stripeServiceId !== (booking.serviceId ?? null)) {
+    throw new Error("Stripe service metadata does not match booking.");
+  }
 
   // ============================================================
   // AMOUNT + CURRENCY VERIFICATION
   //
   // Service bookings use the fixed Service price.
+  //
   // Find Tutor bookings use the tutor hourly rate multiplied by
   // the exact learner-selected session duration.
   // ============================================================
@@ -173,7 +195,13 @@ if (stripeServiceId !== (booking.serviceId ?? null)) {
   // ============================================================
 
   if (booking.status === "Scheduled") {
-    await ensureCanonicalTutoringSession(booking);
+    /*
+     * The booking is already finalized.
+     *
+     * This can happen when both the Stripe webhook and the browser
+     * return path reach the finalizer. Do not create another payment
+     * transaction or another session.
+     */
     return true;
   }
 
@@ -199,7 +227,7 @@ if (stripeServiceId !== (booking.serviceId ?? null)) {
   }
 
   // ============================================================
-  // COMPLETE PAYMENT + BOOKING
+  // COMPLETE PAYMENT + BOOKING ATOMICALLY
   // ============================================================
 
   await prisma.$transaction(
@@ -228,6 +256,7 @@ if (stripeServiceId !== (booking.serviceId ?? null)) {
         throw new Error("Booking disappeared during payment processing.");
       }
 
+      // Another Stripe session cannot take over this booking.
       if (
         currentBooking.stripeSessionId &&
         currentBooking.stripeSessionId !== session.id
@@ -235,6 +264,11 @@ if (stripeServiceId !== (booking.serviceId ?? null)) {
         throw new Error("Booking belongs to another Stripe session.");
       }
 
+      /*
+       * If another concurrent finalizer already completed this booking,
+       * this transaction can safely finish without creating duplicate
+       * records.
+       */
       if (currentBooking.status === "Scheduled") {
         return;
       }
@@ -256,9 +290,11 @@ if (stripeServiceId !== (booking.serviceId ?? null)) {
       // VERIFY AVAILABILITY + REQUESTED INTERVAL
       //
       // Find Tutor bookings leave the teacher's availability window
-      // in Available state. The Booking itself reserves the exact
-      // requested interval. Service bookings continue to reserve
-      // the entire availability window as Booked.
+      // in Available state. The Booking reserves the exact requested
+      // interval.
+      //
+      // Service bookings continue to reserve the availability as
+      // Booked.
       // ----------------------------------------------------------
 
       if (currentBooking.availabilityId) {
@@ -275,19 +311,28 @@ if (stripeServiceId !== (booking.serviceId ?? null)) {
           },
         });
 
-        if (!currentAvailability) {
-          throw new Error("Tutoring availability no longer exists.");
-        }
+       if (!currentAvailability) {
+  throw new Error("Tutoring availability no longer exists.");
+}
 
-        if (
-          currentBooking.startTime < currentAvailability.startTime ||
-          currentBooking.endTime > currentAvailability.endTime
-        ) {
-          throw new Error(
-            "The tutoring booking is outside the educator's availability.",
-          );
-        }
+if (
+  !currentAvailability.startTime ||
+  !currentAvailability.endTime
+) {
+  throw new Error(
+    "Tutoring availability is not a concrete bookable slot.",
+  );
+}
 
+if (
+  currentBooking.startTime < currentAvailability.startTime ||
+  currentBooking.endTime > currentAvailability.endTime
+) {
+  throw new Error(
+    "The tutoring booking is outside the educator's availability.",
+  );
+}
+        // A service booking should already have reserved the slot.
         if (
           currentBooking.serviceId &&
           currentAvailability.status !== "Booked"
@@ -297,6 +342,8 @@ if (stripeServiceId !== (booking.serviceId ?? null)) {
           );
         }
 
+        // Find Tutor bookings may use an Available or Booked window,
+        // provided the exact requested interval is not occupied.
         if (
           !currentBooking.serviceId &&
           !["Available", "Booked"].includes(currentAvailability.status)
@@ -304,22 +351,31 @@ if (stripeServiceId !== (booking.serviceId ?? null)) {
           throw new Error("Tutoring availability is no longer available.");
         }
 
+        // --------------------------------------------------------
+        // PREVENT OVERLAPPING BOOKINGS
+        // --------------------------------------------------------
+
         const conflictingBooking = await tx.booking.findFirst({
           where: {
             id: {
               not: currentBooking.id,
             },
+
             educatorId: currentBooking.educatorId,
+
             status: {
               in: ["PendingPayment", "Scheduled"],
             },
+
             startTime: {
               lt: currentBooking.endTime,
             },
+
             endTime: {
               gt: currentBooking.startTime,
             },
           },
+
           select: {
             id: true,
           },
@@ -335,11 +391,18 @@ if (stripeServiceId !== (booking.serviceId ?? null)) {
       // ----------------------------------------------------------
       // RECORD THE PAYMENT
       // ----------------------------------------------------------
+      //
+      // Transaction.stripeSessionId is not unique in the current
+      // schema, so we intentionally use findFirst() for idempotency.
+      // The surrounding serializable transaction prevents the normal
+      // concurrent finalization path from creating duplicate records.
+      // ----------------------------------------------------------
 
       const existingTransaction = await tx.transaction.findFirst({
         where: {
           stripeSessionId: session.id,
         },
+
         select: {
           id: true,
           userId: true,
@@ -349,50 +412,56 @@ if (stripeServiceId !== (booking.serviceId ?? null)) {
       if (existingTransaction) {
         if (
           existingTransaction.userId &&
-          existingTransaction.userId !== booking.studentId
+          existingTransaction.userId !== currentBooking.studentId
         ) {
           throw new Error("Stripe transaction belongs to another user.");
         }
 
         await tx.transaction.update({
-          where: { id: existingTransaction.id },
+          where: {
+            id: existingTransaction.id,
+          },
+
           data: {
-            userId: booking.studentId,
+            userId: currentBooking.studentId,
             amount: session.amount_total ?? 0,
+
             stripePaymentIntentId:
               typeof session.payment_intent === "string"
                 ? session.payment_intent
                 : null,
+
             status: "Paid",
           },
         });
       } else {
         await tx.transaction.create({
           data: {
-            userId: booking.studentId,
+            userId: currentBooking.studentId,
             amount: session.amount_total ?? 0,
             stripeSessionId: session.id,
+
             stripePaymentIntentId:
               typeof session.payment_intent === "string"
                 ? session.payment_intent
                 : null,
+
             status: "Paid",
           },
         });
       }
 
       // ----------------------------------------------------------
-      // MARK PAYMENT + SCHEDULE
+      // MARK BOOKING AS PAID + SCHEDULED
       // ----------------------------------------------------------
 
       await tx.booking.update({
         where: {
-          id: booking.id,
+          id: currentBooking.id,
         },
 
         data: {
           status: "Scheduled",
-
           stripeSessionId: session.id,
 
           paymentIntentId:
@@ -405,7 +474,14 @@ if (stripeServiceId !== (booking.serviceId ?? null)) {
       // ----------------------------------------------------------
       // CREATE / ENSURE CANONICAL TUTORING SESSION
       // ----------------------------------------------------------
-      // bookingId is unique, so upsert keeps this safe on Stripe retries.
+      //
+      // TutoringSession.bookingId is unique, so this is idempotent.
+      //
+      // IMPORTANT:
+      // This is intentionally inside the same transaction as the
+      // payment and Booking update.
+      // ----------------------------------------------------------
+
       await tx.tutoringSession.upsert({
         where: {
           bookingId: currentBooking.id,
@@ -434,13 +510,43 @@ if (stripeServiceId !== (booking.serviceId ?? null)) {
           tutorNotes: currentBooking.description,
         },
       });
+
+      // ----------------------------------------------------------
+      // CREATE / ENSURE CANONICAL WHITEBOARD
+      // ----------------------------------------------------------
+      //
+      // Whiteboard.bookingId is unique, so this is also idempotent.
+      //
+      // The whiteboard is created as database state only. It does not
+      // open automatically when the video call starts.
+      // ----------------------------------------------------------
+
+      await tx.whiteboard.upsert({
+        where: {
+          bookingId: currentBooking.id,
+        },
+
+        create: {
+          userId: currentBooking.studentId,
+          bookingId: currentBooking.id,
+          isStandalone: false,
+          name: "Session Whiteboard",
+
+          data: {
+            version: 1,
+            pages: [],
+            currentPageIndex: 0,
+          },
+        },
+
+        update: {},
+      });
     },
+
     {
       isolationLevel: "Serializable",
     },
   );
-
-  await ensureCanonicalTutoringSession(booking.id);
 
   console.log("TUTORING BOOKING PAYMENT CONFIRMED:", {
     bookingId: booking.id,
@@ -450,6 +556,16 @@ if (stripeServiceId !== (booking.serviceId ?? null)) {
   return true;
 }
 
+/**
+ * Ensures that a canonical TutoringSession and its shared Whiteboard
+ * exist for an already-finalized tutoring Booking.
+ *
+ * This helper is intentionally kept for existing callers that may need
+ * to repair or initialize canonical session records outside the payment
+ * finalization flow.
+ *
+ * It does NOT create a Daily room.
+ */
 export async function ensureCanonicalTutoringSession(
   bookingOrId: {
     id: string;
@@ -464,7 +580,10 @@ export async function ensureCanonicalTutoringSession(
   const booking =
     typeof bookingOrId === "string"
       ? await prisma.booking.findUnique({
-          where: { id: bookingOrId },
+          where: {
+            id: bookingOrId,
+          },
+
           select: {
             id: true,
             studentId: true,
@@ -473,13 +592,18 @@ export async function ensureCanonicalTutoringSession(
             startTime: true,
             endTime: true,
             availability: {
-              select: { startTime: true, endTime: true },
+              select: {
+                startTime: true,
+                endTime: true,
+              },
             },
-            videoSessionId: true,
           },
         })
       : await prisma.booking.findUnique({
-          where: { id: bookingOrId.id },
+          where: {
+            id: bookingOrId.id,
+          },
+
           select: {
             id: true,
             studentId: true,
@@ -488,71 +612,91 @@ export async function ensureCanonicalTutoringSession(
             startTime: true,
             endTime: true,
             availability: {
-              select: { startTime: true, endTime: true },
+              select: {
+                startTime: true,
+                endTime: true,
+              },
             },
-            videoSessionId: true,
           },
         });
 
   if (!booking) {
-    throw new Error("Unable to initialize canonical tutoring session: booking not found.");
+    throw new Error(
+      "Unable to initialize canonical tutoring session: booking not found.",
+    );
   }
 
-  // Booking.startTime/endTime are authoritative. For Find Tutor,
-  // they contain the learner-selected interval inside a larger
-  // availability window.
+  // Booking.startTime/endTime are authoritative.
+  //
+  // For Find Tutor bookings, these contain the learner-selected
+  // interval inside the larger educator availability window.
   const startTime = booking.startTime;
   const endTime = booking.endTime;
 
   /*
-   * IMPORTANT: Do not create the Vonage video session here.
+   * IMPORTANT:
    *
-   * Stripe payment finalization must not fail just because the external
-   * video provider is temporarily unavailable or returns an authorization
-   * error. The payment, Booking, TutoringSession, and whiteboard records
-   * are the canonical database state.
+   * Do not create a Daily video room here.
    *
-   * The live classroom API creates the Vonage session lazily when the
-   * learner or tutor actually joins. This also keeps abandoned/future
-   * bookings from consuming unnecessary Vonage sessions.
+   * Payment finalization should only establish the canonical database
+   * records. Daily room creation happens lazily when the learner or
+   * tutor actually joins the tutoring session.
+   *
+   * This prevents future or abandoned bookings from consuming video
+   * resources and prevents a temporary Daily API problem from turning
+   * into a payment-finalization failure.
    */
 
-  await prisma.tutoringSession.upsert({
-    where: { bookingId: booking.id },
-    create: {
-      bookingId: booking.id,
-      learnerId: booking.studentId,
-      educatorId: booking.educatorId,
-      serviceId: booking.serviceId,
-      scheduledStart: startTime,
-      scheduledEnd: endTime,
-      status: "SCHEDULED",
-    },
-    update: {
-      learnerId: booking.studentId,
-      educatorId: booking.educatorId,
-      serviceId: booking.serviceId,
-      scheduledStart: startTime,
-      scheduledEnd: endTime,
-    },
-  });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.tutoringSession.upsert({
+        where: {
+          bookingId: booking.id,
+        },
 
-  // Canonical tutoring whiteboard: one shared board per Booking.
-  // The booking owner is stored as the board creator; access is granted
-  // to both booking participants by the whiteboard API.
-  await prisma.whiteboard.upsert({
-    where: { bookingId: booking.id },
-    create: {
-      userId: booking.studentId,
-      bookingId: booking.id,
-      isStandalone: false,
-      name: "Session Whiteboard",
-      data: {
-        version: 1,
-        pages: [],
-        currentPageIndex: 0,
-      },
+        create: {
+          bookingId: booking.id,
+          learnerId: booking.studentId,
+          educatorId: booking.educatorId,
+          serviceId: booking.serviceId,
+          scheduledStart: startTime,
+          scheduledEnd: endTime,
+          status: "SCHEDULED",
+        },
+
+        update: {
+          learnerId: booking.studentId,
+          educatorId: booking.educatorId,
+          serviceId: booking.serviceId,
+          scheduledStart: startTime,
+          scheduledEnd: endTime,
+        },
+      });
+
+      await tx.whiteboard.upsert({
+        where: {
+          bookingId: booking.id,
+        },
+
+        create: {
+          userId: booking.studentId,
+          bookingId: booking.id,
+          isStandalone: false,
+          name: "Session Whiteboard",
+
+          data: {
+            version: 1,
+            pages: [],
+            currentPageIndex: 0,
+          },
+        },
+
+        update: {},
+      });
     },
-    update: {},
-  });
+
+    {
+      isolationLevel: "Serializable",
+    },
+  );
 }

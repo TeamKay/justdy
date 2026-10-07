@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { CAPABILITIES, hasCapability } from "@/lib/auth/capabilities";
-
 import DashboardView from "@/app/_components/Dashboard-view";
 
 export const dynamic = "force-dynamic";
@@ -71,15 +70,6 @@ async function DashboardContent() {
     );
   }
 
-  /*
-   * Justdy has two primary account roles:
-   *
-   * ADMIN -> tutor + platform administration workspace
-   * USER  -> learner workspace
-   *
-   * Capabilities still control specific actions. The role itself is
-   * not used as a substitute for capability checks.
-   */
   const normalizedRole = String(user.role ?? "")
     .trim()
     .toUpperCase();
@@ -109,14 +99,19 @@ async function DashboardContent() {
     };
   };
 
-  const learnerBookingsPromise = isLearner
-    ? prisma.booking.findMany({
+const learnerBookingsPromise = isLearner
+  ? prisma.booking
+      .findMany({
         where: {
           studentId: userId,
-          startTime: { gte: now },
-          status: { in: ["Scheduled", "PendingPayment"] },
+          endTime: {
+            gt: now,
+          },
+          status: "Scheduled",
         },
-        orderBy: { startTime: "asc" },
+        orderBy: {
+          startTime: "asc",
+        },
         take: 5,
         select: {
           id: true,
@@ -125,6 +120,7 @@ async function DashboardContent() {
           subject: true,
           gradeLevel: true,
           status: true,
+
           educator: {
             select: {
               id: true,
@@ -132,6 +128,7 @@ async function DashboardContent() {
               imageUrl: true,
             },
           },
+
           service: {
             select: {
               id: true,
@@ -141,9 +138,21 @@ async function DashboardContent() {
               currency: true,
             },
           },
+
+          tutoringSession: {
+            select: {
+              id: true,
+            },
+          },
         },
       })
-    : Promise.resolve([]);
+      .then((rows) =>
+        rows.map(({ tutoringSession, ...booking }) => ({
+          ...booking,
+          tutoringSessionId: tutoringSession?.id ?? null,
+        })),
+      )
+  : Promise.resolve([]);
 
   const teacherBookingsPromise = isTeacherAdmin
     ? prisma.booking.findMany({

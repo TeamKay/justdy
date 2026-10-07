@@ -6,11 +6,6 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
-/**
- * Returns the authenticated user plus the universal profiles/capabilities
- * needed by the application. The legacy role and FacilitatorProfile are
- * intentionally retained during the architecture transition.
- */
 export const getAuthenticatedUser = cache(async () => {
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -43,7 +38,6 @@ export const getAuthenticatedUser = cache(async () => {
       canCreateResources: true,
       canPublish: true,
       canSell: true,
-      canManageChildren: true,
       canManageSchool: true,
 
       learningProfile: {
