@@ -96,6 +96,9 @@ model User {
   recurringAvailabilities    RecurringAvailability[]
 
   @@map("user")
+  onboardingRequestsAssigned TutoringOnboardingRequest[] @relation("TutoringRequestAssignedTutor")
+  tutoringPlansAgreed TutoringOnboardingRequest[] @relation("TutoringPlanAgreedBy")
+  tutoringOnboardingRequestsAsLearner TutoringOnboardingRequest[] @relation("TutoringOnboardingLearner")
 }
 
 model Role {
@@ -1146,6 +1149,7 @@ model Booking {
   @@index([educatorId, startTime])
   @@index([status, startTime])
   @@index([availabilityId])
+  onboardingSession TutoringOnboardingSession?
 }
 
 model Course {
@@ -2074,4 +2078,118 @@ enum AIPlanType {
 enum TutoringReminderType {
   TWENTY_FOUR_HOURS
   ONE_HOUR
+}
+
+model TutoringOnboardingRequest {
+  id                         String                      @id @default(cuid())
+  gradeLevel                 String
+  studentName                String
+  guardianName               String
+  potentialStartDate         DateTime
+  assignedTutorId            String?
+  assignedTutor              User?                       @relation("TutoringRequestAssignedTutor", fields: [assignedTutorId], references: [id], onDelete: SetNull)
+  learnerEmail               String?
+  learnerUserId              String?
+  learnerUser                User?                       @relation("TutoringOnboardingLearner", fields: [learnerUserId], references: [id], onDelete: SetNull)
+  learnerAccountSetupSentAt  DateTime?
+  email                      String
+  billingEmail               String?
+  enrollmentType             String                      @default("self")
+  phoneNumber                String
+  subject                    String?
+  learningGoals              String?                     @db.Text
+  agreedSchedule             String?                     @db.Text
+  sessionDurationMinutes     Int?
+  sessionsPerWeek            Int?
+  courseDurationWeeks        Int?
+  paymentPlan                String                      @default("full")
+  installmentCount           Int                         @default(1)
+  courseTotalCents           Int?
+  amountPaidCents            Int                         @default(0)
+  agreedRateCents            Int?
+  currency                   String                      @default("usd")
+  planNotes                  String?                     @db.Text
+  planAgreedAt               DateTime?
+  planAgreedById             String?
+  planAgreedBy               User?                       @relation("TutoringPlanAgreedBy", fields: [planAgreedById], references: [id], onDelete: SetNull)
+  preferredContact           String                      @default("Email")
+  additionalInfo             String?                     @db.Text
+  status                     String                      @default("pending_planning")
+  paymentStatus              String                      @default("not_requested")
+  createdAt                  DateTime                    @default(now())
+  updatedAt                  DateTime                    @updatedAt
+  stripeCheckoutSessionId    String?                     @unique
+  stripeCheckoutUrl          String?                     @db.Text
+  stripePaymentIntentId      String?
+  paymentLinkEmailSentAt     DateTime?
+  paymentLinkEmailSentById   String?
+  paymentReceivedAt          DateTime?
+  tutoringPayments           TutoringOnboardingPayment[]
+  tutoringOnboardingSessions TutoringOnboardingSession[]
+
+  @@index([email, createdAt])
+  @@index([status, createdAt])
+  @@index([assignedTutorId, createdAt])
+  @@index([planAgreedAt])
+  @@index([planAgreedById])
+  @@index([paymentStatus, updatedAt])
+  @@index([paymentLinkEmailSentAt])
+  @@index([learnerEmail, createdAt])
+  @@index([learnerUserId, createdAt])
+}
+
+model TutoringOnboardingPayment {
+  id                                  String                    @id @default(cuid())
+  onboardingRequestId                 String
+  onboardingRequest                   TutoringOnboardingRequest @relation(fields: [onboardingRequestId], references: [id], onDelete: Cascade)
+  learnerEmail                        String?
+  installmentNumber                   Int
+  expectedAmountCents                 Int
+  currency                            String                    @default("usd")
+  status                              String                    @default("payment_requested")
+  stripeCheckoutSessionId             String?                   @unique
+  stripePaymentIntentId               String?
+  checkoutUrl                         String?                   @db.Text
+  emailSentAt                         DateTime?
+  emailSentById                       String?
+  learnerPaymentConfirmationSentAt    DateTime?
+  learnerPaymentConfirmationClaimedAt DateTime?
+  adminPaymentNotificationClaimedAt   DateTime?
+  learnerPaymentConfirmationLastError String?                   @db.Text
+  adminPaymentNotificationSentAt      DateTime?
+  adminPaymentNotificationLastError   String?                   @db.Text
+  learnerPaymentConfirmationError     String?                   @db.Text
+  adminPaymentNotificationError       String?                   @db.Text
+  tutorPaymentNotificationSentAt      DateTime?
+  tutorPaymentNotificationClaimedAt   DateTime?
+  tutorPaymentNotificationError       String?                   @db.Text
+  tutorPaymentNotificationLastError   String?                   @db.Text
+  paidAt                              DateTime?
+  createdAt                           DateTime                  @default(now())
+  updatedAt                           DateTime                  @updatedAt
+
+  @@unique([onboardingRequestId, installmentNumber])
+  @@index([onboardingRequestId, status])
+}
+
+model TutoringOnboardingSession {
+  id                  String                    @id @default(cuid())
+  onboardingRequestId String
+  sessionNumber       Int
+  status              String                    @default("PENDING_CONFIRMATION")
+  scheduledStart      DateTime?
+  scheduledEnd        DateTime?
+  durationMinutes     Int?
+  timeZone            String?
+  subject             String?
+  gradeLevel          String?
+  tutorNotes          String?                   @db.Text
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  onboardingRequest   TutoringOnboardingRequest @relation(fields: [onboardingRequestId], references: [id], onDelete: Cascade)
+  bookingId String? @unique
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@unique([onboardingRequestId, sessionNumber])
+  @@index([onboardingRequestId, status])
 }

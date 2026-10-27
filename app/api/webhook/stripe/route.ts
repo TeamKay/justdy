@@ -403,6 +403,420 @@ export async function POST(req: Request) {
     });
   }
 
+  const onboardingRequestId = session.metadata?.tutoringOnboardingRequestId;
+
+  if (onboardingRequestId) {
+    if (session.payment_status !== "paid") {
+      return NextResponse.json({ received: true, pending: true });
+    }
+
+    const onboardingPaymentId = session.metadata?.tutoringOnboardingPaymentId;
+    if (!onboardingPaymentId) {
+      console.error("ONBOARDING PAYMENT METADATA IS MISSING PAYMENT ID:", session.id);
+      return new NextResponse("Onboarding payment record reference is missing", { status: 409 });
+    }
+
+    const onboarding = await prisma.tutoringOnboardingRequest.findUnique({
+      where: { id: onboardingRequestId },
+      include: {
+        tutoringPayments: { orderBy: { installmentNumber: "asc" } },
+      },
+    });
+
+    if (!onboarding) {
+      console.error("ONBOARDING PAYMENT REQUEST NOT FOUND:", onboardingRequestId);
+      return NextResponse.json({ received: true, ignored: true });
+    }
+
+    const payment = onboarding.tutoringPayments.find(
+      (item) => item.id === onboardingPaymentId,
+    );
+
+    if (!payment) {
+      console.error("ONBOARDING PAYMENT RECORD NOT FOUND:", {
+        requestId: onboardingRequestId,
+        paymentId: onboardingPaymentId,
+        sessionId: session.id,
+      });
+      return new NextResponse("Onboarding payment record was not found", { status: 409 });
+    }
+
+    if (
+      payment.stripeCheckoutSessionId !== session.id ||
+      session.client_reference_id !== onboarding.id
+    ) {
+      console.error("ONBOARDING PAYMENT SESSION MISMATCH:", {
+        requestId: onboarding.id,
+        paymentId: payment.id,
+        sessionId: session.id,
+        storedSessionId: payment.stripeCheckoutSessionId,
+        clientReferenceId: session.client_reference_id,
+      });
+      return new NextResponse("Onboarding payment session mismatch", { status: 409 });
+    }
+
+    if (
+      (onboarding.status !== "plan_agreed" && onboarding.status !== "payment_received") ||
+      !onboarding.planAgreedAt ||
+      !onboarding.planAgreedById
+    ) {
+      console.error("ONBOARDING PLAN NOT AGREED:", onboarding.id);
+      return new NextResponse("Onboarding plan agreement is not valid", { status: 409 });
+    }
+
+    const expectedAmountCents = payment.expectedAmountCents;
+    const expectedCurrency = (payment.currency || onboarding.currency || "usd").toLowerCase();
+
+    if (
+      session.mode !== "payment" ||
+      !Number.isSafeInteger(expectedAmountCents) ||
+      expectedAmountCents <= 0 ||
+      session.amount_total !== expectedAmountCents ||
+      (session.currency || "").toLowerCase() !== expectedCurrency
+    ) {
+      console.error("ONBOARDING PAYMENT AMOUNT OR CURRENCY MISMATCH:", {
+        requestId: onboarding.id,
+        paymentId: payment.id,
+        installmentNumber: payment.installmentNumber,
+        expectedAmountCents,
+        amountTotal: session.amount_total,
+        expectedCurrency,
+        sessionCurrency: session.currency,
+        mode: session.mode,
+      });
+      return new NextResponse("Onboarding payment amount or currency mismatch", { status: 409 });
+    }
+
+    // Persist this specific full payment/installment first. Repeated Stripe
+    // deliveries are safe because the payment record is updated idempotently.
+    await prisma.$transaction(async (tx) => {
+      const currentPayment = await tx.tutoringOnboardingPayment.findUnique({
+        where: { id: payment.id },
+        select: {
+          id: true,
+          status: true,
+          stripeCheckoutSessionId: true,
+          expectedAmountCents: true,
+          currency: true,
+          installmentNumber: true,
+          paidAt: true,
+        },
+      });
+
+      if (!currentPayment || currentPayment.stripeCheckoutSessionId !== session.id) {
+        throw new Error("Onboarding payment record changed or no longer matches this Stripe session.");
+      }
+
+      if (currentPayment.expectedAmountCents !== session.amount_total ||
+          currentPayment.currency.toLowerCase() !== (session.currency || "").toLowerCase()) {
+        throw new Error("Onboarding payment record no longer matches the paid Stripe amount.");
+      }
+
+      if (currentPayment.status !== "paid" || !currentPayment.paidAt) {
+        await tx.tutoringOnboardingPayment.update({
+          where: { id: currentPayment.id },
+          data: {
+            status: "paid",
+            // Preserve the original paid timestamp on duplicate webhook delivery.
+            ...(currentPayment.paidAt ? {} : { paidAt: new Date() }),
+          },
+        });
+      }
+
+      const allPayments = await tx.tutoringOnboardingPayment.findMany({
+        where: { onboardingRequestId: onboarding.id },
+        select: {
+          id: true,
+          status: true,
+          installmentNumber: true,
+          expectedAmountCents: true,
+        },
+      });
+
+      const requiredPaymentCount = onboarding.paymentPlan === "installments"
+        ? onboarding.installmentCount
+        : 1;
+      const paidCount = allPayments.filter((item) => item.status === "paid").length;
+      const allCoursePaymentsPaid = paidCount >= requiredPaymentCount;
+      const paymentIntentId =
+        typeof session.payment_intent === "string" ? session.payment_intent : null;
+
+      await tx.tutoringOnboardingRequest.update({
+        where: { id: onboarding.id },
+        data: {
+          // Keep the course request distinct from the individual installment.
+          paymentStatus: allCoursePaymentsPaid ? "paid" : "partially_paid",
+          // Keep the aggregate balance in sync with the authoritative paid
+          // installment rows, including when Stripe retries this webhook.
+          amountPaidCents: allPayments.reduce(
+            (total, item) => total + (item.status === "paid" ? item.expectedAmountCents : 0),
+            0,
+          ),
+          status: "payment_received",
+          ...(allCoursePaymentsPaid ? { paymentReceivedAt: onboarding.paymentReceivedAt ?? new Date() } : {}),
+          ...(paymentIntentId ? { stripePaymentIntentId: paymentIntentId } : {}),
+        },
+      });
+    });
+
+    const finalPayments = await prisma.tutoringOnboardingPayment.findMany({
+      where: { onboardingRequestId: onboarding.id },
+      select: { status: true, installmentNumber: true },
+    });
+    const requiredPaymentCount = onboarding.paymentPlan === "installments"
+      ? onboarding.installmentCount
+      : 1;
+    const paidCount = finalPayments.filter((item) => item.status === "paid").length;
+    const allCoursePaymentsPaid = paidCount >= requiredPaymentCount;
+
+    // Send confirmations after the payment transaction commits. Sent timestamps
+    // are stored per recipient so Stripe retries do not resend successful emails.
+    const refreshedPayment = await prisma.tutoringOnboardingPayment.findUnique({
+      where: { id: payment.id },
+      select: {
+        id: true,
+        learnerEmail: true,
+        expectedAmountCents: true,
+        currency: true,
+        installmentNumber: true,
+        learnerPaymentConfirmationSentAt: true,
+        learnerPaymentConfirmationClaimedAt: true,
+        adminPaymentNotificationSentAt: true,
+        adminPaymentNotificationClaimedAt: true,
+      },
+    });
+
+    const refreshedOnboarding = await prisma.tutoringOnboardingRequest.findUnique({
+      where: { id: onboarding.id },
+      select: {
+        studentName: true,
+        guardianName: true,
+        learnerEmail: true,
+        email: true,
+        billingEmail: true,
+        courseTotalCents: true,
+        amountPaidCents: true,
+        currency: true,
+        paymentPlan: true,
+        installmentCount: true,
+      },
+    });
+
+    console.log("ONBOARDING PAYMENT EMAIL LOOKUP:", {
+  paymentId: payment.id,
+  paymentFound: Boolean(refreshedPayment),
+  onboardingFound: Boolean(refreshedOnboarding),
+  learnerEmailAvailable: Boolean(
+    refreshedPayment?.learnerEmail || refreshedOnboarding?.learnerEmail
+  ),
+  adminEmailConfigured: Boolean(
+    process.env.TUTORING_ONBOARDING_ADMIN_EMAIL?.trim()
+  ),
+});
+
+    if (refreshedPayment && refreshedOnboarding) {
+      // A learner confirmation must only go to the learner's own address.
+      // Contact/billing email is intentionally not a fallback: it may belong
+      // to a parent or organizer and must never be treated as the learner's login.
+      const learnerEmail = (
+        refreshedPayment.learnerEmail || refreshedOnboarding.learnerEmail
+      )?.trim().toLowerCase();
+      const adminEmail = process.env.TUTORING_ONBOARDING_ADMIN_EMAIL?.trim().toLowerCase();
+      const amountText = new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: (refreshedPayment.currency || refreshedOnboarding.currency || "usd").toUpperCase(),
+      }).format(refreshedPayment.expectedAmountCents / 100);
+      const paidTotalText = new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: (refreshedOnboarding.currency || "usd").toUpperCase(),
+      }).format((refreshedOnboarding.amountPaidCents || 0) / 100);
+      const courseTotalText = refreshedOnboarding.courseTotalCents == null
+        ? "Not set"
+        : new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: (refreshedOnboarding.currency || "usd").toUpperCase(),
+          }).format(refreshedOnboarding.courseTotalCents / 100);
+      const remainingCents = refreshedOnboarding.courseTotalCents == null
+        ? null
+        : Math.max(0, refreshedOnboarding.courseTotalCents - (refreshedOnboarding.amountPaidCents || 0));
+      const remainingText = remainingCents == null
+        ? "Not available"
+        : new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: (refreshedOnboarding.currency || "usd").toUpperCase(),
+          }).format(remainingCents / 100);
+      const paymentStatusText = allCoursePaymentsPaid ? "Paid in full" : "Partially paid";
+      const subject = `Payment received for ${refreshedOnboarding.studentName}`;
+      const emailBody = [
+        `Hello${refreshedOnboarding.guardianName ? ` ${refreshedOnboarding.guardianName}` : ""},`,
+        "",
+        "We have received a tutoring payment.",
+        `Learner: ${refreshedOnboarding.studentName}`,
+        `Payment received: ${amountText}`,
+        `Installment: ${refreshedPayment.installmentNumber}`,
+        `Total paid to date: ${paidTotalText}`,
+        `Course total: ${courseTotalText}`,
+        `Remaining balance: ${remainingText}`,
+        `Payment status: ${paymentStatusText}`,
+        "",
+        "Your tutoring sessions will be scheduled separately once the learner and tutor confirm actual dates and times.",
+        "",
+        "Thank you,",
+        "Justdy",
+      ].join("\n");
+
+      // Notification claims prevent concurrent duplicate webhook deliveries from
+      // sending the same email at the same time. Claims older than five minutes
+      // are reclaimable after a crashed worker. Delivery systems cannot provide
+      // strict exactly-once semantics if a process crashes after sending but
+      // before persisting the sent timestamp; this minimizes that risk.
+      const claimCutoff = new Date(Date.now() - 5 * 60 * 1000);
+
+      if (learnerEmail && !refreshedPayment.learnerPaymentConfirmationSentAt) {
+        const learnerClaim = await prisma.tutoringOnboardingPayment.updateMany({
+          where: {
+            id: refreshedPayment.id,
+            learnerPaymentConfirmationSentAt: null,
+            OR: [
+              { learnerPaymentConfirmationClaimedAt: null },
+              { learnerPaymentConfirmationClaimedAt: { lt: claimCutoff } },
+            ],
+          },
+          data: { learnerPaymentConfirmationClaimedAt: new Date() },
+        });
+
+        if (learnerClaim.count === 1) {
+          try {
+            const result = await resend.emails.send({
+              from: "Justdy <onboarding@justdy.com>",
+              to: [learnerEmail],
+              subject,
+              text: emailBody,
+            });
+            if (result.error) throw new Error(result.error.message);
+            await prisma.tutoringOnboardingPayment.update({
+              where: { id: refreshedPayment.id },
+              data: {
+                learnerPaymentConfirmationSentAt: new Date(),
+                learnerPaymentConfirmationClaimedAt: null,
+                learnerPaymentConfirmationError: null,
+                learnerPaymentConfirmationLastError: null,
+              },
+            });
+          } catch (emailError) {
+            const message = emailError instanceof Error ? emailError.message : "Unknown email error";
+
+            try {
+              await prisma.tutoringOnboardingPayment.update({
+                where: { id: refreshedPayment.id },
+                data: {
+                  learnerPaymentConfirmationClaimedAt: null,
+                  learnerPaymentConfirmationError: message.slice(0, 1000),
+                  learnerPaymentConfirmationLastError: message.slice(0, 1000),
+                },
+              });
+            } catch (recordError) {
+              console.error("FAILED TO RECORD LEARNER PAYMENT EMAIL ERROR:", {
+                paymentId: payment.id,
+                error: recordError instanceof Error ? recordError.message : "Unknown database error",
+              });
+            }
+
+            console.error("ONBOARDING LEARNER PAYMENT EMAIL FAILED:", {
+              paymentId: payment.id,
+              message,
+            });
+          }
+        }
+      } else if (!learnerEmail) {
+        console.warn("ONBOARDING LEARNER PAYMENT EMAIL SKIPPED: no learner email; contact/billing email was not substituted", { paymentId: payment.id });
+      }
+
+      if (adminEmail && !refreshedPayment.adminPaymentNotificationSentAt) {
+        const adminClaim = await prisma.tutoringOnboardingPayment.updateMany({
+          where: {
+            id: refreshedPayment.id,
+            adminPaymentNotificationSentAt: null,
+            OR: [
+              { adminPaymentNotificationClaimedAt: null },
+              { adminPaymentNotificationClaimedAt: { lt: claimCutoff } },
+            ],
+          },
+          data: { adminPaymentNotificationClaimedAt: new Date() },
+        });
+
+        if (adminClaim.count === 1) {
+          try {
+            const result = await resend.emails.send({
+              from: "Justdy <onboarding@justdy.com>",
+              to: [adminEmail],
+              subject: `[Admin] ${subject}`,
+              text: emailBody,
+            });
+            if (result.error) throw new Error(result.error.message);
+            await prisma.tutoringOnboardingPayment.update({
+              where: { id: refreshedPayment.id },
+              data: {
+                adminPaymentNotificationSentAt: new Date(),
+                adminPaymentNotificationClaimedAt: null,
+                adminPaymentNotificationError: null,
+                adminPaymentNotificationLastError: null,
+              },
+            });
+          } catch (emailError) {
+            const message = emailError instanceof Error ? emailError.message : "Unknown email error";
+
+            try {
+              await prisma.tutoringOnboardingPayment.update({
+                where: { id: refreshedPayment.id },
+                data: {
+                  adminPaymentNotificationClaimedAt: null,
+                  adminPaymentNotificationError: message.slice(0, 1000),
+                  adminPaymentNotificationLastError: message.slice(0, 1000),
+                },
+              });
+            } catch (recordError) {
+              console.error("FAILED TO RECORD ADMIN PAYMENT EMAIL ERROR:", {
+                paymentId: payment.id,
+                error: recordError instanceof Error ? recordError.message : "Unknown database error",
+              });
+            }
+
+            console.error("ONBOARDING ADMIN PAYMENT EMAIL FAILED:", {
+              paymentId: payment.id,
+              message,
+            });
+          }
+        }
+      } else if (!adminEmail) {
+        console.warn("ONBOARDING ADMIN PAYMENT EMAIL SKIPPED: TUTORING_ONBOARDING_ADMIN_EMAIL is not configured");
+      }
+    }
+
+    console.log("JUSTDY ONBOARDING PAYMENT RECORDED:", {
+      requestId: onboarding.id,
+      paymentId: payment.id,
+      installmentNumber: payment.installmentNumber,
+      sessionId: session.id,
+      amountTotal: session.amount_total,
+      paidCount,
+      requiredPaymentCount,
+      paymentStatus: allCoursePaymentsPaid ? "paid" : "partially_paid",
+    });
+
+    return NextResponse.json({
+      received: true,
+      onboardingPaymentProcessed: true,
+      requestId: onboarding.id,
+      paymentId: payment.id,
+      paidInstallments: paidCount,
+      requiredPayments: requiredPaymentCount,
+      courseFullyPaid: allCoursePaymentsPaid,
+    });
+  }
+
+
+
   // ==========================================================
   // IDEMPOTENCY CHECK
   //
