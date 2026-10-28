@@ -610,7 +610,7 @@ export async function POST(req: Request) {
     refreshedPayment?.learnerEmail || refreshedOnboarding?.learnerEmail
   ),
   adminEmailConfigured: Boolean(
-    process.env.TUTORING_ONBOARDING_ADMIN_EMAIL?.trim()
+    process.env.ADMIN_EMAIL?.trim()
   ),
 });
 
@@ -621,7 +621,7 @@ export async function POST(req: Request) {
       const learnerEmail = (
         refreshedPayment.learnerEmail || refreshedOnboarding.learnerEmail
       )?.trim().toLowerCase();
-      const adminEmail = process.env.TUTORING_ONBOARDING_ADMIN_EMAIL?.trim().toLowerCase();
+      const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
       const amountText = new Intl.NumberFormat("en-US", {
         style: "currency",
         currency: (refreshedPayment.currency || refreshedOnboarding.currency || "usd").toUpperCase(),
@@ -789,7 +789,7 @@ export async function POST(req: Request) {
           }
         }
       } else if (!adminEmail) {
-        console.warn("ONBOARDING ADMIN PAYMENT EMAIL SKIPPED: TUTORING_ONBOARDING_ADMIN_EMAIL is not configured");
+        console.warn("ONBOARDING ADMIN PAYMENT EMAIL SKIPPED: ADMIN_EMAIL is not configured");
       }
     }
 
