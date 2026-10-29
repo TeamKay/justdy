@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { CAPABILITIES, ensureCapabilities } from "@/lib/auth/capabilities";
 
 type VerificationAction = "verify" | "reject";
 
@@ -132,21 +131,15 @@ export async function POST(
      */
     if (verified) {
       await prisma.teachingProfile.update({
-        where: {
-          id: profile.id,
-        },
+  where: {
+    id: profile.id,
+  },
+  data: {
+    verificationStatus: "Verified",
+  },
+});
 
-        data: {
-          verificationStatus: "Verified",
-        },
-      });
-
-      await ensureCapabilities(profile.userId, [
-        CAPABILITIES.LEARN,
-        CAPABILITIES.TEACH,
-        CAPABILITIES.TUTOR,
-        CAPABILITIES.RECEIVE_PAYOUTS,
-      ]);
+      
 
       return NextResponse.json({
         success: true,
@@ -189,7 +182,7 @@ export async function POST(
     /*
      * Explicitly preserve learner access.
      */
-    await ensureCapabilities(profile.userId, [CAPABILITIES.LEARN]);
+  
 
     return NextResponse.json({
       success: true,

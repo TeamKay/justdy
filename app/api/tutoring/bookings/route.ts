@@ -83,14 +83,7 @@ export async function GET() {
                 verificationStatus: true,
               },
             },
-            facilitatorProfile: {
-              select: {
-                specialty: true,
-                experience: true,
-                description: true,
-                verificationStatus: true,
-              },
-            },
+            
           },
         },
         tutoringSlot: {
@@ -224,11 +217,7 @@ export async function POST(request: Request) {
               verificationStatus: "Verified",
             },
           },
-          {
-            facilitatorProfile: {
-              verificationStatus: "Verified",
-            },
-          },
+          
         ],
       },
       select: {

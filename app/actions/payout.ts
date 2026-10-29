@@ -2,7 +2,6 @@
 
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { canReceivePayouts } from "@/lib/auth/capabilities";
 import { getVerifiedTutor } from "@/lib/tutoring/authorization";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
@@ -33,10 +32,6 @@ async function requirePayoutEligibleTutor(userId: string) {
 
   if (!tutor) {
     throw new Error("Your verified tutor status is not currently active.");
-  }
-
-  if (!(await canReceivePayouts(userId))) {
-    throw new Error("You are not authorized to receive tutoring payouts.");
   }
 
   return tutor;

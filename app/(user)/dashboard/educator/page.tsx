@@ -27,7 +27,6 @@ export default async function EducatorWorkspacePage() {
       email: true,
       imageUrl: true,
       role: true,
-      canTeach: true,
     },
   });
 
@@ -43,9 +42,6 @@ export default async function EducatorWorkspacePage() {
     redirect("/admin");
   }
 
-  if (!user.canTeach) {
-    redirect("/dashboard");
-  }
 
   const now = new Date();
 

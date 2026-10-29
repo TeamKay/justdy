@@ -6,10 +6,11 @@ export async function getVerifiedTutor(userId: string) {
   return prisma.user.findFirst({
     where: {
       id: userId,
-      role: { in: ["TUTOR", "ADMIN"] },
       status: "Active",
       teachingProfile: {
-        verificationStatus: "Verified",
+        is: {
+          verificationStatus: "Verified",
+        },
       },
     },
     select: {
@@ -28,7 +29,9 @@ export async function getVerifiedTutor(userId: string) {
   });
 }
 
-export async function canProvideTutoring(userId: string): Promise<boolean> {
+export async function canProvideTutoring(
+  userId: string,
+): Promise<boolean> {
   return Boolean(await getVerifiedTutor(userId));
 }
 
@@ -43,7 +46,7 @@ export async function requireVerifiedTutor(userId: string) {
 }
 
 export async function canTeach(userId: string): Promise<boolean> {
-  return Boolean(await getVerifiedTutor(userId));
+  return canProvideTutoring(userId);
 }
 
 export async function getVerifiedTutorByTeachingProfileId(
@@ -54,8 +57,9 @@ export async function getVerifiedTutorByTeachingProfileId(
       id: teachingProfileId,
       verificationStatus: "Verified",
       user: {
-        role: { in: ["TUTOR", "ADMIN"] },
-        status: "Active",
+        is: {
+          status: "Active",
+        },
       },
     },
     select: {

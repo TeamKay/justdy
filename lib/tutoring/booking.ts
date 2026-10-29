@@ -1,43 +1,12 @@
 // lib/tutoring/booking.ts
 
 import prisma from "@/lib/prisma";
-import { CAPABILITIES, hasCapability } from "@/lib/auth/capabilities";
 import {
   getVerifiedTutor,
   requireVerifiedTutor,
 } from "@/lib/tutoring/authorization";
 
-/**
- * Canonical tutoring availability/booking helpers.
- *
- * IMPORTANT:
- *
- * Justdy now uses:
- *
- *   TeachingProfile
- *        ↓
- *     Service
- *        ↓
- *   Availability
- *        ↓
- *     Booking
- *
- * The legacy TutoringSlot model is intentionally NOT used here.
- *
- * User identity is also independent from teaching status:
- *
- *   User
- *     ├── learner capability
- *     ├── teaching capability
- *     └── tutor capability
- *
- * A person can therefore be a learner and tutor using the same
- * User account.
- */
 
-/* ============================================================
-   TYPES
-   ============================================================ */
 
 export type TutoringAvailabilityStatus = "Available" | "Booked" | "Blocked";
 
@@ -53,27 +22,10 @@ export type TutoringServiceInput = {
   courses?: string[];
 };
 
-/* ============================================================
-   TUTOR AUTHORIZATION
-   ============================================================ */
-
-/**
- * Check whether a user can create/manage tutoring availability.
- *
- * CAN_TEACH is intentionally separate from CAN_TUTOR.
- *
- * A teaching profile can be created/managed through CAN_TEACH,
- * while paid tutoring requires the stronger verified-tutor
- * authorization provided by getVerifiedTutor().
- */
 export async function canManageTutoringAvailability(
   tutorId: string,
 ): Promise<boolean> {
-  if (!tutorId) {
-    return false;
-  }
-
-  return hasCapability(tutorId, CAPABILITIES.TEACH);
+  return Boolean(await getVerifiedTutor(tutorId));
 }
 
 /**
@@ -206,14 +158,7 @@ export async function getTutoringSlotForBooking(availabilityId: string) {
     return null;
   }
 
-  const canTutor = await hasCapability(
-    availability.educator.id,
-    CAPABILITIES.TUTOR,
-  );
 
-  if (!canTutor) {
-    return null;
-  }
 
   return availability;
 }

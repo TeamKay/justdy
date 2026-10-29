@@ -61,10 +61,6 @@ type LearningActivity = {
   maxScore: number | null;
   createdAt: Date;
   completedAt: Date | null;
-  resource: {
-    id: string;
-    title: string;
-  } | null;
 };
 
 type CompletedSession = {
@@ -635,7 +631,9 @@ function LearnerDashboard({
 
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">
-                      {activity.resource?.title ?? "Learning activity"}
+                     {activity.activityType
+                        ? activity.activityType.replace(/_/g, " ")
+                        : "Learning activity"}
                     </p>
 
                     <p className="mt-0.5 text-xs capitalize text-muted-foreground">

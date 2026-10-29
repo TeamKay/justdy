@@ -57,16 +57,9 @@ export function SignupModal({ onSwitchToSignin, onSuccess }: SignupModalProps) {
 
   async function onSubmit(values: z.infer<typeof signupSchema>) {
     startTransition(async () => {
-      const res = await signupUser({
-        ...values,
-        role: selectedRole,
-      });
+      const res = await signupUser(values);
 
-      if (res.type === "awaiting_admin_approval") {
-        toast.info("Your account is awaiting admin approval.");
-        onSuccess?.();
-        return;
-      }
+     
 
       if (res.type === "exists_verified") {
         toast.error("Account already exists. Please log in.");

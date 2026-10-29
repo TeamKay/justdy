@@ -75,7 +75,6 @@ export default async function LearnerSessionsPage() {
     select: {
       id: true,
       name: true,
-      canLearn: true,
       emailVerified: true,
     },
   });
@@ -90,9 +89,7 @@ export default async function LearnerSessionsPage() {
     );
   }
 
-  if (!user.canLearn) {
-    redirect("/dashboard");
-  }
+
 
   const now = new Date();
 

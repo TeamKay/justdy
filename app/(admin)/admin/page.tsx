@@ -187,12 +187,6 @@ async function DashboardContent() {
           maxScore: true,
           createdAt: true,
           completedAt: true,
-          resource: {
-            select: {
-              id: true,
-              title: true,
-            },
-          },
         },
       })
     : Promise.resolve([]);

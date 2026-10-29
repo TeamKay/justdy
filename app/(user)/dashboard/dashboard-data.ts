@@ -182,12 +182,6 @@ export async function getDashboardData() {
           maxScore: true,
           createdAt: true,
           completedAt: true,
-          resource: {
-            select: {
-              id: true,
-              title: true,
-            },
-          },
         },
       })
     : Promise.resolve([]);
@@ -306,42 +300,40 @@ export async function getDashboardData() {
     : Promise.resolve(null);
 
   const [
-    learnerBookings,
-    teacherBookings,
-    learningActivities,
-    courseEnrollments,
-    completedSessions,
-    latestPayout,
-    adminStats,
-  ] = await Promise.all([
-    learnerBookingsPromise,
-    teacherBookingsPromise,
-    learningActivitiesPromise,
-    completedSessionsPromise,
-    latestPayoutPromise,
-    adminStatsPromise,
-  ]);
+  learnerBookings,
+  teacherBookings,
+  learningActivities,
+  completedSessions,
+  latestPayout,
+  adminStats,
+] = await Promise.all([
+  learnerBookingsPromise,
+  teacherBookingsPromise,
+  learningActivitiesPromise,
+  completedSessionsPromise,
+  latestPayoutPromise,
+  adminStatsPromise,
+]);
 
-  return {
-    account: {
-      name: user.name ?? "there",
-      email: user.email,
-      imageUrl: user.imageUrl,
-      isLearner,
-      isTeacherAdmin,
-      teachingVerification: user.teachingProfile?.verificationStatus ?? null,
-      teachingHeadline: user.teachingProfile?.headline ?? null,
-    },
-    learnerUpcoming: learnerBookings,
-    teacherUpcoming: teacherBookings,
-    completedSessions,
-    learningActivities,
-    courseEnrollments,
-    latestPayout,
-    adminStats,
-    // These remain empty because the current dashboard source does not
-    // populate client-growth or recent-client records yet.
-    clientGrowth: [],
-    recentClients: [],
-  };
+ return {
+  account: {
+    name: user.name ?? "there",
+    email: user.email,
+    imageUrl: user.imageUrl,
+    isLearner,
+    isTeacherAdmin,
+    teachingVerification: user.teachingProfile?.verificationStatus ?? null,
+    teachingHeadline: user.teachingProfile?.headline ?? null,
+  },
+  learnerUpcoming: learnerBookings,
+  teacherUpcoming: teacherBookings,
+  completedSessions,
+  learningActivities,
+  latestPayout,
+  adminStats,
+  // These remain empty because the current dashboard source does not
+  // populate client-growth or recent-client records yet.
+  clientGrowth: [],
+  recentClients: [],
+};
 }

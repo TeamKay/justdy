@@ -72,15 +72,7 @@ export async function GET(request: Request) {
           maxScore: true,
           startedAt: true,
           completedAt: true,
-          resource: {
-            select: {
-              id: true,
-              title: true,
-              type: true,
-              subject: true,
-              topic: true,
-            },
-          },
+          
         },
       }),
     ]);
@@ -156,7 +148,6 @@ export async function GET(request: Request) {
             maxScore: item.maxScore,
             startedAt: item.startedAt,
             completedAt: item.completedAt,
-            resource: item.resource,
           })),
         },
         recentSessions: sessions.slice(0, 10).map((item) => ({

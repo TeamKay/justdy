@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/lib/generated/prisma/client";
-import { ensureCapabilities, CAPABILITIES } from "@/lib/auth/capabilities";
 
 export async function POST(req: Request) {
   try {
@@ -84,61 +83,44 @@ export async function POST(req: Request) {
     const parsedGradeLevels =
       Array.isArray(gradeLevels) && gradeLevels.length > 0 ? gradeLevels : null;
 
-    const profile = await prisma.$transaction(async (tx) => {
-      const updatedUser = await tx.user.update({
-        where: {
-          id: session.user.id,
-        },
-        data: {
-          canTeach: true,
-        },
-      });
+  const profile = await prisma.teachingProfile.create({
+  data: {
+    userId: session.user.id,
 
-      const teachingProfile = await tx.teachingProfile.create({
-        data: {
-          userId: updatedUser.id,
+    headline:
+      typeof headline === "string" && headline.trim()
+        ? headline.trim()
+        : null,
 
-          headline:
-            typeof headline === "string" && headline.trim()
-              ? headline.trim()
-              : null,
+    specialty:
+      typeof specialty === "string" && specialty.trim()
+        ? specialty.trim()
+        : null,
 
-          specialty:
-            typeof specialty === "string" && specialty.trim()
-              ? specialty.trim()
-              : null,
+    experience: parsedExperience,
 
-          experience: parsedExperience,
+    description:
+      typeof description === "string" && description.trim()
+        ? description.trim()
+        : null,
 
-          description:
-            typeof description === "string" && description.trim()
-              ? description.trim()
-              : null,
+    hourlyRate: parsedHourlyRate,
 
-          hourlyRate: parsedHourlyRate,
+    currency:
+      typeof currency === "string" && currency.trim()
+        ? (currency.trim() as "USD" | "GHS")
+        : "USD",
 
-          currency:
-            typeof currency === "string" && currency.trim()
-              ? (currency.trim() as "USD" | "GHS")
-              : "USD",
+    subjects: parsedSubjects !== null ? parsedSubjects : Prisma.JsonNull,
 
-          /*
-           * Prisma JSON fields require Prisma.JsonNull rather than
-           * JavaScript null when explicitly storing JSON null.
-           */
-          subjects: parsedSubjects !== null ? parsedSubjects : Prisma.JsonNull,
+    gradeLevels:
+      parsedGradeLevels !== null ? parsedGradeLevels : Prisma.JsonNull,
 
-          gradeLevels:
-            parsedGradeLevels !== null ? parsedGradeLevels : Prisma.JsonNull,
+    verificationStatus: "Pending",
+  },
+});
 
-          verificationStatus: "Pending",
-        },
-      });
-
-      return teachingProfile;
-    });
-
-    await ensureCapabilities(session.user.id, [CAPABILITIES.TEACH]);
+   
 
     return NextResponse.json(
       {

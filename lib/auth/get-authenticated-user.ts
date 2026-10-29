@@ -31,18 +31,7 @@ export const getAuthenticatedUser = cache(async () => {
       verificationStatus: true,
       stripeCustomerId: true,
 
-      learningProfile: {
-        select: {
-          id: true,
-          gradeLevel: true,
-          schoolName: true,
-          learningGoals: true,
-          preferredSubjects: true,
-          interests: true,
-          preferredLanguage: true,
-          timezone: true,
-        },
-      },
+      
 
       teachingProfile: {
         select: {
@@ -60,33 +49,9 @@ export const getAuthenticatedUser = cache(async () => {
         },
       },
 
-      creatorProfile: {
-        select: {
-          id: true,
-          displayName: true,
-          bio: true,
-          specialties: true,
-          websiteUrl: true,
-          socialLinks: true,
-        },
-      },
-
-      permissions: {
-        select: {
-          permission: true,
-        },
-      },
-
+    
       // Temporary compatibility for existing tutoring/auth consumers.
-      facilitatorProfile: {
-        select: {
-          specialty: true,
-          experience: true,
-          credentialUrl: true,
-          description: true,
-          verificationStatus: true,
-        },
-      },
+     
     },
   });
 });

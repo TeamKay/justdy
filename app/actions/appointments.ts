@@ -9,7 +9,7 @@ import { Vonage } from "@vonage/server-sdk";
 import { MediaMode } from "@vonage/video";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
-import { CAPABILITIES, hasCapability } from "@/lib/auth/capabilities";
+
 
 export enum PlanType {
   Free = "Free",
@@ -31,8 +31,12 @@ export async function getEducatorById(id: string) {
     const educator = await prisma.user.findFirst({
       where: {
         id,
-        verificationStatus: "Verified",
         status: "Active",
+        teachingProfile: {
+          is: {
+            verificationStatus: "Verified",
+          },
+        },
       },
 
       select: {
@@ -50,7 +54,7 @@ export async function getEducatorById(id: string) {
         lastLoginAt: true,
         verificationStatus: true,
 
-        facilitatorProfile: {
+       teachingProfile: {
           select: {
             specialty: true,
             experience: true,
@@ -58,11 +62,11 @@ export async function getEducatorById(id: string) {
             credentialUrl: true,
             verificationStatus: true,
           },
-        },
+},
       },
     });
 
-    if (!educator || !(await hasCapability(educator.id, CAPABILITIES.TEACH))) {
+    if (!educator) {
       throw new Error("Educator not found");
     }
 
@@ -193,7 +197,7 @@ export async function bookAppointment(formData: FormData) {
         },
       });
 
-      if (!student || !(await hasCapability(student.id, CAPABILITIES.LEARN))) {
+      if (!student) {
         return {
           success: false,
           message: "Learner not found or not authorized to learn",
@@ -201,16 +205,20 @@ export async function bookAppointment(formData: FormData) {
       }
 
       // 3. Validate Educator
-      const educator = await tx.user.findUnique({
+      const educator = await tx.user.findFirst({
         where: {
           id: educatorId,
-          verificationStatus: "Verified",
+          status: "Active",
+          teachingProfile: {
+            is: {
+              verificationStatus: "Verified",
+            },
+          },
         },
       });
 
       if (
-        !educator ||
-        !(await hasCapability(educator.id, CAPABILITIES.TEACH))
+        !educator
       ) {
         return {
           success: false,

@@ -67,7 +67,7 @@ export default async function LearnerSessionDetailPage({ params }: PageProps) {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, canLearn: true, emailVerified: true },
+    select: { id: true, emailVerified: true },
   });
 
   if (!user) redirect("/auth?mode=signin");
@@ -75,8 +75,7 @@ export default async function LearnerSessionDetailPage({ params }: PageProps) {
     redirect(
       `/verify-request?email=${encodeURIComponent(session.user.email ?? "")}`,
     );
-  if (!user.canLearn) redirect("/dashboard");
-
+ 
   const tutoringSession = await prisma.tutoringSession.findFirst({
     where: { id, learnerId: user.id },
     select: {

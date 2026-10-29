@@ -34,7 +34,6 @@ export default async function DashboardPage() {
               account={account}
               upcoming={data.learnerUpcoming}
               activities={data.learningActivities}
-              courseEnrollments={data.courseEnrollments}
               completedSessions={data.completedSessions}
               showWelcome={false}
             />

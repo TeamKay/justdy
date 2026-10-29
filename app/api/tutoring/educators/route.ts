@@ -29,11 +29,7 @@ export async function GET(request: Request) {
               : {}),
           },
         },
-        capabilities: {
-          some: {
-            capability: { key: "CAN_TUTOR" },
-          },
-        },
+        
         ...(search
           ? {
               OR: [

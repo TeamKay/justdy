@@ -48,7 +48,7 @@ export default async function EducatorSessionsPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, role: true, canTeach: true },
+    select: { id: true, role: true },
   });
 
   if (!user) redirect("/auth?mode=signin");
@@ -61,7 +61,6 @@ export default async function EducatorSessionsPage() {
     redirect("/admin/sessions");
   }
 
-  if (!user.canTeach) redirect("/dashboard");
 
   const now = new Date();
 

@@ -26,12 +26,6 @@ export async function GET(request: Request) {
         role: true,
         status: true,
 
-        learningProfile: {
-          select: {
-            id: true,
-          },
-        },
-
         teachingProfile: {
           select: {
             id: true,
@@ -49,13 +43,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
     const isActive = user.status === "Active";
-    const canViewLearning =
-      isActive && (user.role === "LEARNER" || user.role === "TUTOR");
 
-    const canViewTeaching =
-      isActive &&
-      (user.role === "TUTOR" || user.role === "ADMIN") &&
-      user.teachingProfile?.verificationStatus === "Verified";
+const canViewLearning = isActive;
+
+const canViewTeaching =
+  isActive &&
+  user.teachingProfile?.verificationStatus === "Verified";
 
     const now = new Date();
 
@@ -224,9 +217,6 @@ export async function GET(request: Request) {
         name: user.name,
         email: user.email,
         image: user.imageUrl,
-
-        learningProfileExists: Boolean(user.learningProfile),
-
         teachingProfile: user.teachingProfile,
       },
 

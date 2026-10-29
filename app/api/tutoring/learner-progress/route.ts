@@ -73,9 +73,7 @@ export async function GET() {
         maxScore: true,
         completedAt: true,
         createdAt: true,
-        resource: {
-          select: { id: true, title: true, subject: true, topic: true },
-        },
+       
       },
     });
 
@@ -157,7 +155,6 @@ export async function GET() {
               score: lastPractice.score,
               maxScore: lastPractice.maxScore,
               completedAt: lastPractice.completedAt,
-              resource: lastPractice.resource,
             }
           : null,
       };

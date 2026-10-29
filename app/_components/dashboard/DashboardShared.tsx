@@ -74,10 +74,7 @@ export type LearningActivity = {
   maxScore: number | null;
   createdAt: Date;
   completedAt: Date | null;
-  resource: {
-    id: string;
-    title: string;
-  } | null;
+  
 };
 
 export type CompletedSession = {
@@ -129,15 +126,12 @@ export type DashboardAccount = {
   imageUrl: string | null;
   isLearner: boolean;
   isTeacherAdmin: boolean;
-  canBookTutoring: boolean;
-  canReceivePayouts: boolean;
   teachingVerification: string | null;
   teachingHeadline: string | null;
 };
 
 export type DashboardViewProps = {
   account: DashboardAccount;
-
   learnerUpcoming: UpcomingLearnerLesson[];
   teacherUpcoming: UpcomingTeacherLesson[];
   completedSessions: CompletedSession[];

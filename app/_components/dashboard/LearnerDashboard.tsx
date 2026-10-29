@@ -2,7 +2,6 @@ import {
   type DashboardAccount,
   type UpcomingLearnerLesson,
   type LearningActivity,
-  type CourseEnrollmentSummary,
   type CompletedSession,
   PersonAvatar,
   canJoinLesson,
@@ -30,7 +29,6 @@ type LearnerDashboardProps = {
   account: DashboardAccount;
   upcoming: UpcomingLearnerLesson[];
   activities: LearningActivity[];
-  courseEnrollments: CourseEnrollmentSummary[];
   completedSessions: CompletedSession[];
   showWelcome?: boolean;
 };
@@ -127,12 +125,10 @@ function ProgressBar({ progress }: { progress: number }) {
 function LearningOverview({
   upcoming,
   activities,
-  courseEnrollments,
   completedSessions,
 }: {
   upcoming: UpcomingLearnerLesson[];
   activities: LearningActivity[];
-  courseEnrollments: CourseEnrollmentSummary[];
   completedSessions: CompletedSession[];
 }) {
   const nextLesson = upcoming[0];
@@ -215,80 +211,13 @@ function LearningOverview({
         ]
       : []),
 
-    ...courseEnrollments.slice(0, 3).map((enrollment) => {
-      const progress = Math.min(
-        100,
-        Math.max(0, Number(enrollment.progress ?? 0)),
-      );
-
-      return {
-        id: `course-${enrollment.id}`,
-        type: "course" as const,
-
-        content: (
-          <div className="min-w-0">
-            <p className="truncate font-semibold text-foreground">
-              {enrollment.course.title}
-            </p>
-
-            <p className="mt-1 truncate text-xs text-muted-foreground">
-              {enrollment.course.category ??
-                enrollment.course.level ??
-                "Online course"}
-            </p>
-
-            <ProgressBar progress={progress} />
-          </div>
-        ),
-
-        date: (
-          <div>
-            <p className="text-sm font-semibold text-foreground">
-              {Math.round(progress)}% complete
-            </p>
-
-            <p className="mt-1 text-xs text-muted-foreground">
-              {enrollment.status === "Active"
-                ? "In progress"
-                : enrollment.status}
-            </p>
-          </div>
-        ),
-
-        status:
-          progress >= 100 ? (
-            <StatusBadge variant="emerald">Completed</StatusBadge>
-          ) : (
-            <StatusBadge variant="indigo">Learning</StatusBadge>
-          ),
-
-        action: (
-          <Link
-            href={`/courses/${encodeURIComponent(enrollment.course.slug)}`}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted"
-          >
-            Continue
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        ),
-      };
-    }),
+  
 
     ...activities.slice(0, 3).map((activity) => ({
       id: `activity-${activity.id}`,
       type: "activity" as const,
 
-      content: (
-        <div className="min-w-0">
-          <p className="truncate font-semibold text-foreground">
-            {activity.resource?.title ?? "Learning activity"}
-          </p>
-
-          <p className="mt-1 text-xs text-muted-foreground">
-            {activity.activityType}
-          </p>
-        </div>
-      ),
+      
 
       date: (
         <div>
@@ -441,7 +370,7 @@ function LearningOverview({
                       <TypeBadge type={row.type} />
                     </td>
 
-                    <td className="px-5 py-4 align-middle">{row.content}</td>
+                
 
                     <td className="px-5 py-4 align-middle">{row.date}</td>
 
@@ -462,7 +391,7 @@ function LearningOverview({
               <div key={row.id} className="space-y-4 p-5">
                 <TypeBadge type={row.type} />
 
-                <div>{row.content}</div>
+              
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>{row.date}</div>
@@ -493,9 +422,8 @@ function LearningOverview({
 export default function LearnerDashboard({
   account,
   upcoming,
-  activities,
-  courseEnrollments,
   completedSessions,
+   activities,
   showWelcome = true,
 }: LearnerDashboardProps) {
   return (
@@ -516,25 +444,7 @@ export default function LearnerDashboard({
 
       {/* Quick actions */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {account.canBookTutoring ? (
-          <Link
-            href="/tutoring"
-            className="group rounded-lg border border-border/70 bg-card p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white dark:bg-indigo-950/50">
-              <Search className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            </div>
-
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Find the right teacher and book your next lesson.
-            </p>
-
-            <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 transition group-hover:gap-2 dark:text-indigo-400">
-              Find a tutor
-              <ArrowRight className="h-4 w-4" />
-            </span>
-          </Link>
-        ) : null}
+     
 
         <Link
           href="/dashboard/sessions"
@@ -574,12 +484,11 @@ export default function LearnerDashboard({
       </section>
 
       {/* Unified learning table */}
-      <LearningOverview
-        upcoming={upcoming}
-        activities={activities}
-        courseEnrollments={courseEnrollments}
-        completedSessions={completedSessions}
-      />
+    <LearningOverview
+  upcoming={upcoming}
+  activities={activities}
+  completedSessions={completedSessions}
+/>
     </div>
   );
 }

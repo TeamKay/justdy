@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import Stripe from "stripe";
-
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { stripe } from "@/lib/stripe";
-import { CAPABILITIES, hasCapability } from "@/lib/auth/capabilities";
 
 const DEFAULT_CURRENCY = "usd";
 
@@ -142,14 +140,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const canTutor = await hasCapability(educator.id, CAPABILITIES.TUTOR);
-
-    if (!canTutor) {
-      return NextResponse.json(
-        { error: "This educator is not currently available for tutoring." },
-        { status: 404 },
-      );
-    }
 
     // ============================================================
     // 5. RESOLVE OPTIONAL TUTORING SERVICE
