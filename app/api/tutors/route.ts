@@ -1,6 +1,5 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import { protectAIRequest } from "@/lib/ai/protect-request";
 import OpenAI from "openai";
 
 interface ChatMessage {
@@ -17,16 +16,7 @@ export async function POST(req: Request) {
         { status: 401 },
       );
     }
-    const rateLimit = await protectAIRequest(session.user.id);
-    if (rateLimit.isDenied()) {
-      return Response.json(
-        {
-          error:
-            "AI usage is temporarily rate-limited. Please try again shortly.",
-        },
-        { status: 429 },
-      );
-    }
+   
     // ============================================================
     // 1. CHECK OPENAI API KEY
     // ============================================================
