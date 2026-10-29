@@ -456,6 +456,7 @@ function LearnerDashboard({
 
   const completedCount = completedSessions.length;
 
+
   return (
     <div className="space-y-8">
       {/* Learner hero */}
@@ -474,7 +475,7 @@ function LearnerDashboard({
             </h1>
 
             <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-              Continue building your skills with tutoring, practice, and personalized learning.
+              Continue building your skills with personalized tutoring and guided learning.
             </p>
           </div>
 
@@ -609,6 +610,7 @@ function LearnerDashboard({
           />
         )}
       </section>
+
 
       {/* Activity + history */}
       <section className="grid gap-6 lg:grid-cols-2">

@@ -174,7 +174,6 @@ async function DashboardContent() {
       })
     : Promise.resolve([]);
 
-
   const learningActivitiesPromise = isLearner
     ? prisma.learningActivity.findMany({
         where: { userId },
