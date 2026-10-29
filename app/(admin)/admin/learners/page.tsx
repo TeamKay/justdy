@@ -60,7 +60,6 @@ export default async function LearnersPage() {
   const learners = await prisma.user.findMany({
     where: {
       role: "LEARNER",
-      canLearn: true,
       status: {
         not: "Deleted",
       },
@@ -77,7 +76,6 @@ export default async function LearnersPage() {
       status: true,
       createdAt: true,
       lastLoginAt: true,
-      canTeach: true,
       studentProfile: {
         select: {
           gradeLevel: true,
@@ -174,7 +172,6 @@ export default async function LearnersPage() {
     status: learner.status,
     createdAt: learner.createdAt,
     lastLoginAt: learner.lastLoginAt,
-    canTeach: learner.canTeach,
     gradeLevel: learner.studentProfile?.gradeLevel ?? null,
     learningStyle: learner.studentProfile?.learningStyle ?? null,
     bookingCount: bookingCountMap.get(learner.id) ?? 0,

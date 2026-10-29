@@ -31,7 +31,6 @@ type Learner = {
   status: string;
   createdAt: Date;
   lastLoginAt: Date | null;
-  canTeach: boolean;
   gradeLevel: string | null;
   learningStyle: string | null;
   bookingCount: number;
@@ -589,15 +588,7 @@ export default function LearnersView({ learners, stats, growth }: Props) {
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span>{relativeDate(learner.lastLoginAt)}</span>
-                        {learner.canTeach && (
-                          <span
-                            title="This USER also has teaching capability"
-                            className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 px-2 py-1 text-[10px] font-semibold text-violet-700 dark:text-violet-400"
-                          >
-                            <GraduationCap className="size-3" />
-                            Can teach
-                          </span>
-                        )}
+                       
                       </div>
                     </td>
                   </tr>
