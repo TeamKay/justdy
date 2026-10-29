@@ -1,14 +1,5 @@
-import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Heading,
-  Html,
-  Preview,
-  Section,
-  Text,
-} from "@react-email/components";
+import { Button, Heading, Text } from "@react-email/components";
+import JustdyEmailLayout, { justdyEmailColors as c } from "./JustdyEmailLayout";
 
 interface Props {
   username: string;
@@ -19,34 +10,16 @@ interface Props {
   lead: string;
 }
 
-export default function TutoringSessionReminderEmail({
-  username,
-  subject,
-  date,
-  time,
-  tutoringUrl,
-  lead,
-}: Props) {
+export default function TutoringSessionReminderEmail({ username, subject, date, time, tutoringUrl, lead }: Props) {
   return (
-    <Html>
-      <Head />
-      <Preview>Your Justdy tutoring session is coming up</Preview>
-      <Body style={{ margin: 0, padding: "40px 16px", backgroundColor: "#f8fafc", fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", color: "#0f172a" }}>
-        <Container style={{ maxWidth: "600px", margin: "0 auto", backgroundColor: "#fff", borderRadius: "16px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
-          <Section style={{ padding: "28px 32px", backgroundColor: "#0f172a" }}>
-            <Text style={{ margin: 0, color: "#fff", fontSize: "22px", fontWeight: 700 }}>Justdy</Text>
-            <Text style={{ margin: "6px 0 0", color: "#cbd5e1", fontSize: "13px" }}>Live tutoring reminder</Text>
-          </Section>
-          <Section style={{ padding: "36px 32px" }}>
-            <Heading style={{ margin: "0 0 12px", fontSize: "28px", lineHeight: "36px" }}>Your session is coming up</Heading>
-            <Text style={{ margin: "0 0 24px", fontSize: "16px", lineHeight: "26px", color: "#475569" }}>Hi {username},</Text>
-            <Text style={{ margin: "0 0 20px", fontSize: "15px", lineHeight: "24px", color: "#475569" }}>{lead}</Text>
-            <Text style={{ margin: "0 0 8px", fontSize: "15px", fontWeight: 700 }}>Subject: {subject}</Text>
-            <Text style={{ margin: "0 0 24px", fontSize: "15px", color: "#475569" }}>{date} · {time}</Text>
-            <Button href={tutoringUrl} style={{ backgroundColor: "#0f172a", color: "#fff", padding: "12px 20px", borderRadius: "8px", textDecoration: "none", fontWeight: 700 }}>Open my tutoring sessions</Button>
-          </Section>
-        </Container>
-      </Body>
-    </Html>
+    <JustdyEmailLayout preview="Your Justdy tutoring session is coming up" footerNote="This is a reminder about your upcoming Justdy tutoring session.">
+      <Heading as="h1" style={{ margin: "0 0 14px", color: c.navy, fontSize: "25px", lineHeight: "1.3" }}>Your Session Is Coming Up</Heading>
+      <Text style={{ margin: "0 0 18px", color: c.text, fontSize: "15px", lineHeight: "1.8" }}>Hi {username},</Text>
+      <Text style={{ margin: "0 0 22px", color: "#475569", fontSize: "15px", lineHeight: "1.8" }}>{lead}</Text>
+      <table role="presentation" width="100%" cellPadding="0" cellSpacing="0" style={{ borderCollapse: "collapse", border: `1px solid ${c.border}` }}>
+        {([["Subject", subject], ["Date", date], ["Time", time]] as const).map(([label, value]) => <tr key={label}><td style={{ padding: "12px 14px", borderBottom: `1px solid ${c.border}`, color: c.muted, fontSize: "13px", width: "38%" }}>{label}</td><td style={{ padding: "12px 14px", borderBottom: `1px solid ${c.border}`, color: c.text, fontSize: "14px", fontWeight: 600 }}>{value}</td></tr>)}
+      </table>
+      <div style={{ marginTop: "26px" }}><Button href={tutoringUrl} style={{ display: "inline-block", backgroundColor: c.navy, color: "#ffffff", padding: "14px 24px", borderRadius: "8px", fontSize: "14px", fontWeight: 700, textDecoration: "none" }}>Open My Tutoring Sessions</Button></div>
+    </JustdyEmailLayout>
   );
 }

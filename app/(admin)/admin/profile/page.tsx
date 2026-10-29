@@ -3,20 +3,16 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import {
-  CAPABILITIES,
-  hasCapability,
-} from "@/lib/auth/capabilities";
+import { CAPABILITIES, hasCapability } from "@/lib/auth/capabilities";
 
 import EducatorProfileForm from "@/app/_components/EducatorProfileForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function EducatorProfilePage() {
-  const session =
-    await auth.api.getSession({
-      headers: await headers(),
-    });
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
   if (!session?.user) {
     redirect("/signin");
@@ -29,86 +25,68 @@ export default async function EducatorProfilePage() {
       .trim()
       .toUpperCase() === "ADMIN";
 
-  const canTeach =
-    await hasCapability(
-      userId,
-      CAPABILITIES.TEACH,
-    );
+  const canTeach = await hasCapability(userId, CAPABILITIES.TEACH);
 
   if (!isAdmin && !canTeach) {
     redirect("/dashboard");
   }
 
-  const [user, profile] =
-    await Promise.all([
-      prisma.user.findUnique({
-        where: {
-          id: userId,
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          imageUrl: true,
-        },
-      }),
+  const [user, profile] = await Promise.all([
+    prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        imageUrl: true,
+      },
+    }),
 
-      prisma.teachingProfile.findUnique({
-        where: {
-          userId,
-        },
-        select: {
-          id: true,
-          headline: true,
-          specialty: true,
-          experience: true,
-          description: true,
-          hourlyRate: true,
-          currency: true,
-          subjects: true,
-          gradeLevels: true,
-          verificationStatus: true,
-        },
-      }),
-    ]);
+    prisma.teachingProfile.findUnique({
+      where: {
+        userId,
+      },
+      select: {
+        id: true,
+        headline: true,
+        specialty: true,
+        experience: true,
+        description: true,
+        hourlyRate: true,
+        currency: true,
+        subjects: true,
+        gradeLevels: true,
+        verificationStatus: true,
+      },
+    }),
+  ]);
 
   if (!user) {
     redirect("/signin");
   }
 
-  const profileFormValue =
-    profile
-      ? {
-          id: profile.id,
-          headline: profile.headline,
-          specialty: profile.specialty,
-          experience: profile.experience,
-          description:
-            profile.description,
-          hourlyRate:
-            profile.hourlyRate,
-          currency: String(
-            profile.currency ??
-              "USD",
-          ),
-          subjects:
-            profile.subjects,
-          gradeLevels:
-            profile.gradeLevels,
-          verificationStatus:
-            String(
-              profile.verificationStatus ??
-                "",
-            ),
+  const profileFormValue = profile
+    ? {
+        id: profile.id,
+        headline: profile.headline,
+        specialty: profile.specialty,
+        experience: profile.experience,
+        description: profile.description,
+        hourlyRate: profile.hourlyRate,
+        currency: String(profile.currency ?? "USD"),
+        subjects: profile.subjects,
+        gradeLevels: profile.gradeLevels,
+        verificationStatus: String(profile.verificationStatus ?? ""),
 
-          /*
-           * Keep the image URL on the profile
-           * object as well for compatibility.
-           */
-          imageUrl:
-            user.imageUrl ?? null,
-        }
-      : null;
+        /*
+         * Keep the image URL on the profile
+         * object as well for compatibility.
+         */
+        imageUrl: user.imageUrl ?? null,
+      }
+    : null;
 
   return (
     <main className="min-h-full bg-background text-emerald-950">

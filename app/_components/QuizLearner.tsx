@@ -52,19 +52,11 @@ interface QuizLearnerProps {
   quiz: QuizContent;
 }
 
-function getQuestionType(
-  question: QuizQuestion,
-) {
-  return (
-    question.type
-      ?.trim()
-      .toLowerCase() || "multiple choice"
-  );
+function getQuestionType(question: QuizQuestion) {
+  return question.type?.trim().toLowerCase() || "multiple choice";
 }
 
-function isChoiceQuestion(
-  question: QuizQuestion,
-) {
+function isChoiceQuestion(question: QuizQuestion) {
   const type = getQuestionType(question);
 
   return (
@@ -80,27 +72,19 @@ export default function QuizLearner({
   slug,
   quiz,
 }: QuizLearnerProps) {
-  const [answers, setAnswers] = useState<
-    Record<string, string>
-  >({});
+  const [answers, setAnswers] = useState<Record<string, string>>({});
 
-  const [activityId, setActivityId] =
-    useState<string | null>(null);
+  const [activityId, setActivityId] = useState<string | null>(null);
 
-  const [isStarting, setIsStarting] =
-    useState(true);
+  const [isStarting, setIsStarting] = useState(true);
 
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [result, setResult] =
-    useState<QuizSubmissionResult | null>(null);
+  const [result, setResult] = useState<QuizSubmissionResult | null>(null);
 
-  const [error, setError] =
-    useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const [currentQuestion, setCurrentQuestion] =
-    useState(0);
+  const [currentQuestion, setCurrentQuestion] = useState(0);
 
   const questions = quiz.questions ?? [];
 
@@ -108,15 +92,13 @@ export default function QuizLearner({
     () =>
       questions.filter(
         (question) =>
-          typeof answers[question.id] ===
-            "string" &&
+          typeof answers[question.id] === "string" &&
           answers[question.id].trim() !== "",
       ).length,
     [answers, questions],
   );
 
-  const current =
-    questions[currentQuestion] ?? null;
+  const current = questions[currentQuestion] ?? null;
 
   useEffect(() => {
     let cancelled = false;
@@ -124,14 +106,11 @@ export default function QuizLearner({
     async function startAttempt() {
       try {
         const response = await fetch(
-          `/api/resources/${encodeURIComponent(
-            resourceId,
-          )}/quiz/submit`,
+          `/api/resources/${encodeURIComponent(resourceId)}/quiz/submit`,
           {
             method: "POST",
             headers: {
-              "Content-Type":
-                "application/json",
+              "Content-Type": "application/json",
             },
             body: JSON.stringify({
               action: "start",
@@ -168,10 +147,7 @@ export default function QuizLearner({
     };
   }, [resourceId]);
 
-  function setAnswer(
-    questionId: string,
-    value: string,
-  ) {
+  function setAnswer(questionId: string, value: string) {
     setAnswers((previous) => ({
       ...previous,
       [questionId]: value,
@@ -188,14 +164,11 @@ export default function QuizLearner({
 
     try {
       const response = await fetch(
-        `/api/resources/${encodeURIComponent(
-          resourceId,
-        )}/quiz/submit`,
+        `/api/resources/${encodeURIComponent(resourceId)}/quiz/submit`,
         {
           method: "POST",
           headers: {
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             action: "submit",
@@ -208,10 +181,7 @@ export default function QuizLearner({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data?.error ||
-            "Unable to submit the quiz.",
-        );
+        throw new Error(data?.error || "Unable to submit the quiz.");
       }
 
       setResult({
@@ -220,8 +190,7 @@ export default function QuizLearner({
         maxScore: data.maxScore,
         percentage: data.percentage,
         correctCount: data.correctCount,
-        totalQuestions:
-          data.totalQuestions,
+        totalQuestions: data.totalQuestions,
         results: data.results ?? [],
       });
 
@@ -248,14 +217,11 @@ export default function QuizLearner({
     void (async () => {
       try {
         const response = await fetch(
-          `/api/resources/${encodeURIComponent(
-            resourceId,
-          )}/quiz/submit`,
+          `/api/resources/${encodeURIComponent(resourceId)}/quiz/submit`,
           {
             method: "POST",
             headers: {
-              "Content-Type":
-                "application/json",
+              "Content-Type": "application/json",
             },
             body: JSON.stringify({
               action: "start",
@@ -265,13 +231,8 @@ export default function QuizLearner({
 
         const data = await response.json();
 
-        if (
-          response.ok &&
-          data.activityId
-        ) {
-          setActivityId(
-            data.activityId,
-          );
+        if (response.ok && data.activityId) {
+          setActivityId(data.activityId);
         }
       } catch {
         // The quiz can still be taken.
@@ -304,22 +265,18 @@ export default function QuizLearner({
               </div>
 
               <p className="mt-2 text-muted-foreground">
-                {result.correctCount} of{" "}
-                {result.totalQuestions}{" "}
-                questions correct
+                {result.correctCount} of {result.totalQuestions} questions
+                correct
               </p>
 
               <p className="mt-1 text-sm text-muted-foreground">
-                {result.score} /{" "}
-                {result.maxScore} points
+                {result.score} / {result.maxScore} points
               </p>
             </div>
 
             <div className="grid gap-4 border-b p-6 sm:grid-cols-3">
               <div className="rounded-2xl border p-5 text-center">
-                <div className="text-2xl font-bold">
-                  {result.correctCount}
-                </div>
+                <div className="text-2xl font-bold">{result.correctCount}</div>
                 <div className="mt-1 text-sm text-muted-foreground">
                   Correct
                 </div>
@@ -327,8 +284,7 @@ export default function QuizLearner({
 
               <div className="rounded-2xl border p-5 text-center">
                 <div className="text-2xl font-bold">
-                  {result.totalQuestions -
-                    result.correctCount}
+                  {result.totalQuestions - result.correctCount}
                 </div>
                 <div className="mt-1 text-sm text-muted-foreground">
                   Incorrect
@@ -336,106 +292,70 @@ export default function QuizLearner({
               </div>
 
               <div className="rounded-2xl border p-5 text-center">
-                <div className="text-2xl font-bold">
-                  {result.percentage}%
-                </div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  Score
-                </div>
+                <div className="text-2xl font-bold">{result.percentage}%</div>
+                <div className="mt-1 text-sm text-muted-foreground">Score</div>
               </div>
             </div>
 
             <div className="space-y-4 p-6 sm:p-8">
-              <h2 className="text-lg font-semibold">
-                Review your answers
-              </h2>
+              <h2 className="text-lg font-semibold">Review your answers</h2>
 
-              {questions.map(
-                (question, index) => {
-                  const questionResult =
-                    result.results.find(
-                      (item) =>
-                        item.questionId ===
-                        question.id,
-                    );
+              {questions.map((question, index) => {
+                const questionResult = result.results.find(
+                  (item) => item.questionId === question.id,
+                );
 
-                  const correct =
-                    questionResult?.correct ??
-                    false;
+                const correct = questionResult?.correct ?? false;
 
-                  return (
-                    <article
-                      key={question.id}
-                      className="rounded-2xl border p-5"
-                    >
-                      <div className="flex gap-4">
-                        <div className="shrink-0 pt-0.5">
-                          {correct ? (
-                            <CheckCircle2 className="size-5 text-green-600" />
-                          ) : (
-                            <XCircle className="size-5 text-destructive" />
-                          )}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-4">
-                            <h3 className="font-medium">
-                              {index + 1}.{" "}
-                              {question.question}
-                            </h3>
-
-                            <span className="shrink-0 text-sm text-muted-foreground">
-                              {questionResult?.awardedPoints ??
-                                0}{" "}
-                              /{" "}
-                              {questionResult?.points ??
-                                question.points ??
-                                1}
-                            </span>
-                          </div>
-
-                          {!correct &&
-                            answers[
-                              question.id
-                            ] && (
-                              <p className="mt-3 text-sm">
-                                <span className="font-medium">
-                                  Your answer:
-                                </span>{" "}
-                                {
-                                  answers[
-                                    question.id
-                                  ]
-                                }
-                              </p>
-                            )}
-
-                          {questionResult?.explanation && (
-                            <div className="mt-4 rounded-xl bg-muted/50 p-4 text-sm">
-                              <p className="font-medium">
-                                Explanation
-                              </p>
-
-                              <p className="mt-1 text-muted-foreground">
-                                {
-                                  questionResult.explanation
-                                }
-                              </p>
-                            </div>
-                          )}
-                        </div>
+                return (
+                  <article key={question.id} className="rounded-2xl border p-5">
+                    <div className="flex gap-4">
+                      <div className="shrink-0 pt-0.5">
+                        {correct ? (
+                          <CheckCircle2 className="size-5 text-green-600" />
+                        ) : (
+                          <XCircle className="size-5 text-destructive" />
+                        )}
                       </div>
-                    </article>
-                  );
-                },
-              )}
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-4">
+                          <h3 className="font-medium">
+                            {index + 1}. {question.question}
+                          </h3>
+
+                          <span className="shrink-0 text-sm text-muted-foreground">
+                            {questionResult?.awardedPoints ?? 0} /{" "}
+                            {questionResult?.points ?? question.points ?? 1}
+                          </span>
+                        </div>
+
+                        {!correct && answers[question.id] && (
+                          <p className="mt-3 text-sm">
+                            <span className="font-medium">Your answer:</span>{" "}
+                            {answers[question.id]}
+                          </p>
+                        )}
+
+                        {questionResult?.explanation && (
+                          <div className="mt-4 rounded-xl bg-muted/50 p-4 text-sm">
+                            <p className="font-medium">Explanation</p>
+
+                            <p className="mt-1 text-muted-foreground">
+                              {questionResult.explanation}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
 
             <div className="flex flex-col gap-3 border-t p-6 sm:flex-row sm:justify-between">
               <Link
-                href={`/resources/${encodeURIComponent(
-                  slug,
-                )}`}
+                href={`/resources/${encodeURIComponent(slug)}`}
                 className="inline-flex h-11 items-center justify-center rounded-xl border px-5 text-sm font-medium transition hover:bg-muted"
               >
                 Back to resource
@@ -463,9 +383,7 @@ export default function QuizLearner({
           <header className="border-b px-6 py-7 sm:px-10">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-sm font-medium text-primary">
-                  Quiz
-                </p>
+                <p className="text-sm font-medium text-primary">Quiz</p>
 
                 <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
                   {quiz.title}
@@ -480,20 +398,15 @@ export default function QuizLearner({
 
               <div className="rounded-2xl border bg-muted/30 px-4 py-3 text-sm">
                 <div className="font-medium">
-                  {answeredCount} /{" "}
-                  {questions.length}
+                  {answeredCount} / {questions.length}
                 </div>
-                <div className="text-muted-foreground">
-                  answered
-                </div>
+                <div className="text-muted-foreground">answered</div>
               </div>
             </div>
 
             {quiz.instructions && (
               <div className="mt-6 rounded-2xl bg-muted/50 p-4 text-sm">
-                <p className="font-medium">
-                  Instructions
-                </p>
+                <p className="font-medium">Instructions</p>
 
                 <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
                   {quiz.instructions}
@@ -505,12 +418,8 @@ export default function QuizLearner({
           <div className="border-b px-6 py-4 sm:px-10">
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">
-                Question{" "}
-                {Math.min(
-                  currentQuestion + 1,
-                  questions.length,
-                )}{" "}
-                of {questions.length}
+                Question {Math.min(currentQuestion + 1, questions.length)} of{" "}
+                {questions.length}
               </span>
 
               <span className="text-muted-foreground">
@@ -524,9 +433,7 @@ export default function QuizLearner({
                 style={{
                   width: `${
                     questions.length
-                      ? ((currentQuestion + 1) /
-                          questions.length) *
-                        100
+                      ? ((currentQuestion + 1) / questions.length) * 100
                       : 0
                   }%`,
                 }}
@@ -547,12 +454,8 @@ export default function QuizLearner({
                 <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
 
                 <div>
-                  <p className="font-medium">
-                    Unable to submit
-                  </p>
-                  <p className="mt-1 text-muted-foreground">
-                    {error}
-                  </p>
+                  <p className="font-medium">Unable to submit</p>
+                  <p className="mt-1 text-muted-foreground">{error}</p>
                 </div>
               </div>
             )}
@@ -571,41 +474,23 @@ export default function QuizLearner({
                       </h2>
 
                       <p className="mt-2 text-sm text-muted-foreground">
-                        {current.points ??
-                          1}{" "}
-                        point
-                        {(current.points ??
-                          1) !== 1
-                          ? "s"
-                          : ""}
+                        {current.points ?? 1} point
+                        {(current.points ?? 1) !== 1 ? "s" : ""}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {isChoiceQuestion(
-                  current,
-                ) ? (
+                {isChoiceQuestion(current) ? (
                   <div className="space-y-3">
-                    {(
-                      current.options ??
-                      []
-                    ).map((option, index) => {
-                      const selected =
-                        answers[
-                          current.id
-                        ] === option;
+                    {(current.options ?? []).map((option, index) => {
+                      const selected = answers[current.id] === option;
 
                       return (
                         <button
                           key={`${current.id}-${index}`}
                           type="button"
-                          onClick={() =>
-                            setAnswer(
-                              current.id,
-                              option,
-                            )
-                          }
+                          onClick={() => setAnswer(current.id, option)}
                           className={`flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition ${
                             selected
                               ? "border-primary bg-primary/5 ring-2 ring-primary/20"
@@ -619,29 +504,19 @@ export default function QuizLearner({
                                 : "bg-background"
                             }`}
                           >
-                            {String.fromCharCode(
-                              65 + index,
-                            )}
+                            {String.fromCharCode(65 + index)}
                           </span>
 
-                          <span className="font-medium">
-                            {option}
-                          </span>
+                          <span className="font-medium">{option}</span>
                         </button>
                       );
                     })}
                   </div>
                 ) : (
                   <textarea
-                    value={
-                      answers[current.id] ??
-                      ""
-                    }
+                    value={answers[current.id] ?? ""}
                     onChange={(event) =>
-                      setAnswer(
-                        current.id,
-                        event.target.value,
-                      )
+                      setAnswer(current.id, event.target.value)
                     }
                     placeholder="Type your answer..."
                     rows={5}
@@ -652,17 +527,9 @@ export default function QuizLearner({
                 <div className="flex flex-col-reverse gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
                   <button
                     type="button"
-                    disabled={
-                      currentQuestion === 0
-                    }
+                    disabled={currentQuestion === 0}
                     onClick={() =>
-                      setCurrentQuestion(
-                        (value) =>
-                          Math.max(
-                            0,
-                            value - 1,
-                          ),
-                      )
+                      setCurrentQuestion((value) => Math.max(0, value - 1))
                     }
                     className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-5 text-sm font-medium transition hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
                   >
@@ -670,18 +537,12 @@ export default function QuizLearner({
                     Previous
                   </button>
 
-                  {currentQuestion <
-                  questions.length - 1 ? (
+                  {currentQuestion < questions.length - 1 ? (
                     <button
                       type="button"
                       onClick={() =>
-                        setCurrentQuestion(
-                          (value) =>
-                            Math.min(
-                              questions.length -
-                                1,
-                              value + 1,
-                            ),
+                        setCurrentQuestion((value) =>
+                          Math.min(questions.length - 1, value + 1),
                         )
                       }
                       className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:opacity-90"
@@ -721,38 +582,26 @@ export default function QuizLearner({
               </p>
 
               <div className="flex flex-wrap gap-2">
-                {questions.map(
-                  (question, index) => {
-                    const answered =
-                      Boolean(
-                        answers[
-                          question.id
-                        ]?.trim(),
-                      );
+                {questions.map((question, index) => {
+                  const answered = Boolean(answers[question.id]?.trim());
 
-                    return (
-                      <button
-                        key={question.id}
-                        type="button"
-                        onClick={() =>
-                          setCurrentQuestion(
-                            index,
-                          )
-                        }
-                        className={`flex size-9 items-center justify-center rounded-lg border text-xs font-medium transition ${
-                          index ===
-                          currentQuestion
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : answered
-                              ? "border-primary/30 bg-primary/10 text-primary"
-                              : "bg-background hover:bg-muted"
-                        }`}
-                      >
-                        {index + 1}
-                      </button>
-                    );
-                  },
-                )}
+                  return (
+                    <button
+                      key={question.id}
+                      type="button"
+                      onClick={() => setCurrentQuestion(index)}
+                      className={`flex size-9 items-center justify-center rounded-lg border text-xs font-medium transition ${
+                        index === currentQuestion
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : answered
+                            ? "border-primary/30 bg-primary/10 text-primary"
+                            : "bg-background hover:bg-muted"
+                      }`}
+                    >
+                      {index + 1}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

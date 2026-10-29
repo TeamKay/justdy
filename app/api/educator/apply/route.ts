@@ -3,55 +3,33 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import {
-  CAPABILITIES,
-  ensureCapabilities,
-} from "@/lib/auth/capabilities";
+import { CAPABILITIES, ensureCapabilities } from "@/lib/auth/capabilities";
 
-function cleanString(
-  value: unknown,
-  max = 2000,
-) {
+function cleanString(value: unknown, max = 2000) {
   if (typeof value !== "string") {
     return undefined;
   }
 
   const trimmed = value.trim();
 
-  return trimmed
-    ? trimmed.slice(0, max)
-    : undefined;
+  return trimmed ? trimmed.slice(0, max) : undefined;
 }
 
-function cleanStringArray(
-  value: unknown,
-) {
+function cleanStringArray(value: unknown) {
   if (!Array.isArray(value)) {
     return undefined;
   }
 
   const cleaned = value
-    .map((item) =>
-      typeof item === "string"
-        ? item.trim()
-        : "",
-    )
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
     .filter(Boolean)
     .slice(0, 50);
 
-  return cleaned.length > 0
-    ? cleaned
-    : undefined;
+  return cleaned.length > 0 ? cleaned : undefined;
 }
 
-function cleanExperience(
-  value: unknown,
-) {
-  if (
-    value === undefined ||
-    value === null ||
-    value === ""
-  ) {
+function cleanExperience(value: unknown) {
+  if (value === undefined || value === null || value === "") {
     return undefined;
   }
 
@@ -61,29 +39,17 @@ function cleanExperience(
     return undefined;
   }
 
-  return Math.max(
-    0,
-    Math.min(80, Math.trunc(number)),
-  );
+  return Math.max(0, Math.min(80, Math.trunc(number)));
 }
 
-function cleanHourlyRate(
-  value: unknown,
-) {
-  if (
-    value === undefined ||
-    value === null ||
-    value === ""
-  ) {
+function cleanHourlyRate(value: unknown) {
+  if (value === undefined || value === null || value === "") {
     return undefined;
   }
 
   const number = Number(value);
 
-  if (
-    !Number.isFinite(number) ||
-    number < 0
-  ) {
+  if (!Number.isFinite(number) || number < 0) {
     return undefined;
   }
 
@@ -92,13 +58,8 @@ function cleanHourlyRate(
   return Math.round(number * 100);
 }
 
-function cleanCredentialUrl(
-  value: unknown,
-) {
-  const valueString = cleanString(
-    value,
-    1000,
-  );
+function cleanCredentialUrl(value: unknown) {
+  const valueString = cleanString(value, 1000);
 
   if (!valueString) {
     return undefined;
@@ -107,10 +68,7 @@ function cleanCredentialUrl(
   try {
     const url = new URL(valueString);
 
-    if (
-      url.protocol !== "http:" &&
-      url.protocol !== "https:"
-    ) {
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
       return undefined;
     }
 
@@ -120,103 +78,67 @@ function cleanCredentialUrl(
   }
 }
 
-export async function POST(
-  req: Request,
-) {
+export async function POST(req: Request) {
   try {
-    const session =
-      await auth.api.getSession({
-        headers: await headers(),
-      });
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
 
     if (!session?.user?.id) {
       return NextResponse.json(
         {
-          error:
-            "You must be signed in to apply to become a tutor.",
+          error: "You must be signed in to apply to become a tutor.",
         },
         { status: 401 },
       );
     }
 
-    const user =
-      await prisma.user.findUnique({
-        where: {
-          id: session.user.id,
-        },
-        select: {
-          id: true,
-          role: true,
-          status: true,
-          teachingProfile: {
-            select: {
-              id: true,
-              verificationStatus: true,
-            },
+    const user = await prisma.user.findUnique({
+      where: {
+        id: session.user.id,
+      },
+      select: {
+        id: true,
+        role: true,
+        status: true,
+        teachingProfile: {
+          select: {
+            id: true,
+            verificationStatus: true,
           },
         },
-      });
+      },
+    });
 
-    if (
-      !user ||
-      user.status !== "Active"
-    ) {
+    if (!user || user.status !== "Active") {
       return NextResponse.json(
         {
-          error:
-            "Your account is not currently eligible to apply.",
+          error: "Your account is not currently eligible to apply.",
         },
         { status: 403 },
       );
     }
 
-    const body =
-      (await req
-        .json()
-        .catch(() => ({}))) as Record<
-        string,
-        unknown
-      >;
+    const body = (await req.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >;
 
-    const headline = cleanString(
-      body.headline,
-      160,
-    );
+    const headline = cleanString(body.headline, 160);
 
-    const specialty = cleanString(
-      body.specialty,
-      160,
-    );
+    const specialty = cleanString(body.specialty, 160);
 
-    const description = cleanString(
-      body.description,
-      4000,
-    );
+    const description = cleanString(body.description, 4000);
 
-    const credentialUrl =
-      cleanCredentialUrl(
-        body.credentialUrl,
-      );
+    const credentialUrl = cleanCredentialUrl(body.credentialUrl);
 
-    const subjects =
-      cleanStringArray(
-        body.subjects,
-      );
+    const subjects = cleanStringArray(body.subjects);
 
-    const gradeLevels =
-      cleanStringArray(
-        body.gradeLevels,
-      );
+    const gradeLevels = cleanStringArray(body.gradeLevels);
 
-    const experience =
-      cleanExperience(
-        body.experience,
-      );
+    const experience = cleanExperience(body.experience);
 
-    const hourlyRate =
-      cleanHourlyRate(
-        body.hourlyRate,
-      );
+    const hourlyRate = cleanHourlyRate(body.hourlyRate);
 
     /*
      * Basic application requirements.
@@ -228,43 +150,29 @@ export async function POST(
     const missingFields: string[] = [];
 
     if (!headline) {
-      missingFields.push(
-        "teaching headline",
-      );
+      missingFields.push("teaching headline");
     }
 
     if (!specialty) {
-      missingFields.push(
-        "specialty",
-      );
+      missingFields.push("specialty");
     }
 
     if (!subjects?.length) {
-      missingFields.push(
-        "at least one subject",
-      );
+      missingFields.push("at least one subject");
     }
 
     if (!gradeLevels?.length) {
-      missingFields.push(
-        "at least one grade level",
-      );
+      missingFields.push("at least one grade level");
     }
 
     if (!description) {
-      missingFields.push(
-        "teaching description",
-      );
+      missingFields.push("teaching description");
     }
 
-    if (
-      body.credentialUrl &&
-      !credentialUrl
-    ) {
+    if (body.credentialUrl && !credentialUrl) {
       return NextResponse.json(
         {
-          error:
-            "Please provide a valid credential or portfolio URL.",
+          error: "Please provide a valid credential or portfolio URL.",
         },
         { status: 400 },
       );
@@ -273,9 +181,7 @@ export async function POST(
     if (missingFields.length > 0) {
       return NextResponse.json(
         {
-          error: `Please provide ${missingFields.join(
-            ", ",
-          )}.`,
+          error: `Please provide ${missingFields.join(", ")}.`,
         },
         { status: 400 },
       );
@@ -296,12 +202,9 @@ export async function POST(
      * +
      * CAN_TEACH / CAN_TUTOR capabilities.
      */
-    const isAdmin =
-      user.role === "ADMIN";
+    const isAdmin = user.role === "ADMIN";
 
-    const currentStatus =
-      user.teachingProfile
-        ?.verificationStatus ?? null;
+    const currentStatus = user.teachingProfile?.verificationStatus ?? null;
 
     /*
      * A verified tutor remains verified when
@@ -312,56 +215,50 @@ export async function POST(
      * A rejected applicant may submit again,
      * which moves the application back to Pending.
      */
-    const nextVerificationStatus =
-      isAdmin
+    const nextVerificationStatus = isAdmin
+      ? "Verified"
+      : currentStatus === "Verified"
         ? "Verified"
-        : currentStatus === "Verified"
-          ? "Verified"
-          : "Pending";
+        : "Pending";
 
-    const profile =
-      await prisma.teachingProfile.upsert(
-        {
-          where: {
-            userId: user.id,
-          },
+    const profile = await prisma.teachingProfile.upsert({
+      where: {
+        userId: user.id,
+      },
 
-          create: {
-            userId: user.id,
+      create: {
+        userId: user.id,
 
-            headline,
-            specialty,
-            description,
-            credentialUrl,
-            subjects,
-            gradeLevels,
-            experience,
-            hourlyRate,
+        headline,
+        specialty,
+        description,
+        credentialUrl,
+        subjects,
+        gradeLevels,
+        experience,
+        hourlyRate,
 
-            verificationStatus:
-              nextVerificationStatus,
-          },
+        verificationStatus: nextVerificationStatus,
+      },
 
-          update: {
-            headline,
-            specialty,
-            description,
-            credentialUrl,
-            subjects,
-            gradeLevels,
-            experience,
-            hourlyRate,
+      update: {
+        headline,
+        specialty,
+        description,
+        credentialUrl,
+        subjects,
+        gradeLevels,
+        experience,
+        hourlyRate,
 
-            verificationStatus:
-              nextVerificationStatus,
-          },
+        verificationStatus: nextVerificationStatus,
+      },
 
-          select: {
-            id: true,
-            verificationStatus: true,
-          },
-        },
-      );
+      select: {
+        id: true,
+        verificationStatus: true,
+      },
+    });
 
     /*
      * Every normal account remains a learner.
@@ -372,39 +269,28 @@ export async function POST(
      * here. Teaching/tutor/payout capabilities are
      * granted by the administrator approval flow.
      */
-    await ensureCapabilities(
-      user.id,
-      [
-        CAPABILITIES.LEARN,
+    await ensureCapabilities(user.id, [
+      CAPABILITIES.LEARN,
 
-        ...(isAdmin
-          ? [
-              CAPABILITIES.TEACH,
-              CAPABILITIES.TUTOR,
-              CAPABILITIES.RECEIVE_PAYOUTS,
-            ]
-          : []),
-      ],
-    );
+      ...(isAdmin
+        ? [CAPABILITIES.TEACH, CAPABILITIES.TUTOR, CAPABILITIES.RECEIVE_PAYOUTS]
+        : []),
+    ]);
 
-    const message =
-      isAdmin
-        ? "Your teaching profile is active."
-        : profile.verificationStatus ===
-            "Verified"
-          ? "Your teaching profile has been updated."
-          : "Your tutor application has been submitted for administrator review.";
+    const message = isAdmin
+      ? "Your teaching profile is active."
+      : profile.verificationStatus === "Verified"
+        ? "Your teaching profile has been updated."
+        : "Your tutor application has been submitted for administrator review.";
 
     return NextResponse.json(
       {
         success: true,
 
         application: {
-          teachingProfileId:
-            profile.id,
+          teachingProfileId: profile.id,
 
-          status:
-            profile.verificationStatus,
+          status: profile.verificationStatus,
 
           message,
         },
@@ -412,15 +298,11 @@ export async function POST(
       { status: 200 },
     );
   } catch (error) {
-    console.error(
-      "Tutor application error:",
-      error,
-    );
+    console.error("Tutor application error:", error);
 
     return NextResponse.json(
       {
-        error:
-          "Unable to submit your tutor application.",
+        error: "Unable to submit your tutor application.",
       },
       { status: 500 },
     );

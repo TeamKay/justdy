@@ -24,7 +24,9 @@ export async function GET(request: Request) {
           is: {
             verificationStatus: "Verified",
             ...(subject ? { subjects: { array_contains: [subject] } } : {}),
-            ...(gradeLevel ? { gradeLevels: { array_contains: [gradeLevel] } } : {}),
+            ...(gradeLevel
+              ? { gradeLevels: { array_contains: [gradeLevel] } }
+              : {}),
           },
         },
         capabilities: {
@@ -129,9 +131,16 @@ export async function GET(request: Request) {
         : null,
     }));
 
-    return NextResponse.json({ success: true, educators: result, count: result.length });
+    return NextResponse.json({
+      success: true,
+      educators: result,
+      count: result.length,
+    });
   } catch (error) {
     console.error("Failed to load tutoring educators:", error);
-    return NextResponse.json({ error: "Failed to load educators." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to load educators." },
+      { status: 500 },
+    );
   }
 }

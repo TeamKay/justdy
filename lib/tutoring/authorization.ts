@@ -1,12 +1,12 @@
 import prisma from "@/lib/prisma";
-import { CAPABILITIES, hasCapability } from "@/lib/auth/capabilities";
 
 export async function getVerifiedTutor(userId: string) {
   if (!userId) return null;
 
-  const user = await prisma.user.findFirst({
+  return prisma.user.findFirst({
     where: {
       id: userId,
+      role: { in: ["TUTOR", "ADMIN"] },
       status: "Active",
       teachingProfile: {
         verificationStatus: "Verified",
@@ -26,28 +26,24 @@ export async function getVerifiedTutor(userId: string) {
       },
     },
   });
-
-  if (!user?.teachingProfile) return null;
-
-  if (!(await hasCapability(userId, CAPABILITIES.TUTOR))) return null;
-
-  return user;
 }
 
-export async function canProvideTutoring(userId: string) {
+export async function canProvideTutoring(userId: string): Promise<boolean> {
   return Boolean(await getVerifiedTutor(userId));
 }
 
 export async function requireVerifiedTutor(userId: string) {
   const tutor = await getVerifiedTutor(userId);
+
   if (!tutor) {
     throw new Error("Verified tutor access is required.");
   }
+
   return tutor;
 }
 
-export async function canTeach(userId: string) {
-  return hasCapability(userId, CAPABILITIES.TEACH);
+export async function canTeach(userId: string): Promise<boolean> {
+  return Boolean(await getVerifiedTutor(userId));
 }
 
 export async function getVerifiedTutorByTeachingProfileId(
@@ -58,6 +54,7 @@ export async function getVerifiedTutorByTeachingProfileId(
       id: teachingProfileId,
       verificationStatus: "Verified",
       user: {
+        role: { in: ["TUTOR", "ADMIN"] },
         status: "Active",
       },
     },
@@ -74,11 +71,5 @@ export async function getVerifiedTutorByTeachingProfileId(
     },
   });
 
-  if (!profile) return null;
-
-  if (!(await hasCapability(profile.user.id, CAPABILITIES.TUTOR))) {
-    return null;
-  }
-
-  return profile.user;
+  return profile?.user ?? null;
 }

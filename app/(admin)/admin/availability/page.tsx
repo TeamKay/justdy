@@ -2,66 +2,52 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
-import {
-  hasCapability,
-  CAPABILITIES,
-} from "@/lib/auth/capabilities";
+import { hasCapability, CAPABILITIES } from "@/lib/auth/capabilities";
 import prisma from "@/lib/prisma";
 
 import EducatorAvailabilityStudio from "@/app/_components/EducatorAvailablityStudio";
 
-import {
-  materializeRecurringAvailability,
-} from "@/lib/tutoring/recurring-availability";
+import { materializeRecurringAvailability } from "@/lib/tutoring/recurring-availability";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function AdminAvailabilityPage() {
-  const session =
-    await auth.api.getSession({
-      headers: await headers(),
-    });
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
   if (!session?.user) {
     redirect("/signin");
   }
 
-  const userId =
-    session.user.id;
+  const userId = session.user.id;
 
   const isAdmin =
     String(session.user.role ?? "")
       .trim()
       .toUpperCase() === "ADMIN";
 
-  const canTeach =
-    await hasCapability(
-      userId,
-      CAPABILITIES.TEACH,
-    );
+  const canTeach = await hasCapability(userId, CAPABILITIES.TEACH);
 
   if (!isAdmin && !canTeach) {
     redirect("/dashboard");
   }
 
-  const profile =
-    await prisma.teachingProfile.findUnique(
-      {
-        where: {
-          userId,
-        },
+  const profile = await prisma.teachingProfile.findUnique({
+    where: {
+      userId,
+    },
 
-        select: {
-          id: true,
-          headline: true,
-          specialty: true,
-          verificationStatus: true,
-          subjects: true,
-          gradeLevels: true,
-        },
-      },
-    );
+    select: {
+      id: true,
+      headline: true,
+      specialty: true,
+      verificationStatus: true,
+      subjects: true,
+      gradeLevels: true,
+    },
+  });
 
   if (!profile) {
     redirect("/admin/profile");
@@ -84,17 +70,11 @@ export default async function AdminAvailabilityPage() {
    *   startTime = real date/time
    *   endTime   = real date/time
    */
-  await materializeRecurringAvailability(
-    userId,
-  );
+  await materializeRecurringAvailability(userId);
 
   const now = new Date();
 
-  const [
-    availability,
-    recurringRules,
-    services,
-  ] = await Promise.all([
+  const [availability, recurringRules, services] = await Promise.all([
     /*
      * Concrete bookable availability.
      */
@@ -103,10 +83,7 @@ export default async function AdminAvailabilityPage() {
         educatorId: userId,
 
         type: {
-          in: [
-            "ONE_OFF",
-            "OCCURRENCE",
-          ],
+          in: ["ONE_OFF", "OCCURRENCE"],
         },
 
         startTime: {
@@ -193,43 +170,34 @@ export default async function AdminAvailabilityPage() {
    * ------------------------------------------------------------
    */
 
-  const serializedAvailability =
-    availability
-      .filter(
-        (
-          slot,
-        ): slot is typeof slot & {
-          startTime: Date;
-          endTime: Date;
-        } =>
-          slot.startTime instanceof Date &&
-          slot.endTime instanceof Date,
-      )
-      .map((slot) => ({
-        id: slot.id,
+  const serializedAvailability = availability
+    .filter(
+      (
+        slot,
+      ): slot is typeof slot & {
+        startTime: Date;
+        endTime: Date;
+      } => slot.startTime instanceof Date && slot.endTime instanceof Date,
+    )
+    .map((slot) => ({
+      id: slot.id,
 
-        type: slot.type,
+      type: slot.type,
 
-        startTime:
-          slot.startTime.toISOString(),
+      startTime: slot.startTime.toISOString(),
 
-        endTime:
-          slot.endTime.toISOString(),
+      endTime: slot.endTime.toISOString(),
 
-        status: slot.status,
+      status: slot.status,
 
-        recurringRuleId:
-          slot.recurrenceKey,
+      recurringRuleId: slot.recurrenceKey,
 
-        occurrenceDate:
-          slot.occurrenceDate,
+      occurrenceDate: slot.occurrenceDate,
 
-        createdAt:
-          slot.createdAt.toISOString(),
+      createdAt: slot.createdAt.toISOString(),
 
-        updatedAt:
-          slot.updatedAt.toISOString(),
-      }));
+      updatedAt: slot.updatedAt.toISOString(),
+    }));
 
   /*
    * ------------------------------------------------------------
@@ -243,32 +211,21 @@ export default async function AdminAvailabilityPage() {
    *
    * NOT from the nullable DateTime columns.
    */
-  const serializedRecurringRules =
-    recurringRules.map(
-      (rule) => ({
-        id: rule.id,
+  const serializedRecurringRules = recurringRules.map((rule) => ({
+    id: rule.id,
 
-        dayOfWeek:
-          rule.dayOfWeek ?? 0,
+    dayOfWeek: rule.dayOfWeek ?? 0,
 
-        startTime:
-          rule.weeklyStartTime ??
-          "00:00",
+    startTime: rule.weeklyStartTime ?? "00:00",
 
-        endTime:
-          rule.weeklyEndTime ??
-          "00:00",
+    endTime: rule.weeklyEndTime ?? "00:00",
 
-        timeZone:
-          rule.timeZone,
+    timeZone: rule.timeZone,
 
-        active:
-          rule.active,
+    active: rule.active,
 
-        isAlwaysAvailable:
-          rule.isAlwaysAvailable,
-      }),
-    );
+    isAlwaysAvailable: rule.isAlwaysAvailable,
+  }));
 
   /*
    * ------------------------------------------------------------
@@ -284,54 +241,36 @@ export default async function AdminAvailabilityPage() {
             profile={{
               id: profile.id,
 
-              headline:
-                profile.headline,
+              headline: profile.headline,
 
-              specialty:
-                profile.specialty,
+              specialty: profile.specialty,
 
-              verificationStatus:
-                profile.verificationStatus,
+              verificationStatus: profile.verificationStatus,
 
-              subjects:
-                profile.subjects,
+              subjects: profile.subjects,
 
-              gradeLevels:
-                profile.gradeLevels,
+              gradeLevels: profile.gradeLevels,
             }}
 
-            initialAvailability={
-              serializedAvailability
-            }
+            initialAvailability={serializedAvailability}
 
-            initialRecurringRules={
-              serializedRecurringRules
-            }
+            initialRecurringRules={serializedRecurringRules}
 
-            publishedServices={services.map(
-              (service) => ({
-                id: service.id,
+            publishedServices={services.map((service) => ({
+              id: service.id,
 
-                title:
-                  service.title,
+              title: service.title,
 
-                subject:
-                  service.subject,
+              subject: service.subject,
 
-                durationMinutes:
-                  service.durationMinutes ??
-                  0,
+              durationMinutes: service.durationMinutes ?? 0,
 
-                price:
-                  service.price,
+              price: service.price,
 
-                currency:
-                  service.currency,
+              currency: service.currency,
 
-                status:
-                  service.status,
-              }),
-            )}
+              status: service.status,
+            }))}
           />
         </div>
       </div>

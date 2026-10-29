@@ -5,8 +5,20 @@ import { NextResponse } from "next/server";
 
 async function requireAdmin() {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) return { error: NextResponse.json({ error: "Authentication required." }, { status: 401 }) };
-  if (session.user.role !== "ADMIN") return { error: NextResponse.json({ error: "Administrator access required." }, { status: 403 }) };
+  if (!session?.user)
+    return {
+      error: NextResponse.json(
+        { error: "Authentication required." },
+        { status: 401 },
+      ),
+    };
+  if (session.user.role !== "ADMIN")
+    return {
+      error: NextResponse.json(
+        { error: "Administrator access required." },
+        { status: 403 },
+      ),
+    };
   return { userId: session.user.id };
 }
 

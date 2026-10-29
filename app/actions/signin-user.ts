@@ -1,12 +1,9 @@
-
 import { z } from "zod";
 
 import { loginSchema } from "@/lib/zodSchemas";
 import { authClient } from "@/lib/auth-client";
 
-export async function signInWithEmail(
-  values: z.infer<typeof loginSchema>,
-) {
+export async function signInWithEmail(values: z.infer<typeof loginSchema>) {
   const { error } = await authClient.signIn.email({
     email: values.email.trim(),
     password: values.password,
@@ -18,11 +15,7 @@ export async function signInWithEmail(
 
   const session = await authClient.getSession();
 
-  const role =
-    session?.data?.user?.role?.toLowerCase() || "user";
+  const role = session?.data?.user?.role?.toLowerCase() || "user";
 
   return { role };
 }
-
-
-

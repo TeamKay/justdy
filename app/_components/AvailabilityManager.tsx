@@ -1,18 +1,9 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import {
-  CalendarDays,
-  Loader2,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { CalendarDays, Loader2, Plus, Trash2 } from "lucide-react";
 
-type AvailabilityStatus =
-  | "Available"
-  | "Booked"
-  | "Blocked"
-  | string;
+type AvailabilityStatus = "Available" | "Booked" | "Blocked" | string;
 
 type Availability = {
   id: string;
@@ -57,13 +48,9 @@ function getTodayDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function sortAvailability(
-  items: Availability[],
-): Availability[] {
+function sortAvailability(items: Availability[]): Availability[] {
   return [...items].sort(
-    (a, b) =>
-      new Date(a.startTime).getTime() -
-      new Date(b.startTime).getTime(),
+    (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
   );
 }
 
@@ -83,30 +70,20 @@ function getStatusClasses(status: AvailabilityStatus) {
   }
 }
 
-export default function AvailabilityManager({
-  initialAvailability,
-}: Props) {
-  const [availability, setAvailability] =
-    useState<Availability[]>(() =>
-      sortAvailability(initialAvailability),
-    );
+export default function AvailabilityManager({ initialAvailability }: Props) {
+  const [availability, setAvailability] = useState<Availability[]>(() =>
+    sortAvailability(initialAvailability),
+  );
 
   const [date, setDate] = useState("");
-  const [startTime, setStartTime] =
-    useState("09:00");
-  const [endTime, setEndTime] =
-    useState("10:00");
+  const [startTime, setStartTime] = useState("09:00");
+  const [endTime, setEndTime] = useState("10:00");
 
   const [saving, setSaving] = useState(false);
-  const [removingId, setRemovingId] =
-    useState<string | null>(null);
-  const [error, setError] =
-    useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const minimumDate = useMemo(
-    () => getTodayDate(),
-    [],
-  );
+  const minimumDate = useMemo(() => getTodayDate(), []);
 
   function validateForm() {
     if (!date) {
@@ -117,18 +94,11 @@ export default function AvailabilityManager({
       return "Please choose both a start and end time.";
     }
 
-    const start = new Date(
-      `${date}T${startTime}:00`,
-    );
+    const start = new Date(`${date}T${startTime}:00`);
 
-    const end = new Date(
-      `${date}T${endTime}:00`,
-    );
+    const end = new Date(`${date}T${endTime}:00`);
 
-    if (
-      Number.isNaN(start.getTime()) ||
-      Number.isNaN(end.getTime())
-    ) {
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       return "Please enter a valid date and time.";
     }
 
@@ -143,9 +113,7 @@ export default function AvailabilityManager({
     return null;
   }
 
-  async function addSlot(
-    event: FormEvent<HTMLFormElement>,
-  ) {
+  async function addSlot(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const validationError = validateForm();
@@ -159,37 +127,25 @@ export default function AvailabilityManager({
     setError(null);
 
     try {
-      const start = new Date(
-        `${date}T${startTime}:00`,
-      );
+      const start = new Date(`${date}T${startTime}:00`);
 
-      const end = new Date(
-        `${date}T${endTime}:00`,
-      );
+      const end = new Date(`${date}T${endTime}:00`);
 
-      const response = await fetch(
-        "/api/educator/availability",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            startTime: start.toISOString(),
-            endTime: end.toISOString(),
-          }),
+      const response = await fetch("/api/educator/availability", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          startTime: start.toISOString(),
+          endTime: end.toISOString(),
+        }),
+      });
 
-      const data = await response
-        .json()
-        .catch(() => null);
+      const data = await response.json().catch(() => null);
 
       if (!response.ok) {
-        throw new Error(
-          data?.error ||
-            "Unable to create availability.",
-        );
+        throw new Error(data?.error || "Unable to create availability.");
       }
 
       if (!data?.availability) {
@@ -199,10 +155,7 @@ export default function AvailabilityManager({
       }
 
       setAvailability((current) =>
-        sortAvailability([
-          ...current,
-          data.availability as Availability,
-        ]),
+        sortAvailability([...current, data.availability as Availability]),
       );
 
       setDate("");
@@ -220,25 +173,19 @@ export default function AvailabilityManager({
   }
 
   async function removeSlot(id: string) {
-    const slot = availability.find(
-      (item) => item.id === id,
-    );
+    const slot = availability.find((item) => item.id === id);
 
     if (!slot) {
       return;
     }
 
     if (slot.status === "Booked") {
-      setError(
-        "A booked tutoring time cannot be removed.",
-      );
+      setError("A booked tutoring time cannot be removed.");
       return;
     }
 
     if (slot.status !== "Available") {
-      setError(
-        "This availability is not currently available for removal.",
-      );
+      setError("This availability is not currently available for removal.");
       return;
     }
 
@@ -254,40 +201,26 @@ export default function AvailabilityManager({
     setError(null);
 
     try {
-      const response = await fetch(
-        "/api/educator/availability",
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            id,
-          }),
+      const response = await fetch("/api/educator/availability", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          id,
+        }),
+      });
 
-      const data = await response
-        .json()
-        .catch(() => null);
+      const data = await response.json().catch(() => null);
 
       if (!response.ok) {
-        throw new Error(
-          data?.error ||
-            "Unable to remove availability.",
-        );
+        throw new Error(data?.error || "Unable to remove availability.");
       }
 
-      setAvailability((current) =>
-        current.filter(
-          (item) => item.id !== id,
-        ),
-      );
+      setAvailability((current) => current.filter((item) => item.id !== id));
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to remove availability.",
+        err instanceof Error ? err.message : "Unable to remove availability.",
       );
     } finally {
       setRemovingId(null);
@@ -324,8 +257,8 @@ export default function AvailabilityManager({
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              Learners will see these times when
-              booking one of your tutoring services.
+              Learners will see these times when booking one of your tutoring
+              services.
             </p>
           </div>
         </div>
@@ -346,9 +279,7 @@ export default function AvailabilityManager({
               type="date"
               value={date}
               min={minimumDate}
-              onChange={(event) =>
-                setDate(event.target.value)
-              }
+              onChange={(event) => setDate(event.target.value)}
               required
               disabled={saving}
               className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-slate-400 disabled:cursor-not-allowed disabled:bg-slate-50"
@@ -369,9 +300,7 @@ export default function AvailabilityManager({
               id="availability-start"
               type="time"
               value={startTime}
-              onChange={(event) =>
-                setStartTime(event.target.value)
-              }
+              onChange={(event) => setStartTime(event.target.value)}
               required
               disabled={saving}
               className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-slate-400 disabled:cursor-not-allowed disabled:bg-slate-50"
@@ -392,9 +321,7 @@ export default function AvailabilityManager({
               id="availability-end"
               type="time"
               value={endTime}
-              onChange={(event) =>
-                setEndTime(event.target.value)
-              }
+              onChange={(event) => setEndTime(event.target.value)}
               required
               disabled={saving}
               className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-slate-400 disabled:cursor-not-allowed disabled:bg-slate-50"
@@ -414,9 +341,7 @@ export default function AvailabilityManager({
               <Plus className="h-4 w-4" />
             )}
 
-            {saving
-              ? "Adding..."
-              : "Add availability"}
+            {saving ? "Adding..." : "Add availability"}
           </button>
         </div>
       </form>
@@ -432,8 +357,8 @@ export default function AvailabilityManager({
           </h2>
 
           <p className="mt-1 text-sm text-slate-500">
-            These are the bookable times currently
-            associated with your tutoring profile.
+            These are the bookable times currently associated with your tutoring
+            profile.
           </p>
         </div>
 
@@ -454,14 +379,11 @@ export default function AvailabilityManager({
         ) : (
           <div className="mt-6 space-y-3">
             {availability.map((slot) => {
-              const isBooked =
-                slot.status === "Booked";
+              const isBooked = slot.status === "Booked";
 
-              const isAvailable =
-                slot.status === "Available";
+              const isAvailable = slot.status === "Available";
 
-              const isRemoving =
-                removingId === slot.id;
+              const isRemoving = removingId === slot.id;
 
               return (
                 <div
@@ -474,9 +396,7 @@ export default function AvailabilityManager({
                     </p>
 
                     <p className="mt-1 text-sm text-slate-500">
-                      {formatTime(slot.startTime)}{" "}
-                      –{" "}
-                      {formatTime(slot.endTime)}
+                      {formatTime(slot.startTime)} – {formatTime(slot.endTime)}
                     </p>
                   </div>
 
@@ -492,15 +412,11 @@ export default function AvailabilityManager({
                     {isAvailable ? (
                       <button
                         type="button"
-                        onClick={() =>
-                          removeSlot(slot.id)
-                        }
+                        onClick={() => removeSlot(slot.id)}
                         disabled={isRemoving}
                         aria-label={`Remove availability for ${formatDate(
                           slot.startTime,
-                        )} at ${formatTime(
-                          slot.startTime,
-                        )}`}
+                        )} at ${formatTime(slot.startTime)}`}
                         className="rounded-lg p-2 text-slate-400 transition hover:bg-white hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {isRemoving ? (
@@ -512,9 +428,7 @@ export default function AvailabilityManager({
                     ) : null}
 
                     {isBooked ? (
-                      <span className="text-xs text-slate-400">
-                        Booked
-                      </span>
+                      <span className="text-xs text-slate-400">Booked</span>
                     ) : null}
                   </div>
                 </div>

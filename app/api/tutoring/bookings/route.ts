@@ -24,9 +24,7 @@ function calculateAmount(startTime: Date, endTime: Date) {
 
   return {
     durationMinutes,
-    amount: Math.round(
-      (TUTORING_HOURLY_RATE_CENTS / 60) * durationMinutes,
-    ),
+    amount: Math.round((TUTORING_HOURLY_RATE_CENTS / 60) * durationMinutes),
   };
 }
 
@@ -45,10 +43,7 @@ export async function GET() {
     });
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
     const bookings = await prisma.tutoringBooking.findMany({
@@ -138,7 +133,7 @@ export async function GET() {
     const result = bookings.map((booking) => ({
       ...booking,
       appointment: booking.appointmentId
-        ? appointmentById.get(booking.appointmentId) ?? null
+        ? (appointmentById.get(booking.appointmentId) ?? null)
         : null,
     }));
 
@@ -180,10 +175,7 @@ export async function POST(request: Request) {
     });
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
     let body: CreateBookingBody;
@@ -199,8 +191,7 @@ export async function POST(request: Request) {
 
     const tutorId = typeof body.tutorId === "string" ? body.tutorId.trim() : "";
     const slotId = typeof body.slotId === "string" ? body.slotId.trim() : "";
-    const subject =
-      typeof body.subject === "string" ? body.subject.trim() : "";
+    const subject = typeof body.subject === "string" ? body.subject.trim() : "";
     const gradeLevel =
       typeof body.gradeLevel === "string" ? body.gradeLevel.trim() : "";
     const topic = typeof body.topic === "string" ? body.topic.trim() : "";
@@ -271,7 +262,9 @@ export async function POST(request: Request) {
 
     if (!slot || slot.tutorId !== tutorId) {
       return NextResponse.json(
-        { error: "The selected tutoring slot is not available for this tutor." },
+        {
+          error: "The selected tutoring slot is not available for this tutor.",
+        },
         { status: 404 },
       );
     }
@@ -488,7 +481,10 @@ export async function POST(request: Request) {
       );
 
       return NextResponse.json(
-        { error: "Payment was initialized but the booking could not be finalized. Please contact support." },
+        {
+          error:
+            "Payment was initialized but the booking could not be finalized. Please contact support.",
+        },
         { status: 500 },
       );
     }
@@ -507,7 +503,10 @@ export async function POST(request: Request) {
           );
         case "SLOT_UNAVAILABLE":
           return NextResponse.json(
-            { error: "The selected tutoring slot was just booked by someone else." },
+            {
+              error:
+                "The selected tutoring slot was just booked by someone else.",
+            },
             { status: 409 },
           );
         case "SLOT_STARTED":

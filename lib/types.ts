@@ -7,5 +7,5 @@ export type ApiResponse = {
 
 export type Session = typeof auth.$Infer.Session;
 export type User = Session["user"] & {
-  role: "ADMIN" | "USER";
+  role: "ADMIN" | "TUTOR" | "LEARNER";
 };

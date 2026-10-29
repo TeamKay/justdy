@@ -1,12 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  ArrowRight,
-  Headphones,
-  Radio,
-  Video,
-} from "lucide-react";
+import { ArrowRight, Headphones, Radio, Video } from "lucide-react";
 
 export default function AdminLiveHelpButton() {
   return (
@@ -21,9 +16,7 @@ export default function AdminLiveHelpButton() {
 
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-slate-900">
-              Live Homework Help
-            </h3>
+            <h3 className="font-semibold text-slate-900">Live Homework Help</h3>
 
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
               <Radio className="h-2.5 w-2.5" />

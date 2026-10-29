@@ -1,16 +1,7 @@
 "use client";
 
-import {
-  FormEvent,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import {
-  ImagePlus,
-  Loader2,
-  Save,
-} from "lucide-react";
+import { FormEvent, useMemo, useRef, useState } from "react";
+import { ImagePlus, Loader2, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -40,10 +31,7 @@ function toStringArray(value: unknown): string[] {
     return [];
   }
 
-  return value.filter(
-    (item): item is string =>
-      typeof item === "string",
-  );
+  return value.filter((item): item is string => typeof item === "string");
 }
 
 export default function EducatorProfileForm({
@@ -52,13 +40,9 @@ export default function EducatorProfileForm({
 }: Props) {
   const router = useRouter();
 
-  const [headline, setHeadline] = useState(
-    initialProfile?.headline ?? "",
-  );
+  const [headline, setHeadline] = useState(initialProfile?.headline ?? "");
 
-  const [specialty, setSpecialty] = useState(
-    initialProfile?.specialty ?? "",
-  );
+  const [specialty, setSpecialty] = useState(initialProfile?.specialty ?? "");
 
   const [experience, setExperience] = useState(
     initialProfile?.experience?.toString() ?? "",
@@ -71,49 +55,32 @@ export default function EducatorProfileForm({
   const [hourlyRate, setHourlyRate] = useState(
     initialProfile?.hourlyRate !== null &&
       initialProfile?.hourlyRate !== undefined
-      ? (
-          initialProfile.hourlyRate / 100
-        ).toString()
+      ? (initialProfile.hourlyRate / 100).toString()
       : "",
   );
 
-  const [currency, setCurrency] = useState(
-    initialProfile?.currency ?? "USD",
-  );
+  const [currency, setCurrency] = useState(initialProfile?.currency ?? "USD");
 
   const [subjects, setSubjects] = useState(
-    toStringArray(
-      initialProfile?.subjects,
-    ).join(", "),
+    toStringArray(initialProfile?.subjects).join(", "),
   );
 
-  const [gradeLevels, setGradeLevels] =
-    useState(
-      toStringArray(
-        initialProfile?.gradeLevels,
-      ).join(", "),
-    );
+  const [gradeLevels, setGradeLevels] = useState(
+    toStringArray(initialProfile?.gradeLevels).join(", "),
+  );
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
 
+  const [imageUrl, setImageUrl] = useState<string | null>(
+    initialImageUrl ?? null,
+  );
 
-  const [imageUrl, setImageUrl] =
-    useState<string | null>(
-      initialImageUrl ?? null,
-    );
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
 
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [selectedImage, setSelectedImage] =
-    useState<File | null>(null);
-
-  const fileInputRef =
-    useRef<HTMLInputElement | null>(null);
-
-
-  const {
-    startUpload: startProfileImageUpload,
-  } = useUploadThing("mediaUploader");
+  const { startUpload: startProfileImageUpload } =
+    useUploadThing("mediaUploader");
 
   const profileCompletion = useMemo(() => {
     const fields = [
@@ -126,12 +93,9 @@ export default function EducatorProfileForm({
       hourlyRate.trim(),
     ];
 
-    const completed =
-      fields.filter(Boolean).length;
+    const completed = fields.filter(Boolean).length;
 
-    return Math.round(
-      (completed / fields.length) * 100,
-    );
+    return Math.round((completed / fields.length) * 100);
   }, [
     headline,
     specialty,
@@ -142,11 +106,8 @@ export default function EducatorProfileForm({
     hourlyRate,
   ]);
 
-  function handleImageSelection(
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) {
-    const file =
-      event.target.files?.[0];
+  function handleImageSelection(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
 
     if (!file) {
       return;
@@ -154,44 +115,31 @@ export default function EducatorProfileForm({
 
     if (!file.type.startsWith("image/")) {
       toast.error("Invalid image", {
-        description:
-          "Please select a valid image file.",
+        description: "Please select a valid image file.",
       });
 
       event.target.value = "";
       return;
     }
 
-    if (
-      file.size >
-      5 * 1024 * 1024
-    ) {
-      toast.error(
-        "Image is too large",
-        {
-          description:
-            "Profile images must be 5MB or smaller.",
-        },
-      );
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image is too large", {
+        description: "Profile images must be 5MB or smaller.",
+      });
 
       event.target.value = "";
       return;
     }
 
-  
-    const objectUrl =
-      URL.createObjectURL(file);
+    const objectUrl = URL.createObjectURL(file);
 
     setSelectedImage(file);
     setImageUrl(objectUrl);
 
- 
     event.target.value = "";
   }
 
-  async function handleSubmit(
-    event: FormEvent<HTMLFormElement>,
-  ) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setLoading(true);
@@ -202,23 +150,17 @@ export default function EducatorProfileForm({
         .map((item) => item.trim())
         .filter(Boolean);
 
-      const gradeLevelList =
-        gradeLevels
-          .split(",")
-          .map((item) => item.trim())
-          .filter(Boolean);
+      const gradeLevelList = gradeLevels
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
 
       const parsedExperience =
-        experience.trim() === ""
-          ? null
-          : Number(experience);
+        experience.trim() === "" ? null : Number(experience);
 
       if (
         parsedExperience !== null &&
-        (!Number.isFinite(
-          parsedExperience,
-        ) ||
-          parsedExperience < 0)
+        (!Number.isFinite(parsedExperience) || parsedExperience < 0)
       ) {
         throw new Error(
           "Years of experience must be a valid non-negative number.",
@@ -226,47 +168,26 @@ export default function EducatorProfileForm({
       }
 
       const parsedHourlyRate =
-        hourlyRate.trim() === ""
-          ? null
-          : Number(hourlyRate);
+        hourlyRate.trim() === "" ? null : Number(hourlyRate);
 
       if (
         parsedHourlyRate !== null &&
-        (!Number.isFinite(
-          parsedHourlyRate,
-        ) ||
-          parsedHourlyRate < 0)
+        (!Number.isFinite(parsedHourlyRate) || parsedHourlyRate < 0)
       ) {
-        throw new Error(
-          "Hourly rate must be a valid non-negative amount.",
-        );
+        throw new Error("Hourly rate must be a valid non-negative amount.");
       }
 
-      
-      let finalImageUrl =
-        initialImageUrl ?? null;
+      let finalImageUrl = initialImageUrl ?? null;
 
-    
       if (selectedImage) {
-        const uploadResult =
-          await startProfileImageUpload([
-            selectedImage,
-          ]);
+        const uploadResult = await startProfileImageUpload([selectedImage]);
 
-        if (
-          !uploadResult ||
-          uploadResult.length === 0
-        ) {
-          throw new Error(
-            "Profile image upload failed.",
-          );
+        if (!uploadResult || uploadResult.length === 0) {
+          throw new Error("Profile image upload failed.");
         }
 
-      
-        finalImageUrl =
-          uploadResult[0].url;
+        finalImageUrl = uploadResult[0].url;
 
-      
         setImageUrl(finalImageUrl);
       }
 
@@ -274,63 +195,38 @@ export default function EducatorProfileForm({
         headline: headline.trim(),
         specialty: specialty.trim(),
         experience: parsedExperience,
-        description:
-          description.trim(),
+        description: description.trim(),
 
         hourlyRate:
-          parsedHourlyRate === null
-            ? null
-            : Math.round(
-                parsedHourlyRate * 100,
-              ),
+          parsedHourlyRate === null ? null : Math.round(parsedHourlyRate * 100),
 
         currency,
         subjects: subjectList,
         gradeLevels: gradeLevelList,
 
-       
         imageUrl: finalImageUrl,
       };
 
-      const response = await fetch(
-        "/api/educator/profile",
-        {
-          method: initialProfile
-            ? "PATCH"
-            : "POST",
+      const response = await fetch("/api/educator/profile", {
+        method: initialProfile ? "PATCH" : "POST",
 
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify(
-            payload,
-          ),
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
 
-      const data =
-        await response.json();
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data?.error ||
-            "Unable to save teaching profile.",
-        );
+        throw new Error(data?.error || "Unable to save teaching profile.");
       }
 
-    
-      if (
-        typeof data?.imageUrl ===
-        "string"
-      ) {
-        setImageUrl(
-          data.imageUrl,
-        );
+      if (typeof data?.imageUrl === "string") {
+        setImageUrl(data.imageUrl);
       }
 
-    
       setSelectedImage(null);
 
       toast.success(
@@ -345,31 +241,21 @@ export default function EducatorProfileForm({
 
       router.refresh();
     } catch (err) {
-      console.error(
-        "Save educator profile error:",
-        err,
-      );
+      console.error("Save educator profile error:", err);
 
-      toast.error(
-        "Unable to save profile",
-        {
-          description:
-            err instanceof Error
-              ? err.message
-              : "Something went wrong while saving your profile.",
-        },
-      );
+      toast.error("Unable to save profile", {
+        description:
+          err instanceof Error
+            ? err.message
+            : "Something went wrong while saving your profile.",
+      });
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-7"
-    >
-
+    <form onSubmit={handleSubmit} className="space-y-7">
       <section className="overflow-hidden bg-white">
         <div className=" px-0 py-0">
           <div>
@@ -378,9 +264,8 @@ export default function EducatorProfileForm({
             </h2>
 
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Create a professional profile that helps students
-              understand who you are, what you teach, and how you can
-              help them.
+              Create a professional profile that helps students understand who
+              you are, what you teach, and how you can help them.
             </p>
           </div>
         </div>
@@ -392,13 +277,10 @@ export default function EducatorProfileForm({
             ========================================================== */}
             <div>
               <div className="sticky top-6">
-               
                 {/* Clickable photo frame */}
                 <button
                   type="button"
-                  onClick={() =>
-                    fileInputRef.current?.click()
-                  }
+                  onClick={() => fileInputRef.current?.click()}
                   disabled={loading}
                   className="group relative block w-full overflow-hidden rounded-md bg-emerald-900 text-left transition-all duration-200 hover:shadow-[0_8px_30px_rgba(16,185,129,0.10)] focus:outline-none focus:ring-4 focus:ring-emerald-900 disabled:cursor-not-allowed disabled:opacity-70"
                   aria-label="Choose profile photo"
@@ -446,9 +328,7 @@ export default function EducatorProfileForm({
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
                   className="hidden"
-                  onChange={
-                    handleImageSelection
-                  }
+                  onChange={handleImageSelection}
                 />
 
                 {/* Upload details */}
@@ -483,11 +363,7 @@ export default function EducatorProfileForm({
                     <input
                       id="headline"
                       value={headline}
-                      onChange={(event) =>
-                        setHeadline(
-                          event.target.value,
-                        )
-                      }
+                      onChange={(event) => setHeadline(event.target.value)}
                       placeholder="e.g. Mathematics tutor helping students build confidence"
                       className="h-11 w-full rounded-lg border border-emerald-300 bg-card px-3.5 text-sm text-emerald-950 outline-none transition placeholder:text-muted-foreground focus:ring-emerald-950"
                     />
@@ -505,11 +381,7 @@ export default function EducatorProfileForm({
                     <textarea
                       id="description"
                       value={description}
-                      onChange={(event) =>
-                        setDescription(
-                          event.target.value,
-                        )
-                      }
+                      onChange={(event) => setDescription(event.target.value)}
                       rows={5}
                       placeholder="Tell students about your teaching approach, experience, and what they can expect."
                       className="h-30 w-full resize-none rounded-lg border border-emerald-300 bg-card px-3.5 py-3 text-sm leading-6 text-emerald-950 outline-none transition placeholder:text-muted-foreground focus:border-emerald-950 focus:ring-emerald-950"
@@ -528,11 +400,7 @@ export default function EducatorProfileForm({
                     <input
                       id="specialty"
                       value={specialty}
-                      onChange={(event) =>
-                        setSpecialty(
-                          event.target.value,
-                        )
-                      }
+                      onChange={(event) => setSpecialty(event.target.value)}
                       placeholder="e.g. Algebra & Geometry"
                       className="h-11 w-full rounded-lg border border-emerald-300 bg-card px-3.5 py-3 text-sm text-emerald-950 outline-none transition placeholder:text-muted-foreground focus:border-emerald-950 focus:ring-emerald-950"
                     />
@@ -550,11 +418,7 @@ export default function EducatorProfileForm({
                     <input
                       id="subjects"
                       value={subjects}
-                      onChange={(event) =>
-                        setSubjects(
-                          event.target.value,
-                        )
-                      }
+                      onChange={(event) => setSubjects(event.target.value)}
                       placeholder="Mathematics, Algebra, Geometry"
                       className="h-11 w-full rounded-lg border border-emerald-300 bg-card px-3.5 text-sm text-emerald-950 outline-none transition placeholder:text-muted-foreground focus:border-emerald-950 focus:ring-emerald-950"
                     />
@@ -572,11 +436,7 @@ export default function EducatorProfileForm({
                     <input
                       id="gradeLevels"
                       value={gradeLevels}
-                      onChange={(event) =>
-                        setGradeLevels(
-                          event.target.value,
-                        )
-                      }
+                      onChange={(event) => setGradeLevels(event.target.value)}
                       placeholder="Middle School, High School"
                       className="h-11 w-full rounded-lg border border-emerald-300 bg-card px-3.5 text-sm text-emerald-950 outline-none transition placeholder:text-muted-foreground focus:border-emerald-950 focus:ring-emerald-950"
                     />
@@ -599,11 +459,7 @@ export default function EducatorProfileForm({
                         min="0"
                         step="1"
                         value={experience}
-                        onChange={(event) =>
-                          setExperience(
-                            event.target.value,
-                          )
-                        }
+                        onChange={(event) => setExperience(event.target.value)}
                         placeholder="e.g. 5"
                         className="h-11 w-full rounded-lg border border-emerald-300 bg-card px-3.5 text-sm text-emerald-950 outline-none transition placeholder:text-muted-foreground focus:border-emerald-950 focus:ring-emerald-950"
                       />
@@ -626,9 +482,7 @@ export default function EducatorProfileForm({
                           step="0.01"
                           value={hourlyRate}
                           onChange={(event) =>
-                            setHourlyRate(
-                              event.target.value,
-                            )
+                            setHourlyRate(event.target.value)
                           }
                           placeholder="0.00"
                           className="h-11 w-full rounded-lg border border-emerald-300 bg-card px-3.5 text-sm text-emerald-950 outline-none transition placeholder:text-muted-foreground hover:border-emerald-950 focus:border-emerald-950 focus:ring-emerald-950"

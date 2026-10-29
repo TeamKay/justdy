@@ -5,7 +5,6 @@ import { auth } from "@/lib/auth";
 import { getVerifiedTutor } from "@/lib/tutoring/authorization";
 import { Prisma } from "@/lib/generated/prisma/client";
 
-
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
@@ -60,7 +59,6 @@ async function getAuthenticatedUser() {
   return session?.user ?? null;
 }
 
-
 async function getSession(id: string, userId: string) {
   const tutoringSession = await prisma.tutoringSession.findUnique({
     where: { id },
@@ -79,17 +77,18 @@ async function getSession(id: string, userId: string) {
     },
   });
 
-  if (!tutoringSession) return { session: null, unauthorized: false, isTutor: false };
+  if (!tutoringSession)
+    return { session: null, unauthorized: false, isTutor: false };
 
   const directAccess =
-  tutoringSession.learnerId === userId ||
-  tutoringSession.educatorId === userId;
+    tutoringSession.learnerId === userId ||
+    tutoringSession.educatorId === userId;
 
-return {
-  session: directAccess ? tutoringSession : null,
-  unauthorized: !directAccess,
-  isTutor: tutoringSession.educatorId === userId,
-};
+  return {
+    session: directAccess ? tutoringSession : null,
+    unauthorized: !directAccess,
+    isTutor: tutoringSession.educatorId === userId,
+  };
 }
 
 export async function GET(_request: NextRequest, context: RouteContext) {
@@ -101,15 +100,24 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
     if (!id) {
-      return NextResponse.json({ error: "Session ID is required." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Session ID is required." },
+        { status: 400 },
+      );
     }
 
     const result = await getSession(id, user.id);
     if (result.unauthorized) {
-      return NextResponse.json({ error: "You are not authorized to view this session." }, { status: 403 });
+      return NextResponse.json(
+        { error: "You are not authorized to view this session." },
+        { status: 403 },
+      );
     }
     if (!result.session) {
-      return NextResponse.json({ error: "Tutoring session not found." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Tutoring session not found." },
+        { status: 404 },
+      );
     }
 
     const feedback = result.session
@@ -122,7 +130,10 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     return NextResponse.json({ feedback });
   } catch (error) {
     console.error("GET /api/tutoring/sessions/[id]/feedback error:", error);
-    return NextResponse.json({ error: "Failed to load session feedback." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to load session feedback." },
+      { status: 500 },
+    );
   }
 }
 
@@ -135,7 +146,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
     if (!id) {
-      return NextResponse.json({ error: "Session ID is required." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Session ID is required." },
+        { status: 400 },
+      );
     }
 
     const session = await prisma.tutoringSession.findUnique({
@@ -149,28 +163,45 @@ export async function POST(request: NextRequest, context: RouteContext) {
     });
 
     if (!session) {
-      return NextResponse.json({ error: "Tutoring session not found." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Tutoring session not found." },
+        { status: 404 },
+      );
     }
 
     if (session.educatorId !== user.id) {
-      return NextResponse.json({ error: "Only the tutor can submit session feedback." }, { status: 403 });
+      return NextResponse.json(
+        { error: "Only the tutor can submit session feedback." },
+        { status: 403 },
+      );
     }
 
     const tutor = await getVerifiedTutor(user.id);
     if (!tutor) {
-      return NextResponse.json({ error: "Your verified tutor status is not currently active." }, { status: 403 });
+      return NextResponse.json(
+        { error: "Your verified tutor status is not currently active." },
+        { status: 403 },
+      );
     }
 
     if (session.status !== "COMPLETED") {
       return NextResponse.json(
-        { error: "Session feedback can only be submitted after the lesson is completed." },
+        {
+          error:
+            "Session feedback can only be submitted after the lesson is completed.",
+        },
         { status: 409 },
       );
     }
 
-    const body = (await request.json().catch(() => null)) as FeedbackBody | null;
+    const body = (await request
+      .json()
+      .catch(() => null)) as FeedbackBody | null;
     if (!body || typeof body !== "object") {
-      return NextResponse.json({ error: "A feedback payload is required." }, { status: 400 });
+      return NextResponse.json(
+        { error: "A feedback payload is required." },
+        { status: 400 },
+      );
     }
 
     let topic: string | null;
@@ -202,23 +233,23 @@ export async function POST(request: NextRequest, context: RouteContext) {
         educatorId: user.id,
         status: "COMPLETED",
       },
-     data: {
-  topic,
-  topicsCovered:
-    topicsCovered === null
-      ? Prisma.JsonNull
-      : topicsCovered,
-  strengths,
-  needsPractice,
-  nextStep,
-  tutorNotes,
-  learnerOutcome,
-},
+      data: {
+        topic,
+        topicsCovered: topicsCovered === null ? Prisma.JsonNull : topicsCovered,
+        strengths,
+        needsPractice,
+        nextStep,
+        tutorNotes,
+        learnerOutcome,
+      },
     });
 
     if (updated.count !== 1) {
       return NextResponse.json(
-        { error: "The session changed while feedback was being saved. Please refresh." },
+        {
+          error:
+            "The session changed while feedback was being saved. Please refresh.",
+        },
         { status: 409 },
       );
     }
@@ -241,6 +272,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ success: true, feedback });
   } catch (error) {
     console.error("POST /api/tutoring/sessions/[id]/feedback error:", error);
-    return NextResponse.json({ error: "Failed to save session feedback." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to save session feedback." },
+      { status: 500 },
+    );
   }
 }

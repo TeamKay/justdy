@@ -1,4 +1,3 @@
-
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -14,7 +13,6 @@ import {
   Video,
   Wallet,
 } from "lucide-react";
-
 
 export type Person = {
   id: string;
@@ -174,7 +172,6 @@ export function formatMoney(amount: number, currency = "GHS") {
   }).format(amount);
 }
 
-
 export function getInitials(name: string | null | undefined) {
   if (!name) return "J";
 
@@ -227,14 +224,9 @@ export function canJoinLesson(lesson: {
   const start = new Date(lesson.startTime).getTime();
   const end = new Date(lesson.endTime).getTime();
 
-  const joinWindowStart =
-    start - JOIN_WINDOW_MINUTES * 60 * 1000;
+  const joinWindowStart = start - JOIN_WINDOW_MINUTES * 60 * 1000;
 
-  return (
-    lesson.status === "Scheduled" &&
-    now >= joinWindowStart &&
-    now < end
-  );
+  return lesson.status === "Scheduled" && now >= joinWindowStart && now < end;
 }
 
 export function SectionHeader({
@@ -301,6 +293,3 @@ export function EmptyState({
     </div>
   );
 }
-
-
-

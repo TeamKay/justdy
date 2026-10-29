@@ -142,10 +142,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const canTutor = await hasCapability(
-      educator.id,
-      CAPABILITIES.TUTOR,
-    );
+    const canTutor = await hasCapability(educator.id, CAPABILITIES.TUTOR);
 
     if (!canTutor) {
       return NextResponse.json(
@@ -186,8 +183,7 @@ export async function POST(request: Request) {
     if (serviceId && !service) {
       return NextResponse.json(
         {
-          error:
-            "The selected tutoring service is no longer available.",
+          error: "The selected tutoring service is no longer available.",
         },
         { status: 404 },
       );
@@ -262,7 +258,10 @@ export async function POST(request: Request) {
       recurringRuleId = parts[1] || "";
       recurringOccurrenceDate = parts.slice(2).join(":");
 
-      if (!recurringRuleId || !/^\d{4}-\d{2}-\d{2}$/.test(recurringOccurrenceDate)) {
+      if (
+        !recurringRuleId ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(recurringOccurrenceDate)
+      ) {
         return NextResponse.json(
           {
             error:
@@ -422,8 +421,7 @@ export async function POST(request: Request) {
     if (bookingDurationMinutes < 15) {
       return NextResponse.json(
         {
-          error:
-            "Tutoring sessions must be at least 15 minutes long.",
+          error: "Tutoring sessions must be at least 15 minutes long.",
         },
         { status: 400 },
       );
@@ -450,14 +448,10 @@ export async function POST(request: Request) {
             60,
         );
 
-    if (
-      !service &&
-      (!educator.teachingProfile.hourlyRate || amount <= 0)
-    ) {
+    if (!service && (!educator.teachingProfile.hourlyRate || amount <= 0)) {
       return NextResponse.json(
         {
-          error:
-            "This tutor does not currently have a valid hourly rate.",
+          error: "This tutor does not currently have a valid hourly rate.",
         },
         { status: 400 },
       );
@@ -525,7 +519,10 @@ export async function POST(request: Request) {
               throw new Error("SLOT_NOT_FOUND");
             }
 
-            if (!rule.isAlwaysAvailable && localDate.getUTCDay() !== rule.dayOfWeek) {
+            if (
+              !rule.isAlwaysAvailable &&
+              localDate.getUTCDay() !== rule.dayOfWeek
+            ) {
               throw new Error("SLOT_NOT_FOUND");
             }
 
@@ -559,13 +556,7 @@ export async function POST(request: Request) {
                   Number(map.hour),
                   Number(map.minute),
                 );
-                const desired = Date.UTC(
-                  year,
-                  month - 1,
-                  day,
-                  hour,
-                  minute,
-                );
+                const desired = Date.UTC(year, month - 1, day, hour, minute);
                 const diff = desired - actual;
 
                 if (Math.abs(diff) < 1000) return guess;
@@ -648,7 +639,10 @@ export async function POST(request: Request) {
               occurrenceEnd = zonedDateTimeToUtc(rule.weeklyEndTime);
             }
 
-            if (occurrenceEnd <= occurrenceStart || occurrenceEnd <= new Date()) {
+            if (
+              occurrenceEnd <= occurrenceStart ||
+              occurrenceEnd <= new Date()
+            ) {
               throw new Error("SLOT_STARTED");
             }
 
@@ -695,21 +689,20 @@ export async function POST(request: Request) {
             FOR UPDATE
           `;
 
-          const currentAvailability =
-            await tx.availability.findFirst({
-              where: {
-                id: concreteAvailabilityId,
-                educatorId,
-                status: "Available",
-              },
-              select: {
-                id: true,
-                educatorId: true,
-                startTime: true,
-                endTime: true,
-                status: true,
-              },
-            });
+          const currentAvailability = await tx.availability.findFirst({
+            where: {
+              id: concreteAvailabilityId,
+              educatorId,
+              status: "Available",
+            },
+            select: {
+              id: true,
+              educatorId: true,
+              startTime: true,
+              endTime: true,
+              status: true,
+            },
+          });
 
           if (!currentAvailability) {
             throw new Error("SLOT_NOT_FOUND");
@@ -719,10 +712,7 @@ export async function POST(request: Request) {
           // recurring rules intentionally have no concrete timestamps.
           // A booking, however, must always target a concrete occurrence
           // with real start/end timestamps.
-          if (
-            !currentAvailability.startTime ||
-            !currentAvailability.endTime
-          ) {
+          if (!currentAvailability.startTime || !currentAvailability.endTime) {
             throw new Error("SLOT_NOT_BOOKABLE");
           }
 
@@ -764,10 +754,7 @@ export async function POST(request: Request) {
           }
 
           const bookingDescription =
-            [
-              topic ? `Topic: ${topic}` : "",
-              description,
-            ]
+            [topic ? `Topic: ${topic}` : "", description]
               .filter(Boolean)
               .join("\n\n") || null;
 
@@ -903,8 +890,7 @@ export async function POST(request: Request) {
 
               product_data: {
                 name:
-                  service?.title ||
-                  `Private tutoring with ${educator.name}`,
+                  service?.title || `Private tutoring with ${educator.name}`,
 
                 description:
                   service?.description ||
@@ -936,13 +922,9 @@ export async function POST(request: Request) {
         },
       } as unknown as Stripe.Checkout.SessionCreateParams;
 
-      checkoutSession =
-        await stripe.checkout.sessions.create(checkoutParams);
+      checkoutSession = await stripe.checkout.sessions.create(checkoutParams);
     } catch (stripeError) {
-      console.error(
-        "TUTORING STRIPE CHECKOUT CREATION FAILED:",
-        stripeError,
-      );
+      console.error("TUTORING STRIPE CHECKOUT CREATION FAILED:", stripeError);
 
       // Stripe did not create a checkout session, so the pending
       // booking can safely be cancelled.
@@ -958,8 +940,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json(
         {
-          error:
-            "Unable to initialize payment. Please try again.",
+          error: "Unable to initialize payment. Please try again.",
         },
         { status: 500 },
       );
@@ -1004,10 +985,7 @@ export async function POST(request: Request) {
     } catch (databaseError) {
       // Stripe already has a valid checkout session.
       // Do not cancel the booking because payment may still complete.
-      console.error(
-        "TUTORING STRIPE SESSION SAVE FAILED:",
-        databaseError,
-      );
+      console.error("TUTORING STRIPE SESSION SAVE FAILED:", databaseError);
 
       return NextResponse.json(
         {
@@ -1032,10 +1010,7 @@ export async function POST(request: Request) {
       paymentMethods: ["card"],
     });
   } catch (error) {
-    console.error(
-      "POST /api/tutoring/book failed:",
-      error,
-    );
+    console.error("POST /api/tutoring/book failed:", error);
 
     return NextResponse.json(
       {

@@ -35,16 +35,10 @@ export async function GET() {
     // limited to CHILD members of families they manage.
     // ============================================================
 
- 
-
-
     const bookings = await prisma.booking.findMany({
-    where: {
-  OR: [
-    { studentId: userId },
-    { educatorId: userId },
-  ],
-},
+      where: {
+        OR: [{ studentId: userId }, { educatorId: userId }],
+      },
 
       include: {
         student: {
@@ -159,7 +153,6 @@ export async function GET() {
     const serializedBookings = bookings.map((booking) => {
       const isEducator = booking.educatorId === userId;
       const isStudent = booking.studentId === userId;
-     
 
       const tutoringSession = booking.tutoringSession
         ? {
@@ -178,11 +171,9 @@ export async function GET() {
 
             status: booking.tutoringSession.status,
 
-            learnerAttendance:
-              booking.tutoringSession.learnerAttendance,
+            learnerAttendance: booking.tutoringSession.learnerAttendance,
 
-            educatorAttendance:
-              booking.tutoringSession.educatorAttendance,
+            educatorAttendance: booking.tutoringSession.educatorAttendance,
 
             topic: booking.tutoringSession.topic,
             topicsCovered: booking.tutoringSession.topicsCovered,
@@ -192,9 +183,7 @@ export async function GET() {
             nextStep: booking.tutoringSession.nextStep,
 
             // Tutor notes are private to the educator.
-            tutorNotes: isEducator
-              ? booking.tutoringSession.tutorNotes
-              : null,
+            tutorNotes: isEducator ? booking.tutoringSession.tutorNotes : null,
 
             learnerOutcome: booking.tutoringSession.learnerOutcome,
 
@@ -210,12 +199,12 @@ export async function GET() {
         educatorId: booking.educatorId,
         serviceId: booking.serviceId,
 
-       role:
-  isEducator && isStudent
-    ? "both"
-    : isEducator
-      ? "educator"
-      : "learner",
+        role:
+          isEducator && isStudent
+            ? "both"
+            : isEducator
+              ? "educator"
+              : "learner",
 
         startTime: booking.startTime,
         endTime: booking.endTime,
@@ -270,10 +259,7 @@ export async function GET() {
         return true;
       }
 
-      return (
-        booking.status === "Scheduled" &&
-        booking.endTime < now
-      );
+      return booking.status === "Scheduled" && booking.endTime < now;
     });
 
     // ============================================================

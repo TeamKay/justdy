@@ -53,37 +53,20 @@ export type TutoringSignal = {
   data?: unknown;
 };
 
-type DailyCall =
-  ReturnType<
-    typeof DailyIframe.createCallObject
-  >;
+type DailyCall = ReturnType<typeof DailyIframe.createCallObject>;
 
-type DailyParticipant =
-  ReturnType<
-    DailyCall["participants"]
-  >[string];
+type DailyParticipant = ReturnType<DailyCall["participants"]>[string];
 
-type DailyParticipantMap =
-  Record<
-    string,
-    DailyParticipant
-  >;
+type DailyParticipantMap = Record<string, DailyParticipant>;
 
 type VideoDisplayMode =
-  | "gallery"
-  | "horizontal"
-  | "vertical"
-  | "speaker"
-  | "free"
-  | "whiteboard";
-
+  "gallery" | "horizontal" | "vertical" | "speaker" | "free" | "whiteboard";
 
 // Daily keeps a browser-level registry of call objects. The cleanup lock
 // prevents React Strict Mode, Fast Refresh, or a rapid remount from creating
 // a second DailyIframe before the previous call has completely finished
 // destroying itself.
 let activeDailyCleanupPromise: Promise<void> | null = null;
-
 
 type RecordingFormat = "webm" | "mp4";
 
@@ -129,9 +112,7 @@ interface VideoCallProps {
 
   token: string;
 
-  role:
-    | "educator"
-    | "student";
+  role: "educator" | "student";
 
   /**
    * Optional because the current caller
@@ -146,18 +127,14 @@ interface VideoCallProps {
 
   onSignal?: (
     signal: TutoringSignal & {
-      connectionId:
-        | string
-        | null;
+      connectionId: string | null;
     },
   ) => void;
 
-  onParticipantChange?: (
-    participant: {
-      connectionId: string;
-      joined: boolean;
-    },
-  ) => void;
+  onParticipantChange?: (participant: {
+    connectionId: string;
+    joined: boolean;
+  }) => void;
 
   onConnected?: () => void;
 
@@ -170,17 +147,9 @@ interface VideoCallProps {
    */
   onParticipantRailWidthChange?: (width: number) => void;
 
-  onSignalReady?: (
-    sendSignal: (
-      type: string,
-      data?: unknown,
-    ) => void,
-  ) => void;
+  onSignalReady?: (sendSignal: (type: string, data?: unknown) => void) => void;
 
-  onEndSession?: () =>
-    | Promise<void>
-    | void;
-
+  onEndSession?: () => Promise<void> | void;
 }
 
 interface ControlButtonProps {
@@ -226,15 +195,9 @@ function ParticipantVideo({
   muted = false,
   className = "",
 }: ParticipantVideoProps) {
-  const videoRef =
-    useRef<HTMLVideoElement>(
-      null,
-    );
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-  const audioRef =
-    useRef<HTMLAudioElement>(
-      null,
-    );
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   /*
    * Keep the media elements stable while Daily updates the
@@ -244,27 +207,16 @@ function ParticipantVideo({
    *
    * We therefore depend only on the actual persistent tracks.
    */
-  const videoTrack =
-    screen
-      ? participant.tracks
-          .screenVideo
-          ?.persistentTrack
-      : participant.tracks
-          .video
-          ?.persistentTrack;
+  const videoTrack = screen
+    ? participant.tracks.screenVideo?.persistentTrack
+    : participant.tracks.video?.persistentTrack;
 
-  const audioTrack =
-    screen
-      ? participant.tracks
-          .screenAudio
-          ?.persistentTrack
-      : participant.tracks
-          .audio
-          ?.persistentTrack;
+  const audioTrack = screen
+    ? participant.tracks.screenAudio?.persistentTrack
+    : participant.tracks.audio?.persistentTrack;
 
   useEffect(() => {
-    const element =
-      videoRef.current;
+    const element = videoRef.current;
 
     if (!element) {
       return;
@@ -275,17 +227,13 @@ function ParticipantVideo({
       return;
     }
 
-    const stream =
-      new MediaStream([
-        videoTrack,
-      ]);
+    const stream = new MediaStream([videoTrack]);
 
     element.srcObject = stream;
     element.autoplay = true;
     element.playsInline = true;
 
-    const playPromise =
-      element.play();
+    const playPromise = element.play();
 
     if (playPromise) {
       playPromise.catch(() => {
@@ -294,18 +242,14 @@ function ParticipantVideo({
     }
 
     return () => {
-      if (
-        element.srcObject ===
-        stream
-      ) {
+      if (element.srcObject === stream) {
         element.srcObject = null;
       }
     };
   }, [videoTrack]);
 
   useEffect(() => {
-    const element =
-      audioRef.current;
+    const element = audioRef.current;
 
     if (!element) {
       return;
@@ -321,17 +265,13 @@ function ParticipantVideo({
      * video rendering/state updates from repeatedly touching the audio
      * playback path.
      */
-    const stream =
-      new MediaStream([
-        audioTrack,
-      ]);
+    const stream = new MediaStream([audioTrack]);
 
     element.srcObject = stream;
     element.autoplay = true;
     element.muted = false;
 
-    const playPromise =
-      element.play();
+    const playPromise = element.play();
 
     if (playPromise) {
       playPromise.catch(() => {
@@ -340,17 +280,13 @@ function ParticipantVideo({
     }
 
     return () => {
-      if (
-        element.srcObject ===
-        stream
-      ) {
+      if (element.srcObject === stream) {
         element.srcObject = null;
       }
     };
   }, [audioTrack, muted]);
 
-  const hasVideo =
-    Boolean(videoTrack);
+  const hasVideo = Boolean(videoTrack);
 
   return (
     <>
@@ -374,17 +310,11 @@ function ParticipantVideo({
         <div className="absolute inset-0 flex items-center justify-center bg-slate-950">
           <div className="flex flex-col items-center gap-3 text-center">
             <div className="flex size-16 items-center justify-center rounded-full bg-white/10 text-2xl font-semibold">
-              {(
-                participant.user_name ||
-                "P"
-              )
-                .slice(0, 1)
-                .toUpperCase()}
+              {(participant.user_name || "P").slice(0, 1).toUpperCase()}
             </div>
 
             <span className="max-w-[220px] truncate text-sm text-slate-300">
-              {participant.user_name ||
-                "Participant"}
+              {participant.user_name || "Participant"}
             </span>
           </div>
         </div>
@@ -392,7 +322,6 @@ function ParticipantVideo({
     </>
   );
 }
-
 
 function ControlButton({
   label,
@@ -431,7 +360,6 @@ function ControlButton({
   );
 }
 
-
 function VideoDisplayMenu({
   mode,
   onChange,
@@ -445,12 +373,42 @@ function VideoDisplayMenu({
     description: string;
     icon: ReactNode;
   }> = [
-    { id: "gallery", label: "Gallery", description: "Everyone in rows and columns", icon: <Grid2X2 className="size-5" /> },
-    { id: "speaker", label: "Speaker", description: "Active speaker fills the stage", icon: <Volume2 className="size-5" /> },
-    { id: "horizontal", label: "Horizontal", description: "Scroll participants left to right", icon: <GalleryHorizontal className="size-5" /> },
-    { id: "vertical", label: "Vertical", description: "Scroll participants top to bottom", icon: <GalleryVertical className="size-5" /> },
-    { id: "free", label: "Free arrange", description: "Drag every video anywhere", icon: <Move className="size-5" /> },
-    { id: "whiteboard", label: "Whiteboard", description: "Use the teaching canvas", icon: <Presentation className="size-5" /> },
+    {
+      id: "gallery",
+      label: "Gallery",
+      description: "Everyone in rows and columns",
+      icon: <Grid2X2 className="size-5" />,
+    },
+    {
+      id: "speaker",
+      label: "Speaker",
+      description: "Active speaker fills the stage",
+      icon: <Volume2 className="size-5" />,
+    },
+    {
+      id: "horizontal",
+      label: "Horizontal",
+      description: "Scroll participants left to right",
+      icon: <GalleryHorizontal className="size-5" />,
+    },
+    {
+      id: "vertical",
+      label: "Vertical",
+      description: "Scroll participants top to bottom",
+      icon: <GalleryVertical className="size-5" />,
+    },
+    {
+      id: "free",
+      label: "Free arrange",
+      description: "Drag every video anywhere",
+      icon: <Move className="size-5" />,
+    },
+    {
+      id: "whiteboard",
+      label: "Whiteboard",
+      description: "Use the teaching canvas",
+      icon: <Presentation className="size-5" />,
+    },
   ];
 
   return (
@@ -458,9 +416,13 @@ function VideoDisplayMenu({
       <div className="flex items-center justify-between px-2 pb-3">
         <div>
           <p className="text-sm font-semibold">Video display</p>
-          <p className="mt-0.5 text-[10px] text-slate-500">Choose how participant videos fill your screen.</p>
+          <p className="mt-0.5 text-[10px] text-slate-500">
+            Choose how participant videos fill your screen.
+          </p>
         </div>
-        <span className="rounded-lg bg-white/5 px-2 py-1 text-[9px] font-semibold text-slate-400">View</span>
+        <span className="rounded-lg bg-white/5 px-2 py-1 text-[9px] font-semibold text-slate-400">
+          View
+        </span>
       </div>
       <div className="grid grid-cols-2 gap-2">
         {options.map((option) => (
@@ -471,17 +433,61 @@ function VideoDisplayMenu({
             onClick={() => onChange(option.id)}
             className={`group rounded-xl border p-2.5 text-left transition ${mode === option.id ? "border-violet-500 bg-violet-600/15" : "border-white/8 bg-white/[.025] hover:border-white/20 hover:bg-white/[.06]"}`}
           >
-            <div className={`relative flex h-[62px] items-center justify-center overflow-hidden rounded-lg border ${mode === option.id ? "border-violet-400/40 bg-violet-600/15" : "border-white/8 bg-black/25"}`}>
-              {option.id === "gallery" ? <div className="grid w-14 grid-cols-2 gap-1"><span className="aspect-video rounded bg-white/20" /><span className="aspect-video rounded bg-white/10" /><span className="aspect-video rounded bg-white/10" /><span className="aspect-video rounded bg-white/20" /></div> : null}
-              {option.id === "speaker" ? <div className="h-9 w-14 rounded bg-white/15 p-1"><div className="h-full rounded bg-white/20" /></div> : null}
-              {option.id === "horizontal" ? <div className="flex w-20 gap-1 overflow-hidden"><span className="h-8 w-11 shrink-0 rounded bg-white/20" /><span className="h-8 w-11 shrink-0 rounded bg-white/10" /><span className="h-8 w-11 shrink-0 rounded bg-white/15" /></div> : null}
-              {option.id === "vertical" ? <div className="flex h-12 flex-col gap-1 overflow-hidden"><span className="h-7 w-16 rounded bg-white/20" /><span className="h-7 w-16 rounded bg-white/10" /></div> : null}
-              {option.id === "free" ? <div className="relative h-10 w-16"><span className="absolute left-0 top-0 h-5 w-7 rounded bg-white/20" /><span className="absolute bottom-0 right-0 h-5 w-7 rounded bg-white/10" /></div> : null}
-              {option.id === "whiteboard" ? <div className="flex h-9 w-14 items-center justify-center rounded bg-white/10"><Presentation className="size-4" /></div> : null}
+            <div
+              className={`relative flex h-[62px] items-center justify-center overflow-hidden rounded-lg border ${mode === option.id ? "border-violet-400/40 bg-violet-600/15" : "border-white/8 bg-black/25"}`}
+            >
+              {option.id === "gallery" ? (
+                <div className="grid w-14 grid-cols-2 gap-1">
+                  <span className="aspect-video rounded bg-white/20" />
+                  <span className="aspect-video rounded bg-white/10" />
+                  <span className="aspect-video rounded bg-white/10" />
+                  <span className="aspect-video rounded bg-white/20" />
+                </div>
+              ) : null}
+              {option.id === "speaker" ? (
+                <div className="h-9 w-14 rounded bg-white/15 p-1">
+                  <div className="h-full rounded bg-white/20" />
+                </div>
+              ) : null}
+              {option.id === "horizontal" ? (
+                <div className="flex w-20 gap-1 overflow-hidden">
+                  <span className="h-8 w-11 shrink-0 rounded bg-white/20" />
+                  <span className="h-8 w-11 shrink-0 rounded bg-white/10" />
+                  <span className="h-8 w-11 shrink-0 rounded bg-white/15" />
+                </div>
+              ) : null}
+              {option.id === "vertical" ? (
+                <div className="flex h-12 flex-col gap-1 overflow-hidden">
+                  <span className="h-7 w-16 rounded bg-white/20" />
+                  <span className="h-7 w-16 rounded bg-white/10" />
+                </div>
+              ) : null}
+              {option.id === "free" ? (
+                <div className="relative h-10 w-16">
+                  <span className="absolute left-0 top-0 h-5 w-7 rounded bg-white/20" />
+                  <span className="absolute bottom-0 right-0 h-5 w-7 rounded bg-white/10" />
+                </div>
+              ) : null}
+              {option.id === "whiteboard" ? (
+                <div className="flex h-9 w-14 items-center justify-center rounded bg-white/10">
+                  <Presentation className="size-4" />
+                </div>
+              ) : null}
             </div>
             <div className="mt-2 flex items-center gap-2">
-              <span className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${mode === option.id ? "bg-violet-600 text-white" : "bg-white/8 text-slate-300"}`}>{option.icon}</span>
-              <span className="min-w-0"><span className="block truncate text-[11px] font-semibold">{option.label}</span><span className="mt-0.5 block truncate text-[9px] text-slate-500">{option.description}</span></span>
+              <span
+                className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${mode === option.id ? "bg-violet-600 text-white" : "bg-white/8 text-slate-300"}`}
+              >
+                {option.icon}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-[11px] font-semibold">
+                  {option.label}
+                </span>
+                <span className="mt-0.5 block truncate text-[9px] text-slate-500">
+                  {option.description}
+                </span>
+              </span>
             </div>
           </button>
         ))}
@@ -515,11 +521,36 @@ function ShareSourceModal({
 }) {
   const [tab, setTab] = useState<"screens" | "files" | "more">("screens");
 
-  const layouts: Array<{ id: ShareLayout; label: string; description: string; icon: ReactNode }> = [
-    { id: "content", label: "Content only", description: "Keep your video out of the shared content", icon: <Monitor className="size-5" /> },
-    { id: "background", label: "As background", description: "Place your camera in front of the shared screen", icon: <UserRound className="size-5" /> },
-    { id: "over-shoulder", label: "Over the shoulder", description: "Screen with your video beside it", icon: <Columns2 className="size-5" /> },
-    { id: "side-by-side", label: "Side by side", description: "Shared content and participant video together", icon: <Grid3X3 className="size-5" /> },
+  const layouts: Array<{
+    id: ShareLayout;
+    label: string;
+    description: string;
+    icon: ReactNode;
+  }> = [
+    {
+      id: "content",
+      label: "Content only",
+      description: "Keep your video out of the shared content",
+      icon: <Monitor className="size-5" />,
+    },
+    {
+      id: "background",
+      label: "As background",
+      description: "Place your camera in front of the shared screen",
+      icon: <UserRound className="size-5" />,
+    },
+    {
+      id: "over-shoulder",
+      label: "Over the shoulder",
+      description: "Screen with your video beside it",
+      icon: <Columns2 className="size-5" />,
+    },
+    {
+      id: "side-by-side",
+      label: "Side by side",
+      description: "Shared content and participant video together",
+      icon: <Grid3X3 className="size-5" />,
+    },
   ];
 
   return (
@@ -529,17 +560,28 @@ function ShareSourceModal({
           <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
             <div>
               <h2 className="text-base font-semibold">Share your screen</h2>
-              <p className="mt-0.5 text-[11px] text-slate-400">Choose what you want everyone in the classroom to see.</p>
+              <p className="mt-0.5 text-[11px] text-slate-400">
+                Choose what you want everyone in the classroom to see.
+              </p>
             </div>
-            <button type="button" onClick={onClose} className="flex size-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Close share dialog">×</button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex size-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white"
+              aria-label="Close share dialog"
+            >
+              ×
+            </button>
           </div>
 
           <div className="flex gap-1 px-5 pt-4">
-            {([
-              ["screens", "Screens"],
-              ["files", "Files"],
-              ["more", "More"],
-            ] as const).map(([id, label]) => (
+            {(
+              [
+                ["screens", "Screens"],
+                ["files", "Files"],
+                ["more", "More"],
+              ] as const
+            ).map(([id, label]) => (
               <button
                 key={id}
                 type="button"
@@ -554,37 +596,79 @@ function ShareSourceModal({
           <div className="min-h-0 flex-1 overflow-y-auto p-5">
             {tab === "screens" ? (
               <div>
-                <div className="mb-3 text-xs font-semibold text-slate-300">Choose a screen or window</div>
+                <div className="mb-3 text-xs font-semibold text-slate-300">
+                  Choose a screen or window
+                </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <button type="button" onClick={onStartShare} className="group rounded-2xl border border-violet-500/60 bg-violet-500/10 p-4 text-left transition hover:bg-violet-500/15">
+                  <button
+                    type="button"
+                    onClick={onStartShare}
+                    className="group rounded-2xl border border-violet-500/60 bg-violet-500/10 p-4 text-left transition hover:bg-violet-500/15"
+                  >
                     <div className="flex aspect-video items-center justify-center rounded-xl border border-white/10 bg-[#111315]">
                       <Monitor className="size-10 text-slate-300" />
                     </div>
-                    <div className="mt-3 text-sm font-semibold">Entire screen</div>
-                    <div className="mt-1 text-[10px] text-slate-500">Share your desktop, including other applications.</div>
+                    <div className="mt-3 text-sm font-semibold">
+                      Entire screen
+                    </div>
+                    <div className="mt-1 text-[10px] text-slate-500">
+                      Share your desktop, including other applications.
+                    </div>
                   </button>
 
-                  <button type="button" onClick={onStartShare} className="group rounded-2xl border border-white/10 bg-white/[.03] p-4 text-left transition hover:border-white/20 hover:bg-white/[.06]">
+                  <button
+                    type="button"
+                    onClick={onStartShare}
+                    className="group rounded-2xl border border-white/10 bg-white/[.03] p-4 text-left transition hover:border-white/20 hover:bg-white/[.06]"
+                  >
                     <div className="grid aspect-video grid-cols-2 gap-2 rounded-xl border border-white/10 bg-[#111315] p-3">
                       <div className="rounded-lg bg-white/5" />
                       <div className="rounded-lg bg-white/10" />
                     </div>
-                    <div className="mt-3 text-sm font-semibold">Application window</div>
-                    <div className="mt-1 text-[10px] text-slate-500">Use the browser picker to choose a specific app.</div>
+                    <div className="mt-3 text-sm font-semibold">
+                      Application window
+                    </div>
+                    <div className="mt-1 text-[10px] text-slate-500">
+                      Use the browser picker to choose a specific app.
+                    </div>
                   </button>
 
-                  <button type="button" onClick={onStartShare} className="group rounded-2xl border border-white/10 bg-white/[.03] p-4 text-left transition hover:border-white/20 hover:bg-white/[.06]">
+                  <button
+                    type="button"
+                    onClick={onStartShare}
+                    className="group rounded-2xl border border-white/10 bg-white/[.03] p-4 text-left transition hover:border-white/20 hover:bg-white/[.06]"
+                  >
                     <div className="flex aspect-video items-center justify-center rounded-xl border border-white/10 bg-[#111315]">
                       <AppWindow className="size-10 text-slate-300" />
                     </div>
-                    <div className="mt-3 text-sm font-semibold">Browser tab</div>
-                    <div className="mt-1 text-[10px] text-slate-500">Select a tab from your browser&apos;s share picker.</div>
+                    <div className="mt-3 text-sm font-semibold">
+                      Browser tab
+                    </div>
+                    <div className="mt-1 text-[10px] text-slate-500">
+                      Select a tab from your browser&apos;s share picker.
+                    </div>
                   </button>
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-4 text-xs text-slate-300">
-                  <label className="flex cursor-pointer items-center gap-2"><input type="checkbox" checked={shareSound} onChange={(e) => onShareSoundChange(e.target.checked)} className="size-4 accent-violet-500" /> Share sound</label>
-                  <label className="flex cursor-pointer items-center gap-2"><input type="checkbox" checked={optimizeVideo} onChange={(e) => onOptimizeVideoChange(e.target.checked)} className="size-4 accent-violet-500" /> Optimize for video sharing</label>
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={shareSound}
+                      onChange={(e) => onShareSoundChange(e.target.checked)}
+                      className="size-4 accent-violet-500"
+                    />{" "}
+                    Share sound
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={optimizeVideo}
+                      onChange={(e) => onOptimizeVideoChange(e.target.checked)}
+                      className="size-4 accent-violet-500"
+                    />{" "}
+                    Optimize for video sharing
+                  </label>
                 </div>
               </div>
             ) : null}
@@ -592,12 +676,28 @@ function ShareSourceModal({
             {tab === "files" ? (
               <div className="flex min-h-[330px] items-center justify-center">
                 <div className="max-w-sm text-center">
-                  <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-white/8"><FileText className="size-7 text-slate-300" /></div>
+                  <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-white/8">
+                    <FileText className="size-7 text-slate-300" />
+                  </div>
                   <h3 className="mt-4 text-sm font-semibold">Present a file</h3>
-                  <p className="mt-2 text-xs leading-5 text-slate-500">Choose a PDF, image, or document from your device. The selected file can then be opened and presented through screen sharing.</p>
+                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                    Choose a PDF, image, or document from your device. The
+                    selected file can then be opened and presented through
+                    screen sharing.
+                  </p>
                   <label className="mt-5 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-violet-500">
                     <FileText className="size-4" /> Choose file
-                    <input type="file" className="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.ppt,.pptx,.doc,.docx" onChange={() => { onClose(); toast.info("Open the selected file and use Share screen to present it."); }} />
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.png,.jpg,.jpeg,.webp,.ppt,.pptx,.doc,.docx"
+                      onChange={() => {
+                        onClose();
+                        toast.info(
+                          "Open the selected file and use Share screen to present it.",
+                        );
+                      }}
+                    />
                   </label>
                 </div>
               </div>
@@ -605,34 +705,79 @@ function ShareSourceModal({
 
             {tab === "more" ? (
               <div className="grid min-h-[330px] grid-cols-2 gap-3 sm:grid-cols-3">
-                <button type="button" onClick={onWhiteboard} className="rounded-2xl border border-white/10 bg-white/[.03] p-4 text-left hover:bg-white/[.07]"><PresentationIcon className="size-6 text-slate-300" /><div className="mt-3 text-xs font-semibold">Whiteboard</div><div className="mt-1 text-[10px] text-slate-500">Open the teaching board.</div></button>
-                <div className="rounded-2xl border border-white/10 bg-white/[.03] p-4"><Captions className="size-6 text-slate-300" /><div className="mt-3 text-xs font-semibold">Captions</div><div className="mt-1 text-[10px] text-slate-500">Ready for future live captions.</div></div>
-                <div className="rounded-2xl border border-white/10 bg-white/[.03] p-4"><Settings className="size-6 text-slate-300" /><div className="mt-3 text-xs font-semibold">Share settings</div><div className="mt-1 text-[10px] text-slate-500">Configure presentation behavior.</div></div>
+                <button
+                  type="button"
+                  onClick={onWhiteboard}
+                  className="rounded-2xl border border-white/10 bg-white/[.03] p-4 text-left hover:bg-white/[.07]"
+                >
+                  <PresentationIcon className="size-6 text-slate-300" />
+                  <div className="mt-3 text-xs font-semibold">Whiteboard</div>
+                  <div className="mt-1 text-[10px] text-slate-500">
+                    Open the teaching board.
+                  </div>
+                </button>
+                <div className="rounded-2xl border border-white/10 bg-white/[.03] p-4">
+                  <Captions className="size-6 text-slate-300" />
+                  <div className="mt-3 text-xs font-semibold">Captions</div>
+                  <div className="mt-1 text-[10px] text-slate-500">
+                    Ready for future live captions.
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[.03] p-4">
+                  <Settings className="size-6 text-slate-300" />
+                  <div className="mt-3 text-xs font-semibold">
+                    Share settings
+                  </div>
+                  <div className="mt-1 text-[10px] text-slate-500">
+                    Configure presentation behavior.
+                  </div>
+                </div>
               </div>
             ) : null}
           </div>
         </div>
 
         <aside className="hidden w-[300px] shrink-0 border-l border-white/10 bg-[#1d1f22] p-5 lg:block">
-          <div className="text-xs font-semibold text-slate-300">Presenter layout</div>
+          <div className="text-xs font-semibold text-slate-300">
+            Presenter layout
+          </div>
           <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black">
             <div className="aspect-video bg-gradient-to-br from-slate-900 via-black to-slate-800 p-3">
               <div className="h-full rounded-lg border border-white/10 bg-black/60 p-2">
-                <div className={`h-full rounded-md bg-slate-800/80 ${shareLayout === "background" ? "p-2" : "p-3"}`}>
-                  <div className="flex h-full items-center justify-center text-[9px] text-slate-500">Shared content preview</div>
+                <div
+                  className={`h-full rounded-md bg-slate-800/80 ${shareLayout === "background" ? "p-2" : "p-3"}`}
+                >
+                  <div className="flex h-full items-center justify-center text-[9px] text-slate-500">
+                    Shared content preview
+                  </div>
                 </div>
               </div>
             </div>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
             {layouts.map((layout) => (
-              <button key={layout.id} type="button" onClick={() => onLayoutChange(layout.id)} className={`min-h-[82px] rounded-xl border p-2 text-left transition ${shareLayout === layout.id ? "border-violet-500 bg-violet-500/10" : "border-white/10 bg-white/[.02] hover:bg-white/[.06]"}`}>
-                <div className={`flex size-8 items-center justify-center rounded-lg ${shareLayout === layout.id ? "bg-violet-600" : "bg-white/8"}`}>{layout.icon}</div>
-                <div className="mt-2 text-[10px] font-semibold">{layout.label}</div>
+              <button
+                key={layout.id}
+                type="button"
+                onClick={() => onLayoutChange(layout.id)}
+                className={`min-h-[82px] rounded-xl border p-2 text-left transition ${shareLayout === layout.id ? "border-violet-500 bg-violet-500/10" : "border-white/10 bg-white/[.02] hover:bg-white/[.06]"}`}
+              >
+                <div
+                  className={`flex size-8 items-center justify-center rounded-lg ${shareLayout === layout.id ? "bg-violet-600" : "bg-white/8"}`}
+                >
+                  {layout.icon}
+                </div>
+                <div className="mt-2 text-[10px] font-semibold">
+                  {layout.label}
+                </div>
               </button>
             ))}
           </div>
-          <div className="mt-6 flex items-start gap-2 text-[10px] leading-4 text-slate-500"><Info className="mt-0.5 size-3.5 shrink-0" /> Your browser will show its secure screen-selection dialog after you choose a screen or window.</div>
+          <div className="mt-6 flex items-start gap-2 text-[10px] leading-4 text-slate-500">
+            <Info className="mt-0.5 size-3.5 shrink-0" /> Your browser will show
+            its secure screen-selection dialog after you choose a screen or
+            window.
+          </div>
         </aside>
       </div>
     </div>
@@ -653,12 +798,46 @@ function MoreToolsMenu({
   return (
     <div className="pointer-events-auto absolute bottom-[112px] left-1/2 z-[1200] w-[min(310px,calc(100vw-28px))] -translate-x-1/2 rounded-2xl border border-white/10 bg-[#17191d]/98 p-3 text-white shadow-[0_22px_70px_rgba(0,0,0,.6)] backdrop-blur-2xl">
       <div className="grid grid-cols-3 gap-2">
-        {role === "educator" ? <button type="button" onClick={() => { onRecording(); onClose(); }} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl bg-white/[.04] text-[10px] hover:bg-white/[.09]"><CircleDot className="size-5" /><span className="mt-2">Record</span></button> : null}
-        <button type="button" onClick={() => { onWhiteboard(); onClose(); }} className="flex min-h-[72px] flex-col items-center justify-center rounded-xl bg-white/[.04] text-[10px] hover:bg-white/[.09]"><PresentationIcon className="size-5" /><span className="mt-2">Whiteboard</span></button>
-        <div className="flex min-h-[72px] flex-col items-center justify-center rounded-xl bg-white/[.04] text-[10px] text-slate-400"><Captions className="size-5" /><span className="mt-2">Captions</span></div>
-        <div className="flex min-h-[72px] flex-col items-center justify-center rounded-xl bg-white/[.04] text-[10px] text-slate-400"><Info className="size-5" /><span className="mt-2">Meeting info</span></div>
-        <div className="flex min-h-[72px] flex-col items-center justify-center rounded-xl bg-white/[.04] text-[10px] text-slate-400"><Settings className="size-5" /><span className="mt-2">Settings</span></div>
-        <div className="flex min-h-[72px] flex-col items-center justify-center rounded-xl bg-white/[.04] text-[10px] text-slate-400"><MoreHorizontal className="size-5" /><span className="mt-2">More</span></div>
+        {role === "educator" ? (
+          <button
+            type="button"
+            onClick={() => {
+              onRecording();
+              onClose();
+            }}
+            className="flex min-h-[72px] flex-col items-center justify-center rounded-xl bg-white/[.04] text-[10px] hover:bg-white/[.09]"
+          >
+            <CircleDot className="size-5" />
+            <span className="mt-2">Record</span>
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => {
+            onWhiteboard();
+            onClose();
+          }}
+          className="flex min-h-[72px] flex-col items-center justify-center rounded-xl bg-white/[.04] text-[10px] hover:bg-white/[.09]"
+        >
+          <PresentationIcon className="size-5" />
+          <span className="mt-2">Whiteboard</span>
+        </button>
+        <div className="flex min-h-[72px] flex-col items-center justify-center rounded-xl bg-white/[.04] text-[10px] text-slate-400">
+          <Captions className="size-5" />
+          <span className="mt-2">Captions</span>
+        </div>
+        <div className="flex min-h-[72px] flex-col items-center justify-center rounded-xl bg-white/[.04] text-[10px] text-slate-400">
+          <Info className="size-5" />
+          <span className="mt-2">Meeting info</span>
+        </div>
+        <div className="flex min-h-[72px] flex-col items-center justify-center rounded-xl bg-white/[.04] text-[10px] text-slate-400">
+          <Settings className="size-5" />
+          <span className="mt-2">Settings</span>
+        </div>
+        <div className="flex min-h-[72px] flex-col items-center justify-center rounded-xl bg-white/[.04] text-[10px] text-slate-400">
+          <MoreHorizontal className="size-5" />
+          <span className="mt-2">More</span>
+        </div>
       </div>
     </div>
   );
@@ -695,11 +874,14 @@ function VideoDisplayStage({
   }
 
   const participantVideos = participants.filter(
-    (participant) => participant.session_id !== screenShareParticipant?.session_id,
+    (participant) =>
+      participant.session_id !== screenShareParticipant?.session_id,
   );
 
   const speaker =
-    participantVideos.find((participant) => participant.session_id === activeSpeakerId) ??
+    participantVideos.find(
+      (participant) => participant.session_id === activeSpeakerId,
+    ) ??
     participantVideos.find((participant) => !participant.local) ??
     participantVideos[0] ??
     null;
@@ -716,8 +898,12 @@ function VideoDisplayStage({
       />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent px-3 pb-2.5 pt-10">
         <div className="flex items-center gap-2 text-[10px] font-semibold text-white">
-          <span className={`size-1.5 rounded-full ${participant.local ? "bg-emerald-400" : "bg-white/80"}`} />
-          <span className="min-w-0 truncate">{participant.local ? "You" : participant.user_name || "Participant"}</span>
+          <span
+            className={`size-1.5 rounded-full ${participant.local ? "bg-emerald-400" : "bg-white/80"}`}
+          />
+          <span className="min-w-0 truncate">
+            {participant.local ? "You" : participant.user_name || "Participant"}
+          </span>
         </div>
       </div>
     </div>
@@ -728,10 +914,17 @@ function VideoDisplayStage({
     return (
       <div className="pointer-events-auto absolute inset-0 z-[905] bg-[#080a0d] p-2 sm:p-3">
         <div className="relative h-full w-full overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
-          <ParticipantVideo participant={screenShareParticipant} screen muted={Boolean(screenShareParticipant.local)} className="object-contain" />
+          <ParticipantVideo
+            participant={screenShareParticipant}
+            screen
+            muted={Boolean(screenShareParticipant.local)}
+            className="object-contain"
+          />
           <div className="pointer-events-none absolute left-4 top-4 rounded-xl border border-white/10 bg-black/55 px-3 py-2 text-[10px] font-medium text-white backdrop-blur-md">
             <span className="mr-1.5 inline-block size-1.5 rounded-full bg-emerald-400" />
-            {screenShareParticipant.local ? "You are sharing your screen" : `${screenShareParticipant.user_name || "Participant"} is sharing`}
+            {screenShareParticipant.local
+              ? "You are sharing your screen"
+              : `${screenShareParticipant.user_name || "Participant"} is sharing`}
           </div>
         </div>
       </div>
@@ -740,9 +933,11 @@ function VideoDisplayStage({
 
   if (screenShareParticipant) {
     const nonSharerVideos = participantVideos.filter(
-      (participant) => participant.session_id !== screenShareParticipant.session_id,
+      (participant) =>
+        participant.session_id !== screenShareParticipant.session_id,
     );
-    const localParticipant = participants.find((participant) => participant.local) ?? null;
+    const localParticipant =
+      participants.find((participant) => participant.local) ?? null;
 
     if (shareLayout === "background") {
       return (
@@ -760,9 +955,13 @@ function VideoDisplayStage({
     if (shareLayout === "over-shoulder") {
       return (
         <div className="pointer-events-auto absolute inset-0 z-[920] flex gap-2 overflow-hidden bg-[#090b0e] p-2 sm:p-3">
-          <div className="relative min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-black">{renderScreenShare()}</div>
+          <div className="relative min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-black">
+            {renderScreenShare()}
+          </div>
           {localParticipant ? (
-            <div className="relative hidden w-[min(30vw,360px)] shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[#111418] md:block">{renderTile(localParticipant)}</div>
+            <div className="relative hidden w-[min(30vw,360px)] shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[#111418] md:block">
+              {renderTile(localParticipant)}
+            </div>
           ) : null}
         </div>
       );
@@ -771,10 +970,22 @@ function VideoDisplayStage({
     if (shareLayout === "side-by-side") {
       return (
         <div className="pointer-events-auto absolute inset-0 z-[920] flex gap-2 overflow-hidden bg-[#090b0e] p-2 sm:p-3">
-          <div className="relative min-w-0 flex-[2] overflow-hidden rounded-2xl border border-white/10 bg-black">{renderScreenShare()}</div>
+          <div className="relative min-w-0 flex-[2] overflow-hidden rounded-2xl border border-white/10 bg-black">
+            {renderScreenShare()}
+          </div>
           <div className="flex w-[min(34vw,390px)] shrink-0 flex-col gap-2 overflow-y-auto rounded-2xl border border-white/10 bg-[#111418]/80 p-2">
-            {(nonSharerVideos.length ? nonSharerVideos : localParticipant ? [localParticipant] : []).map((participant) => (
-              <div key={participant.session_id} className="h-[min(28vh,220px)] min-h-[150px] shrink-0">{renderTile(participant)}</div>
+            {(nonSharerVideos.length
+              ? nonSharerVideos
+              : localParticipant
+                ? [localParticipant]
+                : []
+            ).map((participant) => (
+              <div
+                key={participant.session_id}
+                className="h-[min(28vh,220px)] min-h-[150px] shrink-0"
+              >
+                {renderTile(participant)}
+              </div>
             ))}
           </div>
         </div>
@@ -787,7 +998,10 @@ function VideoDisplayStage({
         {participantVideos.length > 0 ? (
           <div className="pointer-events-auto absolute bottom-24 left-1/2 z-[940] flex max-w-[calc(100vw-32px)] -translate-x-1/2 gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-[#111418]/90 p-2 shadow-2xl backdrop-blur-xl">
             {participantVideos.map((participant) => (
-              <div key={participant.session_id} className="h-[86px] w-[132px] shrink-0">
+              <div
+                key={participant.session_id}
+                className="h-[86px] w-[132px] shrink-0"
+              >
                 {renderTile(participant, true)}
               </div>
             ))}
@@ -804,7 +1018,8 @@ function VideoDisplayStage({
           <div className="relative h-full w-full overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl">
             {renderTile(speaker)}
             <div className="pointer-events-none absolute left-4 top-4 rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-[10px] font-semibold text-white backdrop-blur-md">
-              <Volume2 className="mr-1.5 inline-block size-3.5" /> Active speaker
+              <Volume2 className="mr-1.5 inline-block size-3.5" /> Active
+              speaker
             </div>
           </div>
         ) : (
@@ -819,7 +1034,10 @@ function VideoDisplayStage({
       <div className="pointer-events-auto absolute inset-0 z-[920] overflow-hidden bg-[#090b0e] px-2 py-2 sm:px-3">
         <div className="flex h-full w-full items-center gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
           {participantVideos.map((participant) => (
-            <div key={participant.session_id} className="h-[min(62vh,430px)] w-[min(72vw,620px)] shrink-0 snap-center">
+            <div
+              key={participant.session_id}
+              className="h-[min(62vh,430px)] w-[min(72vw,620px)] shrink-0 snap-center"
+            >
               {renderTile(participant)}
             </div>
           ))}
@@ -834,7 +1052,10 @@ function VideoDisplayStage({
       <div className="pointer-events-auto absolute inset-0 z-[920] overflow-hidden bg-[#090b0e] px-2 py-2 sm:px-3">
         <div className="mx-auto flex h-full w-[min(92vw,620px)] flex-col gap-3 overflow-y-auto py-1">
           {participantVideos.map((participant) => (
-            <div key={participant.session_id} className="h-[min(34vh,300px)] min-h-[190px] shrink-0">
+            <div
+              key={participant.session_id}
+              className="h-[min(34vh,300px)] min-h-[190px] shrink-0"
+            >
               {renderTile(participant)}
             </div>
           ))}
@@ -846,7 +1067,9 @@ function VideoDisplayStage({
 
   return (
     <div className="pointer-events-auto absolute inset-0 z-[920] overflow-hidden bg-[#090b0e] p-2 sm:p-3">
-      <div className={`grid h-full w-full gap-3 ${participantVideos.length <= 1 ? "grid-cols-1" : participantVideos.length <= 4 ? "grid-cols-2" : participantVideos.length <= 9 ? "grid-cols-3" : "grid-cols-4"} auto-rows-fr`}>
+      <div
+        className={`grid h-full w-full gap-3 ${participantVideos.length <= 1 ? "grid-cols-1" : participantVideos.length <= 4 ? "grid-cols-2" : participantVideos.length <= 9 ? "grid-cols-3" : "grid-cols-4"} auto-rows-fr`}
+      >
         {participantVideos.map((participant) => renderTile(participant))}
         {participantVideos.length === 0 ? <EmptyVideoState /> : null}
       </div>
@@ -902,9 +1125,7 @@ function DraggableVideoStage({
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
-  const handlePointerMove = (
-    event: ReactPointerEvent<HTMLDivElement>,
-  ) => {
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
     const stage = stageRef.current;
     if (!drag || !stage) return;
@@ -920,9 +1141,7 @@ function DraggableVideoStage({
     onPositionChange(drag.id, nextX, nextY);
   };
 
-  const handlePointerUp = (
-    event: ReactPointerEvent<HTMLDivElement>,
-  ) => {
+  const handlePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
     dragRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
@@ -930,7 +1149,10 @@ function DraggableVideoStage({
   };
 
   return (
-    <div ref={stageRef} className="pointer-events-auto absolute inset-0 z-[920] overflow-hidden">
+    <div
+      ref={stageRef}
+      className="pointer-events-auto absolute inset-0 z-[920] overflow-hidden"
+    >
       <div className="pointer-events-none absolute left-4 top-20 rounded-xl border border-white/10 bg-black/45 px-3 py-2 text-[10px] font-medium text-white/75 backdrop-blur-md">
         <span className="mr-1.5 inline-flex size-1.5 rounded-full bg-violet-400" />
         Drag videos anywhere to arrange your classroom
@@ -968,8 +1190,12 @@ function DraggableVideoStage({
 
                 <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/75 to-transparent px-2.5 pb-8 pt-2.5">
                   <div className="flex items-center gap-2 text-[10px] font-semibold text-white">
-                    <span className={`size-1.5 rounded-full ${participant.local ? "bg-emerald-400" : "bg-white/80"}`} />
-                    {participant.local ? "You" : participant.user_name || "Participant"}
+                    <span
+                      className={`size-1.5 rounded-full ${participant.local ? "bg-emerald-400" : "bg-white/80"}`}
+                    />
+                    {participant.local
+                      ? "You"
+                      : participant.user_name || "Participant"}
                   </div>
                   <span className="rounded-lg border border-white/10 bg-black/45 p-1.5 text-white/80">
                     <Move className="size-3" />
@@ -1010,11 +1236,15 @@ function SessionHeader({
   return (
     <header className="pointer-events-auto absolute left-4 right-4 top-4 z-[990] flex items-center justify-between gap-3 sm:left-6 sm:right-6">
       <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-[#111418]/88 px-3 py-2.5 text-white shadow-xl backdrop-blur-xl">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-sm font-black text-slate-950">j</div>
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-sm font-black text-slate-950">
+          j
+        </div>
         <div className="min-w-0">
           <p className="truncate text-xs font-bold">justdy</p>
           <div className="mt-0.5 flex items-center gap-1.5 text-[9px] text-slate-400">
-            <span className={`size-1.5 rounded-full ${isConnected ? "bg-emerald-400" : "bg-amber-400"}`} />
+            <span
+              className={`size-1.5 rounded-full ${isConnected ? "bg-emerald-400" : "bg-amber-400"}`}
+            />
             {isConnected ? "Live tutoring" : "Connecting…"}
             <span className="text-slate-600">•</span>
             <span className="capitalize">{role}</span>
@@ -1023,7 +1253,9 @@ function SessionHeader({
       </div>
 
       <div className="flex items-center rounded-2xl border border-white/10 bg-[#111418]/88 px-3 py-2.5 text-white shadow-xl backdrop-blur-xl">
-        <span className="text-[10px] font-semibold text-slate-400">Video classroom</span>
+        <span className="text-[10px] font-semibold text-slate-400">
+          Video classroom
+        </span>
       </div>
     </header>
   );
@@ -1164,30 +1396,15 @@ export default function VideoCall({
   onSignalReady,
   onEndSession,
 }: VideoCallProps) {
-  const [
-    isConnected,
-    setIsConnected,
-  ] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
 
-  const [
-    isVideoEnabled,
-    setIsVideoEnabled,
-  ] = useState(true);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
 
-  const [
-    isAudioEnabled,
-    setIsAudioEnabled,
-  ] = useState(true);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
 
-  const [
-    isScreenSharing,
-    setIsScreenSharing,
-  ] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
 
-  const [
-    isRecording,
-    setIsRecording,
-  ] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
 
   // Recording saves use the browser's native file picker directly.
   // There is intentionally no Justdy save-settings popup.
@@ -1195,43 +1412,28 @@ export default function VideoCall({
     name: "justdy-recording",
     format: "webm",
   };
-  const recordingSaveHandleRef =
-    useRef<RecordingFileHandle | null>(null);
-  const screenRecorderRef =
-    useRef<MediaRecorder | null>(null);
-  const mp4RecorderRef =
-    useRef<MediaRecorder | null>(null);
-  const recordingResultsRef =
-    useRef<{ webm?: Blob; mp4?: Blob }>({});
-  const recordingExpectedResultsRef =
-    useRef(0);
-  const recordingCompletedResultsRef =
-    useRef(0);
-  const recordingStreamRef =
-    useRef<MediaStream | null>(null);
-  const recordingSourceStreamRef =
-    useRef<MediaStream | null>(null);
+  const recordingSaveHandleRef = useRef<RecordingFileHandle | null>(null);
+  const screenRecorderRef = useRef<MediaRecorder | null>(null);
+  const mp4RecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingResultsRef = useRef<{ webm?: Blob; mp4?: Blob }>({});
+  const recordingExpectedResultsRef = useRef(0);
+  const recordingCompletedResultsRef = useRef(0);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+  const recordingSourceStreamRef = useRef<MediaStream | null>(null);
   // Recording and Daily screen sharing use completely separate browser
   // display-capture streams. Starting Record never starts Daily screen
   // sharing, and starting Share Screen never starts local recording.
-  const recordingDisplayStreamRef =
-    useRef<MediaStream | null>(null);
-  const screenShareCaptureStreamRef =
-    useRef<MediaStream | null>(null);
-  const dailyScreenShareStreamRef =
-    useRef<MediaStream | null>(null);
-  const recordingMicStreamRef =
-    useRef<MediaStream | null>(null);
-  const recordingAudioContextRef =
-    useRef<AudioContext | null>(null);
-  const recordingChunksRef =
-    useRef<Blob[]>([]);
-  const recordingMimeTypeRef =
-    useRef<string>("");
-  const recordingScreenEndedRef =
-    useRef(false);
+  const recordingDisplayStreamRef = useRef<MediaStream | null>(null);
+  const screenShareCaptureStreamRef = useRef<MediaStream | null>(null);
+  const dailyScreenShareStreamRef = useRef<MediaStream | null>(null);
+  const recordingMicStreamRef = useRef<MediaStream | null>(null);
+  const recordingAudioContextRef = useRef<AudioContext | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+  const recordingMimeTypeRef = useRef<string>("");
+  const recordingScreenEndedRef = useRef(false);
 
-  const [videoDisplayMode, setVideoDisplayMode] = useState<VideoDisplayMode>("gallery");
+  const [videoDisplayMode, setVideoDisplayMode] =
+    useState<VideoDisplayMode>("gallery");
   const [showDisplayMenu, setShowDisplayMenu] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -1244,13 +1446,20 @@ export default function VideoCall({
   const revealBottomDock = useCallback(() => {
     setShowBottomDock(true);
     if (dockHideTimerRef.current) window.clearTimeout(dockHideTimerRef.current);
-    dockHideTimerRef.current = window.setTimeout(() => setShowBottomDock(false), 4000);
+    dockHideTimerRef.current = window.setTimeout(
+      () => setShowBottomDock(false),
+      4000,
+    );
   }, []);
 
   useEffect(() => {
-    dockHideTimerRef.current = window.setTimeout(() => setShowBottomDock(false), 4000);
+    dockHideTimerRef.current = window.setTimeout(
+      () => setShowBottomDock(false),
+      4000,
+    );
     return () => {
-      if (dockHideTimerRef.current) window.clearTimeout(dockHideTimerRef.current);
+      if (dockHideTimerRef.current)
+        window.clearTimeout(dockHideTimerRef.current);
     };
   }, []);
   const [activeSpeakerId, setActiveSpeakerId] = useState<string | null>(null);
@@ -1284,32 +1493,21 @@ export default function VideoCall({
     Array<{ id: string; text: string; local: boolean; name: string }>
   >([]);
 
-  const [
-    participants,
-    setParticipants,
-  ] =
-    useState<DailyParticipantMap>(
-      {},
-    );
+  const [participants, setParticipants] = useState<DailyParticipantMap>({});
 
-  const callRef =
-    useRef<DailyCall | null>(
-      null,
-    );
+  const callRef = useRef<DailyCall | null>(null);
 
   // Component-local reference retained for the existing lifecycle, while the
   // module-level lock above also protects against duplicate component mounts.
-  const dailyCleanupPromiseRef =
-    useRef<Promise<void> | null>(null);
+  const dailyCleanupPromiseRef = useRef<Promise<void> | null>(null);
 
-  const callbacksRef =
-    useRef({
-      onSignal,
-      onParticipantChange,
-      onConnected,
-      onDisconnected,
-      onSignalReady,
-    });
+  const callbacksRef = useRef({
+    onSignal,
+    onParticipantChange,
+    onConnected,
+    onDisconnected,
+    onSignalReady,
+  });
 
   useEffect(() => {
     callbacksRef.current = {
@@ -1327,13 +1525,9 @@ export default function VideoCall({
     onSignalReady,
   ]);
 
-  const participantIdsNotifiedRef =
-    useRef<Set<string>>(
-      new Set(),
-    );
+  const participantIdsNotifiedRef = useRef<Set<string>>(new Set());
 
-  const router =
-    useRouter();
+  const router = useRouter();
 
   /*
    * If the API caller eventually passes roomUrl,
@@ -1341,28 +1535,19 @@ export default function VideoCall({
    *
    * Otherwise use the public Daily domain + room name.
    */
-  const resolvedRoomUrl =
-    useMemo(() => {
-      if (roomUrl) {
-        return roomUrl;
-      }
+  const resolvedRoomUrl = useMemo(() => {
+    if (roomUrl) {
+      return roomUrl;
+    }
 
-      const domainUrl =
-        process.env
-          .NEXT_PUBLIC_DAILY_DOMAIN_URL;
+    const domainUrl = process.env.NEXT_PUBLIC_DAILY_DOMAIN_URL;
 
-      if (!domainUrl) {
-        return "";
-      }
+    if (!domainUrl) {
+      return "";
+    }
 
-      return `${domainUrl.replace(
-        /\/$/,
-        "",
-      )}/${sessionId}`;
-    }, [
-      roomUrl,
-      sessionId,
-    ]);
+    return `${domainUrl.replace(/\/$/, "")}/${sessionId}`;
+  }, [roomUrl, sessionId]);
 
   /**
    * Preserves the signaling interface used by
@@ -1370,12 +1555,8 @@ export default function VideoCall({
    *
    * Vonage signal() → Daily sendAppMessage().
    */
-  const sendSignal = (
-    type: string,
-    data?: unknown,
-  ) => {
-    const call =
-      callRef.current;
+  const sendSignal = (type: string, data?: unknown) => {
+    const call = callRef.current;
 
     if (!call) {
       return;
@@ -1390,10 +1571,7 @@ export default function VideoCall({
         "*",
       );
     } catch (error) {
-      console.error(
-        "Daily app-message error:",
-        error,
-      );
+      console.error("Daily app-message error:", error);
     }
   };
 
@@ -1401,11 +1579,7 @@ export default function VideoCall({
    * Create and join the Daily call.
    */
   useEffect(() => {
-    if (
-      !resolvedRoomUrl ||
-      !sessionId ||
-      !token
-    ) {
+    if (!resolvedRoomUrl || !sessionId || !token) {
       if (!resolvedRoomUrl) {
         toast.error(
           "Daily room URL is not configured. Set NEXT_PUBLIC_DAILY_DOMAIN_URL.",
@@ -1415,122 +1589,81 @@ export default function VideoCall({
       return;
     }
 
-    let cancelled =
-      false;
+    let cancelled = false;
 
-    const createCall =
-      async () => {
-        // React Strict Mode, Fast Refresh, and rapid remounts can run this
-        // effect again before Daily has finished destroying the previous call.
-        // Always wait on the global cleanup lock first.
-        const previousCleanup =
-          activeDailyCleanupPromise ??
-          dailyCleanupPromiseRef.current;
+    const createCall = async () => {
+      // React Strict Mode, Fast Refresh, and rapid remounts can run this
+      // effect again before Daily has finished destroying the previous call.
+      // Always wait on the global cleanup lock first.
+      const previousCleanup =
+        activeDailyCleanupPromise ?? dailyCleanupPromiseRef.current;
 
-        if (previousCleanup) {
-          try {
-            await previousCleanup;
-          } catch {
-            // Cleanup errors are handled by the cleanup routine below.
-          }
+      if (previousCleanup) {
+        try {
+          await previousCleanup;
+        } catch {
+          // Cleanup errors are handled by the cleanup routine below.
         }
+      }
 
-        if (cancelled || callRef.current) {
-          return;
-        }
+      if (cancelled || callRef.current) {
+        return;
+      }
 
-        const call =
-          DailyIframe.createCallObject({
-            subscribeToTracksAutomatically:
-              true,
-            startVideoOff:
-              false,
-            startAudioOff:
-              false,
-          });
+      const call = DailyIframe.createCallObject({
+        subscribeToTracksAutomatically: true,
+        startVideoOff: false,
+        startAudioOff: false,
+      });
 
-        callRef.current =
-          call;
+      callRef.current = call;
 
-    /*
-     * Refresh the React representation of
-     * Daily's participant store.
-     */
-    const refreshParticipants =
-      () => {
+      /*
+       * Refresh the React representation of
+       * Daily's participant store.
+       */
+      const refreshParticipants = () => {
         if (cancelled) {
           return;
         }
 
-        const current =
-          call.participants();
+        const current = call.participants();
 
         setParticipants({
           ...current,
         });
 
-        const localParticipant =
-          current.local;
+        const localParticipant = current.local;
 
-        if (
-          localParticipant
-        ) {
+        if (localParticipant) {
           setIsVideoEnabled(
-            localParticipant
-              .tracks
-              .video
-              ?.state !==
-              "off" &&
-              localParticipant.video !==
-                false,
+            localParticipant.tracks.video?.state !== "off" &&
+              localParticipant.video !== false,
           );
 
           setIsAudioEnabled(
-            localParticipant
-              .tracks
-              .audio
-              ?.state !==
-              "off" &&
-              localParticipant.audio !==
-                false,
+            localParticipant.tracks.audio?.state !== "off" &&
+              localParticipant.audio !== false,
           );
 
           setIsScreenSharing(
-            localParticipant
-              .tracks
-              .screenVideo
-              ?.state ===
-              "playable",
+            localParticipant.tracks.screenVideo?.state === "playable",
           );
-
         }
       };
 
-    const notifyParticipantJoined =
-      (
-        participant: DailyParticipant,
-      ) => {
-        if (
-          participant.local
-        ) {
+      const notifyParticipantJoined = (participant: DailyParticipant) => {
+        if (participant.local) {
           return;
         }
 
-        const id =
-          participant.session_id;
+        const id = participant.session_id;
 
-        if (
-          !id ||
-          participantIdsNotifiedRef.current.has(
-            id,
-          )
-        ) {
+        if (!id || participantIdsNotifiedRef.current.has(id)) {
           return;
         }
 
-        participantIdsNotifiedRef.current.add(
-          id,
-        );
+        participantIdsNotifiedRef.current.add(id);
 
         callbacksRef.current.onParticipantChange?.({
           connectionId: id,
@@ -1538,20 +1671,14 @@ export default function VideoCall({
         });
       };
 
-    const notifyParticipantLeft =
-      (
-        participant: DailyParticipant,
-      ) => {
-        const id =
-          participant.session_id;
+      const notifyParticipantLeft = (participant: DailyParticipant) => {
+        const id = participant.session_id;
 
         if (!id) {
           return;
         }
 
-        participantIdsNotifiedRef.current.delete(
-          id,
-        );
+        participantIdsNotifiedRef.current.delete(id);
 
         callbacksRef.current.onParticipantChange?.({
           connectionId: id,
@@ -1559,143 +1686,103 @@ export default function VideoCall({
         });
       };
 
-    const handleJoinedMeeting =
-      () => {
+      const handleJoinedMeeting = () => {
         if (cancelled) {
           return;
         }
 
-        setIsConnected(
-          true,
-        );
+        setIsConnected(true);
 
         refreshParticipants();
 
         callbacksRef.current.onConnected?.();
 
-        callbacksRef.current.onSignalReady?.(
-          sendSignal,
-        );
+        callbacksRef.current.onSignalReady?.(sendSignal);
       };
 
-    const handleLeftMeeting =
-      () => {
-        setIsConnected(
-          false,
-        );
+      const handleLeftMeeting = () => {
+        setIsConnected(false);
 
         setParticipants({});
 
-        setIsRecording(
-          false,
-        );
+        setIsRecording(false);
 
-        setIsScreenSharing(
-          false,
-        );
+        setIsScreenSharing(false);
 
         callbacksRef.current.onDisconnected?.();
       };
 
-    const handleParticipantJoined =
-      (event: unknown) => {
-        const participant =
-          (
-            event as {
-              participant?: DailyParticipant;
-            }
-          ).participant;
-
-        if (
-          participant
-        ) {
-          notifyParticipantJoined(
-            participant,
-          );
-        }
-
-        refreshParticipants();
-      };
-
-    const handleParticipantUpdated =
-      () => {
-        refreshParticipants();
-      };
-
-    const handleParticipantLeft =
-      (event: unknown) => {
-        const participant =
-          (
-            event as {
-              participant?: DailyParticipant;
-            }
-          ).participant;
-
-        if (
-          participant
-        ) {
-          notifyParticipantLeft(
-            participant,
-          );
-        }
-
-        refreshParticipants();
-      };
-
-    /*
-     * Daily app-message replaces the old Vonage
-     * signal event.
-     */
-    const handleAppMessage =
-      (event: unknown) => {
-        const message =
+      const handleParticipantJoined = (event: unknown) => {
+        const participant = (
           event as {
-            data?: unknown;
+            participant?: DailyParticipant;
+          }
+        ).participant;
 
-            from?:
-              | string
-              | {
-                  session_id?: string;
-                }
-              | null;
-          };
+        if (participant) {
+          notifyParticipantJoined(participant);
+        }
 
-        if (
-          !message.data ||
-          typeof message.data !==
-            "object"
-        ) {
+        refreshParticipants();
+      };
+
+      const handleParticipantUpdated = () => {
+        refreshParticipants();
+      };
+
+      const handleParticipantLeft = (event: unknown) => {
+        const participant = (
+          event as {
+            participant?: DailyParticipant;
+          }
+        ).participant;
+
+        if (participant) {
+          notifyParticipantLeft(participant);
+        }
+
+        refreshParticipants();
+      };
+
+      /*
+       * Daily app-message replaces the old Vonage
+       * signal event.
+       */
+      const handleAppMessage = (event: unknown) => {
+        const message = event as {
+          data?: unknown;
+
+          from?:
+            | string
+            | {
+                session_id?: string;
+              }
+            | null;
+        };
+
+        if (!message.data || typeof message.data !== "object") {
           return;
         }
 
-        const payload =
-          message.data as {
-            type?: unknown;
-            data?: unknown;
-          };
+        const payload = message.data as {
+          type?: unknown;
+          data?: unknown;
+        };
 
-        if (
-          typeof payload.type !==
-          "string"
-        ) {
+        if (typeof payload.type !== "string") {
           return;
         }
 
         const from =
-          typeof message.from ===
-          "string"
+          typeof message.from === "string"
             ? message.from
-            : message.from
-                ?.session_id ??
-              null;
+            : (message.from?.session_id ?? null);
 
         if (payload.type === "chat:message") {
-          const chatData =
-            payload.data as { text?: unknown } | null | undefined;
+          const chatData = payload.data as
+            { text?: unknown } | null | undefined;
           const textValue =
-            typeof chatData?.text === "string"
-              ? chatData.text.trim()
-              : "";
+            typeof chatData?.text === "string" ? chatData.text.trim() : "";
 
           if (textValue) {
             setHasUnreadChat(true);
@@ -1727,122 +1814,74 @@ export default function VideoCall({
         });
       };
 
-    const handleActiveSpeakerChange = (event: unknown) => {
-      const payload = event as { activeSpeaker?: { peerId?: string; session_id?: string } | null } | null;
-      const speakerId = payload?.activeSpeaker?.peerId ?? payload?.activeSpeaker?.session_id ?? null;
-      setActiveSpeakerId(speakerId);
-    };
+      const handleActiveSpeakerChange = (event: unknown) => {
+        const payload = event as {
+          activeSpeaker?: { peerId?: string; session_id?: string } | null;
+        } | null;
+        const speakerId =
+          payload?.activeSpeaker?.peerId ??
+          payload?.activeSpeaker?.session_id ??
+          null;
+        setActiveSpeakerId(speakerId);
+      };
 
-    const handleScreenShareStarted =
-      () => {
-        setIsScreenSharing(
-          true,
-        );
+      const handleScreenShareStarted = () => {
+        setIsScreenSharing(true);
 
         refreshParticipants();
       };
 
-    const handleScreenShareStopped =
-      () => {
-        setIsScreenSharing(
-          false,
-        );
+      const handleScreenShareStopped = () => {
+        setIsScreenSharing(false);
 
         refreshParticipants();
       };
 
-    const handleError =
-      (event: unknown) => {
-        console.error(
-          "Daily call error:",
-          event,
-        );
+      const handleError = (event: unknown) => {
+        console.error("Daily call error:", event);
 
-        toast.error(
-          "Video connection error",
-        );
+        toast.error("Video connection error");
       };
 
-    call.on(
-      "joined-meeting",
-      handleJoinedMeeting,
-    );
+      call.on("joined-meeting", handleJoinedMeeting);
 
-    call.on(
-      "left-meeting",
-      handleLeftMeeting,
-    );
+      call.on("left-meeting", handleLeftMeeting);
 
-    call.on(
-      "participant-joined",
-      handleParticipantJoined,
-    );
+      call.on("participant-joined", handleParticipantJoined);
 
-    call.on(
-      "participant-updated",
-      handleParticipantUpdated,
-    );
+      call.on("participant-updated", handleParticipantUpdated);
 
-    call.on(
-      "participant-left",
-      handleParticipantLeft,
-    );
+      call.on("participant-left", handleParticipantLeft);
 
-    call.on(
-      "app-message",
-      handleAppMessage,
-    );
+      call.on("app-message", handleAppMessage);
 
-    call.on(
-      "active-speaker-change",
-      handleActiveSpeakerChange,
-    );
+      call.on("active-speaker-change", handleActiveSpeakerChange);
 
-    call.on(
-      "local-screen-share-started",
-      handleScreenShareStarted,
-    );
+      call.on("local-screen-share-started", handleScreenShareStarted);
 
-    call.on(
-      "local-screen-share-stopped",
-      handleScreenShareStopped,
-    );
+      call.on("local-screen-share-stopped", handleScreenShareStopped);
 
-    call.on(
-      "local-screen-share-canceled",
-      handleScreenShareStopped,
-    );
+      call.on("local-screen-share-canceled", handleScreenShareStopped);
 
-    call.on(
-      "error",
-      handleError,
-    );
+      call.on("error", handleError);
 
-    const join =
-      async () => {
+      const join = async () => {
         try {
           await call.join({
             url: resolvedRoomUrl,
             token,
           });
         } catch (error) {
-          console.error(
-            "Daily connection failed:",
-            error,
-          );
+          console.error("Daily connection failed:", error);
 
-          toast.error(
-            "Connection failed",
-          );
+          toast.error("Connection failed");
 
-          setIsConnected(
-            false,
-          );
+          setIsConnected(false);
         }
       };
 
-        void join();
-      };
+      void join();
+    };
 
     void createCall();
 
@@ -1864,48 +1903,37 @@ export default function VideoCall({
         .forEach((track) => track.stop());
       dailyScreenShareStreamRef.current = null;
 
-      const activeCall =
-        callRef.current;
+      const activeCall = callRef.current;
 
       if (!activeCall) {
         participantIdsNotifiedRef.current.clear();
         return;
       }
 
-      const cleanup =
-        async () => {
+      const cleanup = async () => {
+        try {
+          await activeCall.leave();
+        } catch (error) {
+          console.debug("Unable to leave Daily call during cleanup:", error);
+        } finally {
           try {
-            await activeCall.leave();
+            await activeCall.destroy();
           } catch (error) {
-            console.debug(
-              "Unable to leave Daily call during cleanup:",
-              error,
-            );
-          } finally {
-            try {
-              await activeCall.destroy();
-            } catch (error) {
-              console.debug(
-                "Unable to destroy Daily call:",
-                error,
-              );
-            }
-
-            if (callRef.current === activeCall) {
-              callRef.current = null;
-            }
-
-            participantIdsNotifiedRef.current.clear();
+            console.debug("Unable to destroy Daily call:", error);
           }
-        };
 
-      const cleanupPromise =
-        cleanup();
+          if (callRef.current === activeCall) {
+            callRef.current = null;
+          }
 
-      dailyCleanupPromiseRef.current =
-        cleanupPromise;
-      activeDailyCleanupPromise =
-        cleanupPromise;
+          participantIdsNotifiedRef.current.clear();
+        }
+      };
+
+      const cleanupPromise = cleanup();
+
+      dailyCleanupPromiseRef.current = cleanupPromise;
+      activeDailyCleanupPromise = cleanupPromise;
 
       void cleanupPromise.finally(() => {
         if (dailyCleanupPromiseRef.current === cleanupPromise) {
@@ -1917,85 +1945,53 @@ export default function VideoCall({
         }
       });
     };
-  }, [
-    resolvedRoomUrl,
-    sessionId,
-    token,
-  ]);
+  }, [resolvedRoomUrl, sessionId, token]);
 
   /*
    * Microphone.
    */
-  const toggleAudio = useCallback(
-    async () => {
-      const call =
-        callRef.current;
+  const toggleAudio = useCallback(async () => {
+    const call = callRef.current;
 
-      if (!call) {
-        return;
-      }
+    if (!call) {
+      return;
+    }
 
-      try {
-        const next =
-          !isAudioEnabled;
+    try {
+      const next = !isAudioEnabled;
 
-        await call.setLocalAudio(
-          next,
-        );
+      await call.setLocalAudio(next);
 
-        setIsAudioEnabled(
-          next,
-        );
-      } catch (error) {
-        console.error(
-          "Unable to toggle microphone:",
-          error,
-        );
+      setIsAudioEnabled(next);
+    } catch (error) {
+      console.error("Unable to toggle microphone:", error);
 
-        toast.error(
-          "Unable to change microphone state",
-        );
-      }
-    },
-    [isAudioEnabled],
-  );
+      toast.error("Unable to change microphone state");
+    }
+  }, [isAudioEnabled]);
 
   /*
    * Camera.
    */
-  const toggleVideo = useCallback(
-    async () => {
-      const call =
-        callRef.current;
+  const toggleVideo = useCallback(async () => {
+    const call = callRef.current;
 
-      if (!call) {
-        return;
-      }
+    if (!call) {
+      return;
+    }
 
-      try {
-        const next =
-          !isVideoEnabled;
+    try {
+      const next = !isVideoEnabled;
 
-        await call.setLocalVideo(
-          next,
-        );
+      await call.setLocalVideo(next);
 
-        setIsVideoEnabled(
-          next,
-        );
-      } catch (error) {
-        console.error(
-          "Unable to toggle camera:",
-          error,
-        );
+      setIsVideoEnabled(next);
+    } catch (error) {
+      console.error("Unable to toggle camera:", error);
 
-        toast.error(
-          "Unable to change camera state",
-        );
-      }
-    },
-    [isVideoEnabled],
-  );
+      toast.error("Unable to change camera state");
+    }
+  }, [isVideoEnabled]);
 
   /*
    * Screen sharing.
@@ -2005,108 +2001,16 @@ export default function VideoCall({
    * calls Daily's startScreenShare(). Record owns a separate capture stream
    * and never changes Daily's screen-share state.
    */
-  const toggleScreenShare = useCallback(
-    async () => {
-      const call =
-        callRef.current;
+  const toggleScreenShare = useCallback(async () => {
+    const call = callRef.current;
 
-      if (!call) {
-        return;
-      }
+    if (!call) {
+      return;
+    }
 
-      try {
-        if (isScreenSharing) {
-          await call.stopScreenShare();
-
-          dailyScreenShareStreamRef.current
-            ?.getTracks()
-            .forEach((track) => track.stop());
-          dailyScreenShareStreamRef.current = null;
-
-          screenShareCaptureStreamRef.current
-            ?.getTracks()
-            .forEach((track) => track.stop());
-          screenShareCaptureStreamRef.current = null;
-
-          setIsScreenSharing(false);
-          return;
-        }
-
-        if (!navigator.mediaDevices?.getDisplayMedia) {
-          toast.error(
-            "Screen sharing is not supported in this browser",
-          );
-          return;
-        }
-
-        // IMPORTANT: this stream belongs only to Share Screen. It is never
-        // reused by Record, so clicking Record cannot publish a Daily screen
-        // share as a side effect.
-        const displayStream =
-          await navigator.mediaDevices.getDisplayMedia({
-            video: true,
-            audio: shareSound,
-          });
-
-        const displayVideoTrack =
-          displayStream.getVideoTracks().find(
-            (track) => track.readyState === "live",
-          );
-
-        if (!displayVideoTrack) {
-          displayStream.getTracks().forEach((track) => track.stop());
-          toast.error("No screen video track was provided");
-          return;
-        }
-
-        screenShareCaptureStreamRef.current = displayStream;
-
-        displayVideoTrack.addEventListener(
-          "ended",
-          () => {
-            // This callback belongs ONLY to the Share Screen capture.
-            // Never stop or modify the independent recording capture here.
-            if (screenShareCaptureStreamRef.current === displayStream) {
-              screenShareCaptureStreamRef.current = null;
-            }
-
-            dailyScreenShareStreamRef.current
-              ?.getTracks()
-              .forEach((track) => track.stop());
-            dailyScreenShareStreamRef.current = null;
-
-            setIsScreenSharing(false);
-          },
-          { once: true },
-        );
-
-        const dailyStream = new MediaStream(
-          displayStream
-            .getTracks()
-            .filter((track) => track.readyState === "live")
-            .map((track) => track.clone()),
-        );
-
-        if (!dailyStream.getVideoTracks().length) {
-          displayStream.getTracks().forEach((track) => track.stop());
-          screenShareCaptureStreamRef.current = null;
-          dailyStream.getTracks().forEach((track) => track.stop());
-          toast.error("No live screen video track is available");
-          return;
-        }
-
-        dailyScreenShareStreamRef.current = dailyStream;
-
-        await call.startScreenShare({
-          mediaStream: dailyStream,
-        });
-
-        setIsScreenSharing(true);
-      } catch (error) {
-        console.error(
-          "Unable to toggle screen sharing:",
-          error,
-        );
+    try {
+      if (isScreenSharing) {
+        await call.stopScreenShare();
 
         dailyScreenShareStreamRef.current
           ?.getTracks()
@@ -2118,56 +2022,126 @@ export default function VideoCall({
           .forEach((track) => track.stop());
         screenShareCaptureStreamRef.current = null;
 
-        if (
-          error instanceof DOMException &&
-          error.name === "NotAllowedError"
-        ) {
-          toast.info("Screen sharing was cancelled");
-        } else {
-          toast.error(
-            "Screen sharing is not supported or was denied",
-          );
-        }
-
         setIsScreenSharing(false);
+        return;
       }
-    },
-    [isScreenSharing, shareSound],
-  );
+
+      if (!navigator.mediaDevices?.getDisplayMedia) {
+        toast.error("Screen sharing is not supported in this browser");
+        return;
+      }
+
+      // IMPORTANT: this stream belongs only to Share Screen. It is never
+      // reused by Record, so clicking Record cannot publish a Daily screen
+      // share as a side effect.
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: shareSound,
+      });
+
+      const displayVideoTrack = displayStream
+        .getVideoTracks()
+        .find((track) => track.readyState === "live");
+
+      if (!displayVideoTrack) {
+        displayStream.getTracks().forEach((track) => track.stop());
+        toast.error("No screen video track was provided");
+        return;
+      }
+
+      screenShareCaptureStreamRef.current = displayStream;
+
+      displayVideoTrack.addEventListener(
+        "ended",
+        () => {
+          // This callback belongs ONLY to the Share Screen capture.
+          // Never stop or modify the independent recording capture here.
+          if (screenShareCaptureStreamRef.current === displayStream) {
+            screenShareCaptureStreamRef.current = null;
+          }
+
+          dailyScreenShareStreamRef.current
+            ?.getTracks()
+            .forEach((track) => track.stop());
+          dailyScreenShareStreamRef.current = null;
+
+          setIsScreenSharing(false);
+        },
+        { once: true },
+      );
+
+      const dailyStream = new MediaStream(
+        displayStream
+          .getTracks()
+          .filter((track) => track.readyState === "live")
+          .map((track) => track.clone()),
+      );
+
+      if (!dailyStream.getVideoTracks().length) {
+        displayStream.getTracks().forEach((track) => track.stop());
+        screenShareCaptureStreamRef.current = null;
+        dailyStream.getTracks().forEach((track) => track.stop());
+        toast.error("No live screen video track is available");
+        return;
+      }
+
+      dailyScreenShareStreamRef.current = dailyStream;
+
+      await call.startScreenShare({
+        mediaStream: dailyStream,
+      });
+
+      setIsScreenSharing(true);
+    } catch (error) {
+      console.error("Unable to toggle screen sharing:", error);
+
+      dailyScreenShareStreamRef.current
+        ?.getTracks()
+        .forEach((track) => track.stop());
+      dailyScreenShareStreamRef.current = null;
+
+      screenShareCaptureStreamRef.current
+        ?.getTracks()
+        .forEach((track) => track.stop());
+      screenShareCaptureStreamRef.current = null;
+
+      if (error instanceof DOMException && error.name === "NotAllowedError") {
+        toast.info("Screen sharing was cancelled");
+      } else {
+        toast.error("Screen sharing is not supported or was denied");
+      }
+
+      setIsScreenSharing(false);
+    }
+  }, [isScreenSharing, shareSound]);
 
   const getRecordingMimeType = (format: RecordingFormat) => {
     const candidates =
       format === "mp4"
-        ? [
-            "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
-            "video/mp4",
-          ]
+        ? ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4"]
         : [
             "video/webm;codecs=vp9,opus",
             "video/webm;codecs=vp8,opus",
             "video/webm",
           ];
 
-    return candidates.find((type) =>
-      MediaRecorder.isTypeSupported(type),
-    ) ?? "";
+    return candidates.find((type) => MediaRecorder.isTypeSupported(type)) ?? "";
   };
 
-  const getRecordingFilename = (format: RecordingFormat = recordingSettings.format) => {
+  const getRecordingFilename = (
+    format: RecordingFormat = recordingSettings.format,
+  ) => {
     const cleanName =
       recordingSettings.name
         .trim()
         .replace(/[^a-zA-Z0-9._-]+/g, "-")
-        .replace(/^-+|-+$/g, "") ||
-      "justdy-recording";
+        .replace(/^-+|-+$/g, "") || "justdy-recording";
 
     return `${cleanName}.${format}`;
   };
 
   const cleanupRecordingStreams = () => {
-    recordingStreamRef.current
-      ?.getTracks()
-      .forEach((track) => track.stop());
+    recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
     recordingStreamRef.current = null;
 
     recordingSourceStreamRef.current
@@ -2178,14 +2152,10 @@ export default function VideoCall({
     // The recording display capture is owned by the recording lifecycle and
     // is stopped explicitly when the recording finishes.
 
-    recordingMicStreamRef.current
-      ?.getTracks()
-      .forEach((track) => track.stop());
+    recordingMicStreamRef.current?.getTracks().forEach((track) => track.stop());
     recordingMicStreamRef.current = null;
 
-    recordingAudioContextRef.current
-      ?.close()
-      .catch(() => undefined);
+    recordingAudioContextRef.current?.close().catch(() => undefined);
     recordingAudioContextRef.current = null;
   };
 
@@ -2229,10 +2199,7 @@ export default function VideoCall({
   };
 
   const startLocalRecording = async () => {
-    if (
-      typeof window === "undefined" ||
-      !navigator.mediaDevices
-    ) {
+    if (typeof window === "undefined" || !navigator.mediaDevices) {
       toast.error("Recording is not supported in this browser");
       return;
     }
@@ -2258,13 +2225,11 @@ export default function VideoCall({
        * completely separate from the Daily screen-share stream, so clicking
        * Record can never start/publish a Daily screen share.
        */
-      let displayStream =
-        recordingDisplayStreamRef.current;
+      let displayStream = recordingDisplayStreamRef.current;
 
-      let displayVideoTrack =
-        displayStream?.getVideoTracks().find(
-          (track) => track.readyState === "live",
-        );
+      let displayVideoTrack = displayStream
+        ?.getVideoTracks()
+        .find((track) => track.readyState === "live");
 
       /*
        * Record can be started directly. The Record button itself becomes the
@@ -2274,18 +2239,15 @@ export default function VideoCall({
        */
       if (!displayStream || !displayVideoTrack) {
         if (!navigator.mediaDevices.getDisplayMedia) {
-          toast.error(
-            "Screen recording is not supported in this browser",
-          );
+          toast.error("Screen recording is not supported in this browser");
           return;
         }
 
         try {
-          displayStream =
-            await navigator.mediaDevices.getDisplayMedia({
-              video: true,
-              audio: true,
-            });
+          displayStream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: true,
+          });
         } catch (error) {
           if (
             error instanceof DOMException &&
@@ -2297,38 +2259,29 @@ export default function VideoCall({
               "Unable to capture the display for recording:",
               error,
             );
-            toast.error(
-              "Unable to capture the screen for recording",
-            );
+            toast.error("Unable to capture the screen for recording");
           }
           return;
         }
 
-        displayVideoTrack =
-          displayStream.getVideoTracks().find(
-            (track) => track.readyState === "live",
-          );
+        displayVideoTrack = displayStream
+          .getVideoTracks()
+          .find((track) => track.readyState === "live");
 
         if (!displayVideoTrack) {
-          displayStream
-            .getTracks()
-            .forEach((track) => track.stop());
+          displayStream.getTracks().forEach((track) => track.stop());
           toast.error("No screen video track was provided");
           return;
         }
 
-        recordingDisplayStreamRef.current =
-          displayStream;
+        recordingDisplayStreamRef.current = displayStream;
 
         displayVideoTrack.addEventListener(
           "ended",
           () => {
             recordingScreenEndedRef.current = true;
 
-            if (
-              screenRecorderRef.current ||
-              mp4RecorderRef.current
-            ) {
+            if (screenRecorderRef.current || mp4RecorderRef.current) {
               void stopLocalRecording(false);
             }
 
@@ -2339,16 +2292,13 @@ export default function VideoCall({
       }
 
       if (!displayStream || !displayVideoTrack) {
-        toast.error(
-          "Unable to access the screen capture for recording",
-        );
+        toast.error("Unable to access the screen capture for recording");
         return;
       }
 
       recordingScreenEndedRef.current = false;
       const localParticipant = call.participants().local;
-      const dailyAudioTrack =
-        localParticipant?.tracks.audio?.persistentTrack;
+      const dailyAudioTrack = localParticipant?.tracks.audio?.persistentTrack;
 
       const recordingSourceTracks: MediaStreamTrack[] = [
         displayVideoTrack.clone(),
@@ -2376,9 +2326,7 @@ export default function VideoCall({
 
       const audioTracks = [
         ...displayAudioTracks,
-        ...(dailyAudioTrack?.readyState === "live"
-          ? [dailyAudioTrack]
-          : []),
+        ...(dailyAudioTrack?.readyState === "live" ? [dailyAudioTrack] : []),
         ...participantAudioTracks,
       ];
 
@@ -2390,9 +2338,11 @@ export default function VideoCall({
       if (uniqueAudioTracks.length) {
         const AudioContextConstructor =
           window.AudioContext ||
-          (window as Window & {
-            webkitAudioContext?: typeof AudioContext;
-          }).webkitAudioContext;
+          (
+            window as Window & {
+              webkitAudioContext?: typeof AudioContext;
+            }
+          ).webkitAudioContext;
 
         if (AudioContextConstructor) {
           const audioContext = new AudioContextConstructor();
@@ -2407,15 +2357,11 @@ export default function VideoCall({
                 .createMediaStreamSource(new MediaStream([track]))
                 .connect(destination);
             } catch (error) {
-              console.warn(
-                "Unable to add audio source to recording:",
-                error,
-              );
+              console.warn("Unable to add audio source to recording:", error);
             }
           });
 
-          const mixedAudioTrack =
-            destination.stream.getAudioTracks()[0];
+          const mixedAudioTrack = destination.stream.getAudioTracks()[0];
 
           if (mixedAudioTrack) {
             recordingSourceTracks.push(mixedAudioTrack);
@@ -2471,12 +2417,9 @@ export default function VideoCall({
 
           // Recording owns its own display capture. Only release that stream
           // here; never touch the independent Share Screen capture.
-          const recordingDisplayStream =
-            recordingDisplayStreamRef.current;
+          const recordingDisplayStream = recordingDisplayStreamRef.current;
           if (recordingDisplayStream) {
-            recordingDisplayStream
-              .getTracks()
-              .forEach((track) => track.stop());
+            recordingDisplayStream.getTracks().forEach((track) => track.stop());
             recordingDisplayStreamRef.current = null;
           }
 
@@ -2489,24 +2432,17 @@ export default function VideoCall({
           // clicked Stop. There is no second Justdy save-settings popup.
           const preferredFormat = recordingSettings.format;
           const preferredBlob =
-            results[preferredFormat] ??
-            results.webm ??
-            results.mp4;
-          const actualFormat =
-            results[preferredFormat]
-              ? preferredFormat
-              : results.webm
-                ? "webm"
-                : "mp4";
+            results[preferredFormat] ?? results.webm ?? results.mp4;
+          const actualFormat = results[preferredFormat]
+            ? preferredFormat
+            : results.webm
+              ? "webm"
+              : "mp4";
           const saveHandle = recordingSaveHandleRef.current;
           recordingSaveHandleRef.current = null;
 
           if (preferredBlob) {
-            void saveRecordingBlob(
-              preferredBlob,
-              actualFormat,
-              saveHandle,
-            );
+            void saveRecordingBlob(preferredBlob, actualFormat, saveHandle);
           } else {
             toast.error("The recording is empty");
           }
@@ -2559,10 +2495,7 @@ export default function VideoCall({
       screenRecorderRef.current = null;
       mp4RecorderRef.current = null;
 
-      if (
-        error instanceof DOMException &&
-        error.name === "NotAllowedError"
-      ) {
+      if (error instanceof DOMException && error.name === "NotAllowedError") {
         toast.info("Screen capture was cancelled");
         return;
       }
@@ -2573,12 +2506,11 @@ export default function VideoCall({
   };
 
   const stopLocalRecording = async (openSavePicker = false) => {
-    const recorders = [
-      screenRecorderRef.current,
-      mp4RecorderRef.current,
-    ];
+    const recorders = [screenRecorderRef.current, mp4RecorderRef.current];
 
-    if (!recorders.some((recorder) => recorder && recorder.state !== "inactive")) {
+    if (
+      !recorders.some((recorder) => recorder && recorder.state !== "inactive")
+    ) {
       return;
     }
 
@@ -2590,24 +2522,15 @@ export default function VideoCall({
 
     if (openSavePicker && fileWindow.showSaveFilePicker) {
       try {
-        const saveFormat =
-          getRecordingMimeType("webm")
-            ? "webm"
-            : "mp4";
-        const saveMimeType =
-          saveFormat === "mp4"
-            ? "video/mp4"
-            : "video/webm";
+        const saveFormat = getRecordingMimeType("webm") ? "webm" : "mp4";
+        const saveMimeType = saveFormat === "mp4" ? "video/mp4" : "video/webm";
 
         const handle = await fileWindow.showSaveFilePicker({
           suggestedName: getRecordingFilename(saveFormat),
           excludeAcceptAllOption: true,
           types: [
             {
-              description:
-                saveFormat === "mp4"
-                  ? "MP4 Video"
-                  : "WebM Video",
+              description: saveFormat === "mp4" ? "MP4 Video" : "WebM Video",
               accept: {
                 [saveMimeType]: [`.${saveFormat}`],
               },
@@ -2618,10 +2541,14 @@ export default function VideoCall({
         recordingSaveHandleRef.current = handle;
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
-          toast.info("Recording save cancelled; the recording will be downloaded");
+          toast.info(
+            "Recording save cancelled; the recording will be downloaded",
+          );
         } else {
           console.error("Unable to open recording save location:", error);
-          toast.info("Recording will be downloaded to the browser's download location");
+          toast.info(
+            "Recording will be downloaded to the browser's download location",
+          );
         }
       }
     }
@@ -2662,8 +2589,7 @@ export default function VideoCall({
   const screenShareParticipant = useMemo(
     () =>
       allParticipants.find(
-        (participant) =>
-          participant.tracks.screenVideo?.state === "playable",
+        (participant) => participant.tracks.screenVideo?.state === "playable",
       ) ?? null,
     [allParticipants],
   );
@@ -2824,14 +2750,13 @@ export default function VideoCall({
             <div className="absolute inset-0 animate-pulse rounded-full bg-emerald-500/20 blur-2xl" />
             <Loader2 className="relative size-10 animate-spin text-emerald-400" />
           </div>
-          <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Connecting to secure classroom</p>
+          <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+            Connecting to secure classroom
+          </p>
         </div>
       ) : null}
 
-      <SessionHeader
-        role={role}
-        isConnected={isConnected}
-      />
+      <SessionHeader role={role} isConnected={isConnected} />
 
       {showDisplayMenu ? (
         <VideoDisplayMenu
@@ -2929,7 +2854,9 @@ export default function VideoCall({
           revealBottomDock();
         }}
         onOpenWhiteboard={() => {
-          setVideoDisplayMode((current) => current === "whiteboard" ? "gallery" : "whiteboard");
+          setVideoDisplayMode((current) =>
+            current === "whiteboard" ? "gallery" : "whiteboard",
+          );
           revealBottomDock();
         }}
         videoDisplayMode={videoDisplayMode}
@@ -2939,6 +2866,4 @@ export default function VideoCall({
       />
     </div>
   );
-
-
 }

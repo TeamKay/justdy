@@ -27,9 +27,7 @@ interface SigninPageProps {
   onSwitchToSignup?: () => void;
 }
 
-export function SigninPage({
-  onSwitchToSignup,
-}: SigninPageProps) {
+export function SigninPage({ onSwitchToSignup }: SigninPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -54,9 +52,7 @@ export function SigninPage({
     },
   });
 
-  async function signInWithEmail(
-    values: z.infer<typeof loginSchema>,
-  ) {
+  async function signInWithEmail(values: z.infer<typeof loginSchema>) {
     setLoading(true);
     setLoginError(null);
 
@@ -69,25 +65,13 @@ export function SigninPage({
         },
         {
           onError: (ctx) => {
-            console.error(
-              "BETTER AUTH SIGN IN ERROR:",
-              ctx.error,
-            );
+            console.error("BETTER AUTH SIGN IN ERROR:", ctx.error);
 
-            console.error(
-              "BETTER AUTH ERROR MESSAGE:",
-              ctx.error?.message,
-            );
+            console.error("BETTER AUTH ERROR MESSAGE:", ctx.error?.message);
 
-            console.error(
-              "BETTER AUTH ERROR CODE:",
-              ctx.error?.code,
-            );
+            console.error("BETTER AUTH ERROR CODE:", ctx.error?.code);
 
-            console.error(
-              "BETTER AUTH ERROR STATUS:",
-              ctx.error?.status,
-            );
+            console.error("BETTER AUTH ERROR STATUS:", ctx.error?.status);
 
             console.error(
               "BETTER AUTH ERROR STATUS TEXT:",
@@ -111,9 +95,7 @@ export function SigninPage({
               code === "INVALID_EMAIL_OR_PASSWORD" ||
               code === "INVALID_PASSWORD"
             ) {
-              setLoginError(
-                "Invalid email or password.",
-              );
+              setLoginError("Invalid email or password.");
               return;
             }
 
@@ -123,9 +105,7 @@ export function SigninPage({
               return;
             }
 
-            setLoginError(
-              "Invalid email or password.",
-            );
+            setLoginError("Invalid email or password.");
           },
         },
       );
@@ -139,10 +119,7 @@ export function SigninPage({
       if (error) {
         console.error(
           "SIGN IN ERROR:",
-          JSON.stringify(
-            error,
-            Object.getOwnPropertyNames(error),
-          ),
+          JSON.stringify(error, Object.getOwnPropertyNames(error)),
         );
 
         const errorMessage =
@@ -162,26 +139,20 @@ export function SigninPage({
 
       // Authentication succeeded but no user was returned
       if (!data?.user) {
-        console.error(
-          "SIGN IN FAILED: Better Auth returned no user.",
-        );
+        console.error("SIGN IN FAILED: Better Auth returned no user.");
 
-        setLoginError(
-          "Login could not be completed. Please try again.",
-        );
+        setLoginError("Login could not be completed. Please try again.");
 
         return;
       }
 
       // Verify that the session was actually created
-      const {
-        data: session,
-        error: sessionError,
-      } = await authClient.getSession({
-        query: {
-          disableCookieCache: true,
-        },
-      });
+      const { data: session, error: sessionError } =
+        await authClient.getSession({
+          query: {
+            disableCookieCache: true,
+          },
+        });
 
       if (sessionError) {
         console.error(
@@ -217,7 +188,7 @@ export function SigninPage({
        * Justdy has exactly two primary account types:
        *
        *   ADMIN
-       *   USER
+       *   LEARNER
        *
        * The verified Better Auth session is the primary UI source.
        * The sign-in response is the fallback available during login.
@@ -226,15 +197,14 @@ export function SigninPage({
        * authorization or protected server operations.
        */
       const normalizedRole = String(
-        (session.user as User).role ??
-          (data.user as User).role ??
-          "USER",
+        (session.user as User).role ?? (data.user as User).role ?? "LEARNER",
       )
         .trim()
         .toUpperCase();
 
-      const role =
-        normalizedRole === "ADMIN" ? "ADMIN" : "USER";
+      const role = ["ADMIN", "TUTOR", "LEARNER"].includes(normalizedRole)
+        ? normalizedRole
+        : "LEARNER";
 
       Cookies.set("role", role, {
         expires: 7,
@@ -243,9 +213,7 @@ export function SigninPage({
         secure: process.env.NODE_ENV === "production",
       });
 
-      window.dispatchEvent(
-        new Event("justdy:auth-state-changed"),
-      );
+      window.dispatchEvent(new Event("justdy:auth-state-changed"));
 
       toast.success("Successfully logged in!");
 
@@ -276,16 +244,14 @@ export function SigninPage({
             : null;
 
       const destination =
-        workspaceCallback ??
-        (role === "ADMIN" ? "/admin" : "/dashboard");
+        workspaceCallback ?? (role === "ADMIN" ? "/admin" : "/dashboard");
 
       router.replace(destination);
       router.refresh();
     } catch (err) {
       console.error("LOGIN ERROR:", err);
 
-      let message =
-        "Something went wrong during login. Please try again.";
+      let message = "Something went wrong during login. Please try again.";
 
       if (err instanceof Error) {
         message = err.message || message;
@@ -332,9 +298,7 @@ export function SigninPage({
 
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit(
-              signInWithEmail,
-            )}
+            onSubmit={form.handleSubmit(signInWithEmail)}
             className="space-y-4"
           >
             {/* Email */}
@@ -436,8 +400,7 @@ export function SigninPage({
           </p>
 
           <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
-            This site is protected by reCAPTCHA Enterprise and
-            the Google{" "}
+            This site is protected by reCAPTCHA Enterprise and the Google{" "}
             <a
               href="https://policies.google.com/privacy"
               target="_blank"

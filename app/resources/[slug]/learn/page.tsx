@@ -9,7 +9,7 @@ import {
   ResourceVisibility,
 } from "@/lib/generated/prisma/enums";
 import PresentationLearner from "@/app/_components/PresentationLearner";
-import { WorksheetDocumentSchema } from "@/lib/ai/worksheet/schema";
+import { WorksheetDocumentSchema } from "@/lib/resources/worksheet-schema";
 
 import ResourceLearner from "@/app/_components/ResourceLearner";
 import QuizLearner from "@/app/_components/QuizLearner";
@@ -67,11 +67,7 @@ interface DocumentContent {
 /* -------------------------------------------------------------------------- */
 
 function isQuizQuestion(value: unknown): value is QuizQuestion {
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    Array.isArray(value)
-  ) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return false;
   }
 
@@ -84,34 +80,21 @@ function isQuizQuestion(value: unknown): value is QuizQuestion {
     return false;
   }
 
-  if (
-    question.type !== undefined &&
-    typeof question.type !== "string"
-  ) {
+  if (question.type !== undefined && typeof question.type !== "string") {
     return false;
   }
 
-  if (
-    question.options !== undefined &&
-    question.options !== null
-  ) {
+  if (question.options !== undefined && question.options !== null) {
     if (!Array.isArray(question.options)) {
       return false;
     }
 
-    if (
-      !question.options.every(
-        (option) => typeof option === "string",
-      )
-    ) {
+    if (!question.options.every((option) => typeof option === "string")) {
       return false;
     }
   }
 
-  if (
-    question.points !== undefined &&
-    typeof question.points !== "number"
-  ) {
+  if (question.points !== undefined && typeof question.points !== "number") {
     return false;
   }
 
@@ -119,20 +102,13 @@ function isQuizQuestion(value: unknown): value is QuizQuestion {
 }
 
 function isQuizContent(value: unknown): value is QuizContent {
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    Array.isArray(value)
-  ) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return false;
   }
 
   const content = value as Record<string, unknown>;
 
-  if (
-    content.title !== undefined &&
-    typeof content.title !== "string"
-  ) {
+  if (content.title !== undefined && typeof content.title !== "string") {
     return false;
   }
 
@@ -151,8 +127,7 @@ function isQuizContent(value: unknown): value is QuizContent {
   }
 
   return (
-    Array.isArray(content.questions) &&
-    content.questions.every(isQuizQuestion)
+    Array.isArray(content.questions) && content.questions.every(isQuizQuestion)
   );
 }
 
@@ -161,11 +136,7 @@ function isQuizContent(value: unknown): value is QuizContent {
 /* -------------------------------------------------------------------------- */
 
 function isColoringPage(value: unknown): value is ColoringPage {
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    Array.isArray(value)
-  ) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return false;
   }
 
@@ -177,22 +148,14 @@ function isColoringPage(value: unknown): value is ColoringPage {
     page.index > 0 &&
     typeof page.url === "string" &&
     page.url.trim().length > 0 &&
-    (
-      page.mimeType === undefined ||
+    (page.mimeType === undefined ||
       page.mimeType === null ||
-      typeof page.mimeType === "string"
-    )
+      typeof page.mimeType === "string")
   );
 }
 
-function isColoringPageContent(
-  value: unknown,
-): value is ColoringPageContent {
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    Array.isArray(value)
-  ) {
+function isColoringPageContent(value: unknown): value is ColoringPageContent {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return false;
   }
 
@@ -202,40 +165,26 @@ function isColoringPageContent(
     return false;
   }
 
-  if (
-    content.imageUrl !== undefined &&
-    typeof content.imageUrl !== "string"
-  ) {
+  if (content.imageUrl !== undefined && typeof content.imageUrl !== "string") {
     return false;
   }
 
-  if (
-    content.prompt !== undefined &&
-    typeof content.prompt !== "string"
-  ) {
+  if (content.prompt !== undefined && typeof content.prompt !== "string") {
     return false;
   }
 
   if (
     content.pages !== undefined &&
-    (
-      !Array.isArray(content.pages) ||
-      !content.pages.every(isColoringPage)
-    )
+    (!Array.isArray(content.pages) || !content.pages.every(isColoringPage))
   ) {
     return false;
   }
 
-  const pages = Array.isArray(content.pages)
-    ? content.pages
-    : [];
+  const pages = Array.isArray(content.pages) ? content.pages : [];
 
   return (
     pages.length > 0 ||
-    (
-      typeof content.imageUrl === "string" &&
-      content.imageUrl.trim().length > 0
-    )
+    (typeof content.imageUrl === "string" && content.imageUrl.trim().length > 0)
   );
 }
 
@@ -244,11 +193,7 @@ function isColoringPageContent(
 /* -------------------------------------------------------------------------- */
 
 function isImageContent(value: unknown): value is ImageContent {
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    Array.isArray(value)
-  ) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return false;
   }
 
@@ -261,10 +206,7 @@ function isImageContent(value: unknown): value is ImageContent {
     return false;
   }
 
-  if (
-    content.title !== undefined &&
-    typeof content.title !== "string"
-  ) {
+  if (content.title !== undefined && typeof content.title !== "string") {
     return false;
   }
 
@@ -292,10 +234,7 @@ function isImageContent(value: unknown): value is ImageContent {
     return false;
   }
 
-  if (
-    content.prompt !== undefined &&
-    typeof content.prompt !== "string"
-  ) {
+  if (content.prompt !== undefined && typeof content.prompt !== "string") {
     return false;
   }
 
@@ -330,14 +269,8 @@ function isImageContent(value: unknown): value is ImageContent {
 /* Document validation                                                        */
 /* -------------------------------------------------------------------------- */
 
-function isDocumentContent(
-  value: unknown,
-): value is DocumentContent {
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    Array.isArray(value)
-  ) {
+function isDocumentContent(value: unknown): value is DocumentContent {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return false;
   }
 
@@ -346,10 +279,7 @@ function isDocumentContent(
   return (
     typeof content.content === "string" &&
     content.content.trim().length > 0 &&
-    (
-      content.title === undefined ||
-      typeof content.title === "string"
-    )
+    (content.title === undefined || typeof content.title === "string")
   );
 }
 
@@ -369,10 +299,7 @@ export default async function ResourceLearnPage({
       slug,
       status: ResourceStatus.PUBLISHED,
       visibility: {
-        in: [
-          ResourceVisibility.PUBLIC,
-          ResourceVisibility.MARKETPLACE,
-        ],
+        in: [ResourceVisibility.PUBLIC, ResourceVisibility.MARKETPLACE],
       },
       accessType: ResourceAccessType.FREE,
       type: {
@@ -411,10 +338,7 @@ export default async function ResourceLearnPage({
     return (
       <DocumentLearner
         slug={resource.slug}
-        title={
-          resource.content.title?.trim() ||
-          resource.title
-        }
+        title={resource.content.title?.trim() || resource.title}
         description={resource.description}
         content={resource.content.content}
       />
@@ -462,8 +386,6 @@ export default async function ResourceLearnPage({
       );
     }
 
-    
-
     /*
      * Otherwise this is a normal AI-generated image/poster.
      */
@@ -474,21 +396,13 @@ export default async function ResourceLearnPage({
         <ImageLearner
           resourceId={resource.id}
           slug={resource.slug}
-          title={
-            image.title?.trim() ||
-            resource.title
-          }
-          description={
-            image.description?.trim() ||
-            resource.description
-          }
+          title={image.title?.trim() || resource.title}
+          description={image.description?.trim() || resource.description}
           imageUrl={image.imageUrl}
           mimeType={image.mimeType}
         />
       );
     }
-
-
 
     /*
      * If it is an IMAGE resource but doesn't contain either
@@ -498,80 +412,55 @@ export default async function ResourceLearnPage({
   }
 
   if (resource.type === ResourceType.PRESENTATION) {
-  const content = resource.content;
+    const content = resource.content;
 
-  if (
-    !content ||
-    typeof content !== "object" ||
-    Array.isArray(content)
-  ) {
-    notFound();
+    if (!content || typeof content !== "object" || Array.isArray(content)) {
+      notFound();
+    }
+
+    const data = content as {
+      title?: unknown;
+      description?: unknown;
+      slides?: unknown;
+    };
+
+    if (!Array.isArray(data.slides)) {
+      notFound();
+    }
+
+    const slides = data.slides
+      .filter(
+        (slide): slide is Record<string, unknown> =>
+          !!slide && typeof slide === "object" && !Array.isArray(slide),
+      )
+      .map((slide, index) => ({
+        id: typeof slide.id === "string" ? slide.id : `slide-${index + 1}`,
+        title:
+          typeof slide.title === "string" ? slide.title : `Slide ${index + 1}`,
+        subtitle: typeof slide.subtitle === "string" ? slide.subtitle : null,
+        content: typeof slide.content === "string" ? slide.content : null,
+        bullets: Array.isArray(slide.bullets)
+          ? slide.bullets.filter(
+              (item): item is string => typeof item === "string",
+            )
+          : [],
+        notes: typeof slide.notes === "string" ? slide.notes : null,
+      }));
+
+    return (
+      <PresentationLearner
+        resourceId={resource.id}
+        slug={resource.slug}
+        title={typeof data.title === "string" ? data.title : resource.title}
+        description={
+          typeof data.description === "string"
+            ? data.description
+            : (resource.description ?? "")
+        }
+        slides={slides}
+      />
+    );
   }
-
-  const data = content as {
-    title?: unknown;
-    description?: unknown;
-    slides?: unknown;
-  };
-
-  if (!Array.isArray(data.slides)) {
-    notFound();
-  }
-
-  const slides = data.slides
-    .filter(
-      (slide): slide is Record<string, unknown> =>
-        !!slide &&
-        typeof slide === "object" &&
-        !Array.isArray(slide),
-    )
-    .map((slide, index) => ({
-      id:
-        typeof slide.id === "string"
-          ? slide.id
-          : `slide-${index + 1}`,
-      title:
-        typeof slide.title === "string"
-          ? slide.title
-          : `Slide ${index + 1}`,
-      subtitle:
-        typeof slide.subtitle === "string"
-          ? slide.subtitle
-          : null,
-      content:
-        typeof slide.content === "string"
-          ? slide.content
-          : null,
-      bullets: Array.isArray(slide.bullets)
-        ? slide.bullets.filter(
-            (item): item is string =>
-              typeof item === "string",
-          )
-        : [],
-      notes:
-        typeof slide.notes === "string"
-          ? slide.notes
-          : null,
-    }));
-
-  return (
-    <PresentationLearner
-      resourceId={resource.id}
-      slug={resource.slug}
-      title={
-        typeof data.title === "string"
-          ? data.title
-          : resource.title
-      }
-      description={
-        typeof data.description === "string"
-          ? data.description
-          : resource.description ?? ""
-      }
-      slides={slides}
-    />
-  );
-}
 
   /* ------------------------------------------------------------------------ */
   /* QUIZ                                                                      */
@@ -592,18 +481,12 @@ export default async function ResourceLearnPage({
         resourceId={resource.id}
         slug={resource.slug}
         quiz={{
-          title:
-            quiz.title?.trim() ||
-            resource.title,
+          title: quiz.title?.trim() || resource.title,
 
           description:
-            quiz.description?.trim() ||
-            resource.description ||
-            undefined,
+            quiz.description?.trim() || resource.description || undefined,
 
-          instructions:
-            quiz.instructions?.trim() ||
-            undefined,
+          instructions: quiz.instructions?.trim() || undefined,
 
           questions: quiz.questions.map((question) => ({
             id: question.id,
@@ -622,10 +505,7 @@ export default async function ResourceLearnPage({
   /* ------------------------------------------------------------------------ */
 
   if (resource.type === ResourceType.WORKSHEET) {
-    const worksheet =
-      WorksheetDocumentSchema.safeParse(
-        resource.content,
-      );
+    const worksheet = WorksheetDocumentSchema.safeParse(resource.content);
 
     if (!worksheet.success) {
       notFound();
@@ -642,18 +522,16 @@ export default async function ResourceLearnPage({
             gradeLevel: worksheet.data.gradeLevel,
             subject: worksheet.data.subject,
             topic: worksheet.data.topic,
-            learningObjective:
-              worksheet.data.learningObjective ?? null,
+            learningObjective: worksheet.data.learningObjective ?? null,
 
-            questions:
-              worksheet.data.questions.map((q) => ({
-                id: q.id,
-                number: q.number,
-                type: q.type,
-                question: q.question,
-                options: q.options,
-                points: q.points,
-              })),
+            questions: worksheet.data.questions.map((q) => ({
+              id: q.id,
+              number: q.number,
+              type: q.type,
+              question: q.question,
+              options: q.options,
+              points: q.points,
+            })),
           }}
         />
       </main>

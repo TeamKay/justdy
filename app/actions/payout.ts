@@ -10,9 +10,7 @@ import { revalidatePath } from "next/cache";
 const TUTOR_SHARE_PERCENTAGE = 60;
 
 function calculateEarnings(grossAmount: number) {
-  const educatorPay = Math.floor(
-    (grossAmount * TUTOR_SHARE_PERCENTAGE) / 100,
-  );
+  const educatorPay = Math.floor((grossAmount * TUTOR_SHARE_PERCENTAGE) / 100);
   const platformFee = grossAmount - educatorPay;
 
   return { grossAmount, educatorPay, platformFee };

@@ -131,14 +131,10 @@ export default async function VideoPage({ params }: VideoPageProps) {
                 text-muted-foreground
               "
             >
-              <span>
-                {Number(video.viewCount).toLocaleString()} views
-              </span>
+              <span>{Number(video.viewCount).toLocaleString()} views</span>
 
               {video.publishedAt && (
-                <span>
-                  {new Date(video.publishedAt).toLocaleDateString()}
-                </span>
+                <span>{new Date(video.publishedAt).toLocaleDateString()}</span>
               )}
             </div>
 

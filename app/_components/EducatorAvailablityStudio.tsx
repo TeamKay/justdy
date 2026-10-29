@@ -74,13 +74,62 @@ type WeeklyRule = {
 };
 
 const DAYS: WeeklyDay[] = [
-  { key: "mon", label: "Monday", shortLabel: "Mon", selected: false, startTime: "09:00", endTime: "17:00" },
-  { key: "tue", label: "Tuesday", shortLabel: "Tue", selected: false, startTime: "09:00", endTime: "17:00" },
-  { key: "wed", label: "Wednesday", shortLabel: "Wed", selected: false, startTime: "09:00", endTime: "17:00" },
-  { key: "thu", label: "Thursday", shortLabel: "Thu", selected: false, startTime: "09:00", endTime: "17:00" },
-  { key: "fri", label: "Friday", shortLabel: "Fri", selected: false, startTime: "09:00", endTime: "17:00" },
-  { key: "sat", label: "Saturday", shortLabel: "Sat", selected: false, startTime: "09:00", endTime: "17:00" },
-  { key: "sun", label: "Sunday", shortLabel: "Sun", selected: false, startTime: "09:00", endTime: "17:00" },
+  {
+    key: "mon",
+    label: "Monday",
+    shortLabel: "Mon",
+    selected: false,
+    startTime: "09:00",
+    endTime: "17:00",
+  },
+  {
+    key: "tue",
+    label: "Tuesday",
+    shortLabel: "Tue",
+    selected: false,
+    startTime: "09:00",
+    endTime: "17:00",
+  },
+  {
+    key: "wed",
+    label: "Wednesday",
+    shortLabel: "Wed",
+    selected: false,
+    startTime: "09:00",
+    endTime: "17:00",
+  },
+  {
+    key: "thu",
+    label: "Thursday",
+    shortLabel: "Thu",
+    selected: false,
+    startTime: "09:00",
+    endTime: "17:00",
+  },
+  {
+    key: "fri",
+    label: "Friday",
+    shortLabel: "Fri",
+    selected: false,
+    startTime: "09:00",
+    endTime: "17:00",
+  },
+  {
+    key: "sat",
+    label: "Saturday",
+    shortLabel: "Sat",
+    selected: false,
+    startTime: "09:00",
+    endTime: "17:00",
+  },
+  {
+    key: "sun",
+    label: "Sunday",
+    shortLabel: "Sun",
+    selected: false,
+    startTime: "09:00",
+    endTime: "17:00",
+  },
 ];
 
 function toStringArray(value: unknown): string[] {
@@ -125,10 +174,7 @@ function formatDurationFromClock(startTime: string, endTime: string) {
     return "";
   }
 
-  let minutes =
-    endHour * 60 +
-    endMinute -
-    (startHour * 60 + startMinute);
+  let minutes = endHour * 60 + endMinute - (startHour * 60 + startMinute);
 
   // Allow a schedule such as 10:00 PM → 2:00 AM.
   if (minutes <= 0) minutes += 24 * 60;
@@ -138,9 +184,7 @@ function formatDurationFromClock(startTime: string, endTime: string) {
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
 
-  return remainder === 0
-    ? `${hours} hr`
-    : `${hours} hr ${remainder} min`;
+  return remainder === 0 ? `${hours} hr` : `${hours} hr ${remainder} min`;
 }
 
 function toLocalDateTimeInput(date: Date) {
@@ -197,16 +241,11 @@ function formatDuration(startTime: string, endTime: string) {
   const start = new Date(startTime);
   const end = new Date(endTime);
 
-  if (
-    Number.isNaN(start.getTime()) ||
-    Number.isNaN(end.getTime())
-  ) {
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
     return "";
   }
 
-  const minutes = Math.round(
-    (end.getTime() - start.getTime()) / 60000,
-  );
+  const minutes = Math.round((end.getTime() - start.getTime()) / 60000);
 
   if (minutes < 60) return `${minutes} min`;
 
@@ -226,8 +265,7 @@ export default function EducatorAvailabilityStudio({
   const [availability, setAvailability] =
     useState<AvailabilityItem[]>(initialAvailability);
 
-  const [isAddAvailabilityOpen, setIsAddAvailabilityOpen] =
-    useState(false);
+  const [isAddAvailabilityOpen, setIsAddAvailabilityOpen] = useState(false);
 
   const [isCreating, setIsCreating] = useState(false);
 
@@ -240,7 +278,9 @@ export default function EducatorAvailabilityStudio({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [weeklyDays, setWeeklyDays] = useState<WeeklyDay[]>(DAYS);
   const [is24x7, setIs24x7] = useState(false);
-  const [editingWeeklyRuleId, setEditingWeeklyRuleId] = useState<string | null>(null);
+  const [editingWeeklyRuleId, setEditingWeeklyRuleId] = useState<string | null>(
+    null,
+  );
   function normalizeRecurringRules(value: unknown[]): WeeklyRule[] {
     return value.flatMap((item): WeeklyRule[] => {
       if (typeof item !== "object" || item === null || Array.isArray(item)) {
@@ -249,25 +289,31 @@ export default function EducatorAvailabilityStudio({
 
       const rule = item as Record<string, unknown>;
       const dayOfWeek = Number(rule.dayOfWeek);
-      if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) return [];
+      if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6)
+        return [];
 
-      const day = DAYS.find((candidate) =>
-        ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].indexOf(candidate.key) === dayOfWeek,
+      const day = DAYS.find(
+        (candidate) =>
+          ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].indexOf(
+            candidate.key,
+          ) === dayOfWeek,
       );
       if (!day) return [];
 
-      return [{
-        id: String(rule.id ?? ""),
-        day: day.key,
-        dayLabel: day.label,
-        startTime: Boolean(rule.isAlwaysAvailable)
-          ? "00:00"
-          : String(rule.weeklyStartTime ?? rule.startTime ?? "09:00"),
-        endTime: Boolean(rule.isAlwaysAvailable)
-          ? "00:00"
-          : String(rule.weeklyEndTime ?? rule.endTime ?? "17:00"),
-        isAlwaysAvailable: Boolean(rule.isAlwaysAvailable),
-      }];
+      return [
+        {
+          id: String(rule.id ?? ""),
+          day: day.key,
+          dayLabel: day.label,
+          startTime: Boolean(rule.isAlwaysAvailable)
+            ? "00:00"
+            : String(rule.weeklyStartTime ?? rule.startTime ?? "09:00"),
+          endTime: Boolean(rule.isAlwaysAvailable)
+            ? "00:00"
+            : String(rule.weeklyEndTime ?? rule.endTime ?? "17:00"),
+          isAlwaysAvailable: Boolean(rule.isAlwaysAvailable),
+        },
+      ];
     });
   }
 
@@ -291,8 +337,7 @@ export default function EducatorAvailabilityStudio({
         .filter((slot) => slot.type === "ONE_OFF" || !slot.type)
         .sort(
           (a, b) =>
-            new Date(a.startTime).getTime() -
-            new Date(b.startTime).getTime(),
+            new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
         ),
     [availability],
   );
@@ -326,9 +371,7 @@ export default function EducatorAvailabilityStudio({
 
     setWeeklyDays((current) =>
       current.map((item) =>
-        item.key === day
-          ? { ...item, selected: !item.selected }
-          : item,
+        item.key === day ? { ...item, selected: !item.selected } : item,
       ),
     );
   }
@@ -401,9 +444,12 @@ export default function EducatorAvailabilityStudio({
   }
 
   async function refreshWeeklyAvailability() {
-    const response = await fetch("/api/educator/availability", { cache: "no-store" });
+    const response = await fetch("/api/educator/availability", {
+      cache: "no-store",
+    });
     const data = await response.json();
-    if (!response.ok) throw new Error(data?.error || "Unable to refresh availability.");
+    if (!response.ok)
+      throw new Error(data?.error || "Unable to refresh availability.");
 
     if (Array.isArray(data.availability)) {
       setAvailability(data.availability);
@@ -413,34 +459,30 @@ export default function EducatorAvailabilityStudio({
     }
   }
 
-async function saveWeeklyAvailability(
-  event: FormEvent<HTMLFormElement>,
-) {
-  event.preventDefault();
+  async function saveWeeklyAvailability(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
-  if (!validateWeeklySchedule()) {
-    return;
-  }
+    if (!validateWeeklySchedule()) {
+      return;
+    }
 
-  setIsCreating(true);
+    setIsCreating(true);
 
-  try {
-    const timeZone =
-      Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    try {
+      const timeZone =
+        Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
-    /*
-     * 24/7 availability is intentionally NOT recurring.
-     *
-     * The API creates exactly seven concrete ONE_OFF rows:
-     * one full local calendar day for each of the next seven days.
-     *
-     * This prevents 24/7 from being expanded into hundreds of
-     * recurring occurrences.
-     */
-    if (is24x7) {
-      const response = await fetch(
-        "/api/educator/availability",
-        {
+      /*
+       * 24/7 availability is intentionally NOT recurring.
+       *
+       * The API creates exactly seven concrete ONE_OFF rows:
+       * one full local calendar day for each of the next seven days.
+       *
+       * This prevents 24/7 from being expanded into hundreds of
+       * recurring occurrences.
+       */
+      if (is24x7) {
+        const response = await fetch("/api/educator/availability", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -449,52 +491,44 @@ async function saveWeeklyAvailability(
             isAlwaysAvailable: true,
             timeZone,
           }),
-        },
-      );
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(
-          data?.error ||
-            "Unable to save 24/7 availability.",
+        if (!response.ok) {
+          throw new Error(data?.error || "Unable to save 24/7 availability.");
+        }
+
+        await refreshWeeklyAvailability();
+
+        toast.success(
+          "24/7 availability saved as seven full-day availability records.",
         );
+
+        closeAddAvailability();
+
+        return;
       }
 
-      await refreshWeeklyAvailability();
+      /*
+       * Only save the days that the educator selected.
+       */
+      const selectedDays = weeklyDays.filter((day) => day.selected);
 
-      toast.success(
-        "24/7 availability saved as seven full-day availability records.",
-      );
+      if (selectedDays.length === 0) {
+        toast.error("Select at least one day.");
+        return;
+      }
 
-      closeAddAvailability();
+      /*
+       * When editing an existing rule, PATCH that rule.
+       *
+       * The API's PATCH endpoint edits one recurring rule at a time.
+       */
+      if (editingWeeklyRuleId) {
+        const day = selectedDays[0];
 
-      return;
-    }
-
-    /*
-     * Only save the days that the educator selected.
-     */
-    const selectedDays = weeklyDays.filter(
-      (day) => day.selected,
-    );
-
-    if (selectedDays.length === 0) {
-      toast.error("Select at least one day.");
-      return;
-    }
-
-    /*
-     * When editing an existing rule, PATCH that rule.
-     *
-     * The API's PATCH endpoint edits one recurring rule at a time.
-     */
-    if (editingWeeklyRuleId) {
-      const day = selectedDays[0];
-
-      const response = await fetch(
-        "/api/educator/availability",
-        {
+        const response = await fetch("/api/educator/availability", {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -507,38 +541,32 @@ async function saveWeeklyAvailability(
             isAlwaysAvailable: false,
             timeZone,
           }),
-        },
-      );
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(
-          data?.error ||
-            "Unable to update availability.",
-        );
+        if (!response.ok) {
+          throw new Error(data?.error || "Unable to update availability.");
+        }
+
+        await refreshWeeklyAvailability();
+
+        toast.success("Availability updated.");
+
+        closeAddAvailability();
+
+        return;
       }
 
-      await refreshWeeklyAvailability();
-
-      toast.success("Availability updated.");
-
-      closeAddAvailability();
-
-      return;
-    }
-
-    /*
-     * Create one recurring Availability rule for each
-     * selected day.
-     *
-     * This is important because each day can have a
-     * different start/end time.
-     */
-    for (const day of selectedDays) {
-      const response = await fetch(
-        "/api/educator/availability",
-        {
+      /*
+       * Create one recurring Availability rule for each
+       * selected day.
+       *
+       * This is important because each day can have a
+       * different start/end time.
+       */
+      for (const day of selectedDays) {
+        const response = await fetch("/api/educator/availability", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -550,44 +578,36 @@ async function saveWeeklyAvailability(
             isAlwaysAvailable: false,
             timeZone,
           }),
-        },
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data?.error || `Unable to save ${day.label} availability.`,
+          );
+        }
+      }
+
+      await refreshWeeklyAvailability();
+
+      toast.success(
+        `${selectedDays.length} weekly ${
+          selectedDays.length === 1 ? "day" : "days"
+        } saved.`,
       );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data?.error ||
-            `Unable to save ${day.label} availability.`,
-        );
-      }
+      closeAddAvailability();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to save availability.",
+      );
+    } finally {
+      setIsCreating(false);
     }
-
-    await refreshWeeklyAvailability();
-
-    toast.success(
-      `${selectedDays.length} weekly ${
-        selectedDays.length === 1
-          ? "day"
-          : "days"
-      } saved.`,
-    );
-
-    closeAddAvailability();
-  } catch (error) {
-    toast.error(
-      error instanceof Error
-        ? error.message
-        : "Unable to save availability.",
-    );
-  } finally {
-    setIsCreating(false);
   }
-}
 
-  async function createConcreteAvailability(
-    event: FormEvent<HTMLFormElement>,
-  ) {
+  async function createConcreteAvailability(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const form = new FormData(event.currentTarget);
@@ -612,8 +632,7 @@ async function saveWeeklyAvailability(
       return;
     }
 
-    const durationMinutes =
-      (end.getTime() - start.getTime()) / 60000;
+    const durationMinutes = (end.getTime() - start.getTime()) / 60000;
 
     if (durationMinutes < 15) {
       toast.error("Availability must be at least 15 minutes long.");
@@ -637,17 +656,14 @@ async function saveWeeklyAvailability(
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data?.error || "Unable to create availability.",
-        );
+        throw new Error(data?.error || "Unable to create availability.");
       }
 
       if (data.slot) {
         setAvailability((current) =>
           [...current, data.slot].sort(
             (a, b) =>
-              new Date(a.startTime).getTime() -
-              new Date(b.startTime).getTime(),
+              new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
           ),
         );
       }
@@ -672,9 +688,7 @@ async function saveWeeklyAvailability(
     }
 
     setEditingAvailability(slot);
-    setEditStartTime(
-      toLocalDateTimeInput(new Date(slot.startTime)),
-    );
+    setEditStartTime(toLocalDateTimeInput(new Date(slot.startTime)));
     setEditEndTime(toLocalDateTimeInput(new Date(slot.endTime)));
   }
 
@@ -686,9 +700,7 @@ async function saveWeeklyAvailability(
     setEditEndTime("");
   }
 
-  async function updateAvailability(
-    event: FormEvent<HTMLFormElement>,
-  ) {
+  async function updateAvailability(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!editingAvailability) return;
@@ -711,8 +723,7 @@ async function saveWeeklyAvailability(
       return;
     }
 
-    const durationMinutes =
-      (end.getTime() - start.getTime()) / 60000;
+    const durationMinutes = (end.getTime() - start.getTime()) / 60000;
 
     if (durationMinutes < 15) {
       toast.error("Availability must be at least 15 minutes long.");
@@ -737,18 +748,14 @@ async function saveWeeklyAvailability(
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data?.error || "Unable to update availability.",
-        );
+        throw new Error(data?.error || "Unable to update availability.");
       }
 
       if (data.availability) {
         setAvailability((current) =>
           current
             .map((slot) =>
-              slot.id === data.availability.id
-                ? data.availability
-                : slot,
+              slot.id === data.availability.id ? data.availability : slot,
             )
             .sort(
               (a, b) =>
@@ -805,14 +812,10 @@ async function saveWeeklyAvailability(
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data?.error || "Unable to delete availability.",
-        );
+        throw new Error(data?.error || "Unable to delete availability.");
       }
 
-      setAvailability((current) =>
-        current.filter((item) => item.id !== id),
-      );
+      setAvailability((current) => current.filter((item) => item.id !== id));
 
       toast.success("Availability removed.");
     } catch (error) {
@@ -854,12 +857,17 @@ async function saveWeeklyAvailability(
         body: JSON.stringify({ ruleId: rule.id }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data?.error || "Unable to remove availability.");
+      if (!response.ok)
+        throw new Error(data?.error || "Unable to remove availability.");
 
       await refreshWeeklyAvailability();
       toast.success("Weekly availability removed.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to remove availability.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to remove availability.",
+      );
     } finally {
       setDeletingId(null);
     }
@@ -888,7 +896,6 @@ async function saveWeeklyAvailability(
                 </span>
               ))}
             </div>
-
           </div>
 
           <button
@@ -900,8 +907,6 @@ async function saveWeeklyAvailability(
             Add availability
           </button>
         </div>
-
-     
       </section>
 
       <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -933,8 +938,8 @@ async function saveWeeklyAvailability(
               No weekly availability yet
             </h3>
             <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-slate-500">
-              Add your regular days and hours so learners know when
-              you are normally available.
+              Add your regular days and hours so learners know when you are
+              normally available.
             </p>
             <button
               type="button"
@@ -961,10 +966,7 @@ async function saveWeeklyAvailability(
 
               <tbody className="divide-y divide-slate-100">
                 {weeklyRules.map((rule) => (
-                  <tr
-                    key={rule.id}
-                    className="transition hover:bg-slate-50/70"
-                  >
+                  <tr key={rule.id} className="transition hover:bg-slate-50/70">
                     <td className="px-5 py-4 sm:px-6">
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-xs font-bold text-slate-700">
@@ -986,10 +988,7 @@ async function saveWeeklyAvailability(
 
                     <td className="px-5 py-4 sm:px-6">
                       <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                        {formatDurationFromClock(
-                          rule.startTime,
-                          rule.endTime,
-                        )}
+                        {formatDurationFromClock(rule.startTime, rule.endTime)}
                       </span>
                     </td>
 
@@ -1210,8 +1209,8 @@ async function saveWeeklyAvailability(
                       24/7 availability
                     </p>
                     <p className="mt-1 max-w-md text-xs leading-5 text-slate-500">
-                      Make every day active from midnight through the
-                      end of the day.
+                      Make every day active from midnight through the end of the
+                      day.
                     </p>
                   </div>
 
@@ -1266,10 +1265,7 @@ async function saveWeeklyAvailability(
 
                 <button
                   type="submit"
-                  disabled={
-                    isCreating ||
-                    (!is24x7 && selectedDayCount === 0)
-                  }
+                  disabled={isCreating || (!is24x7 && selectedDayCount === 0)}
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isCreating ? (
@@ -1336,10 +1332,7 @@ async function saveWeeklyAvailability(
               </button>
             </div>
 
-            <form
-              onSubmit={updateAvailability}
-              className="space-y-5 p-6"
-            >
+            <form onSubmit={updateAvailability} className="space-y-5 p-6">
               <TimeField
                 id="edit-start-time"
                 label="Start time"
@@ -1392,13 +1385,7 @@ async function saveWeeklyAvailability(
   );
 }
 
-function StatCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
+function StatCard({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-4">
       <p className="text-xs font-medium text-slate-500">{label}</p>
@@ -1461,11 +1448,7 @@ function TimeField({
   );
 }
 
-function AvailabilityStatusBadge({
-  status,
-}: {
-  status: AvailabilityStatus;
-}) {
+function AvailabilityStatusBadge({ status }: { status: AvailabilityStatus }) {
   const config =
     status === "Available"
       ? {

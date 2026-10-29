@@ -42,10 +42,16 @@ export default function ResourcePublicPreview({
   const [expanded, setExpanded] = useState(false);
   const content = normalizeContent(rawContent);
   const questions = Array.isArray(content.questions) ? content.questions : [];
-  const visibleQuestions = expanded ? questions.slice(0, 12) : questions.slice(0, 3);
+  const visibleQuestions = expanded
+    ? questions.slice(0, 12)
+    : questions.slice(0, 3);
   const hasMore = questions.length > 3;
 
-  if (questions.length === 0 && !content.instructions && !content.sections?.length) {
+  if (
+    questions.length === 0 &&
+    !content.instructions &&
+    !content.sections?.length
+  ) {
     return (
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <div className="flex items-center gap-3">
@@ -53,8 +59,12 @@ export default function ResourcePublicPreview({
             <Eye className="size-5" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-slate-950">Resource preview</h2>
-            <p className="text-sm text-slate-500">Open the resource to view the complete content.</p>
+            <h2 className="text-lg font-semibold text-slate-950">
+              Resource preview
+            </h2>
+            <p className="text-sm text-slate-500">
+              Open the resource to view the complete content.
+            </p>
           </div>
         </div>
       </div>
@@ -66,7 +76,9 @@ export default function ResourcePublicPreview({
       <div className="border-b border-slate-100 px-5 py-5 sm:px-7">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Preview</div>
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+              Preview
+            </div>
             <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
               {type === "WORKSHEET" ? "Worksheet preview" : "Resource preview"}
             </h2>
@@ -80,7 +92,9 @@ export default function ResourcePublicPreview({
       <div className="p-5 sm:p-7">
         {content.instructions && (
           <div className="mb-6 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-            <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-400">Instructions</div>
+            <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Instructions
+            </div>
             {content.instructions}
           </div>
         )}
@@ -88,7 +102,10 @@ export default function ResourcePublicPreview({
         {visibleQuestions.length > 0 && (
           <div className="space-y-4">
             {visibleQuestions.map((item, index) => (
-              <article key={item.id ?? `${item.number ?? index + 1}`} className="rounded-2xl border border-slate-200 p-4 sm:p-5">
+              <article
+                key={item.id ?? `${item.number ?? index + 1}`}
+                className="rounded-2xl border border-slate-200 p-4 sm:p-5"
+              >
                 <div className="flex gap-3">
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-slate-950 text-xs font-bold text-white">
                     {item.number ?? index + 1}
@@ -113,7 +130,10 @@ export default function ResourcePublicPreview({
                     {Array.isArray(item.options) && item.options.length > 0 && (
                       <div className="mt-4 grid gap-2 sm:grid-cols-2">
                         {item.options.map((option, optionIndex) => (
-                          <div key={option.id ?? optionIndex} className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-600">
+                          <div
+                            key={option.id ?? optionIndex}
+                            className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-600"
+                          >
                             <span className="mr-2 font-semibold text-slate-400">
                               {String.fromCharCode(65 + optionIndex)}.
                             </span>
@@ -129,16 +149,27 @@ export default function ResourcePublicPreview({
           </div>
         )}
 
-        {content.sections && content.sections.length > 0 && questions.length === 0 && (
-          <div className="space-y-3">
-            {content.sections.slice(0, 6).map((section, index) => (
-              <div key={index} className="rounded-2xl border border-slate-200 p-4">
-                <h3 className="font-semibold text-slate-900">{section.title || `Section ${index + 1}`}</h3>
-                {section.description && <p className="mt-1 text-sm leading-6 text-slate-500">{section.description}</p>}
-              </div>
-            ))}
-          </div>
-        )}
+        {content.sections &&
+          content.sections.length > 0 &&
+          questions.length === 0 && (
+            <div className="space-y-3">
+              {content.sections.slice(0, 6).map((section, index) => (
+                <div
+                  key={index}
+                  className="rounded-2xl border border-slate-200 p-4"
+                >
+                  <h3 className="font-semibold text-slate-900">
+                    {section.title || `Section ${index + 1}`}
+                  </h3>
+                  {section.description && (
+                    <p className="mt-1 text-sm leading-6 text-slate-500">
+                      {section.description}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
         {hasMore && (
           <button
@@ -146,13 +177,20 @@ export default function ResourcePublicPreview({
             onClick={() => setExpanded((value) => !value)}
             className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
-            {expanded ? "Show less" : `Preview more (${Math.min(questions.length, 12) - 3} more)`}
-            {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+            {expanded
+              ? "Show less"
+              : `Preview more (${Math.min(questions.length, 12) - 3} more)`}
+            {expanded ? (
+              <ChevronUp className="size-4" />
+            ) : (
+              <ChevronDown className="size-4" />
+            )}
           </button>
         )}
 
         <p className="mt-5 text-center text-xs leading-5 text-slate-400">
-          Answer keys and creator-only information are intentionally hidden from the public preview.
+          Answer keys and creator-only information are intentionally hidden from
+          the public preview.
         </p>
       </div>
     </section>

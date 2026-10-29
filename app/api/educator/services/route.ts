@@ -14,7 +14,10 @@ async function getCurrentUser() {
   return session?.user ?? null;
 }
 
-async function canManageEducatorWorkspace(user: { id: string; role?: string | null }) {
+async function canManageEducatorWorkspace(user: {
+  id: string;
+  role?: string | null;
+}) {
   if (user.role === "ADMIN") return true;
   return hasCapability(user.id, CAPABILITIES.TEACH);
 }
@@ -108,7 +111,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    if (!await canManageEducatorWorkspace(user)) {
+    if (!(await canManageEducatorWorkspace(user))) {
       return NextResponse.json(
         { error: "Educator workspace access required." },
         { status: 403 },
@@ -154,7 +157,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    if (!await canManageEducatorWorkspace(user)) {
+    if (!(await canManageEducatorWorkspace(user))) {
       return NextResponse.json(
         { error: "Educator workspace access required." },
         { status: 403 },
@@ -284,7 +287,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    if (!await canManageEducatorWorkspace(user)) {
+    if (!(await canManageEducatorWorkspace(user))) {
       return NextResponse.json(
         { error: "Educator workspace access required." },
         { status: 403 },
@@ -519,7 +522,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    if (!await canManageEducatorWorkspace(user)) {
+    if (!(await canManageEducatorWorkspace(user))) {
       return NextResponse.json(
         { error: "Educator workspace access required." },
         { status: 403 },

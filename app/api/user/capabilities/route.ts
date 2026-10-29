@@ -9,7 +9,10 @@ export async function GET() {
   });
 
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    return NextResponse.json(
+      { error: "Authentication required." },
+      { status: 401 },
+    );
   }
 
   const assignments = await prisma.userCapability.findMany({

@@ -43,17 +43,13 @@ export default function TeacherDashboard({
   clientGrowth,
   showWelcome = true,
 }: TeacherDashboardProps) {
-  const latestGrowth =
-    clientGrowth[clientGrowth.length - 1]?.value ?? 0;
+  const latestGrowth = clientGrowth[clientGrowth.length - 1]?.value ?? 0;
 
-  const previousGrowth =
-    clientGrowth[clientGrowth.length - 2]?.value ?? 0;
+  const previousGrowth = clientGrowth[clientGrowth.length - 2]?.value ?? 0;
 
   const growthPercent =
     previousGrowth > 0
-      ? Math.round(
-          ((latestGrowth - previousGrowth) / previousGrowth) * 100,
-        )
+      ? Math.round(((latestGrowth - previousGrowth) / previousGrowth) * 100)
       : null;
 
   return (
@@ -131,8 +127,7 @@ export default function TeacherDashboard({
                 </p>
 
                 <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-                  {adminStats?.completedSessions ??
-                    completedSessions.length}
+                  {adminStats?.completedSessions ?? completedSessions.length}
                 </p>
               </div>
             </div>
@@ -189,8 +184,7 @@ export default function TeacherDashboard({
                           </p>
 
                           <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                            {lesson.service?.title ??
-                              "Tutoring lesson"}
+                            {lesson.service?.title ?? "Tutoring lesson"}
                           </p>
                         </div>
 
@@ -203,9 +197,7 @@ export default function TeacherDashboard({
 
                       <p className="mt-3 text-xs font-medium text-foreground">
                         {lesson.subject ?? "Mathematics"}
-                        {lesson.gradeLevel
-                          ? ` · ${lesson.gradeLevel}`
-                          : ""}
+                        {lesson.gradeLevel ? ` · ${lesson.gradeLevel}` : ""}
                       </p>
 
                       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -215,7 +207,6 @@ export default function TeacherDashboard({
 
                         <span className="inline-flex items-center gap-1">
                           <Clock3 className="h-3 w-3" />
-
                           {formatTime(lesson.startTime)} –{" "}
                           {formatTime(lesson.endTime)}
                         </span>

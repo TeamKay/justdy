@@ -8,23 +8,14 @@ import TutorApplicationsView from "@/app/_components/TutorApplicationsView";
 
 export const dynamic = "force-dynamic";
 
-type ApplicationStatus =
-  | "Pending"
-  | "Verified"
-  | "Rejected";
+type ApplicationStatus = "Pending" | "Verified" | "Rejected";
 
 type SearchParams = {
   status?: string;
 };
 
-function normalizeStatus(
-  value: string | undefined,
-): ApplicationStatus {
-  if (
-    value === "Pending" ||
-    value === "Verified" ||
-    value === "Rejected"
-  ) {
+function normalizeStatus(value: string | undefined): ApplicationStatus {
+  if (value === "Pending" || value === "Verified" || value === "Rejected") {
     return value;
   }
 
@@ -36,9 +27,7 @@ function jsonStringArray(value: unknown): string[] {
     return [];
   }
 
-  return value.filter(
-    (item): item is string => typeof item === "string",
-  );
+  return value.filter((item): item is string => typeof item === "string");
 }
 
 export default async function TutorApplicationsPage({
@@ -81,97 +70,92 @@ export default async function TutorApplicationsPage({
 
   const selectedStatus = normalizeStatus(params.status);
 
-  const [
-    pendingCount,
-    verifiedCount,
-    rejectedCount,
-    totalCount,
-    applications,
-  ] = await Promise.all([
-    prisma.teachingProfile.count({
-      where: {
-        verificationStatus: "Pending",
-        user: {
-          status: {
-            not: "Deleted",
+  const [pendingCount, verifiedCount, rejectedCount, totalCount, applications] =
+    await Promise.all([
+      prisma.teachingProfile.count({
+        where: {
+          verificationStatus: "Pending",
+          user: {
+            status: {
+              not: "Deleted",
+            },
           },
         },
-      },
-    }),
+      }),
 
-    prisma.teachingProfile.count({
-      where: {
-        verificationStatus: "Verified",
-        user: {
-          status: {
-            not: "Deleted",
+      prisma.teachingProfile.count({
+        where: {
+          verificationStatus: "Verified",
+          user: {
+            status: {
+              not: "Deleted",
+            },
           },
         },
-      },
-    }),
+      }),
 
-    prisma.teachingProfile.count({
-      where: {
-        verificationStatus: "Rejected",
-        user: {
-          status: {
-            not: "Deleted",
+      prisma.teachingProfile.count({
+        where: {
+          verificationStatus: "Rejected",
+          user: {
+            status: {
+              not: "Deleted",
+            },
           },
         },
-      },
-    }),
+      }),
 
-    prisma.teachingProfile.count({
-      where: {
-        user: {
-          status: {
-            not: "Deleted",
+      prisma.teachingProfile.count({
+        where: {
+          user: {
+            status: {
+              not: "Deleted",
+            },
           },
         },
-      },
-    }),
+      }),
 
-    prisma.teachingProfile.findMany({
-      where: {
-        verificationStatus: selectedStatus,
-        user: {
-          status: {
-            not: "Deleted",
+      prisma.teachingProfile.findMany({
+        where: {
+          verificationStatus: selectedStatus,
+          user: {
+            status: {
+              not: "Deleted",
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      select: {
-        id: true,
-        userId: true,
-        headline: true,
-        specialty: true,
-        experience: true,
-        credentialUrl: true,
-        description: true,
-        verificationStatus: true,
-        hourlyRate: true,
-        currency: true,
-        subjects: true,
-        gradeLevels: true,
-        createdAt: true,
-        updatedAt: true,
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            imageUrl: true,
-            emailVerified: true,
-            status: true,
-            createdAt: true,
+        orderBy: {
+          createdAt: "desc",
+        },
+        select: {
+          id: true,
+          userId: true,
+          headline: true,
+          specialty: true,
+          experience: true,
+          credentialUrl: true,
+          description: true,
+          verificationStatus: true,
+          hourlyRate: true,
+          currency: true,
+          subjects: true,
+          gradeLevels: true,
+          createdAt: true,
+          updatedAt: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              imageUrl: true,
+              emailVerified: true,
+              status: true,
+              createdAt: true,
+            },
           },
         },
-      },
-    }),
-  ]);
+      }),
+    ]);
 
   const applicationRows = applications.map((application) => ({
     id: application.id,
@@ -182,10 +166,7 @@ export default async function TutorApplicationsPage({
     credentialUrl: application.credentialUrl,
     description: application.description,
 
-  
-    verificationStatus: normalizeStatus(
-      String(application.verificationStatus),
-    ),
+    verificationStatus: normalizeStatus(String(application.verificationStatus)),
 
     hourlyRate: application.hourlyRate,
     currency: String(application.currency),

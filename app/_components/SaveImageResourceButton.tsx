@@ -47,9 +47,7 @@ export default function SaveImageResourceButton({
       };
 
       if (!response.ok) {
-        throw new Error(
-          data.error ?? "Unable to save image to your library.",
-        );
+        throw new Error(data.error ?? "Unable to save image to your library.");
       }
 
       setSaved(true);
@@ -90,9 +88,7 @@ export default function SaveImageResourceButton({
         {saving ? "Saving…" : saved ? "Saved to Library" : "Save to Library"}
       </button>
 
-      {error ? (
-        <p className="text-xs text-destructive">{error}</p>
-      ) : null}
+      {error ? <p className="text-xs text-destructive">{error}</p> : null}
     </div>
   );
 }

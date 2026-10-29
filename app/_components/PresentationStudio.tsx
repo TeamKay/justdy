@@ -153,12 +153,9 @@ export default function PresentationStudio({
 
   const [generationId, setGenerationId] = useState<string | null>(null);
 
-
   const [activeSlide, setActiveSlide] = useState(0);
 
   const [isGenerating, setIsGenerating] = useState(false);
-
-
 
   const [error, setError] = useState("");
 
@@ -335,7 +332,6 @@ Rules:
     }
   }
 
-
   function updateCurrentSlide(
     field: "title" | "subtitle" | "body" | "speakerNotes",
     value: string,
@@ -358,7 +354,6 @@ Rules:
         ),
       };
     });
-
   }
 
   function updateBullet(index: number, value: string) {
@@ -386,7 +381,6 @@ Rules:
         }),
       };
     });
-
   }
 
   function addBullet() {
@@ -408,7 +402,6 @@ Rules:
         ),
       };
     });
-
   }
 
   function removeBullet(index: number) {
@@ -434,7 +427,6 @@ Rules:
         }),
       };
     });
-
   }
 
   function moveSlide(direction: "next" | "previous") {
@@ -684,10 +676,10 @@ Rules:
                     <SavePresentationResourceButton
                       generationId={generationId}
                       title={presentation.title}
-                   description={presentation.subtitle ?? undefined}
+                      description={presentation.subtitle ?? undefined}
                       content={{
                         title: presentation.title,
-                       description: presentation.subtitle ?? undefined,
+                        description: presentation.subtitle ?? undefined,
                         slides: presentation.slides.map((slide) => ({
                           id: `slide-${slide.slideNumber}`,
                           title: slide.title,
@@ -905,10 +897,10 @@ Rules:
                     <SavePresentationResourceButton
                       generationId={generationId}
                       title={presentation.title}
-                     description={presentation.subtitle ?? undefined}
+                      description={presentation.subtitle ?? undefined}
                       content={{
                         title: presentation.title,
-                       description: presentation.subtitle ?? undefined,
+                        description: presentation.subtitle ?? undefined,
                         slides: presentation.slides.map((slide) => ({
                           id: `slide-${slide.slideNumber}`,
                           title: slide.title,

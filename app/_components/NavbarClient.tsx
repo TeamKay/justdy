@@ -15,10 +15,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-
 import { authClient } from "@/lib/auth-client";
-
-
 
 const resourceLinks = [
   {
@@ -64,7 +61,6 @@ export function NavbarClient() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [resourcesOpen, setResourcesOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
-
 
   /*
    * Keep the navbar synchronized with authentication changes
@@ -267,8 +263,6 @@ export function NavbarClient() {
 
           {/* Desktop actions */}
           <div className="hidden items-center gap-2 lg:flex">
-         
-
             {!sessionPending &&
               (session ? (
                 <Link
@@ -280,28 +274,26 @@ export function NavbarClient() {
                 </Link>
               ) : (
                 <>
-                 <Link
-  href="/auth"
-  className="rounded-xl px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
->
-  Sign in
-</Link>
+                  <Link
+                    href="/auth"
+                    className="rounded-xl px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    Sign in
+                  </Link>
 
-                 <Link
-  href="/auth"
-  className="group inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/15 transition-all hover:-translate-y-0.5 hover:bg-primary/90"
->
-  Get Started
-  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-</Link>
+                  <Link
+                    href="/auth"
+                    className="group inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/15 transition-all hover:-translate-y-0.5 hover:bg-primary/90"
+                  >
+                    Get Started
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
                 </>
               ))}
           </div>
 
           {/* Mobile menu button */}
           <div className="flex items-center gap-2 lg:hidden">
-          
-
             <button
               type="button"
               className="flex h-10 w-10 items-center justify-center rounded-xl border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -394,7 +386,7 @@ export function NavbarClient() {
                         Sign in
                       </Link>
 
-                                          <Link
+                      <Link
                         href="/auth"
                         onClick={() => setMobileOpen(false)}
                         className="rounded-xl bg-primary px-4 py-3 text-center text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
@@ -409,9 +401,6 @@ export function NavbarClient() {
           </div>
         )}
       </header>
-
-    
     </>
   );
 }
-

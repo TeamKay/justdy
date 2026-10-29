@@ -1,493 +1,919 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import {
+  ArrowLeft,
   ArrowRight,
-  BookOpen,
-  Brain,
-  Check,
-  Clock3,
+  CheckCircle2,
   GraduationCap,
-  MessageSquareText,
-  ShieldCheck,
-  Target,
-  Video,
+  Loader2,
+  UserRound,
+  Users,
+  Phone,
+  CalendarClock,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
 } from "lucide-react";
-import { Instrument_Serif, Inter } from "next/font/google";
 
+const GRADE_LEVELS = [
+  "Pre-K",
+  "Kindergarten",
+  ...Array.from({ length: 12 }, (_, index) => `Grade ${index + 1}`),
+  "College",
+  "Adult Learner",
+];
 
-import prisma from "@/lib/prisma";
-import MarketingNavbar from "@/app/_components/MarketingNavbar";
+type EnrollmentType = "self" | "parent_guardian" | "other_person";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
+const STEPS = [
+  { number: 1, title: "Who are we tutoring?", icon: Users },
+  { number: 2, title: "Grade level", icon: GraduationCap },
+  { number: 3, title: "Learner name", icon: UserRound },
+  { number: 4, title: "Your name", icon: UserRound },
+  { number: 5, title: "Contact details", icon: Phone },
+  { number: 6, title: "Call time", icon: CalendarClock },
+  { number: 7, title: "Review", icon: CheckCircle2 },
+];
 
-const instrumentSerif = Instrument_Serif({
-  weight: "400",
-  style: ["normal", "italic"],
-  subsets: ["latin"],
-  variable: "--font-instrument-serif",
-});
-
-type PublicService = {
-  id: string;
-  title: string;
-  description: string | null;
-  durationMinutes: number | null;
-  price: number | null;
-  currency: string;
-  subject: string | null;
-  gradeLevels: unknown;
+type IntakeResponse = {
+  success?: boolean;
+  message?: string;
+  requestId?: string;
+  emailConfirmationSent?: boolean;
+  adminNotificationSent?: boolean;
+  error?: string;
 };
 
-const outcomes = [
-  {
-    icon: Brain,
-    title: "Stronger understanding",
-    text: "Move beyond memorizing steps and understand the reasoning behind the mathematics.",
-  },
-  {
-    icon: Target,
-    title: "Focused improvement",
-    text: "Use tutoring time to address learning gaps, difficult concepts, and academic goals.",
-  },
-  {
-    icon: MessageSquareText,
-    title: "More confidence",
-    text: "Ask questions, work through mistakes, and become more confident with challenging problems.",
-  },
-];
-
-const includedBenefits = [
-  "Live online mathematics instruction",
-  "Personalized support based on student needs",
-  "Guided practice and problem solving",
-  "Homework and schoolwork support where applicable",
-  "Test and exam preparation where applicable",
-  "Clear feedback and progress-focused instruction",
-];
-
-function toStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-
-  return value.filter(
-    (item): item is string => typeof item === "string" && item.trim().length > 0,
+function ReviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-1 border-b border-slate-100 py-3 sm:flex-row sm:items-start sm:justify-between">
+      <dt className="text-sm text-slate-500">{label}</dt>
+      <dd className="max-w-[65%] whitespace-pre-wrap break-words text-sm font-semibold text-slate-900">
+        {value || "Not provided"}
+      </dd>
+    </div>
   );
 }
 
-function formatPrice(amount: number | null, currency: string) {
-  if (amount === null || amount === undefined) {
-    return "Contact us";
+export default function TutoringBookPage() {
+  const [step, setStep] = useState(1);
+  const [gradeLevel, setGradeLevel] = useState("");
+  const [studentName, setStudentName] = useState("");
+  const [enrollmentType, setEnrollmentType] = useState<EnrollmentType | "">("");
+  // Until the API is updated, this field retains the existing guardianName payload key.
+  // It represents the person making the request when that person is not the learner.
+  const [guardianName, setGuardianName] = useState("");
+  const [email, setEmail] = useState("");
+  const [learnerEmail, setLearnerEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [preferredCallDate, setPreferredCallDate] = useState("");
+  const [preferredCallTime, setPreferredCallTime] = useState("");
+  const [calendarMonth, setCalendarMonth] = useState({ year: 0, month: 0 });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [requestId, setRequestId] = useState("");
+
+  const fieldClass =
+    "mt-1.5 h-12 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-emerald-700 focus:bg-white focus:ring-4 focus:ring-emerald-100/80";
+  const labelClass = "block text-sm font-medium text-slate-700";
+
+  const preferredCallDateTime =
+    preferredCallDate && preferredCallTime
+      ? new Date(`${preferredCallDate}T${preferredCallTime}`)
+      : null;
+
+  const callDateLabel = preferredCallDateTime
+    ? preferredCallDateTime.toLocaleString(undefined, {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : "";
+
+  const [localToday, setLocalToday] = useState("");
+  const [currentTimeMs, setCurrentTimeMs] = useState<number | null>(null);
+  const [minCallTime, setMinCallTime] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    // Initialize browser-local date values after the first paint to keep
+    // render pure and avoid synchronous state updates inside the effect.
+    const frame = window.requestAnimationFrame(() => {
+      const now = new Date();
+      setCurrentTimeMs(now.getTime());
+      const today = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, "0"),
+        String(now.getDate()).padStart(2, "0"),
+      ].join("-");
+
+      setLocalToday(today);
+      setCalendarMonth({ year: now.getFullYear(), month: now.getMonth() });
+
+      const minimumTime = new Date(now.getTime() + 60_000);
+      const time = [
+        String(minimumTime.getHours()).padStart(2, "0"),
+        String(minimumTime.getMinutes()).padStart(2, "0"),
+      ].join(":");
+
+      setMinCallTime(preferredCallDate === today ? time : undefined);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [preferredCallDate]);
+
+  const calendarMonthDate = new Date(
+    calendarMonth.year,
+    calendarMonth.month,
+    1,
+  );
+  const calendarMonthLabel = calendarMonthDate.toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
+  const calendarOffset = calendarMonthDate.getDay();
+  const daysInCalendarMonth = new Date(
+    calendarMonth.year,
+    calendarMonth.month + 1,
+    0,
+  ).getDate();
+  const calendarCells: Array<number | null> = [
+    ...Array.from({ length: calendarOffset }, () => null),
+    ...Array.from({ length: daysInCalendarMonth }, (_, index) => index + 1),
+  ];
+  while (calendarCells.length % 7 !== 0) calendarCells.push(null);
+
+  function changeCalendarMonth(delta: number) {
+    setCalendarMonth((current) => {
+      const next = new Date(current.year, current.month + delta, 1);
+      return { year: next.getFullYear(), month: next.getMonth() };
+    });
   }
 
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency.toUpperCase(),
-    maximumFractionDigits: 0,
-  }).format(amount / 100);
-}
+  function chooseCalendarDay(day: number) {
+    const selected = [
+      calendarMonth.year,
+      String(calendarMonth.month + 1).padStart(2, "0"),
+      String(day).padStart(2, "0"),
+    ].join("-");
+    if (selected < localToday) return;
+    setPreferredCallDate(selected);
+  }
 
-  function ServiceCard({ service }: { service: PublicService }) {
-      const grades = toStringArray(service.gradeLevels);
+  function validateCurrentStep() {
+    if (step === 1 && !enrollmentType)
+      return "Please choose who we are tutoring.";
+    if (step === 2 && !gradeLevel)
+      return "Please select the learner's grade level.";
+    if (step === 3 && !studentName.trim())
+      return "Please enter the learner's full name.";
+    if (step === 4 && enrollmentType !== "self" && !guardianName.trim()) {
+      return enrollmentType === "parent_guardian"
+        ? "Please enter the parent or guardian's full name."
+        : "Please enter your full name.";
+    }
+    if (step === 5) {
+      if (!email.trim() || !phoneNumber.trim()) {
+        return "Please enter your contact email address and phone number.";
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        return "Please enter a valid contact email address.";
+      }
+    }
+    if (step === 6) {
+      if (!preferredCallDate || !preferredCallTime) {
+        return "Please choose a date and time for the call.";
+      }
+      if (
+        !preferredCallDateTime ||
+        Number.isNaN(preferredCallDateTime.getTime()) ||
+        preferredCallDateTime.getTime() <= (currentTimeMs ?? 0)
+      ) {
+        return "Please choose a future date and time for the call.";
+      }
+    }
+    return "";
+  }
 
-      return (
-       <article className="group relative overflow-hidden rounded-sm border border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-emerald-300 hover:shadow-[0_16px_45px_rgba(15,23,42,0.12)]">
-        <div className="absolute inset-x-0 top-0 h-1 bg-emerald-900" />
-        <div className="p-6 sm:p-7">
-          <div className="relative">
-            <div className="flex items-center">
-              <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-emerald-50 text-emerald-900">
-                <span className="text-base font-bold">
-                 {formatPrice(service.price, service.currency)}
-                </span>
-              </div>
-            </div>
-            {/* Popular badge */}
-            <span className="absolute right-0 top-1 rotate-[8deg] rounded-full bg-emerald-900 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-white shadow-sm">
-              New
-            </span>
+  function goNext() {
+    const error = validateCurrentStep();
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    setStep((current) => Math.min(STEPS.length, current + 1));
+  }
 
-            {/* Title */}
-            <div className="mt-4">
-              <h3 className="text-[22px] font-semibold items-center leading-tight tracking-tight text-emerald-950">
-                {service.title}
-              </h3>
-              <p className="mt-3 line-clamp-2 text-sm leading-5 text-slate-500">
-                {service.description ||
-                  "Personalized mathematics tutoring designed around the learner's needs, current level, and academic goals."}
-              </p>
-            </div>
-          </div>
+  function goBack() {
+    setStep((current) => Math.max(1, current - 1));
+  }
 
-                      {/* -------------------------------------------------------
-          * FEATURES
-          * ------------------------------------------------------- */}
-          <div className="mt-4">
+  async function submitIntake() {
+    if (step !== 7) return;
 
-            <h4 className="text-[15px] font-semibold tracking-tight text-emerald-900">
-              Designed for
-            </h4>
-
-            {grades.length > 0 ? (
-              <div className="mt-4 space-y-3">
-
-                {grades.slice(0, 4).map((grade) => (
-                  <div
-                    key={grade}
-                    className="flex items-center gap-2.5 text-sm text-slate-600"
-                  >
-
-                    {/* Checkmark */}
-                    <span className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-emerald-900 text-white">
-                      <svg
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        className="h-3 w-3"
-                      >
-                        <path
-                          d="M5 10.5L8.2 13.5L15 6.5"
-                          stroke="currentColor"
-                          strokeWidth="2.2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </span>
-
-                    <span className="leading-5">
-                      {grade}
-                    </span>
-
-                  </div>
-                ))}
-
-                {grades.length > 4 && (
-                  <div className="flex items-center gap-2.5 text-sm text-emerald-950">
-
-                    <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-emerald-950 text-[10px] font-semibold text-slate-500">
-                      +
-                    </span>
-
-                    <span>
-                      {grades.length - 4} more
-                    </span>
-
-                  </div>
-                )}
-
-              </div>
-            ) : (
-              <div className="mt-4 flex items-center gap-2.5 text-sm text-slate-500">
-
-                <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    className="h-3 w-3"
-                  >
-                    <path
-                      d="M5 10.5L8.2 13.5L15 6.5"
-                      stroke="currentColor"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </span>
-
-                Personalized mathematics tutoring
-
-              </div>
-            )}
-
-          </div>
-
-    
-
-
-          {/* -------------------------------------------------------
-          * CTA
-          * ------------------------------------------------------- */}
-          <Link
-            href={`/tutoring/${encodeURIComponent(service.id)}`}
-            className="mt-7 flex h-12 w-full items-center justify-center gap-2 rounded-sm bg-emerald-900 px-5 text-sm font-semibold text-white shadow-[0_6px_18px_rgba(16,185,129,0.18)] transition-all duration-200 hover:bg-emerald-600 hover:shadow-[0_8px_24px_rgba(16,185,129,0.24)] active:scale-[0.99]"
-          >
-            Explore this package
-
-            <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-          </Link>
-
-        </div>
-      </article>
-      );
+    for (let currentStep = 1; currentStep <= 6; currentStep += 1) {
+      const error = validateStep(currentStep);
+      if (error) {
+        setStep(currentStep);
+        toast.error(error);
+        return;
+      }
     }
 
-async function getPublicServices(): Promise<PublicService[]> {
-  return prisma.service.findMany({
-    where: {
-      type: "TUTORING",
-      status: "Published",
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      durationMinutes: true,
-      price: true,
-      currency: true,
-      subject: true,
-      gradeLevels: true,
-    },
-  });
-}
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/tutoring/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          gradeLevel,
+          studentName: studentName.trim(),
+          enrollmentType,
+          guardianName:
+            enrollmentType === "self"
+              ? studentName.trim()
+              : guardianName.trim(),
+          email: email.trim().toLowerCase(),
+          learnerEmail: learnerEmail.trim().toLowerCase() || null,
+          phoneNumber: phoneNumber.trim(),
+          preferredCallDateTime: preferredCallDateTime!.toISOString(),
+          preferredContact: "Phone",
+          additionalInfo: "",
+          status: "pending_planning",
+          paymentStatus: "not_requested",
+        }),
+      });
 
-export default async function TutoringPage() {
-  const services = await getPublicServices();
+      const data = (await response.json().catch(() => ({}))) as IntakeResponse;
+      if (!response.ok) {
+        throw new Error(
+          data.error || "We couldn't submit your request. Please try again.",
+        );
+      }
 
-  return (
-    <div
-      className={`${inter.variable} ${instrumentSerif.variable} min-h-screen overflow-x-hidden bg-background text-white`}
-      style={{ fontFamily: "var(--font-inter), sans-serif" }}
-    >
-      <MarketingNavbar />
+      setRequestId(typeof data.requestId === "string" ? data.requestId : "");
+      setSubmitted(true);
 
-      <main>
-        {/* HERO */}
-        <section className="relative overflow-hidden border-b border-white/8 bg-background">
-          <div className="relative z-10 mx-auto max-w-6xl px-6 pb-20 pt-16 sm:px-8 lg:px-12 lg:pb-24 lg:pt-20">
-            <div className="mx-auto max-w-4xl text-center">
-              <h1 className="mt-0 text-balance text-3xl font-extrabold leading-[0.96] tracking-[-0.06em] text-emerald-950 sm:text-4xl lg:text-5xl">
-                List of learning packages
-              </h1>
+      if (
+        data.emailConfirmationSent === false ||
+        data.adminNotificationSent === false
+      ) {
+        toast.warning(
+          data.message ||
+            "Your request was saved, but an email could not be sent.",
+        );
+      } else {
+        toast.success(
+          data.message || "Your tutoring request has been submitted.",
+        );
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to submit your request.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
-              <p className="mx-auto mt-6 max-w-4xl text-base leading-6 text-emerald-900 sm:text-md">
-                Explore our available tutoring services and learning programs.
-                Each service is designed to provide focused mathematics instruction,
-                practical support, and a clear path toward progress.
-              </p>
+  function validateStep(stepNumber: number) {
+    if (stepNumber === 1 && !enrollmentType)
+      return "Please choose who we are tutoring.";
+    if (stepNumber === 2 && !gradeLevel)
+      return "Please select the learner's grade level.";
+    if (stepNumber === 3 && !studentName.trim())
+      return "Please enter the learner's full name.";
+    if (stepNumber === 4 && enrollmentType !== "self" && !guardianName.trim()) {
+      return enrollmentType === "parent_guardian"
+        ? "Please enter the parent or guardian's full name."
+        : "Please enter your full name.";
+    }
+    if (stepNumber === 5) {
+      if (!email.trim() || !phoneNumber.trim())
+        return "Please enter your contact email address and phone number.";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
+        return "Please enter a valid contact email address.";
+    }
+    if (stepNumber === 6) {
+      if (!preferredCallDate || !preferredCallTime)
+        return "Please choose a date and time for the call.";
+      if (
+        !preferredCallDateTime ||
+        Number.isNaN(preferredCallDateTime.getTime()) ||
+        preferredCallDateTime.getTime() <= (currentTimeMs ?? 0)
+      )
+        return "Please choose a future date and time for the call.";
+    }
+    return "";
+  }
 
-              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <Link
-                  href="/tutoring/tutors"
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-900 px-7 text-sm font-semibold text-white transition hover:bg-emerald-950"
-                >
-                  Find a Tutor
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link
-                 href="/dashboard/live-help"
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-emerald-900 px-7 text-sm font-semibold text-emerald-950 transition hover:bg-white/[0.07]"
-                >
-                  Live Homework Help
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-               
-              </div>
-            </div>
+  if (submitted) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#f7f8f6] px-4 py-12 text-slate-900">
+        <section className="w-full max-w-2xl rounded-lg border border-slate-200 bg-white p-6 shadow-xl sm:p-10">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-800">
+            <CheckCircle2 className="h-7 w-7" />
           </div>
-        </section>
-
-        {/* SERVICES */}
-        <section id="services" className="border-b border-white/8 bg-background">
-          <div className="mx-auto max-w-6xl px-6 py-2 sm:px-8 lg:px-10">
-            {services.length > 0 ? (
-              <div className="grid gap-2 lg:grid-cols-3">
-                {services.map((service) => (
-                  <ServiceCard key={service.id} service={service} />
-                ))}
-              </div>
-            ) : (
-              <div className="mt-2 rounded-lg bg-white p-10 text-center">
-                <GraduationCap className="mx-auto h-8 w-8 text-white/30" />
-                <h3 className="mt-4 text-lg font-semibold text-emerald-950">
-                  Tutoring services are being prepared.
-                </h3>
-                <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-white/45">
-                  Please check back soon for available mathematics tutoring programs.
-                </p>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* INCLUDED BENEFITS */}
-        <section className="border-b mt-10 border-white/8 bg-background">
-          <div className="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
-            <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
-              <div>
-                <p className="text-sm font-semibold tracking-[0.18em] text-muted-foreground">
-                  What you can expect
-                </p>
-                <h2 className="mt-3 text-3xl font-semibold tracking-tight text-emerald-950 sm:text-4xl">
-                  Professional support from start to progress.
-                </h2>
-                <p className="mt-5 text-base leading-7 text-muted-foreground">
-                  Service details vary by program, but every tutoring experience is
-                  designed around meaningful mathematics learning.
-                </p>
-              </div>
-
-              <div className="grid gap-3">
-                {includedBenefits.map((item) => (
-                  <div
-                    key={item}
-                    className="flex items-start gap-4 rounded-sm bg-white p-3"
-                  >
-                    <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-950 text-white">
-                      <Check className="h-3.5 w-3.5" />
-                    </div>
-                    <span className="text-sm leading-6 text-emerald-950">{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* OUTCOMES */}
-        <section className="border-b border-white/8 bg-background">
-          <div className="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
-            <div className="mx-auto max-w-2xl text-center">
-              <p className="text-sm font-semibold tracking-[0.18em] text-emerald-950">
-                The goal
-              </p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-emerald-950 sm:text-4xl">
-                Designed for meaningful progress.
-              </h2>
-            </div>
-
-            <div className="mt-12 grid gap-5 md:grid-cols-3">
-              {outcomes.map((item) => {
-                const Icon = item.icon;
-
-                return (
-                  <div
-                    key={item.title}
-                    className="rounded-sm bg-white p-7"
-                  >
-                    <div className="flex h-11 w-11 items-center justify-center rounded-md bg-emerald-950 text-white">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <h3 className="mt-5 text-lg font-semibold text-emerald-950">
-                      {item.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      {item.text}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* HOW IT WORKS */}
-        <section className="border-b border-white/8 bg-background">
-          <div className="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
-            <div className="mx-auto max-w-2xl text-center">
-              <p className="text-sm font-semibold tracking-[0.18em] text-muted-foreground">
-                How it works
-              </p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-emerald-950 sm:text-4xl">
-                Simple, focused, consistent.
-              </h2>
-            </div>
-
-            <div className="mt-12 grid gap-5 md:grid-cols-3">
-              {[
-                ["01", "Choose", "Review the available tutoring services and select the one that fits your goals."],
-                ["02", "Enroll", "Create your learner account and continue with the selected service."],
-                ["03", "Learn", "Meet for live instruction, practice, feedback, and continued progress."],
-              ].map(([number, title, text]) => (
-                <div
-                  key={number}
-                  className="rounded-sm bg-white p-7"
-                >
-                  <span className="text-sm font-bold text-muted-foreground">{number}</span>
-                  <h3 className="mt-5 text-xl font-semibold text-emerald-900">{title}</h3>
-                  <p className="mt-3 text-sm leading-7 text-muted-foreground">{text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* PROGRAM DETAILS */}
-        <section className="border-b border-white/8 bg-background">
-          <div className="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
-            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-              {[
-                [Video, "Live instruction", "Learn face-to-face online with real-time guidance."],
-                [Clock3, "Structured support", "Choose a service with a format designed around its learning goals."],
-                [BookOpen, "Guided practice", "Work through problems with support and feedback."],
-                [ShieldCheck, "Supportive learning", "Ask questions and learn in a focused environment."],
-              ].map(([Icon, title, text]) => {
-                const ItemIcon = Icon as typeof Video;
-
-                return (
-                  <div
-                    key={title as string}
-                    className="rounded-sm bg-white p-6"
-                  >
-                    <ItemIcon className="h-5 w-5 text-emerald-900" />
-                    <h3 className="mt-4 text-sm font-semibold text-emerald-950">
-                      {title as string}
-                    </h3>
-                    <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                      {text as string}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* FINAL CTA */}
-        <section className="relative overflow-hidden bg-background">
-         
-          <div className="relative z-10 mx-auto max-w-4xl px-6 py-24 text-center sm:px-8">
-            <p className="text-sm font-semibold tracking-[0.18em] text-muted-foreground">
-              Start learning
+          <h1 className="mt-5 text-center text-2xl font-semibold">
+            Tutoring request sent!
+          </h1>
+          <p className="mx-auto mt-3 max-w-xl text-center text-sm leading-6 text-slate-600">
+            Thank you. We&apos;ll contact you to discuss the learner&apos;s
+            needs and agree on a suitable tutoring plan. We&apos;ll collect
+            learner account details and payment information during that
+            discussion. No payment has been taken or requested.
+          </p>
+          {requestId ? (
+            <p className="mt-4 text-center text-xs text-slate-500">
+              Request reference: {requestId}
             </p>
-            <h2 className="mt-4 text-4xl font-extrabold tracking-tight text-emerald-950 sm:text-5xl">
-              Find the right math support.
-            </h2>
-            <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-muted-foreground">
-              Explore the available services above, choose the learning experience
-              that fits your needs, and continue to enrollment.
-            </p>
-
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link
-                href="/tutors"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-none bg-emerald-900 px-7 text-sm font-semibold text-white transition hover:bg-emerald-950"
-              >
-                Find a Tutor
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                href="/dashboard/live-help"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-none border border-emerald-900 px-7 text-sm font-semibold text-emerald-950 transition hover:bg-white/[0.07]"
-              >
-                Live Homework Help
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-             
-              <Link
-                href="/"
-                className="inline-flex h-11 items-center justify-center rounded-sm border border-emerald-900 px-7 text-sm font-semibold text-emerald-950 transition hover:bg-white/[0.07]"
-              >
-                Back to Home
-              </Link>
-            </div>
+          ) : null}
+          <div className="mt-7 rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
+            <p className="font-semibold">What happens next?</p>
+            <ol className="mt-2 list-decimal space-y-1 pl-5">
+              <li>We review your request.</li>
+              <li>
+                We call at the preferred time, or contact you to arrange another
+                time.
+              </li>
+              <li>
+                We discuss the learning plan and collect any remaining details.
+              </li>
+              <li>
+                If you agree to the plan, we send a secure payment link to the
+                agreed payer.
+              </li>
+            </ol>
+          </div>
+          <div className="mt-7 text-center">
+            <Link
+              href="/"
+              className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-900 px-5 text-sm font-semibold text-white hover:bg-emerald-800"
+            >
+              Back to Justdy
+            </Link>
           </div>
         </section>
       </main>
+    );
+  }
 
-    </div>
+  return (
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-emerald-50/60 text-slate-900">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-emerald-100/50 to-transparent"
+      />
+      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col items-center justify-center px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+        <Link
+          href="/"
+          className="absolute left-4 top-5 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white/90 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-emerald-200 hover:text-emerald-800 sm:left-8 sm:top-8"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back Home
+        </Link>
+
+        <div className="mx-auto w-full max-w-3xl lg:px-4">
+          <header className="mb-7 text-center">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+              Let&apos;s plan your tutoring journey
+            </h1>
+            <p className="mx-auto text-center mb-3 max-w-3xl text-base leading-7 text-muted-foreground sm:text-sm">
+              Tell us a little about your learner and your availability so we
+              can help arrange the next steps.
+            </p>
+          </header>
+          <section className="mx-auto w-full max-w-3xl overflow-hidden rounded-lg border border-slate-200/80 bg-white shadow-xl shadow-slate-900/5">
+            <div className="border-b border-slate-100 px-5 pb-5 pt-4 sm:px-9 sm:pt-4">
+              <div
+                className="mt-4 h-2 overflow-hidden rounded-full bg-emerald-100"
+                role="progressbar"
+                aria-label="Onboarding progress"
+                aria-valuemin={1}
+                aria-valuemax={STEPS.length}
+                aria-valuenow={step}
+              >
+                <div
+                  className="h-full rounded-full bg-linear-to-r from-emerald-700 to-lime-500 transition-all duration-300 ease-out"
+                  style={{ width: `${(step / STEPS.length) * 100}%` }}
+                />
+              </div>
+            </div>
+            <div className="p-5 sm:p-9">
+              <form onSubmit={(event) => event.preventDefault()}>
+                {step === 1 && (
+                  <div className="space-y-5">
+                    <div>
+                      <h1 className="text-2xl font-semibold tracking-tight">
+                        Who are we tutoring?
+                      </h1>
+                    </div>
+                    <fieldset className="space-y-3">
+                      <legend className="sr-only">Who are we tutoring?</legend>
+                      {(
+                        [
+                          {
+                            value: "self",
+                            title: "Myself",
+                            detail: "I'm looking for tutoring for myself.",
+                          },
+                          {
+                            value: "parent_guardian",
+                            title: "My child",
+                            detail:
+                              "I'm a parent or guardian arranging tutoring for my child.",
+                          },
+                          {
+                            value: "other_person",
+                            title: "Someone else",
+                            detail:
+                              "I'm arranging tutoring for another person.",
+                          },
+                        ] as const
+                      ).map((option) => (
+                        <label
+                          key={option.value}
+                          className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${enrollmentType === option.value ? "border-emerald-700 bg-emerald-50 ring-2 ring-emerald-100" : "border-slate-200 hover:border-emerald-300"}`}
+                        >
+                          <input
+                            type="radio"
+                            name="enrollment-type"
+                            value={option.value}
+                            checked={enrollmentType === option.value}
+                            onChange={() => setEnrollmentType(option.value)}
+                            className="mt-1 accent-emerald-800"
+                          />
+                          <span>
+                            <span className="block text-sm font-semibold text-slate-900">
+                              {option.title}
+                            </span>
+                            <span className="mt-1 block text-sm leading-5 text-slate-600">
+                              {option.detail}
+                            </span>
+                          </span>
+                        </label>
+                      ))}
+                    </fieldset>
+                  </div>
+                )}
+
+                {step === 2 && (
+                  <div>
+                    <h1 className="mb-3 text-2xl font-semibold tracking-tight">
+                      {enrollmentType === "self"
+                        ? "What is your grade level?"
+                        : enrollmentType === "parent_guardian"
+                          ? "What is your child’s grade level?"
+                          : "What is the learner’s grade level?"}
+                    </h1>
+                    <select
+                      id="grade-level"
+                      required
+                      value={gradeLevel}
+                      onChange={(event) => setGradeLevel(event.target.value)}
+                      className={fieldClass}
+                    >
+                      <option value="">Choose a grade level</option>
+                      {GRADE_LEVELS.map((grade) => (
+                        <option key={grade} value={grade}>
+                          {grade}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {step === 3 && (
+                  <div>
+                    <h1 className="text-2xl font-semibold tracking-tight">
+                      {enrollmentType === "self"
+                        ? "What is your full name?"
+                        : enrollmentType === "parent_guardian"
+                          ? "What is your child’s full name?"
+                          : "What is the learner’s full name?"}
+                    </h1>
+                    <label
+                      htmlFor="student-name"
+                      className={`${labelClass} mt-3`}
+                    >
+                      <span className="sr-only">
+                        {enrollmentType === "self"
+                          ? "Your full name"
+                          : enrollmentType === "parent_guardian"
+                            ? "Your child’s full name"
+                            : "Learner’s full name"}
+                      </span>
+                      <input
+                        id="student-name"
+                        autoComplete="off"
+                        required
+                        value={studentName}
+                        onChange={(event) => setStudentName(event.target.value)}
+                        placeholder={
+                          enrollmentType === "self"
+                            ? "Enter your full name"
+                            : enrollmentType === "parent_guardian"
+                              ? "Enter your child’s full name"
+                              : "Enter the learner’s full name"
+                        }
+                        className={fieldClass}
+                      />
+                    </label>
+                  </div>
+                )}
+
+                {step === 4 && (
+                  <div className="space-y-4">
+                    <h1 className="text-2xl font-semibold tracking-tight">
+                      {enrollmentType === "parent_guardian"
+                        ? "What is your name?"
+                        : enrollmentType === "other_person"
+                          ? "What is your name as the person arranging tutoring?"
+                          : "Your details"}
+                    </h1>
+                    {enrollmentType === "self" ? (
+                      <p className="rounded-lg bg-slate-50 p-3 text-sm leading-5 text-slate-600">
+                        You&apos;re requesting tutoring for yourself, so
+                        we&apos;ll use the learner name you provided.
+                      </p>
+                    ) : (
+                      <label htmlFor="guardian-name" className={labelClass}>
+                        {enrollmentType === "parent_guardian"
+                          ? "Parent or guardian&apos;s full name"
+                          : "Your full name"}
+                        <input
+                          id="guardian-name"
+                          autoComplete="name"
+                          required
+                          value={guardianName}
+                          onChange={(event) =>
+                            setGuardianName(event.target.value)
+                          }
+                          placeholder={
+                            enrollmentType === "parent_guardian"
+                              ? "Enter parent or guardian's full name"
+                              : "Enter your full name"
+                          }
+                          className={fieldClass}
+                        />
+                      </label>
+                    )}
+                  </div>
+                )}
+
+                {step === 5 && (
+                  <div className="space-y-4">
+                    <h1 className="text-2xl font-semibold tracking-tight">
+                      {enrollmentType === "self"
+                        ? "How can we contact you?"
+                        : enrollmentType === "parent_guardian"
+                          ? "How can we contact you about your child’s tutoring?"
+                          : "How can we contact you about the learner’s tutoring?"}
+                    </h1>
+                    <label htmlFor="parent-email" className={labelClass}>
+                      <input
+                        id="parent-email"
+                        type="email"
+                        autoComplete="email"
+                        required
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                        placeholder="contact@example.com"
+                        className={fieldClass}
+                      />
+                    </label>
+                    <label htmlFor="parent-phone" className={labelClass}>
+                      <input
+                        id="parent-phone"
+                        type="tel"
+                        autoComplete="tel"
+                        required
+                        value={phoneNumber}
+                        onChange={(event) => setPhoneNumber(event.target.value)}
+                        placeholder="Best phone number to reach you"
+                        className={fieldClass}
+                      />
+                    </label>
+                  </div>
+                )}
+
+                {step === 6 && (
+                  <div>
+                    <h1 className="text-2xl font-semibold tracking-tight">
+                      When can we call to discuss tutoring?
+                    </h1>
+
+                    <div className="mt-5 grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
+                      <section
+                        className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+                        aria-label="Choose a call date"
+                      >
+                        <div className="p-4 sm:p-5">
+                          <div className="mb-4 flex items-center justify-between">
+                            <h2 className="font-bold text-slate-900">
+                              {calendarMonthLabel}
+                            </h2>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => changeCalendarMonth(-1)}
+                                disabled={
+                                  !localToday ||
+                                  `${calendarMonth.year}-${String(calendarMonth.month + 1).padStart(2, "0")}` <=
+                                    localToday.slice(0, 7)
+                                }
+                                aria-label="Previous month"
+                                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30"
+                              >
+                                <ChevronLeft className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => changeCalendarMonth(1)}
+                                aria-label="Next month"
+                                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-100"
+                              >
+                                <ChevronRight className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-7 gap-1 text-center">
+                            {[
+                              "Sun",
+                              "Mon",
+                              "Tue",
+                              "Wed",
+                              "Thu",
+                              "Fri",
+                              "Sat",
+                            ].map((day) => (
+                              <div
+                                key={day}
+                                className="py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400"
+                              >
+                                {day}
+                              </div>
+                            ))}
+                            {calendarCells.map((day, index) => {
+                              if (day === null)
+                                return (
+                                  <div
+                                    key={`empty-${index}`}
+                                    aria-hidden="true"
+                                  />
+                                );
+                              const dateValue = [
+                                calendarMonth.year,
+                                String(calendarMonth.month + 1).padStart(
+                                  2,
+                                  "0",
+                                ),
+                                String(day).padStart(2, "0"),
+                              ].join("-");
+                              const disabled =
+                                !localToday || dateValue < localToday;
+                              const selected = preferredCallDate === dateValue;
+                              const isToday = localToday === dateValue;
+                              return (
+                                <button
+                                  key={dateValue}
+                                  type="button"
+                                  disabled={disabled}
+                                  onClick={() => chooseCalendarDay(day)}
+                                  aria-pressed={selected}
+                                  aria-label={new Date(
+                                    `${dateValue}T12:00:00`,
+                                  ).toLocaleDateString(undefined, {
+                                    weekday: "long",
+                                    month: "long",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  })}
+                                  className={`mx-auto flex h-9 w-9 items-center justify-center rounded-lg text-sm transition sm:h-10 sm:w-10 ${
+                                    selected
+                                      ? "bg-indigo-700 font-bold text-white shadow-md shadow-indigo-200"
+                                      : isToday
+                                        ? "border border-indigo-300 font-bold text-indigo-700"
+                                        : "text-slate-700 hover:bg-indigo-50 hover:text-indigo-800"
+                                  } disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent`}
+                                >
+                                  {day}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </section>
+
+                      <section
+                        className="rounded-lg border border-slate-200 bg-slate-50 p-5"
+                        aria-label="Choose a call time"
+                      >
+                        <div className="flex items-center gap-2 text-sm font-semibold text-indigo-900">
+                          <Clock3 className="h-5 w-5" /> SELECT A TIME
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-slate-500">
+                          {preferredCallDate
+                            ? `Choose a time for ${new Date(`${preferredCallDate}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}.`
+                            : "Choose a date first, then set your preferred time."}
+                        </p>
+                        <label
+                          htmlFor="preferred-call-time"
+                          className={`${labelClass} mt-5`}
+                        >
+                          Preferred call time
+                          <input
+                            id="preferred-call-time"
+                            type="time"
+                            required
+                            min={minCallTime}
+                            disabled={!preferredCallDate}
+                            value={preferredCallTime}
+                            onChange={(event) =>
+                              setPreferredCallTime(event.target.value)
+                            }
+                            className={`${fieldClass} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400`}
+                          />
+                        </label>
+                        <div className="mt-4 rounded-xl border border-indigo-100 bg-white p-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                            Your selection
+                          </p>
+                          <p className="mt-2 text-sm font-semibold text-slate-900">
+                            {preferredCallDate
+                              ? new Date(
+                                  `${preferredCallDate}T12:00:00`,
+                                ).toLocaleDateString(undefined, {
+                                  weekday: "long",
+                                  month: "long",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })
+                              : "No date selected"}
+                          </p>
+                          <p className="mt-1 text-sm text-slate-600">
+                            {preferredCallTime
+                              ? new Date(
+                                  `2000-01-01T${preferredCallTime}`,
+                                ).toLocaleTimeString(undefined, {
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                })
+                              : "No time selected"}
+                          </p>
+                        </div>
+                      </section>
+                    </div>
+                    <p className="mt-3 text-xs leading-5 text-slate-500">
+                      {callDateLabel
+                        ? `Selected call preference: ${callDateLabel}`
+                        : "All times are shown in your local time zone. Your request will not confirm an appointment."}
+                    </p>
+                  </div>
+                )}
+
+                {step === 7 && (
+                  <div>
+                    <h1 className="text-2xl font-semibold tracking-tight">
+                      Review and submit
+                    </h1>
+                    <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                      <p className="font-semibold text-emerald-950">
+                        No payment is due now
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-emerald-900">
+                        This request only helps us arrange a discussion.
+                        We&apos;ll collect learner email, payment recipient, and
+                        other tutoring-plan details during the conversation.
+                      </p>
+                    </div>
+                    <dl className="mt-4 divide-y divide-slate-100">
+                      <ReviewRow
+                        label={
+                          enrollmentType === "self"
+                            ? "Your grade level"
+                            : enrollmentType === "parent_guardian"
+                              ? "Your child’s grade level"
+                              : "Learner grade level"
+                        }
+                        value={gradeLevel}
+                      />
+                      <ReviewRow
+                        label={
+                          enrollmentType === "self"
+                            ? "Your full name"
+                            : enrollmentType === "parent_guardian"
+                              ? "Your child’s full name"
+                              : "Learner full name"
+                        }
+                        value={studentName}
+                      />
+                      <ReviewRow
+                        label="Who is enrolling?"
+                        value={
+                          enrollmentType === "self"
+                            ? "Learner enrolling themselves"
+                            : enrollmentType === "parent_guardian"
+                              ? "Parent or guardian"
+                              : enrollmentType === "other_person"
+                                ? "Someone arranging tutoring for the learner"
+                                : ""
+                        }
+                      />
+                      {enrollmentType !== "self" ? (
+                        <ReviewRow
+                          label={
+                            enrollmentType === "parent_guardian"
+                              ? "Parent / guardian name"
+                              : "Organizer name"
+                          }
+                          value={guardianName}
+                        />
+                      ) : null}
+                      <ReviewRow
+                        label={
+                          enrollmentType === "self"
+                            ? "Your email / contact email"
+                            : "Contact email"
+                        }
+                        value={email}
+                      />
+                      <ReviewRow
+                        label={
+                          enrollmentType === "self"
+                            ? "Your phone number"
+                            : "Contact phone number"
+                        }
+                        value={phoneNumber}
+                      />
+                      <ReviewRow
+                        label="Learner email (for learner account)"
+                        value={learnerEmail.trim().toLowerCase()}
+                      />
+                      <ReviewRow
+                        label="Preferred call date and time"
+                        value={callDateLabel}
+                      />
+                    </dl>
+                    <p className="mt-4 text-xs leading-5 text-slate-500">
+                      Submitting asks Justdy to contact you about tutoring. It
+                      does not confirm a tutoring session, create a learner
+                      account, or initiate payment.
+                    </p>
+                  </div>
+                )}
+
+                <div className="mt-8 flex items-center justify-between border-t border-slate-100 pt-6">
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    disabled={step === 1 || submitting}
+                    className="inline-flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 disabled:invisible"
+                  >
+                    <ArrowLeft className="h-4 w-4" /> Back
+                  </button>
+                  {step < 7 ? (
+                    <button
+                      type="button"
+                      onClick={goNext}
+                      className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#122245] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-[#122245] hover:shadow-md"
+                    >
+                      Continue <ArrowRight className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void submitIntake()}
+                      disabled={submitting}
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#122245] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-900 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />{" "}
+                          Submitting request…
+                        </>
+                      ) : (
+                        <>
+                          Submit tutoring request{" "}
+                          <ArrowRight className="h-4 w-4" />
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
   );
 }

@@ -6,8 +6,7 @@ export default async function DashboardPage() {
   const data = await getDashboardData();
   const { account } = data;
 
-  const hasDashboard =
-    account.isLearner || account.isTeacherAdmin;
+  const hasDashboard = account.isLearner || account.isTeacherAdmin;
 
   if (!hasDashboard) {
     return null;
@@ -23,8 +22,8 @@ export default async function DashboardPage() {
           </h1>
 
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
-            Everything you need for learning, teaching, and managing your
-            Justdy experience in one place.
+            Everything you need for learning, teaching, and managing your Justdy
+            experience in one place.
           </p>
         </header>
 

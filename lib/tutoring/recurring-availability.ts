@@ -21,10 +21,7 @@ function dateKey(year: number, month: number, day: number) {
   )}`;
 }
 
-function getDatePartsInTimeZone(
-  date: Date,
-  timeZone: string,
-) {
+function getDatePartsInTimeZone(date: Date, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
     year: "numeric",
@@ -43,24 +40,13 @@ function getDatePartsInTimeZone(
     year: Number(map.year),
     month: Number(map.month),
     day: Number(map.day),
-    weekday: [
-      "Sun",
-      "Mon",
-      "Tue",
-      "Wed",
-      "Thu",
-      "Fri",
-      "Sat",
-    ].indexOf(map.weekday),
+    weekday: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(
+      map.weekday,
+    ),
   };
 }
 
-function addDays(
-  year: number,
-  month: number,
-  day: number,
-  amount: number,
-) {
+function addDays(year: number, month: number, day: number, amount: number) {
   const date = new Date(Date.UTC(year, month - 1, day));
   date.setUTCDate(date.getUTCDate() + amount);
 
@@ -83,9 +69,7 @@ function zonedDateTimeToUtc(
 ) {
   const [hour, minute] = time.split(":").map(Number);
 
-  let guess = new Date(
-    Date.UTC(year, month - 1, day, hour, minute, 0, 0),
-  );
+  let guess = new Date(Date.UTC(year, month - 1, day, hour, minute, 0, 0));
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const parts = new Intl.DateTimeFormat("en-US", {
@@ -112,13 +96,7 @@ function zonedDateTimeToUtc(
       Number(map.minute),
     );
 
-    const desired = Date.UTC(
-      year,
-      month - 1,
-      day,
-      hour,
-      minute,
-    );
+    const desired = Date.UTC(year, month - 1, day, hour, minute);
 
     const difference = desired - actual;
 
@@ -182,16 +160,9 @@ export async function materializeRecurringAvailability(
       continue;
     }
 
-    const localToday = getDatePartsInTimeZone(
-      now,
-      rule.timeZone,
-    );
+    const localToday = getDatePartsInTimeZone(now, rule.timeZone);
 
-    for (
-      let offset = 0;
-      offset <= MATERIALIZE_DAYS;
-      offset += 1
-    ) {
+    for (let offset = 0; offset <= MATERIALIZE_DAYS; offset += 1) {
       const target = addDays(
         localToday.year,
         localToday.month,
@@ -199,22 +170,14 @@ export async function materializeRecurringAvailability(
         offset,
       );
 
-      const targetDateKey = dateKey(
-        target.year,
-        target.month,
-        target.day,
-      );
+      const targetDateKey = dateKey(target.year, target.month, target.day);
 
       if (rule.excludedDates.includes(targetDateKey)) {
         continue;
       }
 
       const targetWeekday = new Date(
-        Date.UTC(
-          target.year,
-          target.month - 1,
-          target.day,
-        ),
+        Date.UTC(target.year, target.month - 1, target.day),
       ).getUTCDay();
 
       if (targetWeekday !== rule.dayOfWeek) {

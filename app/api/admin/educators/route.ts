@@ -16,7 +16,9 @@ export async function GET() {
     );
   }
 
-  const role = String(session.user.role ?? "").trim().toUpperCase();
+  const role = String(session.user.role ?? "")
+    .trim()
+    .toUpperCase();
 
   if (role !== "ADMIN") {
     return NextResponse.json(

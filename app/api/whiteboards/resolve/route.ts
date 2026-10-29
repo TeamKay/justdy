@@ -98,7 +98,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-
     /*
      * ============================================================
      * CANONICAL BOOKING WHITEBOARD
@@ -137,7 +136,9 @@ export async function POST(request: NextRequest) {
 
       if (!isLearner && !isTutor) {
         return NextResponse.json(
-          { error: "You are not authorized to access this session whiteboard." },
+          {
+            error: "You are not authorized to access this session whiteboard.",
+          },
           { status: 403 },
         );
       }
@@ -259,7 +260,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (appointment.educatorId === user.id && !(await getVerifiedTutor(user.id))) {
+    if (
+      appointment.educatorId === user.id &&
+      !(await getVerifiedTutor(user.id))
+    ) {
       return NextResponse.json(
         { error: "Your tutor verification is not currently active." },
         { status: 403 },

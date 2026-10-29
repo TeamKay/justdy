@@ -43,8 +43,7 @@ function StatusBadge({
   variant?: "neutral" | "indigo" | "emerald" | "amber";
 }) {
   const styles = {
-    neutral:
-      "border-border bg-muted text-muted-foreground",
+    neutral: "border-border bg-muted text-muted-foreground",
     indigo:
       "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-300",
     emerald:
@@ -152,15 +151,11 @@ function LearningOverview({
                 </p>
 
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                  <span>
-                    {nextLesson.educator?.name ?? "Teacher"}
-                  </span>
+                  <span>{nextLesson.educator?.name ?? "Teacher"}</span>
 
                   <span aria-hidden="true">•</span>
 
-                  <span>
-                    {nextLesson.subject ?? "Mathematics"}
-                  </span>
+                  <span>{nextLesson.subject ?? "Mathematics"}</span>
                 </div>
               </div>
             ),
@@ -173,7 +168,6 @@ function LearningOverview({
 
                 <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Clock3 className="h-3.5 w-3.5" />
-
                   {formatTime(nextLesson.startTime)} –{" "}
                   {formatTime(nextLesson.endTime)}
                 </p>
@@ -186,18 +180,14 @@ function LearningOverview({
                 Ready to join
               </StatusBadge>
             ) : (
-              <StatusBadge variant="indigo">
-                Upcoming
-              </StatusBadge>
+              <StatusBadge variant="indigo">Upcoming</StatusBadge>
             ),
 
             action: (
               <Link
                 href={
                   canJoinLesson(nextLesson)
-                    ? `/tutoring/sessions/${encodeURIComponent(
-                        nextLesson.id,
-                      )}`
+                    ? `/tutoring/sessions/${encodeURIComponent(nextLesson.id)}`
                     : nextLesson.tutoringSessionId
                       ? `/tutoring/sessions/${encodeURIComponent(
                           nextLesson.tutoringSessionId,
@@ -267,20 +257,14 @@ function LearningOverview({
 
         status:
           progress >= 100 ? (
-            <StatusBadge variant="emerald">
-              Completed
-            </StatusBadge>
+            <StatusBadge variant="emerald">Completed</StatusBadge>
           ) : (
-            <StatusBadge variant="indigo">
-              Learning
-            </StatusBadge>
+            <StatusBadge variant="indigo">Learning</StatusBadge>
           ),
 
         action: (
           <Link
-            href={`/courses/${encodeURIComponent(
-              enrollment.course.slug,
-            )}`}
+            href={`/courses/${encodeURIComponent(enrollment.course.slug)}`}
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted"
           >
             Continue
@@ -312,8 +296,7 @@ function LearningOverview({
             {formatDate(activity.createdAt)}
           </p>
 
-          {activity.score !== null &&
-          activity.maxScore !== null ? (
+          {activity.score !== null && activity.maxScore !== null ? (
             <p className="mt-1 text-xs text-muted-foreground">
               Score: {activity.score}/{activity.maxScore}
             </p>
@@ -327,13 +310,9 @@ function LearningOverview({
 
       status:
         activity.status.toLowerCase() === "completed" ? (
-          <StatusBadge variant="emerald">
-            Completed
-          </StatusBadge>
+          <StatusBadge variant="emerald">Completed</StatusBadge>
         ) : (
-          <StatusBadge variant="amber">
-            {activity.status}
-          </StatusBadge>
+          <StatusBadge variant="amber">{activity.status}</StatusBadge>
         ),
 
       action: (
@@ -353,10 +332,7 @@ function LearningOverview({
 
       content: (
         <div className="flex min-w-0 items-center gap-3">
-          <PersonAvatar
-            person={session.educator}
-            size={38}
-          />
+          <PersonAvatar person={session.educator} size={38} />
 
           <div className="min-w-0">
             <p className="truncate font-semibold text-foreground">
@@ -377,9 +353,7 @@ function LearningOverview({
           </p>
 
           <p className="mt-1 text-xs text-muted-foreground">
-            {session.service?.subject ??
-              session.topic ??
-              "Tutoring"}
+            {session.service?.subject ?? session.topic ?? "Tutoring"}
           </p>
         </div>
       ),
@@ -467,17 +441,11 @@ function LearningOverview({
                       <TypeBadge type={row.type} />
                     </td>
 
-                    <td className="px-5 py-4 align-middle">
-                      {row.content}
-                    </td>
+                    <td className="px-5 py-4 align-middle">{row.content}</td>
 
-                    <td className="px-5 py-4 align-middle">
-                      {row.date}
-                    </td>
+                    <td className="px-5 py-4 align-middle">{row.date}</td>
 
-                    <td className="px-5 py-4 align-middle">
-                      {row.status}
-                    </td>
+                    <td className="px-5 py-4 align-middle">{row.status}</td>
 
                     <td className="px-5 py-4 text-right align-middle">
                       {row.action}
@@ -491,10 +459,7 @@ function LearningOverview({
           {/* Mobile cards */}
           <div className="divide-y divide-border/60 md:hidden">
             {rows.map((row) => (
-              <div
-                key={row.id}
-                className="space-y-4 p-5"
-              >
+              <div key={row.id} className="space-y-4 p-5">
                 <TypeBadge type={row.type} />
 
                 <div>{row.content}</div>
@@ -504,9 +469,7 @@ function LearningOverview({
 
                   <div>{row.status}</div>
 
-                  <div className="ml-auto">
-                    {row.action}
-                  </div>
+                  <div className="ml-auto">{row.action}</div>
                 </div>
               </div>
             ))}

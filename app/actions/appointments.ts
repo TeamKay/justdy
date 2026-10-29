@@ -89,13 +89,7 @@ export async function getEducatorById(id: string) {
 
         verificationStatus: educator.verificationStatus,
 
-        specialty: educator.facilitatorProfile?.specialty ?? null,
-
-        experience: educator.facilitatorProfile?.experience ?? null,
-
-        description: educator.facilitatorProfile?.description ?? null,
-
-        credentialUrl: educator.facilitatorProfile?.credentialUrl ?? null,
+       
       },
     };
   } catch (error) {
@@ -199,15 +193,12 @@ export async function bookAppointment(formData: FormData) {
         },
       });
 
-     if (
-  !student ||
-  !(await hasCapability(student.id, CAPABILITIES.LEARN))
-) {
-  return {
-    success: false,
-    message: "Learner not found or not authorized to learn",
-  };
-}
+      if (!student || !(await hasCapability(student.id, CAPABILITIES.LEARN))) {
+        return {
+          success: false,
+          message: "Learner not found or not authorized to learn",
+        };
+      }
 
       // 3. Validate Educator
       const educator = await tx.user.findUnique({
@@ -217,15 +208,15 @@ export async function bookAppointment(formData: FormData) {
         },
       });
 
-     if (
-  !educator ||
-  !(await hasCapability(educator.id, CAPABILITIES.TEACH))
-) {
-  return {
-    success: false,
-    message: "Educator not found or not authorized to teach",
-  };
-}
+      if (
+        !educator ||
+        !(await hasCapability(educator.id, CAPABILITIES.TEACH))
+      ) {
+        return {
+          success: false,
+          message: "Educator not found or not authorized to teach",
+        };
+      }
 
       // 4. Time Overlap Check for Educator (Unchanged - ensures the educator is free)
       const overLappingAppointment = await tx.appointment.findFirst({

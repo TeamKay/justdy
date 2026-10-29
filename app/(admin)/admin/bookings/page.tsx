@@ -17,11 +17,7 @@ import {
 import prisma from "@/lib/prisma";
 
 type BookingStatus =
-  | "Scheduled"
-  | "PendingPayment"
-  | "Completed"
-  | "Cancelled"
-  | "NoShow";
+  "Scheduled" | "PendingPayment" | "Completed" | "Cancelled" | "NoShow";
 
 type SearchParams = {
   search?: string;
@@ -47,14 +43,10 @@ function formatTime(date: Date) {
   });
 }
 
-function formatMoney(
-  amount: number | null | undefined,
-  currency = "USD",
-) {
+function formatMoney(amount: number | null | undefined, currency = "USD") {
   if (amount === null || amount === undefined) {
     return "—";
   }
-
 
   const value = amount / 100;
 
@@ -196,8 +188,6 @@ export default async function AdminBookingsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
- 
-
   const params = await searchParams;
 
   const search = params.search?.trim() ?? "";
@@ -256,8 +246,6 @@ export default async function AdminBookingsPage({
       lt: startOfToday,
     };
   }
-
-  
 
   const searchWhere = search
     ? {
@@ -409,10 +397,7 @@ export default async function AdminBookingsPage({
     where,
   });
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(totalFilteredBookings / PAGE_SIZE),
-  );
+  const totalPages = Math.max(1, Math.ceil(totalFilteredBookings / PAGE_SIZE));
 
   const safePage = Math.min(currentPage, totalPages);
 
@@ -491,8 +476,6 @@ export default async function AdminBookingsPage({
           status: true,
         },
       },
-
-      
     },
   });
 
@@ -500,21 +483,13 @@ export default async function AdminBookingsPage({
    * Service prices are stored in cents/smallest currency unit.
    */
 
-  const totalRevenue = totalRevenueResult.reduce(
-    (total, booking) => {
-      return total + (booking.service?.price ?? 0);
-    },
-    0,
-  );
+  const totalRevenue = totalRevenueResult.reduce((total, booking) => {
+    return total + (booking.service?.price ?? 0);
+  }, 0);
 
+  const previousPage = safePage > 1 ? safePage - 1 : null;
 
-  const previousPage =
-    safePage > 1 ? safePage - 1 : null;
-
-  const nextPage =
-    safePage < totalPages
-      ? safePage + 1
-      : null;
+  const nextPage = safePage < totalPages ? safePage + 1 : null;
 
   return (
     <div className="space-y-6 mx-auto max-w-6xl mt-8">
@@ -524,7 +499,6 @@ export default async function AdminBookingsPage({
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-         
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">
             My Bookings
           </h1>
@@ -560,9 +534,7 @@ export default async function AdminBookingsPage({
               <CalendarDays className="h-5 w-5" />
             </div>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Total bookings
-          </p>
+          <p className="mt-3 text-xs text-muted-foreground">Total bookings</p>
         </div>
 
         {/* Pending */}
@@ -578,9 +550,7 @@ export default async function AdminBookingsPage({
               <Clock3 className="h-5 w-5" />
             </div>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Pending payment
-          </p>
+          <p className="mt-3 text-xs text-muted-foreground">Pending payment</p>
         </div>
 
         {/* Scheduled */}
@@ -614,9 +584,7 @@ export default async function AdminBookingsPage({
               <UserRound className="h-5 w-5" />
             </div>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-           Booking value
-          </p>
+          <p className="mt-3 text-xs text-muted-foreground">Booking value</p>
         </div>
       </div>
 
@@ -630,19 +598,14 @@ export default async function AdminBookingsPage({
         <div className="border-b border-border/70 p-5">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
             <div>
-              <h2 className="text-base font-semibold">
-                All bookings
-              </h2>
+              <h2 className="text-base font-semibold">All bookings</h2>
 
               <p className="mt-1 text-sm text-muted-foreground">
                 Real-time tutoring bookings from your database.
               </p>
             </div>
 
-            <form
-              method="GET"
-              className="flex flex-wrap items-center gap-2"
-            >
+            <form method="GET" className="flex flex-wrap items-center gap-2">
               {/* Search */}
 
               <div className="relative">
@@ -665,21 +628,13 @@ export default async function AdminBookingsPage({
                   defaultValue={selectedDate}
                   className="h-10 appearance-none rounded-md border border-border/70 bg-background pl-3 pr-9 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
                 >
-                  <option value="ALL">
-                    All dates
-                  </option>
+                  <option value="ALL">All dates</option>
 
-                  <option value="TODAY">
-                    Today
-                  </option>
+                  <option value="TODAY">Today</option>
 
-                  <option value="UPCOMING">
-                    Upcoming
-                  </option>
+                  <option value="UPCOMING">Upcoming</option>
 
-                  <option value="PAST">
-                    Past
-                  </option>
+                  <option value="PAST">Past</option>
                 </select>
 
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -695,29 +650,17 @@ export default async function AdminBookingsPage({
                   defaultValue={selectedStatus ?? "ALL"}
                   className="h-10 appearance-none rounded-lg border border-border/70 bg-background pl-9 pr-9 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10"
                 >
-                  <option value="ALL">
-                    All statuses
-                  </option>
+                  <option value="ALL">All statuses</option>
 
-                  <option value="Scheduled">
-                    Scheduled
-                  </option>
+                  <option value="Scheduled">Scheduled</option>
 
-                  <option value="PendingPayment">
-                    Pending payment
-                  </option>
+                  <option value="PendingPayment">Pending payment</option>
 
-                  <option value="Completed">
-                    Completed
-                  </option>
+                  <option value="Completed">Completed</option>
 
-                  <option value="Cancelled">
-                    Cancelled
-                  </option>
+                  <option value="Cancelled">Cancelled</option>
 
-                  <option value="NoShow">
-                    No show
-                  </option>
+                  <option value="NoShow">No show</option>
                 </select>
 
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -778,10 +721,7 @@ export default async function AdminBookingsPage({
             <tbody>
               {bookings.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={8}
-                    className="px-5 py-16 text-center"
-                  >
+                  <td colSpan={8} className="px-5 py-16 text-center">
                     <div className="mx-auto flex max-w-sm flex-col items-center">
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                         <CalendarDays className="h-5 w-5 text-muted-foreground" />
@@ -799,14 +739,11 @@ export default async function AdminBookingsPage({
                 </tr>
               ) : (
                 bookings.map((booking) => {
-                  const statusStyles =
-                    getStatusStyles(
-                      booking.status as BookingStatus,
-                    );
+                  const statusStyles = getStatusStyles(
+                    booking.status as BookingStatus,
+                  );
 
-                  const serviceTitle =
-                    booking.service?.title ??
-                    "Tutoring";
+                  const serviceTitle = booking.service?.title ?? "Tutoring";
 
                   const subject =
                     booking.subject ??
@@ -878,25 +815,17 @@ export default async function AdminBookingsPage({
 
                       <td className="px-5 py-4">
                         <div>
-                          <p className="text-sm font-medium">
-                            {subject}
-                          </p>
+                          <p className="text-sm font-medium">{subject}</p>
 
                           {booking.gradeLevel ? (
                             <p className="mt-1 text-xs text-muted-foreground">
-                              Grade{" "}
-                              {booking.gradeLevel}
+                              Grade {booking.gradeLevel}
                             </p>
                           ) : null}
 
-                          {booking.service
-                            ?.durationMinutes ? (
+                          {booking.service?.durationMinutes ? (
                             <p className="mt-1 text-xs text-muted-foreground">
-                              {
-                                booking.service
-                                  .durationMinutes
-                              }{" "}
-                              minutes
+                              {booking.service.durationMinutes} minutes
                             </p>
                           ) : null}
                         </div>
@@ -907,23 +836,17 @@ export default async function AdminBookingsPage({
                       <td className="px-5 py-4">
                         <div>
                           <p className="text-sm font-medium">
-                            {formatDate(
-                              booking.startTime,
-                            )}
+                            {formatDate(booking.startTime)}
                           </p>
 
                           <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                             <Clock3 className="h-3.5 w-3.5" />
 
-                            {formatTime(
-                              booking.startTime,
-                            )}
+                            {formatTime(booking.startTime)}
 
                             <span>—</span>
 
-                            {formatTime(
-                              booking.endTime,
-                            )}
+                            {formatTime(booking.endTime)}
                           </div>
                         </div>
                       </td>
@@ -938,9 +861,7 @@ export default async function AdminBookingsPage({
                             className={`h-1.5 w-1.5 rounded-full ${statusStyles.dot}`}
                           />
 
-                          {getStatusLabel(
-                            booking.status as BookingStatus,
-                          )}
+                          {getStatusLabel(booking.status as BookingStatus)}
                         </span>
                       </td>
 
@@ -950,8 +871,7 @@ export default async function AdminBookingsPage({
                         <p className="text-sm font-semibold">
                           {formatMoney(
                             booking.service?.price,
-                            booking.service?.currency ??
-                              "USD",
+                            booking.service?.currency ?? "USD",
                           )}
                         </p>
 
@@ -980,10 +900,8 @@ export default async function AdminBookingsPage({
                             <MoreHorizontal className="h-4 w-4" />
                           </button>
 
-                          {booking.status !==
-                            "Cancelled" &&
-                          booking.status !==
-                            "Completed" ? (
+                          {booking.status !== "Cancelled" &&
+                          booking.status !== "Completed" ? (
                             <button
                               type="button"
                               className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition hover:bg-red-50 dark:hover:bg-red-950/30"
@@ -1013,9 +931,7 @@ export default async function AdminBookingsPage({
                 <CalendarDays className="h-5 w-5 text-muted-foreground" />
               </div>
 
-              <h3 className="mt-4 text-sm font-semibold">
-                No bookings found
-              </h3>
+              <h3 className="mt-4 text-sm font-semibold">No bookings found</h3>
 
               <p className="mt-1 text-sm text-muted-foreground">
                 Try changing your search or filters.
@@ -1023,10 +939,9 @@ export default async function AdminBookingsPage({
             </div>
           ) : (
             bookings.map((booking) => {
-              const statusStyles =
-                getStatusStyles(
-                  booking.status as BookingStatus,
-                );
+              const statusStyles = getStatusStyles(
+                booking.status as BookingStatus,
+              );
 
               const subject =
                 booking.subject ??
@@ -1034,10 +949,7 @@ export default async function AdminBookingsPage({
                 "General tutoring";
 
               return (
-                <div
-                  key={booking.id}
-                  className="space-y-4 p-5"
-                >
+                <div key={booking.id} className="space-y-4 p-5">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="font-mono text-xs font-semibold">
@@ -1045,8 +957,7 @@ export default async function AdminBookingsPage({
                       </p>
 
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {booking.service?.title ??
-                          "Tutoring"}
+                        {booking.service?.title ?? "Tutoring"}
                       </p>
                     </div>
 
@@ -1057,9 +968,7 @@ export default async function AdminBookingsPage({
                         className={`h-1.5 w-1.5 rounded-full ${statusStyles.dot}`}
                       />
 
-                      {getStatusLabel(
-                        booking.status as BookingStatus,
-                      )}
+                      {getStatusLabel(booking.status as BookingStatus)}
                     </span>
                   </div>
 
@@ -1121,9 +1030,7 @@ export default async function AdminBookingsPage({
                         Subject
                       </p>
 
-                      <p className="mt-1 text-sm font-medium">
-                        {subject}
-                      </p>
+                      <p className="mt-1 text-sm font-medium">{subject}</p>
                     </div>
 
                     <div>
@@ -1132,9 +1039,7 @@ export default async function AdminBookingsPage({
                       </p>
 
                       <p className="mt-1 text-sm font-medium">
-                        {formatDate(
-                          booking.startTime,
-                        )}
+                        {formatDate(booking.startTime)}
                       </p>
                     </div>
 
@@ -1144,9 +1049,7 @@ export default async function AdminBookingsPage({
                       </p>
 
                       <p className="mt-1 text-sm font-medium">
-                        {formatTime(
-                          booking.startTime,
-                        )}
+                        {formatTime(booking.startTime)}
                       </p>
                     </div>
 
@@ -1158,8 +1061,7 @@ export default async function AdminBookingsPage({
                       <p className="mt-1 text-sm font-semibold">
                         {formatMoney(
                           booking.service?.price,
-                          booking.service?.currency ??
-                            "USD",
+                          booking.service?.currency ?? "USD",
                         )}
                       </p>
                     </div>
@@ -1174,10 +1076,8 @@ export default async function AdminBookingsPage({
                       View
                     </Link>
 
-                    {booking.status !==
-                      "Cancelled" &&
-                    booking.status !==
-                      "Completed" ? (
+                    {booking.status !== "Cancelled" &&
+                    booking.status !== "Completed" ? (
                       <button
                         type="button"
                         className="inline-flex h-9 items-center gap-2 rounded-lg border border-red-200 px-3 text-sm font-medium text-red-600 transition hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30"
@@ -1215,8 +1115,7 @@ export default async function AdminBookingsPage({
               <Link
                 href={buildQuery({
                   search,
-                  status:
-                    selectedStatus ?? "ALL",
+                  status: selectedStatus ?? "ALL",
                   date: selectedDate,
                   page: String(previousPage),
                 })}
@@ -1243,8 +1142,7 @@ export default async function AdminBookingsPage({
               <Link
                 href={buildQuery({
                   search,
-                  status:
-                    selectedStatus ?? "ALL",
+                  status: selectedStatus ?? "ALL",
                   date: selectedDate,
                   page: String(nextPage),
                 })}

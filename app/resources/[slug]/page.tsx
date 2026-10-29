@@ -71,10 +71,7 @@ function getResourceIcon(type: string) {
   }
 }
 
-const RESOURCE_ICONS: Record<
-  string,
-  typeof FileText
-> = {
+const RESOURCE_ICONS: Record<string, typeof FileText> = {
   WORKSHEET: FileText,
   ASSIGNMENT: FileText,
   ASSESSMENT: FileText,
@@ -171,8 +168,7 @@ export default async function PublicResourcePage({
   }
 
   const content = getContent(resource.content);
-  const ResourceIcon =
-    RESOURCE_ICONS[resource.type] ?? Sparkles;
+  const ResourceIcon = RESOURCE_ICONS[resource.type] ?? Sparkles;
   const itemCount = countContentItems(content);
 
   const metadataItems = [
@@ -264,7 +260,10 @@ export default async function PublicResourcePage({
             </div>
 
             <div className="mt-10">
-              <ResourcePublicPreview type={resource.type} content={resource.content} />
+              <ResourcePublicPreview
+                type={resource.type}
+                content={resource.content}
+              />
             </div>
 
             <div className="mt-10 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">

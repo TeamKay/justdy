@@ -5,10 +5,7 @@ import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
-import {
-  SidebarInset,
-  SidebarProvider,
-} from "@/app/_components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@/app/_components/ui/sidebar";
 
 import { AppSidebar } from "@/app/_components/sidebar/dashboard-sidebar";
 import { SidebarReopenTrigger } from "@/app/_components/sidebar/SidebarReopenTrigger";
@@ -19,9 +16,7 @@ interface LayoutProps {
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminLayout({
-  children,
-}: LayoutProps) {
+export default async function AdminLayout({ children }: LayoutProps) {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -57,14 +52,11 @@ export default async function AdminLayout({
     emailVerified: currentUser.emailVerified,
   });
 
-
   if (normalizedRole !== "ADMIN") {
     return (
       <div className="min-h-screen bg-background p-10">
         <div className="mx-auto max-w-xl rounded-xl border bg-card p-8">
-          <h1 className="text-2xl font-bold">
-            Access denied
-          </h1>
+          <h1 className="text-2xl font-bold">Access denied</h1>
 
           <p className="mt-3 text-muted-foreground">
             Your account does not have administrator access.
@@ -96,12 +88,8 @@ export default async function AdminLayout({
         {/* Only appears when the sidebar is closed */}
         <SidebarReopenTrigger />
 
-        <main className="min-h-0 flex-1 bg-background">
-          {children}
-        </main>
+        <main className="min-h-0 flex-1 bg-background">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );
 }
-
-

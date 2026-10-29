@@ -15,8 +15,7 @@ export default async function VerifyRequestPage({
 }: VerifyRequestPageProps) {
   const params = await searchParams;
 
-  const email =
-    params.email?.trim() || "";
+  const email = params.email?.trim() || "";
 
   return (
     <main className="min-h-screen bg-background px-6 py-12">
@@ -47,8 +46,7 @@ export default async function VerifyRequestPage({
             </h1>
 
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              Your Justdy account has been created
-              successfully.
+              Your Justdy account has been created successfully.
             </p>
 
             {/* Email box */}
@@ -56,9 +54,7 @@ export default async function VerifyRequestPage({
               <div className="flex items-center justify-center gap-2 text-sm font-medium text-foreground">
                 <Mail className="h-4 w-4 text-primary" />
 
-                <span>
-                  Verification email sent
-                </span>
+                <span>Verification email sent</span>
               </div>
 
               {email ? (
@@ -80,9 +76,7 @@ export default async function VerifyRequestPage({
                     1
                   </span>
 
-                  <span>
-                    Open your email inbox.
-                  </span>
+                  <span>Open your email inbox.</span>
                 </li>
 
                 <li className="flex gap-3">
@@ -105,10 +99,7 @@ export default async function VerifyRequestPage({
                     3
                   </span>
 
-                  <span>
-                    Click the verification link in
-                    the email.
-                  </span>
+                  <span>Click the verification link in the email.</span>
                 </li>
 
                 <li className="flex gap-3">
@@ -116,19 +107,15 @@ export default async function VerifyRequestPage({
                     4
                   </span>
 
-                  <span>
-                    After verification, return to
-                    Justdy and sign in.
-                  </span>
+                  <span>After verification, return to Justdy and sign in.</span>
                 </li>
               </ol>
             </div>
 
             {/* Spam notice */}
             <div className="mt-6 rounded-lg bg-amber-50 px-4 py-3 text-left text-xs leading-5 text-amber-800">
-              <strong>Didn&apos;t receive the email?</strong>{" "}
-              Check your spam or junk folder. Make sure
-              you entered the correct email address.
+              <strong>Didn&apos;t receive the email?</strong> Check your spam or
+              junk folder. Make sure you entered the correct email address.
             </div>
 
             {/* Sign in */}

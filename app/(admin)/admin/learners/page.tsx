@@ -59,7 +59,7 @@ export default async function LearnersPage() {
 
   const learners = await prisma.user.findMany({
     where: {
-      role: "USER",
+      role: "LEARNER",
       canLearn: true,
       status: {
         not: "Deleted",
@@ -98,15 +98,14 @@ export default async function LearnersPage() {
   ] = await Promise.all([
     prisma.user.count({
       where: {
-        role: "USER",
+        role: "LEARNER",
         status: { not: "Deleted" },
       },
     }),
 
     prisma.user.count({
       where: {
-        role: "USER",
-        canLearn: true,
+        role: "LEARNER",
         emailVerified: true,
         status: { not: "Deleted" },
       },
@@ -159,17 +158,11 @@ export default async function LearnersPage() {
   );
 
   const upcomingBookingCountMap = new Map(
-    upcomingBookingCounts.map((item) => [
-      item.studentId,
-      item._count._all,
-    ]),
+    upcomingBookingCounts.map((item) => [item.studentId, item._count._all]),
   );
 
   const completedSessionCountMap = new Map(
-    completedSessionCounts.map((item) => [
-      item.learnerId,
-      item._count._all,
-    ]),
+    completedSessionCounts.map((item) => [item.learnerId, item._count._all]),
   );
 
   const learnerRows = learners.map((learner) => ({
@@ -185,10 +178,8 @@ export default async function LearnersPage() {
     gradeLevel: learner.studentProfile?.gradeLevel ?? null,
     learningStyle: learner.studentProfile?.learningStyle ?? null,
     bookingCount: bookingCountMap.get(learner.id) ?? 0,
-    upcomingBookingCount:
-      upcomingBookingCountMap.get(learner.id) ?? 0,
-    completedSessionCount:
-      completedSessionCountMap.get(learner.id) ?? 0,
+    upcomingBookingCount: upcomingBookingCountMap.get(learner.id) ?? 0,
+    completedSessionCount: completedSessionCountMap.get(learner.id) ?? 0,
   }));
 
   const monthBuckets = new Map(

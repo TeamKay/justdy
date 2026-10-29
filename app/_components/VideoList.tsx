@@ -19,10 +19,7 @@ interface VideoListProps {
   techVideos: Video[];
 }
 
-export default function VideoList({
-  mathVideos,
-  techVideos,
-}: VideoListProps) {
+export default function VideoList({ mathVideos, techVideos }: VideoListProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
   const allVideos = useMemo(() => {
@@ -181,7 +178,8 @@ export default function VideoList({
                     src={video.thumbnail}
                     fill
                     alt={video.title}
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"/>
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
 
                   {/* Image overlay */}
                   <div
@@ -289,9 +287,7 @@ export default function VideoList({
 
                       <span>
                         {video.viewCount
-                          ? `${Number(
-                              video.viewCount,
-                            ).toLocaleString()} views`
+                          ? `${Number(video.viewCount).toLocaleString()} views`
                           : "0 views"}
                       </span>
                     </div>

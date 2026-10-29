@@ -47,19 +47,22 @@ export default function EducatorSessionFeedbackForm({
       .filter(Boolean);
 
     try {
-      const response = await fetch(`/api/tutoring/sessions/${bookingId}/feedback`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic: topic.trim() || null,
-          topicsCovered,
-          strengths: strengths.trim() || null,
-          needsPractice: needsPractice.trim() || null,
-          nextStep: nextStep.trim() || null,
-          tutorNotes: tutorNotes.trim() || null,
-          learnerOutcome: learnerOutcome.trim() || null,
-        }),
-      });
+      const response = await fetch(
+        `/api/tutoring/sessions/${bookingId}/feedback`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            topic: topic.trim() || null,
+            topicsCovered,
+            strengths: strengths.trim() || null,
+            needsPractice: needsPractice.trim() || null,
+            nextStep: nextStep.trim() || null,
+            tutorNotes: tutorNotes.trim() || null,
+            learnerOutcome: learnerOutcome.trim() || null,
+          }),
+        },
+      );
 
       const data = await response.json().catch(() => null);
 
@@ -69,21 +72,31 @@ export default function EducatorSessionFeedbackForm({
 
       setSaved(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to save session feedback.");
+      setError(
+        err instanceof Error ? err.message : "Unable to save session feedback.",
+      );
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <form onSubmit={saveFeedback} className="rounded-3xl border border-border/70 bg-card p-6 shadow-sm sm:p-8">
+    <form
+      onSubmit={saveFeedback}
+      className="rounded-3xl border border-border/70 bg-card p-6 shadow-sm sm:p-8"
+    >
       <div className="flex flex-col gap-3 border-b border-border/70 pb-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-sm font-semibold text-emerald-600">Session feedback</p>
-          <h2 className="mt-1 text-xl font-bold">Record the learning outcome</h2>
+          <p className="text-sm font-semibold text-emerald-600">
+            Session feedback
+          </p>
+          <h2 className="mt-1 text-xl font-bold">
+            Record the learning outcome
+          </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Learner-facing feedback becomes part of the learner&apos;s Progress and History automatically.
-            Tutor notes remain private to the teaching workflow.
+            Learner-facing feedback becomes part of the learner&apos;s Progress
+            and History automatically. Tutor notes remain private to the
+            teaching workflow.
           </p>
         </div>
 
@@ -93,7 +106,12 @@ export default function EducatorSessionFeedbackForm({
       </div>
 
       <div className="mt-7 space-y-6">
-        <Field label="Session topic" value={topic} onChange={setTopic} placeholder="e.g. Linear equations" />
+        <Field
+          label="Session topic"
+          value={topic}
+          onChange={setTopic}
+          placeholder="e.g. Linear equations"
+        />
 
         <div>
           <label className="text-sm font-semibold">Topics covered</label>
@@ -110,10 +128,30 @@ export default function EducatorSessionFeedbackForm({
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <TextArea label="Strengths" value={strengths} onChange={setStrengths} placeholder="What did the learner do well?" />
-          <TextArea label="Needs practice" value={needsPractice} onChange={setNeedsPractice} placeholder="What should the learner practice next?" />
-          <TextArea label="Next step" value={nextStep} onChange={setNextStep} placeholder="What should happen after this session?" />
-          <TextArea label="Learner outcome" value={learnerOutcome} onChange={setLearnerOutcome} placeholder="What can the learner now do or understand?" />
+          <TextArea
+            label="Strengths"
+            value={strengths}
+            onChange={setStrengths}
+            placeholder="What did the learner do well?"
+          />
+          <TextArea
+            label="Needs practice"
+            value={needsPractice}
+            onChange={setNeedsPractice}
+            placeholder="What should the learner practice next?"
+          />
+          <TextArea
+            label="Next step"
+            value={nextStep}
+            onChange={setNextStep}
+            placeholder="What should happen after this session?"
+          />
+          <TextArea
+            label="Learner outcome"
+            value={learnerOutcome}
+            onChange={setLearnerOutcome}
+            placeholder="What can the learner now do or understand?"
+          />
         </div>
 
         <div className="rounded-2xl border border-amber-200/70 bg-amber-50/60 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
@@ -122,7 +160,8 @@ export default function EducatorSessionFeedbackForm({
             <div className="w-full">
               <p className="text-sm font-semibold">Private tutor notes</p>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                These notes are stored for the educator workflow and are not shown on the learner Progress or History pages.
+                These notes are stored for the educator workflow and are not
+                shown on the learner Progress or History pages.
               </p>
               <textarea
                 value={tutorNotes}
@@ -145,7 +184,8 @@ export default function EducatorSessionFeedbackForm({
       {saved ? (
         <div className="mt-5 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
           <CheckCircle2 className="size-4" />
-          Feedback saved. The learner record now reflects these learning outcomes.
+          Feedback saved. The learner record now reflects these learning
+          outcomes.
         </div>
       ) : null}
 
@@ -155,7 +195,11 @@ export default function EducatorSessionFeedbackForm({
           disabled={saving}
           className="inline-flex h-11 items-center justify-center rounded-xl bg-foreground px-5 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Save className="mr-2 size-4" />}
+          {saving ? (
+            <Loader2 className="mr-2 size-4 animate-spin" />
+          ) : (
+            <Save className="mr-2 size-4" />
+          )}
           {saving ? "Saving..." : "Save feedback"}
         </button>
       </div>

@@ -12,11 +12,20 @@ export async function POST(req: Request) {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
     if (!session?.user?.id) {
-      return Response.json({ error: "Authentication required." }, { status: 401 });
+      return Response.json(
+        { error: "Authentication required." },
+        { status: 401 },
+      );
     }
     const rateLimit = await protectAIRequest(session.user.id);
     if (rateLimit.isDenied()) {
-      return Response.json({ error: "AI usage is temporarily rate-limited. Please try again shortly." }, { status: 429 });
+      return Response.json(
+        {
+          error:
+            "AI usage is temporarily rate-limited. Please try again shortly.",
+        },
+        { status: 429 },
+      );
     }
     // ============================================================
     // 1. CHECK OPENAI API KEY
@@ -54,7 +63,11 @@ export async function POST(req: Request) {
 
     const messages = body.messages as ChatMessage[];
 
-    if (!Array.isArray(messages) || messages.length === 0 || messages.length > 50) {
+    if (
+      !Array.isArray(messages) ||
+      messages.length === 0 ||
+      messages.length > 50
+    ) {
       return Response.json(
         {
           error: "Invalid messages format or message count.",
@@ -71,11 +84,22 @@ export async function POST(req: Request) {
 
     const sanitizedMessages = messages.map((message) => ({
       role: message?.role,
-      content: typeof message?.content === "string" ? message.content.trim() : "",
+      content:
+        typeof message?.content === "string" ? message.content.trim() : "",
     }));
 
-    if (sanitizedMessages.some((message) => !["user", "assistant"].includes(message.role) || !message.content || message.content.length > 4000)) {
-      return Response.json({ error: "Each message must be valid and at most 4000 characters." }, { status: 400 });
+    if (
+      sanitizedMessages.some(
+        (message) =>
+          !["user", "assistant"].includes(message.role) ||
+          !message.content ||
+          message.content.length > 4000,
+      )
+    ) {
+      return Response.json(
+        { error: "Each message must be valid and at most 4000 characters." },
+        { status: 400 },
+      );
     }
 
     const formattedMessages = [

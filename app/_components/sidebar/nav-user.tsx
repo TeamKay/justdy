@@ -1,30 +1,40 @@
-"use client"
+"use client";
 
 import {
   IconDashboard,
   IconDotsVertical,
   IconLogout,
-} from "@tabler/icons-react"
+} from "@tabler/icons-react";
 
+import { authClient } from "@/lib/auth-client";
+import Link from "next/link";
+import { HomeIcon, Tv2 } from "lucide-react";
+import { useSignOut } from "@/hooks/use-signout";
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "../ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
-
-import { authClient } from "@/lib/auth-client"
-import Link from "next/link"
-import { HomeIcon, Tv2 } from "lucide-react"
-import { useSignOut } from "@/hooks/use-signout"
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "../ui/sidebar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
-
-export function NavUser(){
+export function NavUser() {
   const { isMobile } = useSidebar();
-  const {data: session, isPending} = authClient.useSession();
+  const { data: session, isPending } = authClient.useSession();
   const handleSignOut = useSignOut();
 
-  if(isPending){
+  if (isPending) {
     return null;
   }
-
 
   return (
     <SidebarMenu>
@@ -36,19 +46,25 @@ export function NavUser(){
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={session?.user.image ?? 
-                  `https://avatar.vercel.sh/${session?.user.email}`} 
-                  alt={session?.user.name} />
+                <AvatarImage
+                  src={
+                    session?.user.image ??
+                    `https://avatar.vercel.sh/${session?.user.email}`
+                  }
+                  alt={session?.user.name}
+                />
                 <AvatarFallback className="rounded-lg">
                   {session?.user.name && session.user.name.length > 0
                     ? session.user.name.charAt(0).toUpperCase()
                     : session?.user.email.charAt(0).toUpperCase()}
-                  </AvatarFallback>
+                </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{session?.user.name && 
-                  session.user.name.length > 0 ? session.user.name : 
-                  session?.user.email.split("@")[0]}</span>
+                <span className="truncate font-medium">
+                  {session?.user.name && session.user.name.length > 0
+                    ? session.user.name
+                    : session?.user.email.split("@")[0]}
+                </span>
                 <span className="text-muted-foreground truncate text-xs">
                   {session?.user.email}
                 </span>
@@ -65,19 +81,25 @@ export function NavUser(){
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={session?.user.image ?? 
-                  `https://avatar.vercel.sh/${session?.user.email}`} 
-                  alt={session?.user.name}  />
+                  <AvatarImage
+                    src={
+                      session?.user.image ??
+                      `https://avatar.vercel.sh/${session?.user.email}`
+                    }
+                    alt={session?.user.name}
+                  />
                   <AvatarFallback className="rounded-lg">
-                  {session?.user.name && session.user.name.length > 0
-                    ? session.user.name.charAt(0).toUpperCase()
-                    : session?.user.email.charAt(0).toUpperCase()}
+                    {session?.user.name && session.user.name.length > 0
+                      ? session.user.name.charAt(0).toUpperCase()
+                      : session?.user.email.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{session?.user.name && 
-                  session.user.name.length > 0 ? session.user.name : 
-                  session?.user.email.split("@")[0]}</span>
+                  <span className="truncate font-medium">
+                    {session?.user.name && session.user.name.length > 0
+                      ? session.user.name
+                      : session?.user.email.split("@")[0]}
+                  </span>
                   <span className="text-muted-foreground truncate text-xs">
                     {session?.user.email}
                   </span>
@@ -88,20 +110,20 @@ export function NavUser(){
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
                 <Link href="/">
-                    <HomeIcon />
-                    Home Page
+                  <HomeIcon />
+                  Home Page
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/dashboard/admin">
-                    <IconDashboard />
-                Dashboard
+                  <IconDashboard />
+                  Dashboard
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/dashboard/admin/courses">
-                    <Tv2 />
-                Courses
+                  <Tv2 />
+                  Courses
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -114,5 +136,5 @@ export function NavUser(){
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
+  );
 }

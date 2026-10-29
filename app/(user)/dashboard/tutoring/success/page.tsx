@@ -50,8 +50,8 @@ export default async function TutoringBookingSuccessPage({
             </h1>
 
             <p className="mt-3 text-slate-600">
-              We could not find the Stripe checkout session associated with
-              this page.
+              We could not find the Stripe checkout session associated with this
+              page.
             </p>
 
             <div className="mt-8">
@@ -90,18 +90,18 @@ export default async function TutoringBookingSuccessPage({
           currency: true,
         },
       },
-     educator: {
-  select: {
-    id: true,
-    name: true,
-    teachingProfile: {
-      select: {
-        headline: true,
-        specialty: true,
+      educator: {
+        select: {
+          id: true,
+          name: true,
+          teachingProfile: {
+            select: {
+              headline: true,
+              specialty: true,
+            },
+          },
+        },
       },
-    },
-  },
-},
       tutoringSession: {
         select: {
           id: true,
@@ -133,8 +133,8 @@ export default async function TutoringBookingSuccessPage({
             </p>
 
             <p className="mt-3 leading-7 text-slate-600">
-              Please give us a moment for payment confirmation to finish.
-              You can then check your tutoring sessions.
+              Please give us a moment for payment confirmation to finish. You
+              can then check your tutoring sessions.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -192,8 +192,8 @@ export default async function TutoringBookingSuccessPage({
             </h1>
 
             <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-slate-600">
-              Your payment was successfully processed and your tutoring
-              session has been scheduled.
+              Your payment was successfully processed and your tutoring session
+              has been scheduled.
             </p>
           </div>
 
@@ -308,9 +308,7 @@ export default async function TutoringBookingSuccessPage({
             {/* Reference */}
             <div className="mt-8 border-t border-slate-200 pt-6">
               <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                <span className="text-slate-500">
-                  Booking reference
-                </span>
+                <span className="text-slate-500">Booking reference</span>
 
                 <span className="font-mono text-xs font-medium text-slate-700">
                   {booking.id}
@@ -319,9 +317,7 @@ export default async function TutoringBookingSuccessPage({
 
               {sessionDetails ? (
                 <div className="mt-3 flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                  <span className="text-slate-500">
-                    Session status
-                  </span>
+                  <span className="text-slate-500">Session status</span>
 
                   <span className="font-medium text-slate-700">
                     {sessionDetails.status}

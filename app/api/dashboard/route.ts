@@ -9,10 +9,7 @@ export async function GET(request: Request) {
     });
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const userId = session.user.id;
@@ -25,10 +22,9 @@ export async function GET(request: Request) {
         id: true,
         name: true,
         email: true,
-       imageUrl: true,
-        canLearn: true,
-        canTeach: true,
-        canTutor: true,
+        imageUrl: true,
+        role: true,
+        status: true,
 
         learningProfile: {
           select: {
@@ -49,11 +45,17 @@ export async function GET(request: Request) {
     });
 
     if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 },
-      );
+      
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+    const isActive = user.status === "Active";
+    const canViewLearning =
+      isActive && (user.role === "LEARNER" || user.role === "TUTOR");
+
+    const canViewTeaching =
+      isActive &&
+      (user.role === "TUTOR" || user.role === "ADMIN") &&
+      user.teachingProfile?.verificationStatus === "Verified";
 
     const now = new Date();
 
@@ -63,7 +65,7 @@ export async function GET(request: Request) {
      * ============================================================
      */
 
-    const upcomingLearningBookings = user.canLearn
+    const upcomingLearningBookings = canViewLearning
       ? await prisma.booking.findMany({
           where: {
             studentId: userId,
@@ -91,7 +93,7 @@ export async function GET(request: Request) {
               select: {
                 id: true,
                 name: true,
-               imageUrl: true,
+                imageUrl: true,
               },
             },
 
@@ -106,8 +108,7 @@ export async function GET(request: Request) {
         })
       : [];
 
-
-    const learningBookingCount = user.canLearn
+    const learningBookingCount = canViewLearning
       ? await prisma.booking.count({
           where: {
             studentId: userId,
@@ -115,14 +116,13 @@ export async function GET(request: Request) {
         })
       : 0;
 
-
     /*
      * ============================================================
      * TEACHER DATA
      * ============================================================
      */
 
-    const upcomingTeachingBookings = user.canTeach
+    const upcomingTeachingBookings = canViewTeaching
       ? await prisma.booking.findMany({
           where: {
             educatorId: userId,
@@ -150,7 +150,7 @@ export async function GET(request: Request) {
               select: {
                 id: true,
                 name: true,
-               imageUrl: true,
+                imageUrl: true,
               },
             },
 
@@ -165,15 +165,13 @@ export async function GET(request: Request) {
         })
       : [];
 
-
-    const teachingBookingCount = user.canTeach
+    const teachingBookingCount = canViewTeaching
       ? await prisma.booking.count({
           where: {
             educatorId: userId,
           },
         })
       : 0;
-
 
     /*
      * ============================================================
@@ -184,14 +182,13 @@ export async function GET(request: Request) {
      * tutoring schema.
      */
 
-    const serviceCount = user.canTeach
+    const serviceCount = canViewTeaching
       ? await prisma.service.count({
           where: {
             providerId: userId,
           },
         })
       : 0;
-
 
     /*
      * ============================================================
@@ -201,7 +198,7 @@ export async function GET(request: Request) {
      * Count unique learners from educator bookings.
      */
 
-    const studentBookings = user.canTeach
+    const studentBookings = canViewTeaching
       ? await prisma.booking.findMany({
           where: {
             educatorId: userId,
@@ -215,7 +212,6 @@ export async function GET(request: Request) {
         })
       : [];
 
-
     /*
      * ============================================================
      * RESPONSE
@@ -227,15 +223,9 @@ export async function GET(request: Request) {
         id: user.id,
         name: user.name,
         email: user.email,
-       image: user.imageUrl,
+        image: user.imageUrl,
 
-        canLearn: user.canLearn,
-        canTeach: user.canTeach,
-        canTutor: user.canTutor,
-
-        learningProfileExists: Boolean(
-          user.learningProfile,
-        ),
+        learningProfileExists: Boolean(user.learningProfile),
 
         teachingProfile: user.teachingProfile,
       },
@@ -256,12 +246,8 @@ export async function GET(request: Request) {
         upcomingBookings: upcomingTeachingBookings,
       },
     });
-
   } catch (error) {
-    console.error(
-      "Dashboard API error:",
-      error,
-    );
+    console.error("Dashboard API error:", error);
 
     return NextResponse.json(
       {

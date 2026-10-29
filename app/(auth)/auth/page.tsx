@@ -11,25 +11,19 @@ import LogoImg from "@/public/images/logo.png";
 import { SigninPage } from "../../_components/Signin";
 import { SignupPage } from "@/app/_components/Signup";
 
-
-
 type AuthMode = "signin" | "signup";
 
 function AuthContent() {
   const searchParams = useSearchParams();
 
   const initialMode =
-    searchParams.get("mode") === "signup"
-      ? "signup"
-      : "signin";
+    searchParams.get("mode") === "signup" ? "signup" : "signin";
 
-  const [mode, setMode] =
-    useState<AuthMode>(initialMode);
+  const [mode, setMode] = useState<AuthMode>(initialMode);
 
   return (
     <main className="min-h-screen bg-[#09090B] text-white">
       <div className="grid min-h-screen lg:grid-cols-2">
-
         {/* =========================================================
             LEFT — BRAND PANEL
         ========================================================== */}
@@ -57,7 +51,6 @@ function AuthContent() {
 
           {/* Content */}
           <div className="relative z-10 flex min-h-screen w-full flex-col justify-between p-10 xl:p-14">
-
             {/* Logo */}
             <Link
               href="/"
@@ -80,7 +73,6 @@ function AuthContent() {
 
             {/* Main message */}
             <div className="max-w-xl pb-10">
-
               <div className="mb-5 inline-flex items-center rounded-md border border-white/10 bg-white/4 px-3 py-1.5 text-xs font-medium text-white/70 backdrop-blur">
                 Live Math Tutoring
               </div>
@@ -88,14 +80,12 @@ function AuthContent() {
               <h1 className="max-w-2xl text-5xl font-semibold leading-[0.95] tracking-[-0.055em] text-white xl:text-6xl">
                 Build confidence
                 <br />
-                <span className="text-[#A78BFA]">
-                  through Experts
-                </span>
+                <span className="text-[#A78BFA]">through Experts</span>
               </h1>
 
               <p className="mt-6 max-w-lg text-base leading-7 text-white/60 xl:text-[15px]">
-                Get live, personalized help from a tutor and work
-                through difficult problems in real time.
+                Get live, personalized help from a tutor and work through
+                difficult problems in real time.
               </p>
 
               {/* Small visual */}
@@ -112,13 +102,9 @@ function AuthContent() {
 
             {/* Bottom */}
             <div className="flex items-center justify-between text-xs text-white/35">
-              <span>
-                © {new Date().getFullYear()} Justdy
-              </span>
+              <span>© {new Date().getFullYear()} Justdy</span>
 
-              <span>
-                Learn with confidence.
-              </span>
+              <span>Learn with confidence.</span>
             </div>
           </div>
         </section>
@@ -128,10 +114,8 @@ function AuthContent() {
         ========================================================== */}
 
         <section className="flex min-h-screen flex-col bg-background">
-
           {/* Top navigation */}
           <div className="flex items-center justify-between px-6 py-6 sm:px-10">
-
             <Link
               href="/"
               className="inline-flex items-center gap-2 text-sm text-white/45 transition-colors hover:text-white"
@@ -146,36 +130,25 @@ function AuthContent() {
             >
               Justdy
             </Link>
-
           </div>
 
           {/* Form area */}
           <div className="flex flex-1 items-center justify-center px-5 pb-10 sm:px-10">
             <div className="w-full max-w-115">
-
               {/* =====================================================
                   AUTH FORM
               ====================================================== */}
 
               {mode === "signin" ? (
-                <SigninPage
-                  onSwitchToSignup={() =>
-                    setMode("signup")
-                  }
-                />
+                <SigninPage onSwitchToSignup={() => setMode("signup")} />
               ) : (
-                <SignupPage
-                  onSwitchToSignin={() =>
-                    setMode("signin")
-                  }
-                />
+                <SignupPage onSwitchToSignin={() => setMode("signin")} />
               )}
 
               {/* Security */}
               <p className="mt-8 text-center text-[10px] leading-5 text-white/25">
                 Your information is securely encrypted and protected.
               </p>
-
             </div>
           </div>
         </section>
@@ -189,9 +162,7 @@ export default function AuthPage() {
     <Suspense
       fallback={
         <main className="flex min-h-screen items-center justify-center bg-[#09090B] text-white">
-          <div className="text-sm text-white/50">
-            Loading...
-          </div>
+          <div className="text-sm text-white/50">Loading...</div>
         </main>
       }
     >

@@ -20,9 +20,7 @@ type SignupResult =
 
 type SignupValues = z.infer<typeof signupSchema>;
 
-export async function signupUser(
-  values: SignupValues,
-): Promise<SignupResult> {
+export async function signupUser(values: SignupValues): Promise<SignupResult> {
   const parsed = signupSchema.safeParse(values);
 
   if (!parsed.success) {
@@ -115,15 +113,13 @@ export async function signupUser(
   }
 
   /*
-   * A normal signup must produce a USER account.
+   * A normal signup must produce a LEARNER account.
    *
    * ADMIN accounts are provisioned separately and should never
    * be created through the public signup flow.
    */
-  if (user.role !== "USER") {
-    throw new Error(
-      "Account creation produced an unexpected platform role.",
-    );
+  if (user.role !== "LEARNER") {
+    throw new Error("Account creation produced an unexpected platform role.");
   }
 
   // ============================================================

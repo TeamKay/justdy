@@ -2,12 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  Download,
-  FileText,
-  Printer,
-} from "lucide-react";
+import { ArrowLeft, Download, FileText, Printer } from "lucide-react";
 
 interface DocumentLearnerProps {
   slug: string;
@@ -39,8 +34,7 @@ export default function DocumentLearner({
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download =
-      `${title.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "") || "document"}.txt`;
+    anchor.download = `${title.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "") || "document"}.txt`;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();

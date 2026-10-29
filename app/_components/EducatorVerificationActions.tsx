@@ -1,24 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import {
-  CheckCircle2,
-  Loader2,
-  XCircle,
-} from "lucide-react";
+import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-type ApplicationStatus =
-  | "Pending"
-  | "Verified"
-  | "Rejected";
+type ApplicationStatus = "Pending" | "Verified" | "Rejected";
 
 type Props = {
   educatorId: string;
   status: ApplicationStatus | string;
-  onComplete?: () =>
-    | void
-    | Promise<void>;
+  onComplete?: () => void | Promise<void>;
 };
 
 export default function EducatorVerificationActions({
@@ -28,10 +19,7 @@ export default function EducatorVerificationActions({
 }: Props) {
   const router = useRouter();
 
-  const [loading, setLoading] =
-    useState<
-      "verify" | "reject" | null
-    >(null);
+  const [loading, setLoading] = useState<"verify" | "reject" | null>(null);
 
   /*
    * Only pending applications require
@@ -42,8 +30,7 @@ export default function EducatorVerificationActions({
    * the applicant before they can be reviewed
    * again.
    */
-  const isPending =
-    status === "Pending";
+  const isPending = status === "Pending";
 
   if (!isPending) {
     return (
@@ -57,9 +44,7 @@ export default function EducatorVerificationActions({
     );
   }
 
-  async function updateVerification(
-    action: "verify" | "reject",
-  ) {
+  async function updateVerification(action: "verify" | "reject") {
     if (loading !== null) {
       return;
     }
@@ -67,30 +52,24 @@ export default function EducatorVerificationActions({
     setLoading(action);
 
     try {
-      const response =
-        await fetch(
-          `/api/admin/educators/${educatorId}/verify`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              action,
-            }),
+      const response = await fetch(
+        `/api/admin/educators/${educatorId}/verify`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        );
+          body: JSON.stringify({
+            action,
+          }),
+        },
+      );
 
-      const data =
-        await response
-          .json()
-          .catch(() => null);
+      const data = await response.json().catch(() => null);
 
       if (!response.ok) {
         throw new Error(
-          data?.error ??
-            "Unable to update educator verification.",
+          data?.error ?? "Unable to update educator verification.",
         );
       }
 
@@ -118,9 +97,7 @@ export default function EducatorVerificationActions({
       <button
         type="button"
         disabled={loading !== null}
-        onClick={() =>
-          updateVerification("verify")
-        }
+        onClick={() => updateVerification("verify")}
         className="inline-flex h-10 items-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading === "verify" ? (
@@ -128,16 +105,13 @@ export default function EducatorVerificationActions({
         ) : (
           <CheckCircle2 className="h-4 w-4" />
         )}
-
         Verify
       </button>
 
       <button
         type="button"
         disabled={loading !== null}
-        onClick={() =>
-          updateVerification("reject")
-        }
+        onClick={() => updateVerification("reject")}
         className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading === "reject" ? (
@@ -145,7 +119,6 @@ export default function EducatorVerificationActions({
         ) : (
           <XCircle className="h-4 w-4" />
         )}
-
         Reject
       </button>
     </div>

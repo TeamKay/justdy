@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { resend } from "@/lib/resend";
-import prisma  from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import { env } from "@/lib/env";
 
 export const runtime = "nodejs";
@@ -18,19 +18,26 @@ function authorized(request: Request) {
   const value = request.headers.get("authorization")?.trim() ?? "";
   if (!secret || !value.startsWith("Bearer ")) return false;
   const supplied = value.slice(7).trim();
-  return createHash("sha256").update(secret).digest().equals(createHash("sha256").update(supplied).digest());
+  return createHash("sha256")
+    .update(secret)
+    .digest()
+    .equals(createHash("sha256").update(supplied).digest());
 }
 
 function formatDate(value: Date) {
   return new Intl.DateTimeFormat("en-US", { dateStyle: "full" }).format(value);
 }
 function formatTime(start: Date, end: Date) {
-  const fmt = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" });
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
   return `${fmt.format(start)} - ${fmt.format(end)}`;
 }
 
 export async function GET(request: Request) {
-  if (!authorized(request)) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  if (!authorized(request))
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
   const now = new Date();
   const noShowCutoff = new Date(now.getTime() - NO_SHOW_GRACE_MINUTES * 60_000);
@@ -149,7 +156,10 @@ export async function GET(request: Request) {
   }
 
   const upcoming = await prisma.booking.findMany({
-    where: { status: "Scheduled", startTime: { gt: now, lt: new Date(now.getTime() + 26 * 60 * 60_000) } },
+    where: {
+      status: "Scheduled",
+      startTime: { gt: now, lt: new Date(now.getTime() + 26 * 60 * 60_000) },
+    },
     include: {
       student: { select: { name: true, email: true } },
       educator: { select: { name: true, email: true } },
@@ -160,7 +170,9 @@ export async function GET(request: Request) {
 
   for (const booking of upcoming) {
     const minutesUntil = (booking.startTime.getTime() - now.getTime()) / 60_000;
-    const window = REMINDER_WINDOWS.find((item) => minutesUntil >= item.min && minutesUntil <= item.max);
+    const window = REMINDER_WINDOWS.find(
+      (item) => minutesUntil >= item.min && minutesUntil <= item.max,
+    );
     if (!window) continue;
 
     // Claim the reminder before sending so two concurrent scheduler runs
@@ -168,25 +180,36 @@ export async function GET(request: Request) {
     // later run can retry.
     try {
       await prisma.tutoringReminder.create({
-  data: {
-    id: crypto.randomUUID(),
-    bookingId: booking.id,
-    type: window.type,
-  },
-});
+        data: {
+          id: crypto.randomUUID(),
+          bookingId: booking.id,
+          type: window.type,
+        },
+      });
     } catch {
       continue;
     }
 
-    const subject = booking.service?.subject || booking.subject || booking.service?.title || "Tutoring";
+    const subject =
+      booking.service?.subject ||
+      booking.subject ||
+      booking.service?.title ||
+      "Tutoring";
     const date = formatDate(booking.startTime);
     const time = formatTime(booking.startTime, booking.endTime);
     const url = `${process.env.NEXT_PUBLIC_URL || env.BETTER_AUTH_URL}/tutoring/sessions`;
-    const lead = window.type === "ONE_HOUR" ? "Your Justdy tutoring session starts in about one hour. Please make sure you are ready to join." : "This is a reminder that your Justdy tutoring session is scheduled for tomorrow.";
+    const lead =
+      window.type === "ONE_HOUR"
+        ? "Your Justdy tutoring session starts in about one hour. Please make sure you are ready to join."
+        : "This is a reminder that your Justdy tutoring session is scheduled for tomorrow.";
 
     try {
-      const ReminderEmail = (await import("@/app/_components/emails/TutoringSessionReminderEmail")).default;
-      const people = [booking.student, booking.educator].filter((person) => person.email?.trim());
+      const ReminderEmail = (
+        await import("@/app/_components/emails/TutoringSessionReminderEmail")
+      ).default;
+      const people = [booking.student, booking.educator].filter((person) =>
+        person.email?.trim(),
+      );
       if (!people.length) {
         await prisma.tutoringReminder.deleteMany({
           where: { bookingId: booking.id, type: window.type },
@@ -199,7 +222,14 @@ export async function GET(request: Request) {
           from: `${env.EMAIL_SENDER_NAME} <${env.EMAIL_SENDER_ADDRESS}>`,
           to: [person.email!.trim().toLowerCase()],
           subject: `Justdy tutoring reminder: ${subject}`,
-          react: ReminderEmail({ username: person.name || "there", subject, date, time, tutoringUrl: url, lead }),
+          react: ReminderEmail({
+            username: person.name || "there",
+            subject,
+            date,
+            time,
+            tutoringUrl: url,
+            lead,
+          }),
         });
         if (result.error) throw result.error;
       }
@@ -214,5 +244,11 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, noShows, orphanedBookings, reminders, reminderErrors });
+  return NextResponse.json({
+    ok: true,
+    noShows,
+    orphanedBookings,
+    reminders,
+    reminderErrors,
+  });
 }

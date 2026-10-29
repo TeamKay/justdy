@@ -82,10 +82,7 @@ function formatDate(date: Date | null) {
 function relativeDate(date: Date | null) {
   if (!date) return "No login yet";
 
-  const diff = Math.max(
-    0,
-    Date.now() - new Date(date).getTime(),
-  );
+  const diff = Math.max(0, Date.now() - new Date(date).getTime());
 
   const minutes = Math.floor(diff / 60000);
 
@@ -112,10 +109,7 @@ function GrowthChart({ data }: { data: GrowthPoint[] }) {
   const chartWidth = width - paddingX * 2;
   const chartHeight = height - paddingTop - paddingBottom;
 
-  const maxValue = Math.max(
-    5,
-    ...data.map((point) => point.value),
-  );
+  const maxValue = Math.max(5, ...data.map((point) => point.value));
 
   const points = data.map((point, index) => {
     const x =
@@ -124,10 +118,7 @@ function GrowthChart({ data }: { data: GrowthPoint[] }) {
         ? chartWidth / 2
         : (index / (data.length - 1)) * chartWidth);
 
-    const y =
-      paddingTop +
-      chartHeight -
-      (point.value / maxValue) * chartHeight;
+    const y = paddingTop + chartHeight - (point.value / maxValue) * chartHeight;
 
     return {
       ...point,
@@ -137,17 +128,12 @@ function GrowthChart({ data }: { data: GrowthPoint[] }) {
   });
 
   const linePath = points
-    .map(
-      (point, index) =>
-        `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`,
-    )
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
     .join(" ");
 
   const areaPath = `${linePath} L ${
     points[points.length - 1]?.x ?? paddingX
-  } ${paddingTop + chartHeight} L ${paddingX} ${
-    paddingTop + chartHeight
-  } Z`;
+  } ${paddingTop + chartHeight} L ${paddingX} ${paddingTop + chartHeight} Z`;
 
   const gridLines = [0, 1, 2, 3].map((index) => {
     const y = paddingTop + (chartHeight / 3) * index;
@@ -163,15 +149,17 @@ function GrowthChart({ data }: { data: GrowthPoint[] }) {
         aria-label="New learners joining Justdy over the last six months"
       >
         <defs>
-          <linearGradient
-            id="learner-growth-fill"
-            x1="0"
-            y1="0"
-            x2="0"
-            y2="1"
-          >
-            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.18" />
-            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+          <linearGradient id="learner-growth-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop
+              offset="0%"
+              stopColor="hsl(var(--primary))"
+              stopOpacity="0.18"
+            />
+            <stop
+              offset="100%"
+              stopColor="hsl(var(--primary))"
+              stopOpacity="0"
+            />
           </linearGradient>
         </defs>
 
@@ -188,10 +176,7 @@ function GrowthChart({ data }: { data: GrowthPoint[] }) {
           />
         ))}
 
-        <path
-          d={areaPath}
-          fill="url(#learner-growth-fill)"
-        />
+        <path d={areaPath} fill="url(#learner-growth-fill)" />
 
         <path
           d={linePath}
@@ -256,26 +241,18 @@ function StatCard({
         <ArrowUpRight className="size-4 text-muted-foreground" />
       </div>
 
-      <p className="mt-5 text-sm font-medium text-muted-foreground">
-        {label}
-      </p>
+      <p className="mt-5 text-sm font-medium text-muted-foreground">{label}</p>
 
       <p className="mt-1 text-3xl font-semibold tracking-tight text-foreground">
         {value}
       </p>
 
-      <p className="mt-2 text-xs text-muted-foreground">
-        {detail}
-      </p>
+      <p className="mt-2 text-xs text-muted-foreground">{detail}</p>
     </div>
   );
 }
 
-export default function LearnersView({
-  learners,
-  stats,
-  growth,
-}: Props) {
+export default function LearnersView({ learners, stats, growth }: Props) {
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState<
     "all" | "verified" | "unverified" | "active"
@@ -289,9 +266,7 @@ export default function LearnersView({
         !normalizedQuery ||
         learner.name.toLowerCase().includes(normalizedQuery) ||
         learner.email.toLowerCase().includes(normalizedQuery) ||
-        (learner.gradeLevel ?? "")
-          .toLowerCase()
-          .includes(normalizedQuery);
+        (learner.gradeLevel ?? "").toLowerCase().includes(normalizedQuery);
 
       const matchesStatus =
         status === "all" ||
@@ -324,8 +299,8 @@ export default function LearnersView({
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-              Manage everyone who has joined Justdy as a learner and
-              keep track of their tutoring activity.
+              Manage everyone who has joined Justdy as a learner and keep track
+              of their tutoring activity.
             </p>
           </div>
 
@@ -427,9 +402,7 @@ export default function LearnersView({
                   <span className="font-semibold">
                     {stats.totalLearners
                       ? Math.round(
-                          (stats.verifiedLearners /
-                            stats.totalLearners) *
-                            100,
+                          (stats.verifiedLearners / stats.totalLearners) * 100,
                         )
                       : 0}
                     %
@@ -443,8 +416,7 @@ export default function LearnersView({
                       width: `${
                         stats.totalLearners
                           ? Math.round(
-                              (stats.verifiedLearners /
-                                stats.totalLearners) *
+                              (stats.verifiedLearners / stats.totalLearners) *
                                 100,
                             )
                           : 0
@@ -458,12 +430,10 @@ export default function LearnersView({
                 <div className="flex items-center gap-3">
                   <CalendarDays className="size-4 text-primary" />
                   <div>
-                    <p className="text-sm font-medium">
-                      Tutoring activity
-                    </p>
+                    <p className="text-sm font-medium">Tutoring activity</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {stats.activeTutoringLearners} learners have
-                      booked tutoring.
+                      {stats.activeTutoringLearners} learners have booked
+                      tutoring.
                     </p>
                   </div>
                 </div>
@@ -473,12 +443,9 @@ export default function LearnersView({
                 <div className="flex items-center gap-3">
                   <UserPlus className="size-4 text-primary" />
                   <div>
-                    <p className="text-sm font-medium">
-                      New registrations
-                    </p>
+                    <p className="text-sm font-medium">New registrations</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {stats.newThisMonth} learners joined this
-                      month.
+                      {stats.newThisMonth} learners joined this month.
                     </p>
                   </div>
                 </div>
@@ -518,10 +485,7 @@ export default function LearnersView({
                     onChange={(event) =>
                       setStatus(
                         event.target.value as
-                          | "all"
-                          | "verified"
-                          | "unverified"
-                          | "active",
+                          "all" | "verified" | "unverified" | "active",
                       )
                     }
                     className="h-10 appearance-none rounded-xl border border-border bg-background pl-3 pr-9 text-sm font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
@@ -552,10 +516,7 @@ export default function LearnersView({
 
               <tbody className="divide-y divide-border/60">
                 {filteredLearners.map((learner) => (
-                  <tr
-                    key={learner.id}
-                    className="transition hover:bg-muted/20"
-                  >
+                  <tr key={learner.id} className="transition hover:bg-muted/20">
                     <td className="px-5 py-4 sm:px-6">
                       <div className="flex items-center gap-3">
                         <Avatar className="size-10 border border-border">
@@ -575,9 +536,7 @@ export default function LearnersView({
                           </p>
                           <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                             <Mail className="size-3.5 shrink-0" />
-                            <span className="truncate">
-                              {learner.email}
-                            </span>
+                            <span className="truncate">{learner.email}</span>
                           </div>
                         </div>
                       </div>
@@ -646,10 +605,7 @@ export default function LearnersView({
 
                 {!filteredLearners.length && (
                   <tr>
-                    <td
-                      colSpan={6}
-                      className="px-6 py-16 text-center"
-                    >
+                    <td colSpan={6} className="px-6 py-16 text-center">
                       <div className="mx-auto flex max-w-sm flex-col items-center">
                         <div className="flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
                           <Search className="size-5" />
@@ -658,8 +614,7 @@ export default function LearnersView({
                           No learners found
                         </h3>
                         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                          Try another search term or change the
-                          learner filter.
+                          Try another search term or change the learner filter.
                         </p>
                       </div>
                     </td>

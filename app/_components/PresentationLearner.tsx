@@ -43,9 +43,7 @@ export default function PresentationLearner({
 
   const progress = useMemo(() => {
     if (slides.length <= 1) return 100;
-    return Math.round(
-      ((currentIndex + 1) / slides.length) * 100,
-    );
+    return Math.round(((currentIndex + 1) / slides.length) * 100);
   }, [currentIndex, slides.length]);
 
   function goNext() {
@@ -64,9 +62,7 @@ export default function PresentationLearner({
   }
 
   function toggleFullscreen() {
-    const element = document.getElementById(
-      `presentation-${resourceId}`,
-    );
+    const element = document.getElementById(`presentation-${resourceId}`);
 
     if (!element) return;
 
@@ -110,9 +106,7 @@ export default function PresentationLearner({
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium transition hover:bg-muted"
           >
             <Maximize2 className="h-4 w-4" />
-            <span className="hidden sm:inline">
-              Fullscreen
-            </span>
+            <span className="hidden sm:inline">Fullscreen</span>
           </button>
         </div>
 
@@ -163,20 +157,17 @@ export default function PresentationLearner({
                 </p>
               ) : null}
 
-              {currentSlide.bullets &&
-              currentSlide.bullets.length > 0 ? (
+              {currentSlide.bullets && currentSlide.bullets.length > 0 ? (
                 <ul className="mt-8 space-y-4">
-                  {currentSlide.bullets.map(
-                    (bullet, index) => (
-                      <li
-                        key={`${currentSlide.id}-bullet-${index}`}
-                        className="flex gap-3 text-base leading-7 sm:text-lg"
-                      >
-                        <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                        <span>{bullet}</span>
-                      </li>
-                    ),
-                  )}
+                  {currentSlide.bullets.map((bullet, index) => (
+                    <li
+                      key={`${currentSlide.id}-bullet-${index}`}
+                      className="flex gap-3 text-base leading-7 sm:text-lg"
+                    >
+                      <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                      <span>{bullet}</span>
+                    </li>
+                  ))}
                 </ul>
               ) : null}
             </div>

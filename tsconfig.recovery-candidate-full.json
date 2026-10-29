@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@/lib/prisma": [
+        "./lib/prisma.recovery-candidate.ts"
+      ],
+      "@/lib/generated/prisma": [
+        "./lib/generated/prisma-recovery-candidate/client"
+      ],
+      "@/lib/generated/prisma/*": [
+        "./lib/generated/prisma-recovery-candidate/*"
+      ]
+    }
+  }
+}

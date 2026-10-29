@@ -25,14 +25,7 @@ export default function MyLogo({
         width={34}
         height={34}
         priority
-        className="
-          h-8
-          w-8
-          object-contain
-          transition-transform
-          duration-200
-          group-hover:scale-105
-        "
+        className="h-8 w-8 object-contain transition-transform duration-200 group-hover:scale-105"
       />
 
       {showText && (
@@ -42,10 +35,10 @@ export default function MyLogo({
             text-[19px]
             font-bold
             tracking-[-0.04em]
-            text-blue-500
+            text-white
             transition-colors
             duration-200
-            group-hover:text-blue-600
+           
           "
         >
           Justdy

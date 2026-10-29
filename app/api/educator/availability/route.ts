@@ -62,7 +62,10 @@ async function authorize() {
     };
   }
 
-  const isAdmin = String(user.role ?? "").trim().toUpperCase() === "ADMIN";
+  const isAdmin =
+    String(user.role ?? "")
+      .trim()
+      .toUpperCase() === "ADMIN";
   const canTeach = await hasCapability(user.id, CAPABILITIES.TEACH);
 
   if (!isAdmin && !canTeach) {
@@ -102,9 +105,7 @@ function parseDays(value: unknown) {
     new Set(
       value
         .map((item) => Number(item))
-        .filter(
-          (day) => Number.isInteger(day) && day >= 0 && day <= 6,
-        ),
+        .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6),
     ),
   ).sort((a, b) => a - b);
 }
@@ -122,10 +123,7 @@ function validTimeZone(value: unknown) {
   }
 }
 
-function getDatePartsInTimeZone(
-  date: Date,
-  timeZone: string,
-): DateParts {
+function getDatePartsInTimeZone(date: Date, timeZone: string): DateParts {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
     year: "numeric",
@@ -185,9 +183,7 @@ function zonedDateTimeToUtc(
   minute: number,
   timeZone: string,
 ) {
-  let guess = new Date(
-    Date.UTC(year, month - 1, day, hour, minute, 0, 0),
-  );
+  let guess = new Date(Date.UTC(year, month - 1, day, hour, minute, 0, 0));
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const parts = new Intl.DateTimeFormat("en-US", {
@@ -214,13 +210,7 @@ function zonedDateTimeToUtc(
       Number(map.minute),
     );
 
-    const desiredLocal = Date.UTC(
-      year,
-      month - 1,
-      day,
-      hour,
-      minute,
-    );
+    const desiredLocal = Date.UTC(year, month - 1, day, hour, minute);
 
     const difference = desiredLocal - actualLocal;
 
@@ -240,10 +230,7 @@ function zonedDateTimeToUtc(
  * There are deliberately NO RECURRING rows and NO OCCURRENCE rows for
  * 24/7 availability.
  */
-async function createSeven24HourDays(
-  educatorId: string,
-  timeZone: string,
-) {
+async function createSeven24HourDays(educatorId: string, timeZone: string) {
   const now = new Date();
   const localToday = getDatePartsInTimeZone(now, timeZone);
 
@@ -285,11 +272,7 @@ async function createSeven24HourDays(
       );
 
       const dayOfWeek = new Date(
-        Date.UTC(
-          startDate.year,
-          startDate.month - 1,
-          startDate.day,
-        ),
+        Date.UTC(startDate.year, startDate.month - 1, startDate.day),
       ).getUTCDay();
 
       const row = await tx.availability.create({
@@ -320,9 +303,7 @@ async function createSeven24HourDays(
   return created;
 }
 
-async function removeLegacy24x7Availability(
-  educatorId: string,
-) {
+async function removeLegacy24x7Availability(educatorId: string) {
   const now = new Date();
 
   // Delete generated 24/7 occurrences first. Booked rows are preserved.
@@ -413,10 +394,7 @@ export async function GET() {
           // 24/7 is no longer a recurring schedule.
           isAlwaysAvailable: false,
         },
-        orderBy: [
-          { dayOfWeek: "asc" },
-          { weeklyStartTime: "asc" },
-        ],
+        orderBy: [{ dayOfWeek: "asc" }, { weeklyStartTime: "asc" }],
       }),
     ]);
 
@@ -462,10 +440,7 @@ export async function POST(request: Request) {
     if (isAlwaysAvailable) {
       await removeLegacy24x7Availability(user.id);
 
-      const created = await createSeven24HourDays(
-        user.id,
-        timeZone,
-      );
+      const created = await createSeven24HourDays(user.id, timeZone);
 
       return NextResponse.json(
         {
@@ -601,8 +576,7 @@ export async function PATCH(request: Request) {
       isAlwaysAvailable?: unknown;
     };
 
-    const ruleId =
-      typeof body.ruleId === "string" ? body.ruleId.trim() : null;
+    const ruleId = typeof body.ruleId === "string" ? body.ruleId.trim() : null;
 
     /*
      * Editing a legacy 24/7 recurring rule converts the old model to
@@ -624,10 +598,7 @@ export async function PATCH(request: Request) {
         );
       }
 
-      if (
-        typeof body.active === "boolean" &&
-        Object.keys(body).length <= 3
-      ) {
+      if (typeof body.active === "boolean" && Object.keys(body).length <= 3) {
         const updated = await prisma.availability.update({
           where: { id: rule.id },
           data: { active: body.active },
@@ -642,9 +613,7 @@ export async function PATCH(request: Request) {
       const isAlwaysAvailable = body.isAlwaysAvailable === true;
 
       if (isAlwaysAvailable) {
-        const timeZone = validTimeZone(
-          body.timeZone ?? rule.timeZone,
-        );
+        const timeZone = validTimeZone(body.timeZone ?? rule.timeZone);
 
         if (!timeZone) {
           return NextResponse.json(
@@ -655,10 +624,7 @@ export async function PATCH(request: Request) {
 
         await removeLegacy24x7Availability(user.id);
 
-        const created = await createSeven24HourDays(
-          user.id,
-          timeZone,
-        );
+        const created = await createSeven24HourDays(user.id, timeZone);
 
         return NextResponse.json({
           success: true,
@@ -671,9 +637,7 @@ export async function PATCH(request: Request) {
       const dayOfWeek = Number(body.dayOfWeek);
       const start = parseTime(body.startTime);
       const end = parseTime(body.endTime);
-      const timeZone = validTimeZone(
-        body.timeZone ?? rule.timeZone,
-      );
+      const timeZone = validTimeZone(body.timeZone ?? rule.timeZone);
 
       if (!timeZone) {
         return NextResponse.json(
@@ -682,11 +646,7 @@ export async function PATCH(request: Request) {
         );
       }
 
-      if (
-        !Number.isInteger(dayOfWeek) ||
-        dayOfWeek < 0 ||
-        dayOfWeek > 6
-      ) {
+      if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
         return NextResponse.json(
           { error: "Invalid day of week." },
           { status: 400 },
@@ -738,10 +698,7 @@ export async function PATCH(request: Request) {
           weeklyEndTime: end.value,
           timeZone,
           isAlwaysAvailable: false,
-          active:
-            typeof body.active === "boolean"
-              ? body.active
-              : rule.active,
+          active: typeof body.active === "boolean" ? body.active : rule.active,
         },
       });
 
@@ -751,8 +708,7 @@ export async function PATCH(request: Request) {
       });
     }
 
-    const id =
-      typeof body.id === "string" ? body.id.trim() : "";
+    const id = typeof body.id === "string" ? body.id.trim() : "";
 
     if (!id) {
       return NextResponse.json(
@@ -770,10 +726,7 @@ export async function PATCH(request: Request) {
         ? body.endTime
         : new Date(String(body.endTime));
 
-    if (
-      Number.isNaN(start.getTime()) ||
-      Number.isNaN(end.getTime())
-    ) {
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       return NextResponse.json(
         { error: "Invalid start or end time." },
         { status: 400 },
@@ -878,27 +831,25 @@ export async function DELETE(request: Request) {
     if (body.disable24x7 === true) {
       const now = new Date();
 
-      const deletedOccurrences =
-        await prisma.availability.deleteMany({
-          where: {
-            educatorId: user.id,
-            type: "OCCURRENCE",
-            isAlwaysAvailable: true,
-            status: "Available",
-            startTime: { gte: now },
-          },
-        });
+      const deletedOccurrences = await prisma.availability.deleteMany({
+        where: {
+          educatorId: user.id,
+          type: "OCCURRENCE",
+          isAlwaysAvailable: true,
+          status: "Available",
+          startTime: { gte: now },
+        },
+      });
 
-      const deletedOneOff =
-        await prisma.availability.deleteMany({
-          where: {
-            educatorId: user.id,
-            type: "ONE_OFF",
-            isAlwaysAvailable: true,
-            status: "Available",
-            startTime: { gte: now },
-          },
-        });
+      const deletedOneOff = await prisma.availability.deleteMany({
+        where: {
+          educatorId: user.id,
+          type: "ONE_OFF",
+          isAlwaysAvailable: true,
+          status: "Available",
+          startTime: { gte: now },
+        },
+      });
 
       await prisma.availability.deleteMany({
         where: {
@@ -918,8 +869,7 @@ export async function DELETE(request: Request) {
       });
     }
 
-    const ruleId =
-      typeof body.ruleId === "string" ? body.ruleId.trim() : null;
+    const ruleId = typeof body.ruleId === "string" ? body.ruleId.trim() : null;
 
     if (ruleId) {
       const rule = await prisma.availability.findFirst({
@@ -968,8 +918,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    const id =
-      typeof body.id === "string" ? body.id.trim() : "";
+    const id = typeof body.id === "string" ? body.id.trim() : "";
 
     if (!id) {
       return NextResponse.json(

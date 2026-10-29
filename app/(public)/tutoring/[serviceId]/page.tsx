@@ -41,7 +41,8 @@ function toStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
 
   return value.filter(
-    (item): item is string => typeof item === "string" && item.trim().length > 0,
+    (item): item is string =>
+      typeof item === "string" && item.trim().length > 0,
   );
 }
 
@@ -58,7 +59,8 @@ function formatPrice(amount: number | null, currency: string) {
 function formatDuration(minutes: number | null) {
   if (!minutes) return "Flexible duration";
   if (minutes < 60) return `${minutes} minutes`;
-  if (minutes % 60 === 0) return `${minutes / 60} hour${minutes === 60 ? "" : "s"}`;
+  if (minutes % 60 === 0)
+    return `${minutes / 60} hour${minutes === 60 ? "" : "s"}`;
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
 
@@ -228,7 +230,9 @@ export default async function TutoringServiceDetailPage({ params }: PageProps) {
                   href={continueUrl}
                   className="mt-7 inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-emerald-900 px-6 text-sm font-semibold text-white transition hover:bg-emerald-950"
                 >
-                  {session?.user ? "Continue to enrollment" : "Sign in to continue"}
+                  {session?.user
+                    ? "Continue to enrollment"
+                    : "Sign in to continue"}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
 
@@ -253,9 +257,10 @@ export default async function TutoringServiceDetailPage({ params }: PageProps) {
                   Focused support built around learning.
                 </h2>
                 <p className="mt-5 text-sm leading-7 text-white/45">
-                  The exact structure of the service is determined by the package
-                  details shown above. The learning experience is designed to keep
-                  instruction focused, practical, and personalized.
+                  The exact structure of the service is determined by the
+                  package details shown above. The learning experience is
+                  designed to keep instruction focused, practical, and
+                  personalized.
                 </p>
               </div>
 
@@ -282,9 +287,21 @@ export default async function TutoringServiceDetailPage({ params }: PageProps) {
           <div className="mx-auto max-w-6xl px-6 py-20 sm:px-8 lg:px-12">
             <div className="grid gap-5 md:grid-cols-3">
               {[
-                [Video, "Live learning", "Real-time instruction and guidance during the learning experience."],
-                [Target, "Focused progress", "Use tutoring time to work directly on the learner's goals and needs."],
-                [ShieldCheck, "Supportive environment", "A structured space to ask questions, practice, and build understanding."],
+                [
+                  Video,
+                  "Live learning",
+                  "Real-time instruction and guidance during the learning experience.",
+                ],
+                [
+                  Target,
+                  "Focused progress",
+                  "Use tutoring time to work directly on the learner's goals and needs.",
+                ],
+                [
+                  ShieldCheck,
+                  "Supportive environment",
+                  "A structured space to ask questions, practice, and build understanding.",
+                ],
               ].map(([Icon, title, text]) => {
                 const ItemIcon = Icon as typeof Video;
 
@@ -313,8 +330,8 @@ export default async function TutoringServiceDetailPage({ params }: PageProps) {
               Ready to continue?
             </h2>
             <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-white/45">
-              Continue to enrollment to confirm this service and complete the next
-              steps for your learner account.
+              Continue to enrollment to confirm this service and complete the
+              next steps for your learner account.
             </p>
 
             <Link

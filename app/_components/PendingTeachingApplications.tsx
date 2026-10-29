@@ -57,9 +57,7 @@ function formatMoney(amount: number | null, currency: string) {
 function getListValues(value: unknown) {
   if (!Array.isArray(value)) return [];
 
-  return value
-    .map((item) => String(item).trim())
-    .filter(Boolean);
+  return value.map((item) => String(item).trim()).filter(Boolean);
 }
 
 export default function PendingTeachingApplications({
@@ -79,9 +77,7 @@ export default function PendingTeachingApplications({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data?.error || "Unable to load teaching applications.",
-        );
+        throw new Error(data?.error || "Unable to load teaching applications.");
       }
 
       return {

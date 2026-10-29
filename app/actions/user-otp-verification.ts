@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     console.error(error);
     return NextResponse.json(
       { error: "Failed to verify email" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

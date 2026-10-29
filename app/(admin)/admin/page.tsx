@@ -48,9 +48,7 @@ async function DashboardContent() {
       imageUrl: true,
       role: true,
       emailVerified: true,
-      canLearn: true,
-      canTutor: true,
-      canTeach: true,
+      status: true,
       teachingProfile: {
         select: {
           verificationStatus: true,
@@ -65,9 +63,7 @@ async function DashboardContent() {
   }
 
   if (!user.emailVerified) {
-    redirect(
-      `/verify-request?email=${encodeURIComponent(user.email)}`,
-    );
+    redirect(`/verify-request?email=${encodeURIComponent(user.email)}`);
   }
 
   const normalizedRole = String(user.role ?? "")
@@ -75,7 +71,9 @@ async function DashboardContent() {
     .toUpperCase();
 
   const isTeacherAdmin = normalizedRole === "ADMIN";
-  const isLearner = normalizedRole === "USER" && Boolean(user.canLearn);
+  const isLearner =
+    user.status === "Active" &&
+    (normalizedRole === "LEARNER" || normalizedRole === "TUTOR");
 
   const [canBookTutoring, canReceivePayouts] = await Promise.all([
     hasCapability(userId, CAPABILITIES.BOOK_TUTORING),
@@ -84,75 +82,61 @@ async function DashboardContent() {
 
   const now = new Date();
 
-  type CourseEnrollmentSummary = {
-    id: string;
-    progress: number;
-    status: string;
-    course: {
-      id: string;
-      title: string;
-      slug: string;
-      smallDescription: string | null;
-      category: string | null;
-      level: string;
-      duration: number | null;
-    };
-  };
 
-const learnerBookingsPromise = isLearner
-  ? prisma.booking
-      .findMany({
-        where: {
-          studentId: userId,
-          endTime: {
-            gt: now,
+  const learnerBookingsPromise = isLearner
+    ? prisma.booking
+        .findMany({
+          where: {
+            studentId: userId,
+            endTime: {
+              gt: now,
+            },
+            status: "Scheduled",
           },
-          status: "Scheduled",
-        },
-        orderBy: {
-          startTime: "asc",
-        },
-        take: 5,
-        select: {
-          id: true,
-          startTime: true,
-          endTime: true,
-          subject: true,
-          gradeLevel: true,
-          status: true,
+          orderBy: {
+            startTime: "asc",
+          },
+          take: 5,
+          select: {
+            id: true,
+            startTime: true,
+            endTime: true,
+            subject: true,
+            gradeLevel: true,
+            status: true,
 
-          educator: {
-            select: {
-              id: true,
-              name: true,
-              imageUrl: true,
+            educator: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+              },
+            },
+
+            service: {
+              select: {
+                id: true,
+                title: true,
+                durationMinutes: true,
+                price: true,
+                currency: true,
+              },
+            },
+
+            tutoringSession: {
+              select: {
+                id: true,
+              },
             },
           },
-
-          service: {
-            select: {
-              id: true,
-              title: true,
-              durationMinutes: true,
-              price: true,
-              currency: true,
-            },
-          },
-
-          tutoringSession: {
-            select: {
-              id: true,
-            },
-          },
-        },
-      })
-      .then((rows) =>
-        rows.map(({ tutoringSession, ...booking }) => ({
-          ...booking,
-          tutoringSessionId: tutoringSession?.id ?? null,
-        })),
-      )
-  : Promise.resolve([]);
+        })
+        .then((rows) =>
+          rows.map(({ tutoringSession, ...booking }) => ({
+            ...booking,
+            tutoringSessionId: tutoringSession?.id ?? null,
+          })),
+        )
+    : Promise.resolve([]);
 
   const teacherBookingsPromise = isTeacherAdmin
     ? prisma.booking.findMany({
@@ -190,39 +174,6 @@ const learnerBookingsPromise = isLearner
       })
     : Promise.resolve([]);
 
-  const courseEnrollmentsPromise: Promise<CourseEnrollmentSummary[]> =
-    isLearner
-      ? prisma.courseEnrollment
-          .findMany({
-            where: {
-              learnerId: userId,
-              status: {
-                in: ["Pending", "Active"],
-              },
-            },
-            orderBy: {
-              updatedAt: "desc",
-            },
-            take: 6,
-            select: {
-              id: true,
-              progress: true,
-              status: true,
-              course: {
-                select: {
-                  id: true,
-                  title: true,
-                  slug: true,
-                  smallDescription: true,
-                  category: true,
-                  level: true,
-                  duration: true,
-                },
-              },
-            },
-          })
-          .then((rows) => rows as CourseEnrollmentSummary[])
-      : Promise.resolve([]);
 
   const learningActivitiesPromise = isLearner
     ? prisma.learningActivity.findMany({
@@ -318,6 +269,14 @@ const learnerBookingsPromise = isLearner
 
         prisma.booking.count(),
 
+        // Count new onboarding requests that are still awaiting tutor assignment/acceptance.
+        prisma.tutoringOnboardingRequest.count({
+          where: {
+            status: "pending_planning",
+            assignedTutorId: null,
+          },
+        }),
+
         prisma.booking.count({
           where: {
             status: "Scheduled",
@@ -340,6 +299,7 @@ const learnerBookingsPromise = isLearner
           totalUsers,
           pendingTeacherApprovals,
           totalBookings,
+          newTutoringRequests,
           scheduledBookings,
           completedSessions,
           payoutCount,
@@ -347,6 +307,7 @@ const learnerBookingsPromise = isLearner
           totalUsers,
           pendingTeacherApprovals,
           totalBookings,
+          newTutoringRequests,
           scheduledBookings,
           completedSessions,
           payoutCount,
@@ -356,17 +317,17 @@ const learnerBookingsPromise = isLearner
 
   const clientGrowthPromise = isTeacherAdmin
     ? (async () => {
-        const start = new Date(
-          now.getFullYear(),
-          now.getMonth() - 11,
-          1,
-        );
+        const start = new Date(now.getFullYear(), now.getMonth() - 11, 1);
 
         const clients = await prisma.user.findMany({
           where: {
-            role: "USER",
-            canLearn: true,
-            createdAt: { gte: start },
+            role: {
+              in: ["LEARNER", "TUTOR"],
+            },
+            status: "Active",
+            createdAt: {
+              gte: new Date(/* keep the existing date expression */),
+            },
           },
           select: { createdAt: true },
         });
@@ -380,7 +341,9 @@ const learnerBookingsPromise = isLearner
 
           return {
             date: date.toISOString(),
-            label: new Intl.DateTimeFormat("en-US", { month: "short" }).format(date),
+            label: new Intl.DateTimeFormat("en-US", { month: "short" }).format(
+              date,
+            ),
             value: 0,
           };
         });
@@ -404,7 +367,6 @@ const learnerBookingsPromise = isLearner
     learnerBookings,
     teacherBookings,
     learningActivities,
-    courseEnrollments,
     completedSessions,
     latestPayout,
     adminStats,
@@ -413,7 +375,6 @@ const learnerBookingsPromise = isLearner
     learnerBookingsPromise,
     teacherBookingsPromise,
     learningActivitiesPromise,
-    courseEnrollmentsPromise,
     completedSessionsPromise,
     latestPayoutPromise,
     adminStatsPromise,
@@ -437,10 +398,11 @@ const learnerBookingsPromise = isLearner
       teacherUpcoming={teacherBookings}
       completedSessions={completedSessions}
       learningActivities={learningActivities}
-      courseEnrollments={courseEnrollments}
       latestPayout={latestPayout}
       adminStats={adminStats}
-      clientGrowth={clientGrowth} recentClients={[]}    />
+      clientGrowth={clientGrowth}
+      recentClients={[]}
+    />
   );
 }
 

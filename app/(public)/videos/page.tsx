@@ -1,7 +1,6 @@
 import VideoList from "@/app/_components/VideoList";
 import { getYoutubeVideos } from "@/lib/youtube";
 
-
 export const dynamic = "force-dynamic";
 
 export default async function VideosPage() {
@@ -29,10 +28,7 @@ export default async function VideosPage() {
           </p>
         </div>
 
-        <VideoList
-          mathVideos={mathVideos}
-          techVideos={techVideos}
-        />
+        <VideoList mathVideos={mathVideos} techVideos={techVideos} />
       </section>
     </main>
   );

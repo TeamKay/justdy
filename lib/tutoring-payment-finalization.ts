@@ -130,8 +130,7 @@ export async function processUniversalTutoringBooking(
     throw new Error("Stripe educator metadata does not match booking.");
   }
 
-  const stripeAvailabilityId =
-    session.metadata?.availabilityId?.trim() || null;
+  const stripeAvailabilityId = session.metadata?.availabilityId?.trim() || null;
 
   const stripeServiceId = session.metadata?.serviceId?.trim() || null;
 
@@ -311,27 +310,24 @@ export async function processUniversalTutoringBooking(
           },
         });
 
-       if (!currentAvailability) {
-  throw new Error("Tutoring availability no longer exists.");
-}
+        if (!currentAvailability) {
+          throw new Error("Tutoring availability no longer exists.");
+        }
 
-if (
-  !currentAvailability.startTime ||
-  !currentAvailability.endTime
-) {
-  throw new Error(
-    "Tutoring availability is not a concrete bookable slot.",
-  );
-}
+        if (!currentAvailability.startTime || !currentAvailability.endTime) {
+          throw new Error(
+            "Tutoring availability is not a concrete bookable slot.",
+          );
+        }
 
-if (
-  currentBooking.startTime < currentAvailability.startTime ||
-  currentBooking.endTime > currentAvailability.endTime
-) {
-  throw new Error(
-    "The tutoring booking is outside the educator's availability.",
-  );
-}
+        if (
+          currentBooking.startTime < currentAvailability.startTime ||
+          currentBooking.endTime > currentAvailability.endTime
+        ) {
+          throw new Error(
+            "The tutoring booking is outside the educator's availability.",
+          );
+        }
         // A service booking should already have reserved the slot.
         if (
           currentBooking.serviceId &&
@@ -567,15 +563,17 @@ if (
  * It does NOT create a Daily room.
  */
 export async function ensureCanonicalTutoringSession(
-  bookingOrId: {
-    id: string;
-    studentId?: string;
-    educatorId?: string;
-    serviceId?: string | null;
-    startTime?: Date;
-    endTime?: Date;
-    availability?: { startTime: Date; endTime: Date } | null;
-  } | string,
+  bookingOrId:
+    | {
+        id: string;
+        studentId?: string;
+        educatorId?: string;
+        serviceId?: string | null;
+        startTime?: Date;
+        endTime?: Date;
+        availability?: { startTime: Date; endTime: Date } | null;
+      }
+    | string,
 ) {
   const booking =
     typeof bookingOrId === "string"

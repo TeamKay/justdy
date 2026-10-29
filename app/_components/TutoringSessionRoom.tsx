@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -86,7 +93,6 @@ type VideoCredentials = {
   role: "customer" | "tutor";
 };
 
-
 const WHITEBOARD_MESSAGE_CHUNK_SIZE = 2800;
 const VIDEO_FILMSTRIP_HEIGHT = 116;
 const WHITEBOARD_MESSAGE_MAX_CHUNKS = 512;
@@ -106,7 +112,10 @@ type WhiteboardChunkBuffer = {
 };
 
 function createWhiteboardMessageId() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return crypto.randomUUID();
   }
   return `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
@@ -194,8 +203,12 @@ export default function TutoringSessionRoom({
   const [remoteWhiteboardData, setRemoteWhiteboardData] =
     useState<WhiteboardRealtimeData | null>(null);
   const [participantRailWidth, setParticipantRailWidth] = useState(350);
-  const whiteboardSendRef = useRef<((type: string, data?: unknown) => void) | null>(null);
-  const whiteboardSignalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const whiteboardSendRef = useRef<
+    ((type: string, data?: unknown) => void) | null
+  >(null);
+  const whiteboardSignalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const whiteboardChunkBuffersRef = useRef<Map<string, WhiteboardChunkBuffer>>(
     new Map(),
   );
@@ -237,7 +250,6 @@ export default function TutoringSessionRoom({
       window.clearTimeout(timer);
     };
   }, [loadSession]);
-
 
   useEffect(() => {
     return () => {
@@ -351,8 +363,9 @@ export default function TutoringSessionRoom({
       if (buffer.chunks.size !== buffer.total) return;
 
       try {
-        const encoded = Array.from({ length: buffer.total }, (_, index) =>
-          buffer?.chunks.get(index) ?? "",
+        const encoded = Array.from(
+          { length: buffer.total },
+          (_, index) => buffer?.chunks.get(index) ?? "",
         ).join("");
         const decoded = decodeWhiteboardPayload(encoded);
 
@@ -379,7 +392,12 @@ export default function TutoringSessionRoom({
   async function submitReview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!session || session.role !== "customer" || reviewRating < 1 || reviewRating > 5) {
+    if (
+      !session ||
+      session.role !== "customer" ||
+      reviewRating < 1 ||
+      reviewRating > 5
+    ) {
       return;
     }
 
@@ -736,102 +754,117 @@ export default function TutoringSessionRoom({
                 </>
               )}
             </div>
-          {session.role === "customer" &&
-            session.tutoringSessionStatus === "COMPLETED" &&
-            !session.review && (
-              <section className="mt-6 rounded-3xl border border-border bg-card p-6 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/10">
-                    <Star className="h-5 w-5 text-amber-500" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold">Rate your tutor</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Tell us how your tutoring session went. Your feedback helps other learners understand the tutoring experience.
-                    </p>
-                  </div>
-                </div>
-
-                <form onSubmit={submitReview} className="mt-5 space-y-5">
-                  <div>
-                    <div className="text-sm font-medium">Your rating</div>
-                    <div className="mt-2 flex items-center gap-1" aria-label="Choose a rating from 1 to 5 stars">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          type="button"
-                          onClick={() => setReviewRating(star)}
-                          aria-label={`${star} star${star === 1 ? "" : "s"}`}
-                          className="rounded-lg p-1 transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        >
-                          <Star
-                            className={`h-7 w-7 ${
-                              star <= reviewRating
-                                ? "fill-amber-400 text-amber-400"
-                                : "text-muted-foreground"
-                            }`}
-                          />
-                        </button>
-                      ))}
+            {session.role === "customer" &&
+              session.tutoringSessionStatus === "COMPLETED" &&
+              !session.review && (
+                <section className="mt-6 rounded-3xl border border-border bg-card p-6 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/10">
+                      <Star className="h-5 w-5 text-amber-500" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold">Rate your tutor</h2>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Tell us how your tutoring session went. Your feedback
+                        helps other learners understand the tutoring experience.
+                      </p>
                     </div>
                   </div>
 
-                  <div>
-                    <label htmlFor="tutor-review" className="text-sm font-medium">
-                      Written feedback <span className="font-normal text-muted-foreground">(optional)</span>
-                    </label>
-                    <textarea
-                      id="tutor-review"
-                      value={reviewComment}
-                      onChange={(event) => setReviewComment(event.target.value)}
-                      maxLength={2000}
-                      rows={4}
-                      placeholder="What did you find helpful about the session?"
-                      className="mt-2 w-full resize-none rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                    />
-                    <div className="mt-1 text-right text-xs text-muted-foreground">
-                      {reviewComment.length}/2000
+                  <form onSubmit={submitReview} className="mt-5 space-y-5">
+                    <div>
+                      <div className="text-sm font-medium">Your rating</div>
+                      <div
+                        className="mt-2 flex items-center gap-1"
+                        aria-label="Choose a rating from 1 to 5 stars"
+                      >
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setReviewRating(star)}
+                            aria-label={`${star} star${star === 1 ? "" : "s"}`}
+                            className="rounded-lg p-1 transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            <Star
+                              className={`h-7 w-7 ${
+                                star <= reviewRating
+                                  ? "fill-amber-400 text-amber-400"
+                                  : "text-muted-foreground"
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
 
-                  {reviewError && (
-                    <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-                      {reviewError}
+                    <div>
+                      <label
+                        htmlFor="tutor-review"
+                        className="text-sm font-medium"
+                      >
+                        Written feedback{" "}
+                        <span className="font-normal text-muted-foreground">
+                          (optional)
+                        </span>
+                      </label>
+                      <textarea
+                        id="tutor-review"
+                        value={reviewComment}
+                        onChange={(event) =>
+                          setReviewComment(event.target.value)
+                        }
+                        maxLength={2000}
+                        rows={4}
+                        placeholder="What did you find helpful about the session?"
+                        className="mt-2 w-full resize-none rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                      />
+                      <div className="mt-1 text-right text-xs text-muted-foreground">
+                        {reviewComment.length}/2000
+                      </div>
                     </div>
-                  )}
 
-                  <button
-                    type="submit"
-                    disabled={reviewSubmitting || reviewRating === 0}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {reviewSubmitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Submitting…
-                      </>
-                    ) : (
-                      "Submit review"
+                    {reviewError && (
+                      <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                        {reviewError}
+                      </div>
                     )}
-                  </button>
-                </form>
-              </section>
-            )}
 
-          {session.role === "customer" &&
-            session.tutoringSessionStatus === "COMPLETED" &&
-            (session.review || reviewSubmitted) && (
-              <section className="mt-6 rounded-3xl border border-border bg-card p-6 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                  <div>
-                    <h2 className="font-semibold">Thank you for your feedback</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">Your tutor review has been submitted.</p>
+                    <button
+                      type="submit"
+                      disabled={reviewSubmitting || reviewRating === 0}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {reviewSubmitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Submitting…
+                        </>
+                      ) : (
+                        "Submit review"
+                      )}
+                    </button>
+                  </form>
+                </section>
+              )}
+
+            {session.role === "customer" &&
+              session.tutoringSessionStatus === "COMPLETED" &&
+              (session.review || reviewSubmitted) && (
+                <section className="mt-6 rounded-3xl border border-border bg-card p-6 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                    <div>
+                      <h2 className="font-semibold">
+                        Thank you for your feedback
+                      </h2>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Your tutor review has been submitted.
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </section>
-            )}
-
+                </section>
+              )}
           </section>
 
           <aside className="space-y-5">

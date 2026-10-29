@@ -166,9 +166,7 @@ export default async function EducatorWorkspacePage() {
       ): slot is typeof slot & {
         startTime: Date;
         endTime: Date;
-      } =>
-        slot.startTime instanceof Date &&
-        slot.endTime instanceof Date,
+      } => slot.startTime instanceof Date && slot.endTime instanceof Date,
     )
     .map((slot) => ({
       ...slot,

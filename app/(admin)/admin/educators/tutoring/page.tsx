@@ -3,10 +3,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import {
-  CAPABILITIES,
-  hasCapability,
-} from "@/lib/auth/capabilities";
+import { CAPABILITIES, hasCapability } from "@/lib/auth/capabilities";
 
 import EducatorTutoringTabs from "@/app/_components/EducatorTutoringTabs";
 
@@ -33,10 +30,7 @@ export default async function EducatorTutoringPage() {
 
   const isAdmin = normalizedRole === "ADMIN";
 
-  const canTeach = await hasCapability(
-    userId,
-    CAPABILITIES.TEACH,
-  );
+  const canTeach = await hasCapability(userId, CAPABILITIES.TEACH);
 
   if (!isAdmin && !canTeach) {
     redirect("/dashboard");
@@ -116,9 +110,7 @@ export default async function EducatorTutoringPage() {
       ): slot is typeof slot & {
         startTime: Date;
         endTime: Date;
-      } =>
-        slot.startTime instanceof Date &&
-        slot.endTime instanceof Date,
+      } => slot.startTime instanceof Date && slot.endTime instanceof Date,
     )
     .map((slot) => ({
       id: slot.id,

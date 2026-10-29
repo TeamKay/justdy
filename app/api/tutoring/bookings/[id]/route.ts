@@ -39,9 +39,6 @@ async function getUser() {
  *   learner through the same Family
  */
 
-
-
-
 /**
  * PATCH /api/tutorings/:id
  *
@@ -71,18 +68,12 @@ async function getUser() {
  * the actual refund policy. Refund behavior should therefore follow
  * the configured business policy.
  */
-export async function PATCH(
-  request: Request,
-  context: Context,
-) {
+export async function PATCH(request: Request, context: Context) {
   try {
     const user = await getUser();
 
     if (!user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await context.params;
@@ -94,9 +85,7 @@ export async function PATCH(
       );
     }
 
-    const body = (await request
-      .json()
-      .catch(() => null)) as Body | null;
+    const body = (await request.json().catch(() => null)) as Body | null;
 
     const action = stringValue(body?.action);
     const newAvailabilityId = stringValue(body?.availabilityId);
@@ -104,8 +93,7 @@ export async function PATCH(
     if (action !== "cancel" && action !== "reschedule") {
       return NextResponse.json(
         {
-          error:
-            "Action must be 'cancel' or 'reschedule'.",
+          error: "Action must be 'cancel' or 'reschedule'.",
         },
         { status: 400 },
       );
@@ -152,10 +140,6 @@ export async function PATCH(
       );
     }
 
-
-
-  
-
     /*
      * Terminal booking states cannot be changed.
      */
@@ -183,8 +167,7 @@ export async function PATCH(
     ) {
       return NextResponse.json(
         {
-          error:
-            "A tutoring session that has started cannot be changed.",
+          error: "A tutoring session that has started cannot be changed.",
         },
         { status: 409 },
       );
@@ -221,20 +204,14 @@ export async function PATCH(
        * payment against a slot that has already been made available
        * to somebody else.
        */
-      if (
-        booking.status === "PendingPayment" &&
-        booking.stripeSessionId
-      ) {
+      if (booking.status === "PendingPayment" && booking.stripeSessionId) {
         try {
-          const checkoutSession =
-            await stripe.checkout.sessions.retrieve(
-              booking.stripeSessionId,
-            );
+          const checkoutSession = await stripe.checkout.sessions.retrieve(
+            booking.stripeSessionId,
+          );
 
           if (checkoutSession.status === "open") {
-            await stripe.checkout.sessions.expire(
-              booking.stripeSessionId,
-            );
+            await stripe.checkout.sessions.expire(booking.stripeSessionId);
           }
         } catch (stripeError) {
           console.error(
@@ -331,8 +308,7 @@ export async function PATCH(
          */
         refund: {
           automatic: false,
-          reason:
-            "Cancellation/refund policy is configured separately.",
+          reason: "Cancellation/refund policy is configured separately.",
         },
       });
     }
@@ -346,8 +322,7 @@ export async function PATCH(
     if (!newAvailabilityId) {
       return NextResponse.json(
         {
-          error:
-            "A new availability slot is required for rescheduling.",
+          error: "A new availability slot is required for rescheduling.",
         },
         { status: 400 },
       );
@@ -359,8 +334,7 @@ export async function PATCH(
     if (booking.status !== "Scheduled") {
       return NextResponse.json(
         {
-          error:
-            "Only paid scheduled bookings can be rescheduled.",
+          error: "Only paid scheduled bookings can be rescheduled.",
         },
         { status: 409 },
       );
@@ -369,14 +343,12 @@ export async function PATCH(
     /*
      * The booking must have a valid service with a duration.
      */
-    const serviceDurationMinutes =
-      booking.service?.durationMinutes ?? 0;
+    const serviceDurationMinutes = booking.service?.durationMinutes ?? 0;
 
     if (serviceDurationMinutes <= 0) {
       return NextResponse.json(
         {
-          error:
-            "The booking service has no valid duration.",
+          error: "The booking service has no valid duration.",
         },
         { status: 409 },
       );
@@ -417,81 +389,72 @@ export async function PATCH(
           },
         });
 
-        if (
-          !current ||
-          current.status !== "Scheduled"
-        ) {
+        if (!current || current.status !== "Scheduled") {
           throw new Error("BOOKING_STATE_CHANGED");
         }
 
         /*
          * Load the requested canonical availability slot.
          */
-       const slot = await tx.availability.findFirst({
-  where: {
-    id: newAvailabilityId,
-    type: {
-      in: ["ONE_OFF", "OCCURRENCE"],
-    },
-  },
-  select: {
-    id: true,
-    educatorId: true,
-    startTime: true,
-    endTime: true,
-    status: true,
-  },
-});
+        const slot = await tx.availability.findFirst({
+          where: {
+            id: newAvailabilityId,
+            type: {
+              in: ["ONE_OFF", "OCCURRENCE"],
+            },
+          },
+          select: {
+            id: true,
+            educatorId: true,
+            startTime: true,
+            endTime: true,
+            status: true,
+          },
+        });
 
-if (!slot) {
-  throw new Error("NEW_SLOT_NOT_FOUND");
-}
+        if (!slot) {
+          throw new Error("NEW_SLOT_NOT_FOUND");
+        }
 
-if (!slot.startTime || !slot.endTime) {
-  throw new Error("NEW_SLOT_NOT_BOOKABLE");
-}
+        if (!slot.startTime || !slot.endTime) {
+          throw new Error("NEW_SLOT_NOT_BOOKABLE");
+        }
 
-if (slot.educatorId !== current.educatorId) {
-  throw new Error("NEW_SLOT_WRONG_TUTOR");
-}
+        if (slot.educatorId !== current.educatorId) {
+          throw new Error("NEW_SLOT_WRONG_TUTOR");
+        }
 
-if (slot.status !== "Available") {
-  throw new Error("NEW_SLOT_UNAVAILABLE");
-}
+        if (slot.status !== "Available") {
+          throw new Error("NEW_SLOT_UNAVAILABLE");
+        }
 
-if (slot.startTime.getTime() <= Date.now()) {
-  throw new Error("NEW_SLOT_IN_PAST");
-}
+        if (slot.startTime.getTime() <= Date.now()) {
+          throw new Error("NEW_SLOT_IN_PAST");
+        }
 
-const slotDurationMs =
-  slot.endTime.getTime() -
-  slot.startTime.getTime();
+        const slotDurationMs =
+          slot.endTime.getTime() - slot.startTime.getTime();
 
-const requiredDurationMs =
-  serviceDurationMinutes * 60_000;
+        const requiredDurationMs = serviceDurationMinutes * 60_000;
 
-if (slotDurationMs !== requiredDurationMs) {
-  throw new Error(
-    "NEW_SLOT_DURATION_MISMATCH",
-  );
-}
-        
+        if (slotDurationMs !== requiredDurationMs) {
+          throw new Error("NEW_SLOT_DURATION_MISMATCH");
+        }
 
         /*
          * Atomically claim the new slot.
          *
          * If another request claims it first, count will be zero.
          */
-        const claimed =
-          await tx.availability.updateMany({
-            where: {
-              id: slot.id,
-              status: "Available",
-            },
-            data: {
-              status: "Booked",
-            },
-          });
+        const claimed = await tx.availability.updateMany({
+          where: {
+            id: slot.id,
+            status: "Available",
+          },
+          data: {
+            status: "Booked",
+          },
+        });
 
         if (claimed.count !== 1) {
           throw new Error("NEW_SLOT_UNAVAILABLE");
@@ -570,26 +533,19 @@ if (slotDurationMs !== requiredDurationMs) {
       availabilityId: result.availabilityId,
     });
   } catch (error) {
-    const code =
-      error instanceof Error
-        ? error.message
-        : "UNKNOWN";
+    const code = error instanceof Error ? error.message : "UNKNOWN";
 
     const conflicts: Record<string, string> = {
       BOOKING_STATE_CHANGED:
         "The booking changed before your request completed. Refresh and try again.",
 
-      NEW_SLOT_NOT_FOUND:
-        "The selected availability slot no longer exists.",
+      NEW_SLOT_NOT_FOUND: "The selected availability slot no longer exists.",
 
-      NEW_SLOT_WRONG_TUTOR:
-        "The selected slot belongs to a different tutor.",
+      NEW_SLOT_WRONG_TUTOR: "The selected slot belongs to a different tutor.",
 
-      NEW_SLOT_UNAVAILABLE:
-        "That availability slot has already been booked.",
+      NEW_SLOT_UNAVAILABLE: "That availability slot has already been booked.",
 
-      NEW_SLOT_IN_PAST:
-        "That availability slot has already started.",
+      NEW_SLOT_IN_PAST: "That availability slot has already started.",
 
       NEW_SLOT_DURATION_MISMATCH:
         "That slot does not match the duration of the booked service.",
@@ -604,15 +560,11 @@ if (slotDurationMs !== requiredDurationMs) {
       );
     }
 
-    console.error(
-      "PATCH /api/tutorings/[id]:",
-      error,
-    );
+    console.error("PATCH /api/tutorings/[id]:", error);
 
     return NextResponse.json(
       {
-        error:
-          "Unable to update this tutoring booking.",
+        error: "Unable to update this tutoring booking.",
       },
       { status: 500 },
     );

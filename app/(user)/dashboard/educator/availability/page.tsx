@@ -80,10 +80,7 @@ export default async function EducatorAvailabilityPage() {
         educatorId: userId,
         type: RECURRING,
       },
-      orderBy: [
-        { dayOfWeek: "asc" },
-        { weeklyStartTime: "asc" },
-      ],
+      orderBy: [{ dayOfWeek: "asc" }, { weeklyStartTime: "asc" }],
       select: {
         id: true,
         dayOfWeek: true,
@@ -120,9 +117,7 @@ export default async function EducatorAvailabilityPage() {
       ): slot is typeof slot & {
         startTime: Date;
         endTime: Date;
-      } =>
-        slot.startTime instanceof Date &&
-        slot.endTime instanceof Date,
+      } => slot.startTime instanceof Date && slot.endTime instanceof Date,
     )
     .map((slot) => ({
       id: slot.id,

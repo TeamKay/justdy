@@ -3,10 +3,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import {
-  CAPABILITIES,
-  hasCapability,
-} from "@/lib/auth/capabilities";
+import { CAPABILITIES, hasCapability } from "@/lib/auth/capabilities";
 
 import EducatorServicesStudio from "@/app/_components/EducatorServicesStudio";
 
@@ -28,10 +25,7 @@ export default async function EducatorServicesPage() {
       .trim()
       .toUpperCase() === "ADMIN";
 
-  const canTeach = await hasCapability(
-    userId,
-    CAPABILITIES.TEACH,
-  );
+  const canTeach = await hasCapability(userId, CAPABILITIES.TEACH);
 
   if (!isAdmin && !canTeach) {
     redirect("/dashboard");
@@ -78,7 +72,6 @@ export default async function EducatorServicesPage() {
     },
   });
 
- 
   const serializedServices = services.map((service) => ({
     id: service.id,
     title: service.title,
@@ -97,13 +90,10 @@ export default async function EducatorServicesPage() {
   return (
     <main className="min-h-full bg-background">
       <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-0">
-
         <EducatorServicesStudio
           profile={{
             id: profile.id,
-            verificationStatus: String(
-              profile.verificationStatus ?? "",
-            ),
+            verificationStatus: String(profile.verificationStatus ?? ""),
             headline: profile.headline,
             specialty: profile.specialty,
             subjects: profile.subjects,

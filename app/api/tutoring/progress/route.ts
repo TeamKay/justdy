@@ -6,7 +6,11 @@ import prisma from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 function uniqueStrings(values: Array<string | null | undefined>) {
-  return [...new Set(values.map((value) => value?.trim()).filter(Boolean) as string[])];
+  return [
+    ...new Set(
+      values.map((value) => value?.trim()).filter(Boolean) as string[],
+    ),
+  ];
 }
 
 export async function GET(request: Request) {
@@ -18,42 +22,43 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const requestedStudentId = new URL(request.url).searchParams.get("studentId")?.trim() || null;
+    const requestedStudentId =
+      new URL(request.url).searchParams.get("studentId")?.trim() || null;
     const learnerId = userId;
 
-if (requestedStudentId && requestedStudentId !== userId) {
-  return NextResponse.json(
-    {
-      error: "You are not authorized to view this learner's progress.",
-    },
-    { status: 403 },
-  );
-}
+    if (requestedStudentId && requestedStudentId !== userId) {
+      return NextResponse.json(
+        {
+          error: "You are not authorized to view this learner's progress.",
+        },
+        { status: 403 },
+      );
+    }
 
     const [sessions, activities] = await Promise.all([
       prisma.tutoringSession.findMany({
-      where: {
-        learnerId,
-        status: "COMPLETED",
-      },
-      orderBy: { scheduledStart: "desc" },
-      take: 50,
-      select: {
-        id: true,
-        scheduledStart: true,
-        scheduledEnd: true,
-        startedAt: true,
-        endedAt: true,
-        topic: true,
-        topicsCovered: true,
-        strengths: true,
-        needsPractice: true,
-        nextStep: true,
-        learnerOutcome: true,
-        educator: { select: { id: true, name: true } },
-        service: { select: { title: true, subject: true } },
-        booking: { select: { subject: true, gradeLevel: true } },
-      },
+        where: {
+          learnerId,
+          status: "COMPLETED",
+        },
+        orderBy: { scheduledStart: "desc" },
+        take: 50,
+        select: {
+          id: true,
+          scheduledStart: true,
+          scheduledEnd: true,
+          startedAt: true,
+          endedAt: true,
+          topic: true,
+          topicsCovered: true,
+          strengths: true,
+          needsPractice: true,
+          nextStep: true,
+          learnerOutcome: true,
+          educator: { select: { id: true, name: true } },
+          service: { select: { title: true, subject: true } },
+          booking: { select: { subject: true, gradeLevel: true } },
+        },
       }),
       prisma.learningActivity.findMany({
         where: { userId: learnerId },
@@ -67,38 +72,66 @@ if (requestedStudentId && requestedStudentId !== userId) {
           maxScore: true,
           startedAt: true,
           completedAt: true,
-          resource: { select: { id: true, title: true, type: true, subject: true, topic: true } },
+          resource: {
+            select: {
+              id: true,
+              title: true,
+              type: true,
+              subject: true,
+              topic: true,
+            },
+          },
         },
       }),
     ]);
 
-    const completedActivities = activities.filter((item) => item.status === "COMPLETED");
-    const scoredActivities = completedActivities.filter(
-      (item) => item.score !== null && item.maxScore !== null && item.maxScore > 0,
+    const completedActivities = activities.filter(
+      (item) => item.status === "COMPLETED",
     );
-    const practicePoints = scoredActivities.reduce((sum, item) => sum + (item.score ?? 0), 0);
-    const practiceMaxPoints = scoredActivities.reduce((sum, item) => sum + (item.maxScore ?? 0), 0);
-    const practicePercentage = practiceMaxPoints > 0
-      ? Math.round((practicePoints / practiceMaxPoints) * 100)
-      : null;
+    const scoredActivities = completedActivities.filter(
+      (item) =>
+        item.score !== null && item.maxScore !== null && item.maxScore > 0,
+    );
+    const practicePoints = scoredActivities.reduce(
+      (sum, item) => sum + (item.score ?? 0),
+      0,
+    );
+    const practiceMaxPoints = scoredActivities.reduce(
+      (sum, item) => sum + (item.maxScore ?? 0),
+      0,
+    );
+    const practicePercentage =
+      practiceMaxPoints > 0
+        ? Math.round((practicePoints / practiceMaxPoints) * 100)
+        : null;
 
     const topics = uniqueStrings(
       sessions.flatMap((item) => {
         const values = Array.isArray(item.topicsCovered)
           ? item.topicsCovered
           : [];
-        return [item.topic, ...values.filter((value): value is string => typeof value === "string")];
+        return [
+          item.topic,
+          ...values.filter(
+            (value): value is string => typeof value === "string",
+          ),
+        ];
       }),
     );
 
     const strengths = uniqueStrings(sessions.map((item) => item.strengths));
-    const needsPractice = uniqueStrings(sessions.map((item) => item.needsPractice));
+    const needsPractice = uniqueStrings(
+      sessions.map((item) => item.needsPractice),
+    );
     const nextSteps = uniqueStrings(sessions.map((item) => item.nextStep));
 
     const totalMinutes = sessions.reduce((sum, item) => {
       const start = item.startedAt ?? item.scheduledStart;
       const end = item.endedAt ?? item.scheduledEnd;
-      const minutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+      const minutes = Math.max(
+        0,
+        Math.round((end.getTime() - start.getTime()) / 60000),
+      );
       return sum + minutes;
     }, 0);
 
@@ -144,6 +177,9 @@ if (requestedStudentId && requestedStudentId !== userId) {
     });
   } catch (error) {
     console.error("GET /api/tutoring/progress error:", error);
-    return NextResponse.json({ error: "Failed to load tutoring progress." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to load tutoring progress." },
+      { status: 500 },
+    );
   }
 }

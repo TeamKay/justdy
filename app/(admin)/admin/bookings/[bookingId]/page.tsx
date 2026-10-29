@@ -55,9 +55,7 @@ function formatDuration(
 ) {
   if (!start || !end) return "—";
 
-  const minutes = Math.round(
-    (end.getTime() - start.getTime()) / (1000 * 60),
-  );
+  const minutes = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
 
   if (minutes < 60) {
     return `${minutes} min`;
@@ -264,9 +262,7 @@ export default async function BookingDetailsPage({
             </Link>
 
             <div>
-              <p className="text-sm text-muted-foreground">
-                Booking details
-              </p>
+              <p className="text-sm text-muted-foreground">Booking details</p>
 
               <h1 className="text-2xl font-bold tracking-tight">
                 Booking #{booking.id}
@@ -297,9 +293,7 @@ export default async function BookingDetailsPage({
 
               <div>
                 <p className="text-sm text-muted-foreground">Date</p>
-                <p className="font-semibold">
-                  {formatDate(booking.startTime)}
-                </p>
+                <p className="font-semibold">{formatDate(booking.startTime)}</p>
               </div>
             </div>
           </div>
@@ -329,10 +323,7 @@ export default async function BookingDetailsPage({
               <div>
                 <p className="text-sm text-muted-foreground">Duration</p>
                 <p className="font-semibold">
-                  {formatDuration(
-                    booking.startTime,
-                    booking.endTime,
-                  )}
+                  {formatDuration(booking.startTime, booking.endTime)}
                 </p>
               </div>
             </div>
@@ -477,27 +468,21 @@ export default async function BookingDetailsPage({
 
               <div className="grid gap-5 p-5 sm:grid-cols-2 lg:grid-cols-3">
                 <div>
-                  <p className="text-sm text-muted-foreground">
-                    Start
-                  </p>
+                  <p className="text-sm text-muted-foreground">Start</p>
                   <p className="mt-1 font-medium">
                     {formatDateTime(booking.startTime)}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-sm text-muted-foreground">
-                    End
-                  </p>
+                  <p className="text-sm text-muted-foreground">End</p>
                   <p className="mt-1 font-medium">
                     {formatDateTime(booking.endTime)}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-sm text-muted-foreground">
-                    Availability
-                  </p>
+                  <p className="text-sm text-muted-foreground">Availability</p>
                   <p className="mt-1 font-medium">
                     {booking.availability?.id || "—"}
                   </p>
@@ -518,9 +503,7 @@ export default async function BookingDetailsPage({
                       <div className="flex items-center gap-2">
                         <Video className="h-4 w-4 text-muted-foreground" />
 
-                        <p className="font-medium">
-                          Session #{sessionData.id}
-                        </p>
+                        <p className="font-medium">Session #{sessionData.id}</p>
                       </div>
 
                       <p className="mt-1 text-sm text-muted-foreground">
@@ -573,9 +556,7 @@ export default async function BookingDetailsPage({
                 </div>
 
                 <div className="flex items-center justify-between gap-4 px-5 py-4">
-                  <span className="text-sm text-muted-foreground">
-                    Status
-                  </span>
+                  <span className="text-sm text-muted-foreground">Status</span>
 
                   <span
                     className={`rounded-full border px-2.5 py-1 text-xs font-medium ${getStatusClasses(
@@ -587,9 +568,7 @@ export default async function BookingDetailsPage({
                 </div>
 
                 <div className="flex items-center justify-between gap-4 px-5 py-4">
-                  <span className="text-sm text-muted-foreground">
-                    Created
-                  </span>
+                  <span className="text-sm text-muted-foreground">Created</span>
                   <span className="text-right text-sm font-medium">
                     {formatDateTime(booking.createdAt)}
                   </span>

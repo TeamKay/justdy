@@ -26,27 +26,27 @@ function normalizeLesson(value: unknown): LessonPlan | null {
   const data = value as Record<string, unknown>;
   const sections = Array.isArray(data.sections)
     ? data.sections
-        .filter((item): item is Record<string, unknown> =>
-          typeof item === "object" && item !== null && !Array.isArray(item),
+        .filter(
+          (item): item is Record<string, unknown> =>
+            typeof item === "object" && item !== null && !Array.isArray(item),
         )
         .map((item, index) => ({
           id: typeof item.id === "string" ? item.id : `section-${index + 1}`,
           title:
-            typeof item.title === "string" ? item.title : `Section ${index + 1}`,
+            typeof item.title === "string"
+              ? item.title
+              : `Section ${index + 1}`,
           content: typeof item.content === "string" ? item.content : "",
         }))
     : [];
 
   return {
     title: typeof data.title === "string" ? data.title : "Lesson Plan",
-    description:
-      typeof data.description === "string" ? data.description : null,
+    description: typeof data.description === "string" ? data.description : null,
     subject: typeof data.subject === "string" ? data.subject : null,
-    gradeLevel:
-      typeof data.gradeLevel === "string" ? data.gradeLevel : null,
+    gradeLevel: typeof data.gradeLevel === "string" ? data.gradeLevel : null,
     topic: typeof data.topic === "string" ? data.topic : null,
-    duration:
-      typeof data.duration === "number" ? data.duration : null,
+    duration: typeof data.duration === "number" ? data.duration : null,
     learningObjectives: Array.isArray(data.learningObjectives)
       ? data.learningObjectives.filter(
           (item): item is string => typeof item === "string",
@@ -88,14 +88,18 @@ export default function LessonEditor() {
         throw new Error(data?.error || "Unable to load the lesson plan.");
       }
 
-      const normalized = normalizeLesson(data.lessonPlan ?? data.resource?.content);
+      const normalized = normalizeLesson(
+        data.lessonPlan ?? data.resource?.content,
+      );
       if (!normalized) {
         throw new Error("The lesson plan could not be read.");
       }
 
       setLesson(normalized);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load the lesson plan.");
+      setError(
+        err instanceof Error ? err.message : "Unable to load the lesson plan.",
+      );
     } finally {
       setLoading(false);
     }
@@ -148,7 +152,10 @@ export default function LessonEditor() {
   function addObjective() {
     setLesson((current) =>
       current
-        ? { ...current, learningObjectives: [...current.learningObjectives, ""] }
+        ? {
+            ...current,
+            learningObjectives: [...current.learningObjectives, ""],
+          }
         : current,
     );
     setSaved(false);
@@ -236,7 +243,9 @@ export default function LessonEditor() {
         );
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to save the lesson plan.");
+      setError(
+        err instanceof Error ? err.message : "Unable to save the lesson plan.",
+      );
     } finally {
       setSaving(false);
     }
@@ -346,8 +355,9 @@ export default function LessonEditor() {
                   <input
                     value={
                       key === "duration"
-                        ? lesson.duration ?? ""
-                        : lesson[key as "subject" | "gradeLevel" | "topic"] ?? ""
+                        ? (lesson.duration ?? "")
+                        : (lesson[key as "subject" | "gradeLevel" | "topic"] ??
+                          "")
                     }
                     onChange={(event) => {
                       const value = event.target.value;

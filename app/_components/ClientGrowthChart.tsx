@@ -75,7 +75,8 @@ export default function ClientGrowthChart({
 
   const latest = chartPoints[chartPoints.length - 1]?.value ?? 0;
   const first = chartPoints[0]?.value ?? 0;
-  const change = first > 0 ? Math.round(((latest - first) / first) * 100) : null;
+  const change =
+    first > 0 ? Math.round(((latest - first) / first) * 100) : null;
   const hasCustomRange = Boolean(fromDate || toDateValue);
 
   const width = 1400;
@@ -85,7 +86,8 @@ export default function ClientGrowthChart({
   const chartHeight = height - padding.top - padding.bottom;
   const maxValue = Math.max(10, ...chartPoints.map((point) => point.value));
   const yMax = Math.ceil(maxValue / 10) * 10;
-  const stepX = chartPoints.length > 1 ? chartWidth / (chartPoints.length - 1) : chartWidth;
+  const stepX =
+    chartPoints.length > 1 ? chartWidth / (chartPoints.length - 1) : chartWidth;
 
   const coordinates = chartPoints.map((point, index) => ({
     ...point,
@@ -113,8 +115,15 @@ export default function ClientGrowthChart({
           <div className="mt-0 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             <h1>Client Growth Chart</h1>
             {change !== null ? (
-              <span className={change >= 0 ? "font-semibold text-emerald-600 dark:text-emerald-400" : "font-semibold text-red-600 dark:text-red-400"}>
-                {change >= 0 ? "+" : ""}{change}% across selected range
+              <span
+                className={
+                  change >= 0
+                    ? "font-semibold text-emerald-600 dark:text-emerald-400"
+                    : "font-semibold text-red-600 dark:text-red-400"
+                }
+              >
+                {change >= 0 ? "+" : ""}
+                {change}% across selected range
               </span>
             ) : null}
           </div>
@@ -140,7 +149,10 @@ export default function ClientGrowthChart({
             </button>
           ))}
 
-          <div className="hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
+          <div
+            className="hidden h-6 w-px bg-border sm:block"
+            aria-hidden="true"
+          />
 
           <label className="relative">
             <span className="sr-only">From date</span>
@@ -200,7 +212,11 @@ export default function ClientGrowthChart({
           <defs>
             <linearGradient id="clientGrowthFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="rgb(79 70 229)" stopOpacity="0.18" />
-              <stop offset="100%" stopColor="rgb(79 70 229)" stopOpacity="0.01" />
+              <stop
+                offset="100%"
+                stopColor="rgb(79 70 229)"
+                stopOpacity="0.01"
+              />
             </linearGradient>
           </defs>
 
@@ -257,7 +273,9 @@ export default function ClientGrowthChart({
                 textAnchor="middle"
                 className="fill-muted-foreground text-[11px] font-medium"
               >
-                {point.date ? formatAxisDate(point.date, point.label) : point.label}
+                {point.date
+                  ? formatAxisDate(point.date, point.label)
+                  : point.label}
               </text>
             </g>
           ))}

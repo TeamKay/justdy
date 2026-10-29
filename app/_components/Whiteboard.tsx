@@ -84,7 +84,10 @@ declare global {
         promise: Promise<{
           numPages: number;
           getPage: (pageNumber: number) => Promise<{
-            getViewport: (options: { scale: number }) => { width: number; height: number };
+            getViewport: (options: { scale: number }) => {
+              width: number;
+              height: number;
+            };
             render: (options: {
               canvasContext: CanvasRenderingContext2D;
               viewport: { width: number; height: number };
@@ -98,12 +101,13 @@ declare global {
 
 const DESMOS_API_SCRIPT_ID = "justdy-desmos-graphing-api";
 const DESMOS_API_KEY =
-  process.env.NEXT_PUBLIC_DESMOS_API_KEY ??
-  "dcb31709b452b1cf9dc26972add0fda6";
+  process.env.NEXT_PUBLIC_DESMOS_API_KEY ?? "dcb31709b452b1cf9dc26972add0fda6";
 
 function loadDesmosApi(): Promise<DesmosNamespace> {
   if (typeof window === "undefined") {
-    return Promise.reject(new Error("Desmos is only available in the browser."));
+    return Promise.reject(
+      new Error("Desmos is only available in the browser."),
+    );
   }
 
   if (window.Desmos) return Promise.resolve(window.Desmos);
@@ -131,8 +135,7 @@ function loadDesmosApi(): Promise<DesmosNamespace> {
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.id = DESMOS_API_SCRIPT_ID;
-    script.src =
-      `https://www.desmos.com/api/v1.13/calculator.js?apiKey=${encodeURIComponent(DESMOS_API_KEY)}`;
+    script.src = `https://www.desmos.com/api/v1.13/calculator.js?apiKey=${encodeURIComponent(DESMOS_API_KEY)}`;
     script.async = true;
     script.onload = () => {
       if (window.Desmos) resolve(window.Desmos);
@@ -184,9 +187,22 @@ type StrokeElement = {
 };
 
 type ShapeType =
-  | "arrow" | "line" | "ellipse" | "rectangle" | "circle" | "triangle"
-  | "cube" | "cylinder" | "diamond" | "pentagon" | "hexagon"
-  | "heptagon" | "octagon" | "parallelogram" | "sphere" | "axes";
+  | "arrow"
+  | "line"
+  | "ellipse"
+  | "rectangle"
+  | "circle"
+  | "triangle"
+  | "cube"
+  | "cylinder"
+  | "diamond"
+  | "pentagon"
+  | "hexagon"
+  | "heptagon"
+  | "octagon"
+  | "parallelogram"
+  | "sphere"
+  | "axes";
 
 type ShapeElement = {
   id: string;
@@ -227,10 +243,7 @@ type TextElement = {
 };
 
 type WhiteboardElement =
-  | StrokeElement
-  | ShapeElement
-  | TextElement
-  | ImageElement;
+  StrokeElement | ShapeElement | TextElement | ImageElement;
 
 type WhiteboardPage = {
   id: string;
@@ -364,7 +377,9 @@ function parseSavedBoardData(value: unknown): SavedWhiteboardData | null {
         ? candidate.whiteboardId
         : undefined,
     mode:
-      candidate.mode === "standalone" || candidate.mode === "appointment" || candidate.mode === "booking"
+      candidate.mode === "standalone" ||
+      candidate.mode === "appointment" ||
+      candidate.mode === "booking"
         ? candidate.mode
         : undefined,
     appointmentId:
@@ -372,9 +387,7 @@ function parseSavedBoardData(value: unknown): SavedWhiteboardData | null {
         ? candidate.appointmentId
         : undefined,
     bookingId:
-      typeof candidate.bookingId === "string"
-        ? candidate.bookingId
-        : undefined,
+      typeof candidate.bookingId === "string" ? candidate.bookingId : undefined,
     pages: Array.isArray(candidate.pages)
       ? (candidate.pages as WhiteboardPage[])
       : undefined,
@@ -454,29 +467,95 @@ const PEN_SIZE_OPTIONS = [
 ];
 
 const LATEX_SYMBOLS = [
-  ["α", "\\alpha "], ["β", "\\beta "], ["γ", "\\gamma "], ["δ", "\\delta "], ["ε", "\\epsilon "],
-  ["ζ", "\\zeta "], ["η", "\\eta "], ["ι", "\\iota "], ["κ", "\\kappa "], ["λ", "\\lambda "],
-  ["μ", "\\mu "], ["ν", "\\nu "], ["ξ", "\\xi "], ["ο", "o "], ["π", "\\pi "],
-  ["ρ", "\\rho "], ["ς", "\\varsigma "], ["σ", "\\sigma "], ["τ", "\\tau "], ["υ", "\\upsilon "],
-  ["φ", "\\phi "], ["ϕ", "\\varphi "], ["χ", "\\chi "], ["ψ", "\\psi "], ["ω", "\\omega "],
-  ["÷", "\\div "], ["Σ", "\\Sigma "], ["√", "\\sqrt{}"], ["∫", "\\int "], ["×", "\\times "],
-  ["∩", "\\cap "], ["∪", "\\cup "], ["≠", "\\neq "], ["≤", "\\le "], ["≥", "\\ge "],
-  ["∈", "\\in "], ["±", "\\pm "], ["∓", "\\mp "], ["∞", "\\infty "], ["≈", "\\approx "],
-  ["∼", "\\sim "], ["∧", "\\land "], ["∨", "\\lor "], ["⊕", "\\oplus "], ["⊗", "\\otimes "],
-  ["=", "= "], ["≡", "\\equiv "], ["∀", "\\forall "], ["∃", "\\exists "], ["∂", "\\partial "],
-  ["∇", "\\nabla "], ["↔", "\\leftrightarrow "], ["←", "\\leftarrow "], ["⇐", "\\Leftarrow "], ["→", "\\rightarrow "],
-  ["⇒", "\\Rightarrow "], ["↕", "\\updownarrow "], ["⇔", "\\Leftrightarrow "],
+  ["α", "\\alpha "],
+  ["β", "\\beta "],
+  ["γ", "\\gamma "],
+  ["δ", "\\delta "],
+  ["ε", "\\epsilon "],
+  ["ζ", "\\zeta "],
+  ["η", "\\eta "],
+  ["ι", "\\iota "],
+  ["κ", "\\kappa "],
+  ["λ", "\\lambda "],
+  ["μ", "\\mu "],
+  ["ν", "\\nu "],
+  ["ξ", "\\xi "],
+  ["ο", "o "],
+  ["π", "\\pi "],
+  ["ρ", "\\rho "],
+  ["ς", "\\varsigma "],
+  ["σ", "\\sigma "],
+  ["τ", "\\tau "],
+  ["υ", "\\upsilon "],
+  ["φ", "\\phi "],
+  ["ϕ", "\\varphi "],
+  ["χ", "\\chi "],
+  ["ψ", "\\psi "],
+  ["ω", "\\omega "],
+  ["÷", "\\div "],
+  ["Σ", "\\Sigma "],
+  ["√", "\\sqrt{}"],
+  ["∫", "\\int "],
+  ["×", "\\times "],
+  ["∩", "\\cap "],
+  ["∪", "\\cup "],
+  ["≠", "\\neq "],
+  ["≤", "\\le "],
+  ["≥", "\\ge "],
+  ["∈", "\\in "],
+  ["±", "\\pm "],
+  ["∓", "\\mp "],
+  ["∞", "\\infty "],
+  ["≈", "\\approx "],
+  ["∼", "\\sim "],
+  ["∧", "\\land "],
+  ["∨", "\\lor "],
+  ["⊕", "\\oplus "],
+  ["⊗", "\\otimes "],
+  ["=", "= "],
+  ["≡", "\\equiv "],
+  ["∀", "\\forall "],
+  ["∃", "\\exists "],
+  ["∂", "\\partial "],
+  ["∇", "\\nabla "],
+  ["↔", "\\leftrightarrow "],
+  ["←", "\\leftarrow "],
+  ["⇐", "\\Leftarrow "],
+  ["→", "\\rightarrow "],
+  ["⇒", "\\Rightarrow "],
+  ["↕", "\\updownarrow "],
+  ["⇔", "\\Leftrightarrow "],
 ] as const;
 
 const LATEX_LETTER_LABELS = new Set([
-  "α", "β", "γ", "δ", "ε", "ζ", "η", "ι", "κ", "λ",
-  "μ", "ν", "ξ", "ο", "π", "ρ", "ς", "σ", "τ", "υ",
-  "φ", "ϕ", "χ", "ψ", "ω",
+  "α",
+  "β",
+  "γ",
+  "δ",
+  "ε",
+  "ζ",
+  "η",
+  "ι",
+  "κ",
+  "λ",
+  "μ",
+  "ν",
+  "ξ",
+  "ο",
+  "π",
+  "ρ",
+  "ς",
+  "σ",
+  "τ",
+  "υ",
+  "φ",
+  "ϕ",
+  "χ",
+  "ψ",
+  "ω",
 ]);
 
-const LATEX_ARROW_LABELS = new Set([
-  "↔", "←", "⇐", "→", "⇒", "↕", "⇔",
-]);
+const LATEX_ARROW_LABELS = new Set(["↔", "←", "⇐", "→", "⇒", "↕", "⇔"]);
 
 const LATEX_EDITOR_COLORS = [
   "#000000",
@@ -491,27 +570,123 @@ const LATEX_EDITOR_COLORS = [
 const DEFAULT_BACKGROUND_IMAGE = "/images/chalkboard.png";
 
 function ShapeToolIcon({ shape }: { shape: ShapeType }) {
-  const common = { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
+  const common = {
+    width: 18,
+    height: 18,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
   switch (shape) {
-    case "arrow": return <svg {...common}><path d="M5 19 19 5" /><path d="M10 5h9v9" /></svg>;
-    case "line": return <svg {...common}><path d="M5 19 19 5" /></svg>;
-    case "ellipse": return <svg {...common}><ellipse cx="12" cy="12" rx="8.5" ry="5.5" /></svg>;
-    case "rectangle": return <svg {...common}><rect x="4" y="6" width="16" height="12" /></svg>;
-    case "circle": return <svg {...common}><circle cx="12" cy="12" r="8" /></svg>;
-    case "triangle": return <svg {...common}><path d="m12 4 8 15H4L12 4Z" /></svg>;
-    case "cube": return <svg {...common}><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /><path d="m8 5.25 8 4.5v9" /></svg>;
-    case "cylinder": return <svg {...common}><ellipse cx="12" cy="6" rx="7" ry="2.8" /><path d="M5 6v12c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8V6" /><path d="M5 18c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8" /></svg>;
-    case "diamond": return <svg {...common}><path d="m12 3 8 9-8 9-8-9 8-9Z" /></svg>;
-    case "pentagon": return <svg {...common}><path d="m12 3 8 5.8-3.05 9.2h-9.9L4 8.8 12 3Z" /></svg>;
-    case "hexagon": return <svg {...common}><path d="m7 4 10 0 5 8-5 8H7l-5-8 5-8Z" /></svg>;
-    case "heptagon": return <svg {...common}><path d="M12 2.8 19.2 6l2 8-5 6.2H7.8l-5-6.2 2-8L12 2.8Z" /></svg>;
-    case "octagon": return <svg {...common}><path d="m8 3 8 0 5 5v8l-5 5H8l-5-5V8l5-5Z" /></svg>;
-    case "parallelogram": return <svg {...common}><path d="m7 5 14 0-4 14H3L7 5Z" /></svg>;
-    case "sphere": return <svg {...common}><circle cx="12" cy="12" r="8" /><ellipse cx="12" cy="12" rx="3.2" ry="8" /></svg>;
-    default: return <svg {...common}><path d="M4 12h16M12 4v16" /><path d="m19 9-3 3 3 3M9 5l3 3 3-3M5 15l3-3-3-3" /></svg>;
+    case "arrow":
+      return (
+        <svg {...common}>
+          <path d="M5 19 19 5" />
+          <path d="M10 5h9v9" />
+        </svg>
+      );
+    case "line":
+      return (
+        <svg {...common}>
+          <path d="M5 19 19 5" />
+        </svg>
+      );
+    case "ellipse":
+      return (
+        <svg {...common}>
+          <ellipse cx="12" cy="12" rx="8.5" ry="5.5" />
+        </svg>
+      );
+    case "rectangle":
+      return (
+        <svg {...common}>
+          <rect x="4" y="6" width="16" height="12" />
+        </svg>
+      );
+    case "circle":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="8" />
+        </svg>
+      );
+    case "triangle":
+      return (
+        <svg {...common}>
+          <path d="m12 4 8 15H4L12 4Z" />
+        </svg>
+      );
+    case "cube":
+      return (
+        <svg {...common}>
+          <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" />
+          <path d="m4 7.5 8 4.5 8-4.5M12 12v9" />
+          <path d="m8 5.25 8 4.5v9" />
+        </svg>
+      );
+    case "cylinder":
+      return (
+        <svg {...common}>
+          <ellipse cx="12" cy="6" rx="7" ry="2.8" />
+          <path d="M5 6v12c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8V6" />
+          <path d="M5 18c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8" />
+        </svg>
+      );
+    case "diamond":
+      return (
+        <svg {...common}>
+          <path d="m12 3 8 9-8 9-8-9 8-9Z" />
+        </svg>
+      );
+    case "pentagon":
+      return (
+        <svg {...common}>
+          <path d="m12 3 8 5.8-3.05 9.2h-9.9L4 8.8 12 3Z" />
+        </svg>
+      );
+    case "hexagon":
+      return (
+        <svg {...common}>
+          <path d="m7 4 10 0 5 8-5 8H7l-5-8 5-8Z" />
+        </svg>
+      );
+    case "heptagon":
+      return (
+        <svg {...common}>
+          <path d="M12 2.8 19.2 6l2 8-5 6.2H7.8l-5-6.2 2-8L12 2.8Z" />
+        </svg>
+      );
+    case "octagon":
+      return (
+        <svg {...common}>
+          <path d="m8 3 8 0 5 5v8l-5 5H8l-5-5V8l5-5Z" />
+        </svg>
+      );
+    case "parallelogram":
+      return (
+        <svg {...common}>
+          <path d="m7 5 14 0-4 14H3L7 5Z" />
+        </svg>
+      );
+    case "sphere":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="8" />
+          <ellipse cx="12" cy="12" rx="3.2" ry="8" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...common}>
+          <path d="M4 12h16M12 4v16" />
+          <path d="m19 9-3 3 3 3M9 5l3 3 3-3M5 15l3-3-3-3" />
+        </svg>
+      );
   }
 }
-
 
 const BACKGROUND_IMAGE_OPTIONS = [
   { label: "Chalkboard", value: DEFAULT_BACKGROUND_IMAGE },
@@ -693,7 +868,9 @@ function renderLatexPreview(text: string, color: string) {
         className="inline-flex flex-col items-center justify-center leading-none"
         style={{ color }}
       >
-        <span className="border-b-2 border-current px-2 pb-1">{latexToReadable(fraction[1])}</span>
+        <span className="border-b-2 border-current px-2 pb-1">
+          {latexToReadable(fraction[1])}
+        </span>
         <span className="px-2 pt-1">{latexToReadable(fraction[2])}</span>
       </span>
     );
@@ -703,7 +880,10 @@ function renderLatexPreview(text: string, color: string) {
   if (sqrt) {
     return (
       <span style={{ color }}>
-        √<span className="border-t-2 border-current px-1">{latexToReadable(sqrt[1])}</span>
+        √
+        <span className="border-t-2 border-current px-1">
+          {latexToReadable(sqrt[1])}
+        </span>
       </span>
     );
   }
@@ -952,10 +1132,12 @@ function measureMathRenderWidth(
           const numerator = readGroup();
           const denominator = readGroup();
           const fracSize = size * 0.86;
-          const width = Math.max(
-            measure(numerator, fracSize),
-            measure(denominator, fracSize),
-          ) + size * 0.35;
+          const width =
+            Math.max(
+              measure(numerator, fracSize),
+              measure(denominator, fracSize),
+            ) +
+            size * 0.35;
           cursorX += width;
           continue;
         }
@@ -1066,12 +1248,18 @@ function getElementBounds(
   let measuredHeight: number;
 
   if (mathMetrics) {
-    const scaleX = element.type === "equation" ? Math.max(0.2, element.scaleX ?? 1) : 1;
-    const scaleY = element.type === "equation" ? Math.max(0.2, element.scaleY ?? 1) : 1;
+    const scaleX =
+      element.type === "equation" ? Math.max(0.2, element.scaleX ?? 1) : 1;
+    const scaleY =
+      element.type === "equation" ? Math.max(0.2, element.scaleY ?? 1) : 1;
     // Use the same cursor/command rules as drawMathEquation so the dotted
     // selection frame encloses the complete rendered formula, including
     // fractions, square roots, commands, and text groups.
-    const renderedWidth = measureMathRenderWidth(element.text, element.fontSize, ctx);
+    const renderedWidth = measureMathRenderWidth(
+      element.text,
+      element.fontSize,
+      ctx,
+    );
     measuredWidth = renderedWidth * scaleX;
     measuredHeight = mathMetrics.height * scaleY;
   } else if (ctx) {
@@ -1095,12 +1283,17 @@ function getElementBounds(
     measuredHeight = element.fontSize + 6;
   }
 
-  const padding = Math.max(7, element.fontSize * 0.14) * (element.type === "equation" ? Math.max(1, Math.min(element.scaleX ?? 1, element.scaleY ?? 1)) : 1);
+  const padding =
+    Math.max(7, element.fontSize * 0.14) *
+    (element.type === "equation"
+      ? Math.max(1, Math.min(element.scaleX ?? 1, element.scaleY ?? 1))
+      : 1);
 
   return {
     left: element.x - padding,
     top: element.y - padding,
-    right: element.x + Math.max(measuredWidth, element.fontSize * 0.6) + padding,
+    right:
+      element.x + Math.max(measuredWidth, element.fontSize * 0.6) + padding,
     bottom: element.y + measuredHeight + padding,
   };
 }
@@ -1188,42 +1381,48 @@ let pdfJsLoadPromise: Promise<NonNullable<Window["pdfjsLib"]>> | null = null;
 
 function loadPdfJs(): Promise<NonNullable<Window["pdfjsLib"]>> {
   if (typeof window === "undefined") {
-    return Promise.reject(new Error("PDF rendering is only available in the browser."));
+    return Promise.reject(
+      new Error("PDF rendering is only available in the browser."),
+    );
   }
   if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
   if (pdfJsLoadPromise) return pdfJsLoadPromise;
 
-  pdfJsLoadPromise = new Promise<NonNullable<Window["pdfjsLib"]>>((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>(
-      'script[data-justdy-pdfjs="true"]',
-    );
-    if (existing) {
-      existing.addEventListener("load", () => {
-        if (window.pdfjsLib) resolve(window.pdfjsLib);
-        else reject(new Error("PDF.js loaded without a usable API."));
-      });
-      existing.addEventListener("error", () =>
-        reject(new Error("Unable to load the PDF renderer.")),
+  pdfJsLoadPromise = new Promise<NonNullable<Window["pdfjsLib"]>>(
+    (resolve, reject) => {
+      const existing = document.querySelector<HTMLScriptElement>(
+        'script[data-justdy-pdfjs="true"]',
       );
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
-    script.async = true;
-    script.dataset.justdyPdfjs = "true";
-    script.onload = () => {
-      if (!window.pdfjsLib) {
-        reject(new Error("PDF.js loaded without a usable API."));
+      if (existing) {
+        existing.addEventListener("load", () => {
+          if (window.pdfjsLib) resolve(window.pdfjsLib);
+          else reject(new Error("PDF.js loaded without a usable API."));
+        });
+        existing.addEventListener("error", () =>
+          reject(new Error("Unable to load the PDF renderer.")),
+        );
         return;
       }
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-      resolve(window.pdfjsLib);
-    };
-    script.onerror = () => reject(new Error("Unable to load the PDF renderer."));
-    document.head.appendChild(script);
-  });
+
+      const script = document.createElement("script");
+      script.src =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+      script.async = true;
+      script.dataset.justdyPdfjs = "true";
+      script.onload = () => {
+        if (!window.pdfjsLib) {
+          reject(new Error("PDF.js loaded without a usable API."));
+          return;
+        }
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        resolve(window.pdfjsLib);
+      };
+      script.onerror = () =>
+        reject(new Error("Unable to load the PDF renderer."));
+      document.head.appendChild(script);
+    },
+  );
 
   return pdfJsLoadPromise;
 }
@@ -1327,10 +1526,16 @@ export default function Whiteboard({
   const shapeToolsButtonRef = useRef<HTMLButtonElement | null>(null);
   const [showFormulaMenu, setShowFormulaMenu] = useState(false);
   const formulaToolsButtonRef = useRef<HTMLButtonElement | null>(null);
-  const [formulaMenuPosition, setFormulaMenuPosition] = useState({ top: 0, left: 0 });
+  const [formulaMenuPosition, setFormulaMenuPosition] = useState({
+    top: 0,
+    left: 0,
+  });
   const [showUploadMenu, setShowUploadMenu] = useState(false);
   const uploadButtonRef = useRef<HTMLButtonElement | null>(null);
-  const [uploadMenuPosition, setUploadMenuPosition] = useState({ top: 0, left: 0 });
+  const [uploadMenuPosition, setUploadMenuPosition] = useState({
+    top: 0,
+    left: 0,
+  });
   const [cropEditor, setCropEditor] = useState<{
     open: boolean;
     elementId: string | null;
@@ -1348,7 +1553,9 @@ export default function Whiteboard({
   });
   const [showPagesPanel, setShowPagesPanel] = useState(false);
   const [showToolbar, setShowToolbar] = useState(true);
-  const pageThumbnailRefs = useRef<Record<string, HTMLCanvasElement | null>>({});
+  const pageThumbnailRefs = useRef<Record<string, HTMLCanvasElement | null>>(
+    {},
+  );
   const [showGraphSettings, setShowGraphSettings] = useState(false);
   const [showGraphEditor, setShowGraphEditor] = useState(false);
   const [graphLoadError, setGraphLoadError] = useState<string | null>(null);
@@ -1390,7 +1597,11 @@ export default function Whiteboard({
 
     loadDesmosApi()
       .then((Desmos) => {
-        if (cancelled || !graphContainerRef.current || graphCalculatorRef.current) {
+        if (
+          cancelled ||
+          !graphContainerRef.current ||
+          graphCalculatorRef.current
+        ) {
           return;
         }
 
@@ -1620,7 +1831,9 @@ export default function Whiteboard({
     x: 0,
     y: 0,
   });
-  const [latexTab, setLatexTab] = useState<"All" | "Math" | "Arrow" | "Letter">("All");
+  const [latexTab, setLatexTab] = useState<"All" | "Math" | "Arrow" | "Letter">(
+    "All",
+  );
   const [activeTextPanel, setActiveTextPanel] = useState<
     "symbols" | "templates" | "formatting" | null
   >(null);
@@ -1693,7 +1906,10 @@ export default function Whiteboard({
     let left = rect.left + rect.width / 2 - popupWidth / 2;
     let top = rect.bottom + gap;
 
-    left = Math.max(leftInset + 12, Math.min(left, window.innerWidth - popupWidth - 12));
+    left = Math.max(
+      leftInset + 12,
+      Math.min(left, window.innerWidth - popupWidth - 12),
+    );
 
     if (top + popupHeight > window.innerHeight - 12) {
       top = Math.max(12, rect.top - popupHeight - gap);
@@ -1739,16 +1955,10 @@ export default function Whiteboard({
       setShowPenPopup(false);
     };
 
-    document.addEventListener(
-      "pointerdown",
-      handleOutsidePointerDown,
-    );
+    document.addEventListener("pointerdown", handleOutsidePointerDown);
 
     return () => {
-      document.removeEventListener(
-        "pointerdown",
-        handleOutsidePointerDown,
-      );
+      document.removeEventListener("pointerdown", handleOutsidePointerDown);
     };
   }, [showPenPopup]);
 
@@ -1898,56 +2108,125 @@ export default function Whiteboard({
       const drawRegularPolygon = (sides: number, radius: number) => {
         const points = Array.from({ length: sides }, (_, index) => {
           const angle = -Math.PI / 2 + (index * Math.PI * 2) / sides;
-          return { x: centerX + Math.cos(angle) * radius, y: centerY + Math.sin(angle) * radius };
+          return {
+            x: centerX + Math.cos(angle) * radius,
+            y: centerY + Math.sin(angle) * radius,
+          };
         });
         ctx.moveTo(points[0].x, points[0].y);
-        for (let index = 1; index < points.length; index++) ctx.lineTo(points[index].x, points[index].y);
+        for (let index = 1; index < points.length; index++)
+          ctx.lineTo(points[index].x, points[index].y);
         ctx.closePath();
       };
 
       ctx.beginPath();
       if (element.type === "arrow") {
         const angle = Math.atan2(end.y - start.y, end.x - start.x);
-        const arrowSize = Math.max(10, Math.min(20, Math.hypot(end.x - start.x, end.y - start.y) * 0.12));
-        ctx.moveTo(start.x, start.y); ctx.lineTo(end.x, end.y);
-        ctx.moveTo(end.x, end.y); ctx.lineTo(end.x - arrowSize * Math.cos(angle - Math.PI / 6), end.y - arrowSize * Math.sin(angle - Math.PI / 6));
-        ctx.moveTo(end.x, end.y); ctx.lineTo(end.x - arrowSize * Math.cos(angle + Math.PI / 6), end.y - arrowSize * Math.sin(angle + Math.PI / 6));
+        const arrowSize = Math.max(
+          10,
+          Math.min(20, Math.hypot(end.x - start.x, end.y - start.y) * 0.12),
+        );
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.moveTo(end.x, end.y);
+        ctx.lineTo(
+          end.x - arrowSize * Math.cos(angle - Math.PI / 6),
+          end.y - arrowSize * Math.sin(angle - Math.PI / 6),
+        );
+        ctx.moveTo(end.x, end.y);
+        ctx.lineTo(
+          end.x - arrowSize * Math.cos(angle + Math.PI / 6),
+          end.y - arrowSize * Math.sin(angle + Math.PI / 6),
+        );
       } else if (element.type === "line") {
-        ctx.moveTo(start.x, start.y); ctx.lineTo(end.x, end.y);
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
       } else if (element.type === "ellipse") {
-        ctx.ellipse(centerX, centerY, Math.max(1, width / 2), Math.max(1, height / 2), 0, 0, Math.PI * 2);
+        ctx.ellipse(
+          centerX,
+          centerY,
+          Math.max(1, width / 2),
+          Math.max(1, height / 2),
+          0,
+          0,
+          Math.PI * 2,
+        );
       } else if (element.type === "rectangle") {
         ctx.rect(start.x, start.y, end.x - start.x, end.y - start.y);
       } else if (element.type === "circle") {
-        ctx.arc(centerX, centerY, Math.max(1, Math.min(width, height) / 2), 0, Math.PI * 2);
+        ctx.arc(
+          centerX,
+          centerY,
+          Math.max(1, Math.min(width, height) / 2),
+          0,
+          Math.PI * 2,
+        );
       } else if (element.type === "triangle") {
-        ctx.moveTo(centerX, start.y); ctx.lineTo(end.x, end.y); ctx.lineTo(start.x, end.y); ctx.closePath();
+        ctx.moveTo(centerX, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.lineTo(start.x, end.y);
+        ctx.closePath();
       } else if (element.type === "cube") {
-        const offsetX = Math.max(10, width * 0.22); const offsetY = Math.max(8, height * 0.18);
-        const backLeft = start.x + offsetX; const backTop = start.y - offsetY; const backRight = end.x + offsetX; const backBottom = end.y - offsetY;
+        const offsetX = Math.max(10, width * 0.22);
+        const offsetY = Math.max(8, height * 0.18);
+        const backLeft = start.x + offsetX;
+        const backTop = start.y - offsetY;
+        const backRight = end.x + offsetX;
+        const backBottom = end.y - offsetY;
         ctx.rect(start.x, start.y, end.x - start.x, end.y - start.y);
-        ctx.moveTo(backLeft, backTop); ctx.lineTo(backRight, backTop); ctx.lineTo(backRight, backBottom); ctx.lineTo(backLeft, backBottom); ctx.closePath();
-        ctx.moveTo(start.x, start.y); ctx.lineTo(backLeft, backTop); ctx.moveTo(end.x, start.y); ctx.lineTo(backRight, backTop); ctx.moveTo(end.x, end.y); ctx.lineTo(backRight, backBottom); ctx.moveTo(start.x, end.y); ctx.lineTo(backLeft, backBottom);
+        ctx.moveTo(backLeft, backTop);
+        ctx.lineTo(backRight, backTop);
+        ctx.lineTo(backRight, backBottom);
+        ctx.lineTo(backLeft, backBottom);
+        ctx.closePath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(backLeft, backTop);
+        ctx.moveTo(end.x, start.y);
+        ctx.lineTo(backRight, backTop);
+        ctx.moveTo(end.x, end.y);
+        ctx.lineTo(backRight, backBottom);
+        ctx.moveTo(start.x, end.y);
+        ctx.lineTo(backLeft, backBottom);
       } else if (element.type === "cylinder") {
-        const radiusX = Math.max(1, width / 2); const radiusY = Math.max(3, Math.min(14, height * 0.16));
+        const radiusX = Math.max(1, width / 2);
+        const radiusY = Math.max(3, Math.min(14, height * 0.16));
         ctx.ellipse(centerX, start.y, radiusX, radiusY, 0, 0, Math.PI * 2);
-        ctx.moveTo(start.x, start.y); ctx.lineTo(start.x, end.y); ctx.moveTo(end.x, start.y); ctx.lineTo(end.x, end.y);
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(start.x, end.y);
+        ctx.moveTo(end.x, start.y);
+        ctx.lineTo(end.x, end.y);
         ctx.ellipse(centerX, end.y, radiusX, radiusY, 0, 0, Math.PI);
       } else if (element.type === "diamond") {
-        ctx.moveTo(centerX, start.y); ctx.lineTo(end.x, centerY); ctx.lineTo(centerX, end.y); ctx.lineTo(start.x, centerY); ctx.closePath();
-      } else if (element.type === "pentagon") { drawRegularPolygon(5, Math.max(1, Math.min(width, height) / 2));
-      } else if (element.type === "hexagon") { drawRegularPolygon(6, Math.max(1, Math.min(width, height) / 2));
-      } else if (element.type === "heptagon") { drawRegularPolygon(7, Math.max(1, Math.min(width, height) / 2));
-      } else if (element.type === "octagon") { drawRegularPolygon(8, Math.max(1, Math.min(width, height) / 2));
+        ctx.moveTo(centerX, start.y);
+        ctx.lineTo(end.x, centerY);
+        ctx.lineTo(centerX, end.y);
+        ctx.lineTo(start.x, centerY);
+        ctx.closePath();
+      } else if (element.type === "pentagon") {
+        drawRegularPolygon(5, Math.max(1, Math.min(width, height) / 2));
+      } else if (element.type === "hexagon") {
+        drawRegularPolygon(6, Math.max(1, Math.min(width, height) / 2));
+      } else if (element.type === "heptagon") {
+        drawRegularPolygon(7, Math.max(1, Math.min(width, height) / 2));
+      } else if (element.type === "octagon") {
+        drawRegularPolygon(8, Math.max(1, Math.min(width, height) / 2));
       } else if (element.type === "parallelogram") {
         const skew = Math.max(8, width * 0.2);
-        ctx.moveTo(start.x + skew, start.y); ctx.lineTo(end.x, start.y); ctx.lineTo(end.x - skew, end.y); ctx.lineTo(start.x, end.y); ctx.closePath();
+        ctx.moveTo(start.x + skew, start.y);
+        ctx.lineTo(end.x, start.y);
+        ctx.lineTo(end.x - skew, end.y);
+        ctx.lineTo(start.x, end.y);
+        ctx.closePath();
       } else if (element.type === "sphere") {
         const radius = Math.max(1, Math.min(width, height) / 2);
         ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-        ctx.moveTo(centerX, centerY - radius); ctx.ellipse(centerX, centerY, radius * 0.42, radius, 0, 0, Math.PI * 2);
+        ctx.moveTo(centerX, centerY - radius);
+        ctx.ellipse(centerX, centerY, radius * 0.42, radius, 0, 0, Math.PI * 2);
       } else if (element.type === "axes") {
-        ctx.moveTo(start.x, centerY); ctx.lineTo(end.x, centerY); ctx.moveTo(centerX, start.y); ctx.lineTo(centerX, end.y);
+        ctx.moveTo(start.x, centerY);
+        ctx.lineTo(end.x, centerY);
+        ctx.moveTo(centerX, start.y);
+        ctx.lineTo(centerX, end.y);
       }
       ctx.stroke();
       ctx.restore();
@@ -2114,13 +2393,29 @@ export default function Whiteboard({
       const tolerance = 12;
       const handles = [
         { name: "nw" as const, x: bounds.left, y: bounds.top },
-        { name: "n" as const, x: (bounds.left + bounds.right) / 2, y: bounds.top },
+        {
+          name: "n" as const,
+          x: (bounds.left + bounds.right) / 2,
+          y: bounds.top,
+        },
         { name: "ne" as const, x: bounds.right, y: bounds.top },
-        { name: "e" as const, x: bounds.right, y: (bounds.top + bounds.bottom) / 2 },
+        {
+          name: "e" as const,
+          x: bounds.right,
+          y: (bounds.top + bounds.bottom) / 2,
+        },
         { name: "se" as const, x: bounds.right, y: bounds.bottom },
-        { name: "s" as const, x: (bounds.left + bounds.right) / 2, y: bounds.bottom },
+        {
+          name: "s" as const,
+          x: (bounds.left + bounds.right) / 2,
+          y: bounds.bottom,
+        },
         { name: "sw" as const, x: bounds.left, y: bounds.bottom },
-        { name: "w" as const, x: bounds.left, y: (bounds.top + bounds.bottom) / 2 },
+        {
+          name: "w" as const,
+          x: bounds.left,
+          y: (bounds.top + bounds.bottom) / 2,
+        },
       ];
       return (
         handles.find(
@@ -2188,7 +2483,11 @@ export default function Whiteboard({
       }
 
       if (original.type === "equation") {
-        const metrics = estimateMathMetrics(original.text, original.fontSize, contextRef.current);
+        const metrics = estimateMathMetrics(
+          original.text,
+          original.fontSize,
+          contextRef.current,
+        );
         const padding = Math.max(7, original.fontSize * 0.14);
         const baseWidth = Math.max(metrics.width, original.fontSize * 0.8);
         const baseHeight = Math.max(metrics.height, original.fontSize);
@@ -2402,9 +2701,24 @@ export default function Whiteboard({
           ctx.restore();
         }
       } else if (
-        ["arrow", "line", "ellipse", "rectangle", "circle", "triangle", "cube", "cylinder", "diamond", "pentagon", "hexagon", "heptagon", "octagon", "parallelogram", "sphere", "axes"].includes(
-          elementToDraw.type,
-        )
+        [
+          "arrow",
+          "line",
+          "ellipse",
+          "rectangle",
+          "circle",
+          "triangle",
+          "cube",
+          "cylinder",
+          "diamond",
+          "pentagon",
+          "hexagon",
+          "heptagon",
+          "octagon",
+          "parallelogram",
+          "sphere",
+          "axes",
+        ].includes(elementToDraw.type)
       )
         drawShape(ctx, elementToDraw as ShapeElement);
       else if (
@@ -2706,25 +3020,31 @@ export default function Whiteboard({
     [textEditor.text],
   );
 
-  const insertLatexModalAtCursor = useCallback((value: string) => {
-    const input = latexInputRef.current;
-    if (!input) {
-      setLatexEditor((previous) => ({ ...previous, text: previous.text + value }));
-      return;
-    }
+  const insertLatexModalAtCursor = useCallback(
+    (value: string) => {
+      const input = latexInputRef.current;
+      if (!input) {
+        setLatexEditor((previous) => ({
+          ...previous,
+          text: previous.text + value,
+        }));
+        return;
+      }
 
-    const start = input.selectionStart ?? latexEditor.text.length;
-    const end = input.selectionEnd ?? start;
-    const nextText =
-      latexEditor.text.slice(0, start) + value + latexEditor.text.slice(end);
-    const nextCursor = start + value.length;
+      const start = input.selectionStart ?? latexEditor.text.length;
+      const end = input.selectionEnd ?? start;
+      const nextText =
+        latexEditor.text.slice(0, start) + value + latexEditor.text.slice(end);
+      const nextCursor = start + value.length;
 
-    setLatexEditor((previous) => ({ ...previous, text: nextText }));
-    requestAnimationFrame(() => {
-      input.focus();
-      input.setSelectionRange(nextCursor, nextCursor);
-    });
-  }, [latexEditor.text]);
+      setLatexEditor((previous) => ({ ...previous, text: nextText }));
+      requestAnimationFrame(() => {
+        input.focus();
+        input.setSelectionRange(nextCursor, nextCursor);
+      });
+    },
+    [latexEditor.text],
+  );
 
   const addLatexElement = useCallback(() => {
     const value = latexEditor.text.trim();
@@ -2911,7 +3231,11 @@ export default function Whiteboard({
 
     document.addEventListener("pointerdown", handleOutsidePointerDown, true);
     return () => {
-      document.removeEventListener("pointerdown", handleOutsidePointerDown, true);
+      document.removeEventListener(
+        "pointerdown",
+        handleOutsidePointerDown,
+        true,
+      );
     };
   }, [addTextElement, textEditor.open, textEditor.type]);
 
@@ -3067,7 +3391,13 @@ export default function Whiteboard({
   }, [pushHistory, updateCurrentPage]);
 
   const addImportedImage = useCallback(
-    (src: string, width: number, height: number, name: string, sourceType: "image" | "pdf" = "image") => {
+    (
+      src: string,
+      width: number,
+      height: number,
+      name: string,
+      sourceType: "image" | "pdf" = "image",
+    ) => {
       const canvas = canvasRef.current;
       const rect = canvas?.getBoundingClientRect();
       if (!rect) return;
@@ -3118,7 +3448,13 @@ export default function Whiteboard({
         const src = String(reader.result);
         const image = new Image();
         image.onload = () => {
-          addImportedImage(image.src, image.naturalWidth, image.naturalHeight, file.name, "image");
+          addImportedImage(
+            image.src,
+            image.naturalWidth,
+            image.naturalHeight,
+            file.name,
+            "image",
+          );
         };
         image.src = src;
       };
@@ -3144,7 +3480,10 @@ export default function Whiteboard({
 
         pushHistory();
         const newElements: ImageElement[] = [];
-        let y = Math.max(24, (rect.height - Math.min(720, rect.height * 0.8)) / 2);
+        let y = Math.max(
+          24,
+          (rect.height - Math.min(720, rect.height * 0.8)) / 2,
+        );
 
         for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
           const page = await pdf.getPage(pageNumber);
@@ -3254,7 +3593,11 @@ export default function Whiteboard({
       setImageVersion((value) => value + 1);
     };
     croppedImage.src = src;
-    setCropEditor((previous) => ({ ...previous, open: false, elementId: null }));
+    setCropEditor((previous) => ({
+      ...previous,
+      open: false,
+      elementId: null,
+    }));
   }, [cropEditor, elements, pushHistory, updateCurrentPage]);
 
   const handleCanvasContextMenu = useCallback(
@@ -3455,9 +3798,25 @@ export default function Whiteboard({
     }
 
     if (
-      ["arrow", "line", "ellipse", "rectangle", "circle", "triangle", "cube", "cylinder", "diamond", "pentagon", "hexagon", "heptagon", "octagon", "parallelogram", "sphere", "axes", "ruler"].includes(
-        tool,
-      )
+      [
+        "arrow",
+        "line",
+        "ellipse",
+        "rectangle",
+        "circle",
+        "triangle",
+        "cube",
+        "cylinder",
+        "diamond",
+        "pentagon",
+        "hexagon",
+        "heptagon",
+        "octagon",
+        "parallelogram",
+        "sphere",
+        "axes",
+        "ruler",
+      ].includes(tool)
     ) {
       pushHistory();
       drawingRef.current = true;
@@ -3615,7 +3974,9 @@ export default function Whiteboard({
         }));
       }
       const wasTextDrag = tr.ids.some((id) =>
-        elements.some((element) => element.id === id && element.type === "text"),
+        elements.some(
+          (element) => element.id === id && element.type === "text",
+        ),
       );
       transformRef.current = null;
       if (wasTextDrag) {
@@ -3930,7 +4291,10 @@ export default function Whiteboard({
       try {
         localStorage.setItem(storageKey, JSON.stringify(data));
       } catch (error) {
-        if (error instanceof DOMException && error.name === "QuotaExceededError") {
+        if (
+          error instanceof DOMException &&
+          error.name === "QuotaExceededError"
+        ) {
           try {
             localStorage.removeItem(storageKey);
           } catch {
@@ -4133,7 +4497,15 @@ export default function Whiteboard({
     return () => {
       cancelled = true;
     };
-  }, [mode, appointmentId, bookingId, resolveWhiteboard, applyBoardData, storageKey, saveLocalBoardCache]);
+  }, [
+    mode,
+    appointmentId,
+    bookingId,
+    resolveWhiteboard,
+    applyBoardData,
+    storageKey,
+    saveLocalBoardCache,
+  ]);
 
   const buildRealtimeData = useCallback(
     (revision = realtimeRevisionRef.current): WhiteboardRealtimeData => ({
@@ -4718,10 +5090,14 @@ export default function Whiteboard({
 
       setTool("text");
       textPlacementArmedRef.current = true;
-      openTextEditor({
-        x: rect.width / 2,
-        y: Math.max(120, rect.height / 2 - 120),
-      }, "text", "");
+      openTextEditor(
+        {
+          x: rect.width / 2,
+          y: Math.max(120, rect.height / 2 - 120),
+        },
+        "text",
+        "",
+      );
     },
     [openLatexEditor, openTextEditor, selectedEquation],
   );
@@ -4801,7 +5177,10 @@ export default function Whiteboard({
         ctx.save();
         ctx.fillStyle = gridColor;
         ctx.globalAlpha = 0.35;
-        const scale = Math.min(thumbnailWidth / boardWidth, thumbnailHeight / boardHeight);
+        const scale = Math.min(
+          thumbnailWidth / boardWidth,
+          thumbnailHeight / boardHeight,
+        );
         const scaledGrid = Math.max(4, gridSize * scale);
         for (let x = 0; x <= thumbnailWidth; x += scaledGrid) {
           for (let y = 0; y <= thumbnailHeight; y += scaledGrid) {
@@ -4813,7 +5192,10 @@ export default function Whiteboard({
         ctx.restore();
       }
 
-      const scale = Math.min(thumbnailWidth / boardWidth, thumbnailHeight / boardHeight);
+      const scale = Math.min(
+        thumbnailWidth / boardWidth,
+        thumbnailHeight / boardHeight,
+      );
       const offsetX = (thumbnailWidth - boardWidth * scale) / 2;
       const offsetY = (thumbnailHeight - boardHeight * scale) / 2;
 
@@ -4827,7 +5209,13 @@ export default function Whiteboard({
         } else if (element.type === "image") {
           const image = imageCacheRef.current.get(element.src);
           if (image) {
-            ctx.drawImage(image, element.x, element.y, element.width, element.height);
+            ctx.drawImage(
+              image,
+              element.x,
+              element.y,
+              element.width,
+              element.height,
+            );
           } else {
             ctx.save();
             ctx.fillStyle = "#e2e8f0";
@@ -4839,9 +5227,22 @@ export default function Whiteboard({
           }
         } else if (
           [
-            "arrow", "line", "ellipse", "rectangle", "circle", "triangle",
-            "cube", "cylinder", "diamond", "pentagon", "hexagon", "heptagon",
-            "octagon", "parallelogram", "sphere", "axes",
+            "arrow",
+            "line",
+            "ellipse",
+            "rectangle",
+            "circle",
+            "triangle",
+            "cube",
+            "cylinder",
+            "diamond",
+            "pentagon",
+            "hexagon",
+            "heptagon",
+            "octagon",
+            "parallelogram",
+            "sphere",
+            "axes",
           ].includes(element.type)
         ) {
           drawShape(ctx, element as ShapeElement);
@@ -4917,7 +5318,11 @@ export default function Whiteboard({
           aria-labelledby="crop-image-title"
           onPointerDown={(event) => {
             if (event.target === event.currentTarget) {
-              setCropEditor((previous) => ({ ...previous, open: false, elementId: null }));
+              setCropEditor((previous) => ({
+                ...previous,
+                open: false,
+                elementId: null,
+              }));
             }
           }}
         >
@@ -4926,13 +5331,20 @@ export default function Whiteboard({
             onPointerDown={(event) => event.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 id="crop-image-title" className="text-base font-bold text-slate-900">
+              <h2
+                id="crop-image-title"
+                className="text-base font-bold text-slate-900"
+              >
                 Crop image
               </h2>
               <button
                 type="button"
                 onClick={() =>
-                  setCropEditor((previous) => ({ ...previous, open: false, elementId: null }))
+                  setCropEditor((previous) => ({
+                    ...previous,
+                    open: false,
+                    elementId: null,
+                  }))
                 }
                 className="flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                 aria-label="Close crop editor"
@@ -4942,19 +5354,21 @@ export default function Whiteboard({
             </div>
 
             <div className="mb-5 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-3">
-              {cropEditor.elementId && (() => {
-                const target = elements.find(
-                  (element): element is ImageElement =>
-                    element.id === cropEditor.elementId && element.type === "image",
-                );
-                return target ? (
-                  <img
-                    src={target.src}
-                    alt={target.name ?? "Image to crop"}
-                    className="mx-auto max-h-[420px] max-w-full object-contain"
-                  />
-                ) : null;
-              })()}
+              {cropEditor.elementId &&
+                (() => {
+                  const target = elements.find(
+                    (element): element is ImageElement =>
+                      element.id === cropEditor.elementId &&
+                      element.type === "image",
+                  );
+                  return target ? (
+                    <img
+                      src={target.src}
+                      alt={target.name ?? "Image to crop"}
+                      className="mx-auto max-h-[420px] max-w-full object-contain"
+                    />
+                  ) : null;
+                })()}
             </div>
 
             <div className="grid grid-cols-2 gap-4 text-xs font-semibold text-slate-700">
@@ -4965,12 +5379,17 @@ export default function Whiteboard({
                 ["Bottom", "bottom"],
               ].map(([label, key]) => (
                 <label key={key} className="flex flex-col gap-2">
-                  <span>{label}: {cropEditor[key as "left" | "top" | "right" | "bottom"]}%</span>
+                  <span>
+                    {label}:{" "}
+                    {cropEditor[key as "left" | "top" | "right" | "bottom"]}%
+                  </span>
                   <input
                     type="range"
                     min={0}
                     max={100}
-                    value={cropEditor[key as "left" | "top" | "right" | "bottom"]}
+                    value={
+                      cropEditor[key as "left" | "top" | "right" | "bottom"]
+                    }
                     onChange={(event) =>
                       setCropEditor((previous) => ({
                         ...previous,
@@ -4986,7 +5405,11 @@ export default function Whiteboard({
               <button
                 type="button"
                 onClick={() =>
-                  setCropEditor((previous) => ({ ...previous, open: false, elementId: null }))
+                  setCropEditor((previous) => ({
+                    ...previous,
+                    open: false,
+                    elementId: null,
+                  }))
                 }
                 className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
               >
@@ -5475,7 +5898,10 @@ export default function Whiteboard({
             onPointerDown={(event) => event.stopPropagation()}
           >
             <div className="flex items-center justify-between px-6 py-5">
-              <h2 id="latex-editor-title" className="text-xl font-extrabold tracking-[-0.02em] text-slate-900">
+              <h2
+                id="latex-editor-title"
+                className="text-xl font-extrabold tracking-[-0.02em] text-slate-900"
+              >
                 LaTeX formula editor
               </h2>
               <button
@@ -5506,10 +5932,16 @@ export default function Whiteboard({
                   ref={latexInputRef}
                   value={latexEditor.text}
                   onChange={(event) =>
-                    setLatexEditor((previous) => ({ ...previous, text: event.target.value }))
+                    setLatexEditor((previous) => ({
+                      ...previous,
+                      text: event.target.value,
+                    }))
                   }
                   onKeyDown={(event) => {
-                    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                    if (
+                      (event.metaKey || event.ctrlKey) &&
+                      event.key === "Enter"
+                    ) {
                       event.preventDefault();
                       addLatexElement();
                     }
@@ -5558,11 +5990,16 @@ export default function Whiteboard({
                   <button
                     key={c}
                     type="button"
-                    onClick={() => setLatexEditor((previous) => ({ ...previous, color: c }))}
+                    onClick={() =>
+                      setLatexEditor((previous) => ({ ...previous, color: c }))
+                    }
                     className={`flex size-8 items-center justify-center rounded-full ${latexEditor.color === c ? "ring-2 ring-slate-500 ring-offset-2" : ""}`}
                     aria-label={`Formula color ${c}`}
                   >
-                    <span className="size-7 rounded-full border border-slate-200" style={{ backgroundColor: c }} />
+                    <span
+                      className="size-7 rounded-full border border-slate-200"
+                      style={{ backgroundColor: c }}
+                    />
                   </button>
                 ))}
               </div>
@@ -5581,44 +6018,47 @@ export default function Whiteboard({
               </div>
 
               <div className="mt-3 grid max-h-[270px] grid-cols-10 gap-2 overflow-y-auto pr-1">
-                {LATEX_SYMBOLS
-                  .filter(([label]) => {
-                    if (latexTab === "Letter") return LATEX_LETTER_LABELS.has(label);
-                    if (latexTab === "Arrow") return LATEX_ARROW_LABELS.has(label);
-                    if (latexTab === "Math") {
-                      return !LATEX_LETTER_LABELS.has(label) && !LATEX_ARROW_LABELS.has(label);
-                    }
-                    return true;
-                  })
-                  .map(([label, value]) => (
-                    <button
-                      key={`${label}-${value}`}
-                      type="button"
-                      onClick={() => insertLatexModalAtCursor(value)}
-                      className="flex h-9 items-center justify-center rounded-[6px] border border-slate-200 bg-white text-base text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
-                      title={`Insert ${value.trim()}`}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                {LATEX_SYMBOLS.filter(([label]) => {
+                  if (latexTab === "Letter")
+                    return LATEX_LETTER_LABELS.has(label);
+                  if (latexTab === "Arrow")
+                    return LATEX_ARROW_LABELS.has(label);
+                  if (latexTab === "Math") {
+                    return (
+                      !LATEX_LETTER_LABELS.has(label) &&
+                      !LATEX_ARROW_LABELS.has(label)
+                    );
+                  }
+                  return true;
+                }).map(([label, value]) => (
+                  <button
+                    key={`${label}-${value}`}
+                    type="button"
+                    onClick={() => insertLatexModalAtCursor(value)}
+                    className="flex h-9 items-center justify-center rounded-[6px] border border-slate-200 bg-white text-base text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                    title={`Insert ${value.trim()}`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
 
               <div className="mt-4 flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => {
-                  setLatexEditor((previous) => ({
-                    ...previous,
-                    open: false,
-                    text: "",
-                    editingElementId: null,
-                  }));
-                  setSelectedEquation("");
-                  setActiveTextPanel(null);
-                  setShowTextFormattingColors(false);
-                  textPlacementArmedRef.current = false;
-                  setTool("select");
-                }}
+                    setLatexEditor((previous) => ({
+                      ...previous,
+                      open: false,
+                      text: "",
+                      editingElementId: null,
+                    }));
+                    setSelectedEquation("");
+                    setActiveTextPanel(null);
+                    setShowTextFormattingColors(false);
+                    textPlacementArmedRef.current = false;
+                    setTool("select");
+                  }}
                   className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
                 >
                   Cancel
@@ -5662,7 +6102,10 @@ export default function Whiteboard({
             top: textEditor.y + panOffset.y,
             width: Math.max(
               40,
-              Math.min(2000, 32 + textEditor.text.length * textEditor.fontSize * 0.55),
+              Math.min(
+                2000,
+                32 + textEditor.text.length * textEditor.fontSize * 0.55,
+              ),
             ),
             minHeight: Math.max(28, textEditor.fontSize + 8),
             fontSize: textEditor.fontSize,
@@ -5724,466 +6167,472 @@ export default function Whiteboard({
 
         {/* Floating classroom toolbar */}
         {showToolbar && (
-        <header
-          className="pointer-events-auto absolute top-4 z-[450] flex min-h-16 items-center overflow-visible rounded-2xl border border-white/80 bg-white/96 px-2 shadow-[0_18px_50px_rgba(15,23,42,0.14)] backdrop-blur-2xl"
-          style={{
-            left: "16px",
-            right: "16px",
-          }}
-        >
-          <div className="flex min-w-0 shrink-0 items-center gap-0.5 border-r border-slate-200 pr-2">
-            <button
-              type="button"
-              onClick={() => onClose?.()}
-              title="Close whiteboard"
-              aria-label="Close whiteboard and return to the tutoring session"
-              className="flex size-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
-            >
-              <Home className="size-5" />
-            </button>
-
-            <button
-              type="button"
-              title="Whiteboard help"
-              aria-label="Whiteboard help"
-              onClick={() =>
-                window.alert(
-                  "Whiteboard shortcuts: V select, P pen, E eraser, L line, R rectangle, C circle, T text, Q equation. Use the toolbar to add pages and tools.",
-                )
-              }
-              className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-            >
-              <CircleHelp className="size-5" />
-            </button>
-
-            <button
-              type="button"
-              onClick={goToPreviousPage}
-              disabled={currentPageIndex === 0}
-              title="Previous page"
-              aria-label="Previous page"
-              className="flex size-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-30"
-            >
-              <ChevronLeft className="size-5" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowPagesPanel((value) => !value)}
-              title="Pages"
-              aria-label="Open pages"
-              className={`flex h-9 shrink-0 items-center gap-2 rounded-xl px-2.5 text-xs font-semibold transition ${
-                showPagesPanel
-                  ? "bg-slate-100 text-slate-950"
-                  : "text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              <span>Pages</span>
-              <span className="font-bold">
-                {currentPageIndex + 1}/{pages.length}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                if (currentPageIndex < pages.length - 1) {
-                  setCurrentPageIndex((index) => index + 1);
-                  setSelectedElementId(null);
-                  setSelectedElementIds([]);
-                  return;
-                }
-
-                addPage();
-              }}
-              title={
-                currentPageIndex < pages.length - 1
-                  ? "Next page"
-                  : "Add another whiteboard"
-              }
-              aria-label={
-                currentPageIndex < pages.length - 1
-                  ? "Next page"
-                  : "Add another whiteboard page"
-              }
-              className="flex size-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
-            >
-              {currentPageIndex < pages.length - 1 ? (
-                <ChevronRight className="size-5" />
-              ) : (
-                <Plus className="size-5" />
-              )}
-            </button>
-          </div>
-
-          <div className="flex min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto px-3 scrollbar-none">
-            {toolButton(
-              "select",
-              "Select / move",
-              <MousePointer2 className="size-4" />,
-              "V",
-            )}
-
-            <button
-              type="button"
-              onClick={() => setTool("hand")}
-              title="Hand / pan (H)"
-              aria-label="Hand / pan"
-              className={`group relative flex size-10 shrink-0 items-center justify-center rounded-xl transition-all ${
-                tool === "hand"
-                  ? "bg-slate-100 text-slate-950"
-                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-              }`}
-            >
-              <Hand className="size-4" />
-              <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-950 px-2 py-1 text-[9px] font-semibold text-white shadow-xl lg:block">
-                Hand / pan
-              </span>
-            </button>
-
-            {toolButton(
-              "pen",
-              "Pen / marker",
-              <PenLine className="size-4" />,
-              "P",
-            )}
-
-            <button
-              ref={shapeToolsButtonRef}
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setShowUploadMenu(false);
-                setShowFormulaMenu(false);
-                setShowShapeToolsPopup((value) => !value);
-              }}
-              title="Shapes"
-              aria-label="Shapes"
-              aria-expanded={showShapeToolsPopup}
-              className={`flex size-10 shrink-0 items-center justify-center rounded-xl transition ${
-                showShapeToolsPopup
-                  ? "bg-slate-100 text-slate-950"
-                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-              }`}
-            >
-              <Shapes className="size-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setShowShapeToolsPopup(false);
-                setShowFormulaMenu(false);
-                setShowUploadMenu(false);
-                setTool("text");
-                textPlacementArmedRef.current = true;
-                setActiveTextPanel(null);
-              }}
-              title="Text"
-              aria-label="Add text"
-              className={`flex size-10 shrink-0 items-center justify-center rounded-xl transition ${
-                tool === "text"
-                  ? "bg-slate-100 text-slate-950"
-                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-              }`}
-            >
-              <Type className="size-4" />
-            </button>
-
-            <button
-              ref={formulaToolsButtonRef}
-              type="button"
-              onClick={() => {
-                setShowShapeToolsPopup(false);
-                setShowUploadMenu(false);
-
-                const button = formulaToolsButtonRef.current;
-                if (button) {
-                  const rect = button.getBoundingClientRect();
-                  setFormulaMenuPosition({
-                    top: rect.bottom + 8,
-                    left: rect.left + rect.width / 2,
-                  });
-                }
-
-                setShowFormulaMenu((value) => !value);
-              }}
-              title="Formula"
-              aria-label="Formula"
-              aria-expanded={showFormulaMenu}
-              className={`flex size-10 shrink-0 items-center justify-center rounded-xl transition ${
-                showFormulaMenu || tool === "equation"
-                  ? "bg-slate-100 text-slate-950"
-                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-              }`}
-            >
-              <Sigma className="size-4" />
-            </button>
-
-            <div className="relative shrink-0">
+          <header
+            className="pointer-events-auto absolute top-4 z-[450] flex min-h-16 items-center overflow-visible rounded-2xl border border-white/80 bg-white/96 px-2 shadow-[0_18px_50px_rgba(15,23,42,0.14)] backdrop-blur-2xl"
+            style={{
+              left: "16px",
+              right: "16px",
+            }}
+          >
+            <div className="flex min-w-0 shrink-0 items-center gap-0.5 border-r border-slate-200 pr-2">
               <button
-                ref={eraserButtonRef}
+                type="button"
+                onClick={() => onClose?.()}
+                title="Close whiteboard"
+                aria-label="Close whiteboard and return to the tutoring session"
+                className="flex size-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
+              >
+                <Home className="size-5" />
+              </button>
+
+              <button
+                type="button"
+                title="Whiteboard help"
+                aria-label="Whiteboard help"
+                onClick={() =>
+                  window.alert(
+                    "Whiteboard shortcuts: V select, P pen, E eraser, L line, R rectangle, C circle, T text, Q equation. Use the toolbar to add pages and tools.",
+                  )
+                }
+                className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+              >
+                <CircleHelp className="size-5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={goToPreviousPage}
+                disabled={currentPageIndex === 0}
+                title="Previous page"
+                aria-label="Previous page"
+                className="flex size-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <ChevronLeft className="size-5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowPagesPanel((value) => !value)}
+                title="Pages"
+                aria-label="Open pages"
+                className={`flex h-9 shrink-0 items-center gap-2 rounded-xl px-2.5 text-xs font-semibold transition ${
+                  showPagesPanel
+                    ? "bg-slate-100 text-slate-950"
+                    : "text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                <span>Pages</span>
+                <span className="font-bold">
+                  {currentPageIndex + 1}/{pages.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentPageIndex < pages.length - 1) {
+                    setCurrentPageIndex((index) => index + 1);
+                    setSelectedElementId(null);
+                    setSelectedElementIds([]);
+                    return;
+                  }
+
+                  addPage();
+                }}
+                title={
+                  currentPageIndex < pages.length - 1
+                    ? "Next page"
+                    : "Add another whiteboard"
+                }
+                aria-label={
+                  currentPageIndex < pages.length - 1
+                    ? "Next page"
+                    : "Add another whiteboard page"
+                }
+                className="flex size-9 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
+              >
+                {currentPageIndex < pages.length - 1 ? (
+                  <ChevronRight className="size-5" />
+                ) : (
+                  <Plus className="size-5" />
+                )}
+              </button>
+            </div>
+
+            <div className="flex min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto px-3 scrollbar-none">
+              {toolButton(
+                "select",
+                "Select / move",
+                <MousePointer2 className="size-4" />,
+                "V",
+              )}
+
+              <button
+                type="button"
+                onClick={() => setTool("hand")}
+                title="Hand / pan (H)"
+                aria-label="Hand / pan"
+                className={`group relative flex size-10 shrink-0 items-center justify-center rounded-xl transition-all ${
+                  tool === "hand"
+                    ? "bg-slate-100 text-slate-950"
+                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                <Hand className="size-4" />
+                <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-950 px-2 py-1 text-[9px] font-semibold text-white shadow-xl lg:block">
+                  Hand / pan
+                </span>
+              </button>
+
+              {toolButton(
+                "pen",
+                "Pen / marker",
+                <PenLine className="size-4" />,
+                "P",
+              )}
+
+              <button
+                ref={shapeToolsButtonRef}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setShowUploadMenu(false);
+                  setShowFormulaMenu(false);
+                  setShowShapeToolsPopup((value) => !value);
+                }}
+                title="Shapes"
+                aria-label="Shapes"
+                aria-expanded={showShapeToolsPopup}
+                className={`flex size-10 shrink-0 items-center justify-center rounded-xl transition ${
+                  showShapeToolsPopup
+                    ? "bg-slate-100 text-slate-950"
+                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                <Shapes className="size-4" />
+              </button>
+
+              <button
                 type="button"
                 onClick={() => {
                   setShowShapeToolsPopup(false);
                   setShowFormulaMenu(false);
                   setShowUploadMenu(false);
-                  setShowPenPopup(false);
-                  setTool("eraser");
-
-                  const button = eraserButtonRef.current;
-                  if (button) {
-                    const rect = button.getBoundingClientRect();
-                    const popupWidth = 252;
-                    const popupHeight = 156;
-                    const gap = 8;
-                    let left = rect.left + rect.width / 2 - popupWidth / 2;
-                    let top = rect.bottom + gap;
-
-                    left = Math.max(leftInset + 12, Math.min(left, window.innerWidth - popupWidth - 12));
-
-                    if (top + popupHeight > window.innerHeight - 12) {
-                      top = Math.max(12, rect.top - popupHeight - gap);
-                    }
-
-                    setEraserPopupPosition({ top, left });
-                  }
-
-                  setShowEraserPopup((value) => !value);
+                  setTool("text");
+                  textPlacementArmedRef.current = true;
+                  setActiveTextPanel(null);
                 }}
-                title="Eraser (E)"
-                aria-label="Eraser"
-                aria-expanded={showEraserPopup}
-                className={`group relative flex size-10 shrink-0 items-center justify-center rounded-xl transition-all ${
-                  tool === "eraser" || showEraserPopup
-                    ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
-                }`}
-              >
-                <Eraser className="size-4" />
-                <span className="pointer-events-none absolute -right-1.5 -top-1 hidden rounded bg-slate-900 px-1 py-0.5 text-[7px] font-bold text-white shadow-sm 2xl:block">
-                  E
-                </span>
-                <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-slate-950/90 px-2 py-1 text-[9px] font-semibold text-white shadow-xl backdrop-blur-xl opacity-0 transition-opacity group-hover:opacity-100 lg:block">
-                  Eraser
-                </span>
-              </button>
-
-              {showEraserPopup && (
-                <div
-                  ref={eraserPopupRef}
-                  className="fixed z-[700] w-[252px] rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-2xl shadow-slate-900/15"
-                  style={{
-                    top: eraserPopupPosition.top,
-                    left: eraserPopupPosition.left,
-                  }}
-                  onPointerDown={(event) => event.stopPropagation()}
-                  role="dialog"
-                  aria-label="Eraser settings"
-                >
-                  <div className="flex items-center justify-center gap-4">
-                    {[
-                      { value: 8, visual: 2 },
-                      { value: 16, visual: 3 },
-                      { value: 24, visual: 5 },
-                      { value: 32, visual: 7 },
-                      { value: 40, visual: 9 },
-                    ].map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => {
-                          setEraserWidth(option.value);
-                          setTool("eraser");
-                        }}
-                        title={`Eraser size ${option.value}px`}
-                        aria-label={`Eraser size ${option.value}px`}
-                        className={`flex h-10 w-9 items-center justify-center rounded-full transition ${
-                          eraserWidth === option.value
-                            ? "bg-slate-100 ring-1 ring-slate-300"
-                            : "hover:bg-slate-50"
-                        }`}
-                      >
-                        <span
-                          className="block w-6 rounded-full bg-slate-700"
-                          style={{ height: `${option.visual}px` }}
-                        />
-                      </button>
-                    ))}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      pushHistory();
-                      updateCurrentPage((page) => ({
-                        ...page,
-                        elements: page.elements.filter(
-                          (element) => element.type !== "stroke",
-                        ),
-                      }));
-                      setSelectedElementId((currentId) => {
-                        const selected = currentPage?.elements.find(
-                          (element) => element.id === currentId,
-                        );
-                        return selected?.type === "stroke" ? null : currentId;
-                      });
-                      setSelectedElementIds((currentIds) =>
-                        currentIds.filter((id) => {
-                          const selected = currentPage?.elements.find(
-                            (element) => element.id === id,
-                          );
-                          return selected?.type !== "stroke";
-                        }),
-                      );
-                      setShowEraserPopup(false);
-                    }}
-                    className="mx-auto mt-3 flex items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-emerald-50"
-                  >
-                    <Trash2 className="size-4" />
-                    Erase all
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="relative">
-              <button
-                ref={uploadButtonRef}
-                type="button"
-                onClick={() => {
-                  setShowShapeToolsPopup(false);
-                  setShowFormulaMenu(false);
-                  setShowEraserPopup(false);
-
-                  const button = uploadButtonRef.current;
-                  if (button) {
-                    const rect = button.getBoundingClientRect();
-                    const popupWidth = 176;
-                    const popupHeight = 94;
-                    const gap = 8;
-                    let left = rect.left + rect.width / 2 - popupWidth / 2;
-                    let top = rect.bottom + gap;
-
-                    left = Math.max(leftInset + 12, Math.min(left, window.innerWidth - popupWidth - 12));
-                    if (top + popupHeight > window.innerHeight - 12) {
-                      top = Math.max(12, rect.top - popupHeight - gap);
-                    }
-
-                    setUploadMenuPosition({ top, left });
-                  }
-
-                  setShowUploadMenu((value) => !value);
-                }}
-                title="Upload files"
-                aria-label="Upload files"
-                aria-expanded={showUploadMenu}
+                title="Text"
+                aria-label="Add text"
                 className={`flex size-10 shrink-0 items-center justify-center rounded-xl transition ${
-                  showUploadMenu
+                  tool === "text"
                     ? "bg-slate-100 text-slate-950"
                     : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >
-                <Upload className="size-4" />
+                <Type className="size-4" />
               </button>
 
-              {showUploadMenu && (
-                <div
-                  className="fixed z-[700] w-44 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl shadow-slate-900/15"
-                  style={{
-                    top: uploadMenuPosition.top,
-                    left: uploadMenuPosition.left,
+              <button
+                ref={formulaToolsButtonRef}
+                type="button"
+                onClick={() => {
+                  setShowShapeToolsPopup(false);
+                  setShowUploadMenu(false);
+
+                  const button = formulaToolsButtonRef.current;
+                  if (button) {
+                    const rect = button.getBoundingClientRect();
+                    setFormulaMenuPosition({
+                      top: rect.bottom + 8,
+                      left: rect.left + rect.width / 2,
+                    });
+                  }
+
+                  setShowFormulaMenu((value) => !value);
+                }}
+                title="Formula"
+                aria-label="Formula"
+                aria-expanded={showFormulaMenu}
+                className={`flex size-10 shrink-0 items-center justify-center rounded-xl transition ${
+                  showFormulaMenu || tool === "equation"
+                    ? "bg-slate-100 text-slate-950"
+                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                <Sigma className="size-4" />
+              </button>
+
+              <div className="relative shrink-0">
+                <button
+                  ref={eraserButtonRef}
+                  type="button"
+                  onClick={() => {
+                    setShowShapeToolsPopup(false);
+                    setShowFormulaMenu(false);
+                    setShowUploadMenu(false);
+                    setShowPenPopup(false);
+                    setTool("eraser");
+
+                    const button = eraserButtonRef.current;
+                    if (button) {
+                      const rect = button.getBoundingClientRect();
+                      const popupWidth = 252;
+                      const popupHeight = 156;
+                      const gap = 8;
+                      let left = rect.left + rect.width / 2 - popupWidth / 2;
+                      let top = rect.bottom + gap;
+
+                      left = Math.max(
+                        leftInset + 12,
+                        Math.min(left, window.innerWidth - popupWidth - 12),
+                      );
+
+                      if (top + popupHeight > window.innerHeight - 12) {
+                        top = Math.max(12, rect.top - popupHeight - gap);
+                      }
+
+                      setEraserPopupPosition({ top, left });
+                    }
+
+                    setShowEraserPopup((value) => !value);
                   }}
-                  onPointerDown={(event) => event.stopPropagation()}
-                  role="menu"
-                  aria-label="Upload files"
+                  title="Eraser (E)"
+                  aria-label="Eraser"
+                  aria-expanded={showEraserPopup}
+                  className={`group relative flex size-10 shrink-0 items-center justify-center rounded-xl transition-all ${
+                    tool === "eraser" || showEraserPopup
+                      ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                  }`}
                 >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowUploadMenu(false);
-                      imageInputRef.current?.click();
+                  <Eraser className="size-4" />
+                  <span className="pointer-events-none absolute -right-1.5 -top-1 hidden rounded bg-slate-900 px-1 py-0.5 text-[7px] font-bold text-white shadow-sm 2xl:block">
+                    E
+                  </span>
+                  <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-slate-950/90 px-2 py-1 text-[9px] font-semibold text-white shadow-xl backdrop-blur-xl opacity-0 transition-opacity group-hover:opacity-100 lg:block">
+                    Eraser
+                  </span>
+                </button>
+
+                {showEraserPopup && (
+                  <div
+                    ref={eraserPopupRef}
+                    className="fixed z-[700] w-[252px] rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-2xl shadow-slate-900/15"
+                    style={{
+                      top: eraserPopupPosition.top,
+                      left: eraserPopupPosition.left,
                     }}
-                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    role="dialog"
+                    aria-label="Eraser settings"
                   >
-                    <ImageIcon className="size-4 text-slate-500" />
-                    Image
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowUploadMenu(false);
-                      pdfInputRef.current?.click();
+                    <div className="flex items-center justify-center gap-4">
+                      {[
+                        { value: 8, visual: 2 },
+                        { value: 16, visual: 3 },
+                        { value: 24, visual: 5 },
+                        { value: 32, visual: 7 },
+                        { value: 40, visual: 9 },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            setEraserWidth(option.value);
+                            setTool("eraser");
+                          }}
+                          title={`Eraser size ${option.value}px`}
+                          aria-label={`Eraser size ${option.value}px`}
+                          className={`flex h-10 w-9 items-center justify-center rounded-full transition ${
+                            eraserWidth === option.value
+                              ? "bg-slate-100 ring-1 ring-slate-300"
+                              : "hover:bg-slate-50"
+                          }`}
+                        >
+                          <span
+                            className="block w-6 rounded-full bg-slate-700"
+                            style={{ height: `${option.visual}px` }}
+                          />
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        pushHistory();
+                        updateCurrentPage((page) => ({
+                          ...page,
+                          elements: page.elements.filter(
+                            (element) => element.type !== "stroke",
+                          ),
+                        }));
+                        setSelectedElementId((currentId) => {
+                          const selected = currentPage?.elements.find(
+                            (element) => element.id === currentId,
+                          );
+                          return selected?.type === "stroke" ? null : currentId;
+                        });
+                        setSelectedElementIds((currentIds) =>
+                          currentIds.filter((id) => {
+                            const selected = currentPage?.elements.find(
+                              (element) => element.id === id,
+                            );
+                            return selected?.type !== "stroke";
+                          }),
+                        );
+                        setShowEraserPopup(false);
+                      }}
+                      className="mx-auto mt-3 flex items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-emerald-50"
+                    >
+                      <Trash2 className="size-4" />
+                      Erase all
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="relative">
+                <button
+                  ref={uploadButtonRef}
+                  type="button"
+                  onClick={() => {
+                    setShowShapeToolsPopup(false);
+                    setShowFormulaMenu(false);
+                    setShowEraserPopup(false);
+
+                    const button = uploadButtonRef.current;
+                    if (button) {
+                      const rect = button.getBoundingClientRect();
+                      const popupWidth = 176;
+                      const popupHeight = 94;
+                      const gap = 8;
+                      let left = rect.left + rect.width / 2 - popupWidth / 2;
+                      let top = rect.bottom + gap;
+
+                      left = Math.max(
+                        leftInset + 12,
+                        Math.min(left, window.innerWidth - popupWidth - 12),
+                      );
+                      if (top + popupHeight > window.innerHeight - 12) {
+                        top = Math.max(12, rect.top - popupHeight - gap);
+                      }
+
+                      setUploadMenuPosition({ top, left });
+                    }
+
+                    setShowUploadMenu((value) => !value);
+                  }}
+                  title="Upload files"
+                  aria-label="Upload files"
+                  aria-expanded={showUploadMenu}
+                  className={`flex size-10 shrink-0 items-center justify-center rounded-xl transition ${
+                    showUploadMenu
+                      ? "bg-slate-100 text-slate-950"
+                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                  }`}
+                >
+                  <Upload className="size-4" />
+                </button>
+
+                {showUploadMenu && (
+                  <div
+                    className="fixed z-[700] w-44 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl shadow-slate-900/15"
+                    style={{
+                      top: uploadMenuPosition.top,
+                      left: uploadMenuPosition.left,
                     }}
-                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    role="menu"
+                    aria-label="Upload files"
                   >
-                    <Upload className="size-4 text-slate-500" />
-                    PDF
-                  </button>
-                </div>
-              )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUploadMenu(false);
+                        imageInputRef.current?.click();
+                      }}
+                      className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      <ImageIcon className="size-4 text-slate-500" />
+                      Image
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUploadMenu(false);
+                        pdfInputRef.current?.click();
+                      }}
+                      className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      <Upload className="size-4 text-slate-500" />
+                      PDF
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="mx-1 h-7 w-px shrink-0 bg-slate-200" />
+
+              <button
+                type="button"
+                onClick={undo}
+                title="Undo"
+                aria-label="Undo"
+                className="flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+              >
+                <Undo2 className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={redo}
+                title="Redo"
+                aria-label="Redo"
+                className="flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+              >
+                <Redo2 className="size-4" />
+              </button>
             </div>
 
-            <div className="mx-1 h-7 w-px shrink-0 bg-slate-200" />
+            <div className="flex min-w-0 shrink-0 items-center gap-1 border-l border-slate-200 pl-2">
+              <div className="hidden max-w-44 truncate px-2 text-sm font-semibold text-slate-800 lg:block">
+                {currentPage?.name ?? "Untitled board"}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGraphSettings((value) => !value)}
+                title="Settings"
+                aria-label="Whiteboard settings"
+                className={`flex size-10 items-center justify-center rounded-xl transition ${
+                  showGraphSettings
+                    ? "bg-slate-100 text-slate-950"
+                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                <Settings2 className="size-4" />
+              </button>
 
-            <button
-              type="button"
-              onClick={undo}
-              title="Undo"
-              aria-label="Undo"
-              className="flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-            >
-              <Undo2 className="size-4" />
-            </button>
-            <button
-              type="button"
-              onClick={redo}
-              title="Redo"
-              aria-label="Redo"
-              className="flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-            >
-              <Redo2 className="size-4" />
-            </button>
-          </div>
-
-          <div className="flex min-w-0 shrink-0 items-center gap-1 border-l border-slate-200 pl-2">
-            <div className="hidden max-w-44 truncate px-2 text-sm font-semibold text-slate-800 lg:block">
-              {currentPage?.name ?? "Untitled board"}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowToolbar(false);
+                  setShowShapeToolsPopup(false);
+                  setShowFormulaMenu(false);
+                  setShowUploadMenu(false);
+                  setShowEraserPopup(false);
+                  setShowPenPopup(false);
+                  setShowColorPopup(false);
+                  setShowToolsPanel(false);
+                }}
+                title="Hide toolbar"
+                aria-label="Hide whiteboard toolbar"
+                className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+              >
+                <EyeOff className="size-4" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowGraphSettings((value) => !value)}
-              title="Settings"
-              aria-label="Whiteboard settings"
-              className={`flex size-10 items-center justify-center rounded-xl transition ${
-                showGraphSettings
-                  ? "bg-slate-100 text-slate-950"
-                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-              }`}
-            >
-              <Settings2 className="size-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setShowToolbar(false);
-                setShowShapeToolsPopup(false);
-                setShowFormulaMenu(false);
-                setShowUploadMenu(false);
-                setShowEraserPopup(false);
-                setShowPenPopup(false);
-                setShowColorPopup(false);
-                setShowToolsPanel(false);
-              }}
-              title="Hide toolbar"
-              aria-label="Hide whiteboard toolbar"
-              className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-            >
-              <EyeOff className="size-4" />
-            </button>
-          </div>
-        </header>
+          </header>
         )}
 
         {!showToolbar && showTeacherControls && (
@@ -6270,12 +6719,36 @@ export default function Whiteboard({
             </div>
 
             <div className="grid grid-cols-5 gap-1.5">
-              {([
-                ["arrow", "Arrow"], ["line", "Line"], ["ellipse", "Ellipse"], ["circle", "Circle"], ["rectangle", "Rectangle"],
-                ["triangle", "Triangle"], ["cube", "Cube"], ["cylinder", "Cylinder"], ["diamond", "Diamond"], ["pentagon", "Pentagon"],
-                ["hexagon", "Hexagon"], ["heptagon", "Heptagon"], ["octagon", "Octagon"], ["parallelogram", "Parallelogram"], ["sphere", "Sphere"],
-              ] as const).map(([value, label]) => (
-                <button key={value} type="button" onClick={() => { setTool(value); setShowShapeToolsPopup(false); }} title={label} aria-label={label} className={`flex h-10 items-center justify-center rounded-xl transition ${tool === value ? "bg-slate-100 text-slate-950" : "text-slate-600 hover:bg-slate-50"}`}>
+              {(
+                [
+                  ["arrow", "Arrow"],
+                  ["line", "Line"],
+                  ["ellipse", "Ellipse"],
+                  ["circle", "Circle"],
+                  ["rectangle", "Rectangle"],
+                  ["triangle", "Triangle"],
+                  ["cube", "Cube"],
+                  ["cylinder", "Cylinder"],
+                  ["diamond", "Diamond"],
+                  ["pentagon", "Pentagon"],
+                  ["hexagon", "Hexagon"],
+                  ["heptagon", "Heptagon"],
+                  ["octagon", "Octagon"],
+                  ["parallelogram", "Parallelogram"],
+                  ["sphere", "Sphere"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setTool(value);
+                    setShowShapeToolsPopup(false);
+                  }}
+                  title={label}
+                  aria-label={label}
+                  className={`flex h-10 items-center justify-center rounded-xl transition ${tool === value ? "bg-slate-100 text-slate-950" : "text-slate-600 hover:bg-slate-50"}`}
+                >
                   <ShapeToolIcon shape={value} />
                 </button>
               ))}
@@ -6295,8 +6768,18 @@ export default function Whiteboard({
                 <Eraser className="size-4" />
               </button>
               {toolButton("ruler", "Ruler", <Ruler className="size-4" />, "U")}
-              {toolButton("axes", "Coordinate Axes", <Crosshair className="size-4" />, "A")}
-              {toolButton("equation", "Equation", <Sigma className="size-4" />, "Q")}
+              {toolButton(
+                "axes",
+                "Coordinate Axes",
+                <Crosshair className="size-4" />,
+                "A",
+              )}
+              {toolButton(
+                "equation",
+                "Equation",
+                <Sigma className="size-4" />,
+                "Q",
+              )}
               {toolButton("text", "Text", <Type className="size-4" />, "T")}
             </div>
           </div>
@@ -6331,12 +6814,22 @@ export default function Whiteboard({
                     if (pages.length <= 1) return;
                     const page = pages[currentPageIndex];
                     if (!page) return;
-                    const confirmed = window.confirm(`Delete ${page.name}? This can be restored with Undo.`);
+                    const confirmed = window.confirm(
+                      `Delete ${page.name}? This can be restored with Undo.`,
+                    );
                     if (confirmed) deletePage(currentPageIndex);
                   }}
                   disabled={pages.length <= 1}
-                  title={pages.length <= 1 ? "At least one page is required" : `Delete ${currentPage?.name ?? "current page"}`}
-                  aria-label={pages.length <= 1 ? "Cannot delete the last page" : "Delete current page"}
+                  title={
+                    pages.length <= 1
+                      ? "At least one page is required"
+                      : `Delete ${currentPage?.name ?? "current page"}`
+                  }
+                  aria-label={
+                    pages.length <= 1
+                      ? "Cannot delete the last page"
+                      : "Delete current page"
+                  }
                   className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-30"
                 >
                   <Trash2 className="size-4" />
@@ -6344,12 +6837,12 @@ export default function Whiteboard({
                 <button
                   type="button"
                   onClick={() => setShowPagesPanel(false)}
-                title="Close pages"
-                aria-label="Close pages"
-                className="flex size-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-              >
-                <X className="size-5" />
-              </button>
+                  title="Close pages"
+                  aria-label="Close pages"
+                  className="flex size-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                >
+                  <X className="size-5" />
+                </button>
               </div>
             </div>
 
@@ -6358,7 +6851,10 @@ export default function Whiteboard({
                 {pages.map((page, index) => {
                   const isActive = currentPageIndex === index;
                   return (
-                    <div key={page.id} className="group flex items-center gap-2">
+                    <div
+                      key={page.id}
+                      className="group flex items-center gap-2"
+                    >
                       <div className="flex w-4 shrink-0 items-center justify-center text-slate-500">
                         <span className="text-lg leading-none">=</span>
                       </div>
@@ -6393,14 +6889,19 @@ export default function Whiteboard({
                             onClick={(event) => {
                               event.preventDefault();
                               event.stopPropagation();
-                              const confirmed = window.confirm(`Delete ${page.name}? This can be restored with Undo.`);
+                              const confirmed = window.confirm(
+                                `Delete ${page.name}? This can be restored with Undo.`,
+                              );
                               if (confirmed) deletePage(index);
                             }}
                             onKeyDown={(event) => {
-                              if (event.key !== "Enter" && event.key !== " ") return;
+                              if (event.key !== "Enter" && event.key !== " ")
+                                return;
                               event.preventDefault();
                               event.stopPropagation();
-                              const confirmed = window.confirm(`Delete ${page.name}? This can be restored with Undo.`);
+                              const confirmed = window.confirm(
+                                `Delete ${page.name}? This can be restored with Undo.`,
+                              );
                               if (confirmed) deletePage(index);
                             }}
                             title={`Delete ${page.name}`}
@@ -6519,10 +7020,10 @@ export default function Whiteboard({
               data-media-selection-toolbar
               className="absolute z-[430] flex items-center gap-1 rounded-xl border border-slate-200 bg-white/98 p-1.5 shadow-xl shadow-slate-900/15 backdrop-blur-xl"
               style={{
-                left: Math.max(12, Math.min(
-                  selectedMediaBounds.left,
-                  window.innerWidth - 190,
-                )),
+                left: Math.max(
+                  12,
+                  Math.min(selectedMediaBounds.left, window.innerWidth - 190),
+                ),
                 top: Math.max(60, selectedMediaBounds.top - 58),
               }}
               onPointerDown={(event) => {
@@ -6587,10 +7088,10 @@ export default function Whiteboard({
               data-graph-selection-toolbar
               className="absolute z-[430] flex items-center gap-1 rounded-xl border border-slate-200 bg-white/98 p-1.5 shadow-xl shadow-slate-900/15 backdrop-blur-xl"
               style={{
-                left: Math.max(12, Math.min(
-                  selectedGraphBounds.left,
-                  window.innerWidth - 130,
-                )),
+                left: Math.max(
+                  12,
+                  Math.min(selectedGraphBounds.left, window.innerWidth - 130),
+                ),
                 top: Math.max(60, selectedGraphBounds.top - 58),
               }}
               onPointerDown={(event) => {
@@ -6642,7 +7143,13 @@ export default function Whiteboard({
               data-equation-selection-toolbar
               className="absolute z-[430] flex items-center gap-1 rounded-xl border border-slate-200 bg-white/98 p-1.5 shadow-xl shadow-slate-900/15 backdrop-blur-xl"
               style={{
-                left: Math.max(leftInset + 12, Math.min(selectedEquationBounds.left, window.innerWidth - 190)),
+                left: Math.max(
+                  leftInset + 12,
+                  Math.min(
+                    selectedEquationBounds.left,
+                    window.innerWidth - 190,
+                  ),
+                ),
                 top: Math.max(60, selectedEquationBounds.top - 58),
               }}
               onPointerDown={(event) => {
@@ -6680,7 +7187,9 @@ export default function Whiteboard({
                   pushHistory();
                   updateCurrentPage((page) => ({
                     ...page,
-                    elements: page.elements.filter((element) => element.id !== selectedEquationElement.id),
+                    elements: page.elements.filter(
+                      (element) => element.id !== selectedEquationElement.id,
+                    ),
                   }));
                   setSelectedElementId(null);
                   setSelectedElementIds([]);
@@ -6702,8 +7211,18 @@ export default function Whiteboard({
               data-text-editor-ui
               className="absolute z-[340] w-[250px] rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/15"
               style={{
-                left: Math.max(12, (textEditor.open && textEditor.type === "text" ? textEditor.x : selectedTextElement?.x ?? 12) - 18),
-                top: Math.max(12, (textEditor.open && textEditor.type === "text" ? textEditor.y : selectedTextElement?.y ?? 12) - 58),
+                left: Math.max(
+                  12,
+                  (textEditor.open && textEditor.type === "text"
+                    ? textEditor.x
+                    : (selectedTextElement?.x ?? 12)) - 18,
+                ),
+                top: Math.max(
+                  12,
+                  (textEditor.open && textEditor.type === "text"
+                    ? textEditor.y
+                    : (selectedTextElement?.y ?? 12)) - 58,
+                ),
               }}
               onPointerDown={(event) => {
                 event.preventDefault();
@@ -6713,41 +7232,45 @@ export default function Whiteboard({
               {showTextFormattingColors && (
                 <div className="absolute bottom-full left-0 mb-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/15">
                   {PEN_POPUP_COLORS.map((textColor) => (
-                  <button
-                    key={textColor}
-                    type="button"
-                    onClick={() => {
-                      if (textEditor.open && textEditor.type === "text") {
-                        setTextEditor((previous) => ({ ...previous, color: textColor }));
-                        if (textEditor.editingElementId) {
-                          updateCurrentPage((page) => ({
-                            ...page,
-                            elements: page.elements.map((element) =>
-                              element.id === textEditor.editingElementId && element.type === "text"
-                                ? { ...element, color: textColor }
-                                : element,
-                            ),
+                    <button
+                      key={textColor}
+                      type="button"
+                      onClick={() => {
+                        if (textEditor.open && textEditor.type === "text") {
+                          setTextEditor((previous) => ({
+                            ...previous,
+                            color: textColor,
                           }));
+                          if (textEditor.editingElementId) {
+                            updateCurrentPage((page) => ({
+                              ...page,
+                              elements: page.elements.map((element) =>
+                                element.id === textEditor.editingElementId &&
+                                element.type === "text"
+                                  ? { ...element, color: textColor }
+                                  : element,
+                              ),
+                            }));
+                          }
+                        } else {
+                          applySelectedElementColor(textColor);
                         }
-                      } else {
-                        applySelectedElementColor(textColor);
-                      }
-                    }}
-                    className={`flex size-8 items-center justify-center rounded-full ${
-                      (textEditor.open && textEditor.type === "text"
-                        ? textEditor.color
-                        : selectedTextElement?.color) === textColor
-                        ? "ring-2 ring-slate-400 ring-offset-1"
-                        : ""
-                    }`}
-                    title={`Text color ${textColor}`}
-                    aria-label={`Text color ${textColor}`}
-                  >
-                    <span
-                      className="size-6 rounded-full border border-slate-200"
-                      style={{ backgroundColor: textColor }}
-                    />
-                  </button>
+                      }}
+                      className={`flex size-8 items-center justify-center rounded-full ${
+                        (textEditor.open && textEditor.type === "text"
+                          ? textEditor.color
+                          : selectedTextElement?.color) === textColor
+                          ? "ring-2 ring-slate-400 ring-offset-1"
+                          : ""
+                      }`}
+                      title={`Text color ${textColor}`}
+                      aria-label={`Text color ${textColor}`}
+                    >
+                      <span
+                        className="size-6 rounded-full border border-slate-200"
+                        style={{ backgroundColor: textColor }}
+                      />
+                    </button>
                   ))}
                 </div>
               )}
@@ -6758,12 +7281,16 @@ export default function Whiteboard({
                   onClick={() => {
                     if (textEditor.open && textEditor.type === "text") {
                       const nextFontSize = Math.max(8, textEditor.fontSize - 2);
-                      setTextEditor((previous) => ({ ...previous, fontSize: nextFontSize }));
+                      setTextEditor((previous) => ({
+                        ...previous,
+                        fontSize: nextFontSize,
+                      }));
                       if (textEditor.editingElementId) {
                         updateCurrentPage((page) => ({
                           ...page,
                           elements: page.elements.map((element) =>
-                            element.id === textEditor.editingElementId && element.type === "text"
+                            element.id === textEditor.editingElementId &&
+                            element.type === "text"
                               ? { ...element, fontSize: nextFontSize }
                               : element,
                           ),
@@ -6773,8 +7300,12 @@ export default function Whiteboard({
                       updateCurrentPage((page) => ({
                         ...page,
                         elements: page.elements.map((element) =>
-                          element.id === selectedElement.id && element.type === "text"
-                            ? { ...element, fontSize: Math.max(8, element.fontSize - 2) }
+                          element.id === selectedElement.id &&
+                          element.type === "text"
+                            ? {
+                                ...element,
+                                fontSize: Math.max(8, element.fontSize - 2),
+                              }
                             : element,
                         ),
                       }));
@@ -6795,13 +7326,20 @@ export default function Whiteboard({
                   type="button"
                   onClick={() => {
                     if (textEditor.open && textEditor.type === "text") {
-                      const nextFontSize = Math.min(96, textEditor.fontSize + 2);
-                      setTextEditor((previous) => ({ ...previous, fontSize: nextFontSize }));
+                      const nextFontSize = Math.min(
+                        96,
+                        textEditor.fontSize + 2,
+                      );
+                      setTextEditor((previous) => ({
+                        ...previous,
+                        fontSize: nextFontSize,
+                      }));
                       if (textEditor.editingElementId) {
                         updateCurrentPage((page) => ({
                           ...page,
                           elements: page.elements.map((element) =>
-                            element.id === textEditor.editingElementId && element.type === "text"
+                            element.id === textEditor.editingElementId &&
+                            element.type === "text"
                               ? { ...element, fontSize: nextFontSize }
                               : element,
                           ),
@@ -6811,8 +7349,12 @@ export default function Whiteboard({
                       updateCurrentPage((page) => ({
                         ...page,
                         elements: page.elements.map((element) =>
-                          element.id === selectedElement.id && element.type === "text"
-                            ? { ...element, fontSize: Math.min(96, element.fontSize + 2) }
+                          element.id === selectedElement.id &&
+                          element.type === "text"
+                            ? {
+                                ...element,
+                                fontSize: Math.min(96, element.fontSize + 2),
+                              }
                             : element,
                         ),
                       }));
@@ -6856,7 +7398,9 @@ export default function Whiteboard({
                   title="Edit text"
                   aria-label="Edit text"
                 >
-                  <span className="text-sm font-bold underline decoration-2 decoration-emerald-500 underline-offset-2">A</span>
+                  <span className="text-sm font-bold underline decoration-2 decoration-emerald-500 underline-offset-2">
+                    A
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -6869,7 +7413,9 @@ export default function Whiteboard({
                     pushHistory();
                     updateCurrentPage((page) => ({
                       ...page,
-                      elements: page.elements.filter((element) => element.id !== idToDelete),
+                      elements: page.elements.filter(
+                        (element) => element.id !== idToDelete,
+                      ),
                     }));
                     setSelectedElementId(null);
                     setSelectedElementIds([]);

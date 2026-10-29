@@ -10,5 +10,11 @@
     "noEmit": true,
     "allowJs": false
   },
-  "include": ["hooks/useLiveVideo.ts", "lib/live-video/token.ts", "services/live-video/src/*.ts", "components/live-help/LiveHomeworkClassroom.tsx", "app/api/live-video/session/[sessionId]/route.ts"]
+  "include": [
+    "hooks/useLiveVideo.ts",
+    "lib/live-video/token.ts",
+    "services/live-video/src/*.ts",
+    "components/live-help/LiveHomeworkClassroom.tsx",
+    "app/api/live-video/session/[sessionId]/route.ts"
+  ]
 }

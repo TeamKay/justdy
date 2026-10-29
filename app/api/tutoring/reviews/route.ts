@@ -188,14 +188,20 @@ export async function POST(request: Request) {
 
     if (booking.status !== "Completed") {
       return NextResponse.json(
-        { error: "A review can only be submitted after the booking is completed." },
+        {
+          error:
+            "A review can only be submitted after the booking is completed.",
+        },
         { status: 409 },
       );
     }
 
     if (booking.tutoringSession?.status !== "COMPLETED") {
       return NextResponse.json(
-        { error: "The tutoring session must be completed before it can be reviewed." },
+        {
+          error:
+            "The tutoring session must be completed before it can be reviewed.",
+        },
         { status: 409 },
       );
     }

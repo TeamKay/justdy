@@ -11,11 +11,17 @@ export async function POST(_request: Request, { params }: RouteContext) {
   const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session?.user) {
-    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    return NextResponse.json(
+      { error: "Authentication required." },
+      { status: 401 },
+    );
   }
 
   if (session.user.role !== "Admin") {
-    return NextResponse.json({ error: "Administrator access required." }, { status: 403 });
+    return NextResponse.json(
+      { error: "Administrator access required." },
+      { status: 403 },
+    );
   }
 
   const { id } = await params;
@@ -34,7 +40,10 @@ export async function POST(_request: Request, { params }: RouteContext) {
     });
 
     if (!booking) {
-      return NextResponse.json({ error: "Booking not found." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Booking not found." },
+        { status: 404 },
+      );
     }
 
     if (booking.status !== "Cancelled") {

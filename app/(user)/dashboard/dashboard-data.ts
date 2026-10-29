@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { CAPABILITIES, hasCapability } from "@/lib/auth/capabilities";
 
 export const dynamic = "force-dynamic";
 
@@ -27,9 +26,6 @@ export async function getDashboardData() {
       imageUrl: true,
       role: true,
       emailVerified: true,
-      canLearn: true,
-      canTutor: true,
-      canTeach: true,
       teachingProfile: {
         select: {
           verificationStatus: true,
@@ -44,16 +40,14 @@ export async function getDashboardData() {
   }
 
   if (!user.emailVerified) {
-    redirect(
-      `/verify-request?email=${encodeURIComponent(user.email)}`,
-    );
+    redirect(`/verify-request?email=${encodeURIComponent(user.email)}`);
   }
 
   /*
    * Justdy has two primary account roles:
    *
    * ADMIN -> tutor + platform administration workspace
-   * USER  -> learner workspace
+   * LEARNER -> learner workspace
    *
    * Capabilities still control specific actions.
    */
@@ -62,30 +56,11 @@ export async function getDashboardData() {
     .toUpperCase();
 
   const isTeacherAdmin = normalizedRole === "ADMIN";
-  const isLearner =
-    normalizedRole === "USER" && Boolean(user.canLearn);
-
-  const [canBookTutoring, canReceivePayouts] = await Promise.all([
-    hasCapability(userId, CAPABILITIES.BOOK_TUTORING),
-    hasCapability(userId, CAPABILITIES.RECEIVE_PAYOUTS),
-  ]);
+  const isLearner = normalizedRole === "LEARNER";
 
   const now = new Date();
 
-  type CourseEnrollmentSummary = {
-    id: string;
-    progress: number;
-    status: string;
-    course: {
-      id: string;
-      title: string;
-      slug: string;
-      smallDescription: string | null;
-      category: string | null;
-      level: string;
-      duration: number | null;
-    };
-  };
+
 
   /*
    * IMPORTANT:
@@ -95,54 +70,55 @@ export async function getDashboardData() {
    * its scheduled start until its scheduled end.
    */
   const learnerBookingsPromise = isLearner
-    ? prisma.booking.findMany({
-        where: {
-          studentId: userId,
-          endTime: {
-            gt: now,
+    ? prisma.booking
+        .findMany({
+          where: {
+            studentId: userId,
+            endTime: {
+              gt: now,
+            },
+            status: "Scheduled",
           },
-          status: "Scheduled",
-        },
-        orderBy: {
-          startTime: "asc",
-        },
-        take: 5,
-        select: {
-          id: true,
-          startTime: true,
-          endTime: true,
-          subject: true,
-          tutoringSession: {
-            select: {
-              id: true,
+          orderBy: {
+            startTime: "asc",
+          },
+          take: 5,
+          select: {
+            id: true,
+            startTime: true,
+            endTime: true,
+            subject: true,
+            tutoringSession: {
+              select: {
+                id: true,
+              },
+            },
+            gradeLevel: true,
+            status: true,
+            educator: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+              },
+            },
+            service: {
+              select: {
+                id: true,
+                title: true,
+                durationMinutes: true,
+                price: true,
+                currency: true,
+              },
             },
           },
-          gradeLevel: true,
-          status: true,
-          educator: {
-            select: {
-              id: true,
-              name: true,
-              imageUrl: true,
-            },
-          },
-          service: {
-            select: {
-              id: true,
-              title: true,
-              durationMinutes: true,
-              price: true,
-              currency: true,
-            },
-          },
-        },
-      })
-      .then((rows) =>
-        rows.map(({ tutoringSession, ...booking }) => ({
-          ...booking,
-          tutoringSessionId: tutoringSession?.id ?? null,
-        })),
-      )
+        })
+        .then((rows) =>
+          rows.map(({ tutoringSession, ...booking }) => ({
+            ...booking,
+            tutoringSessionId: tutoringSession?.id ?? null,
+          })),
+        )
     : Promise.resolve([]);
 
   const teacherBookingsPromise = isTeacherAdmin
@@ -187,40 +163,7 @@ export async function getDashboardData() {
       })
     : Promise.resolve([]);
 
-  const courseEnrollmentsPromise: Promise<
-    CourseEnrollmentSummary[]
-  > = isLearner
-    ? prisma.courseEnrollment
-        .findMany({
-          where: {
-            learnerId: userId,
-            status: {
-              in: ["Pending", "Active"],
-            },
-          },
-          orderBy: {
-            updatedAt: "desc",
-          },
-          take: 6,
-          select: {
-            id: true,
-            progress: true,
-            status: true,
-            course: {
-              select: {
-                id: true,
-                title: true,
-                slug: true,
-                smallDescription: true,
-                category: true,
-                level: true,
-                duration: true,
-              },
-            },
-          },
-        })
-        .then((rows) => rows as CourseEnrollmentSummary[])
-    : Promise.resolve([]);
+ 
 
   const learningActivitiesPromise = isLearner
     ? prisma.learningActivity.findMany({
@@ -374,7 +317,6 @@ export async function getDashboardData() {
     learnerBookingsPromise,
     teacherBookingsPromise,
     learningActivitiesPromise,
-    courseEnrollmentsPromise,
     completedSessionsPromise,
     latestPayoutPromise,
     adminStatsPromise,
@@ -387,12 +329,8 @@ export async function getDashboardData() {
       imageUrl: user.imageUrl,
       isLearner,
       isTeacherAdmin,
-      canBookTutoring,
-      canReceivePayouts,
-      teachingVerification:
-        user.teachingProfile?.verificationStatus ?? null,
-      teachingHeadline:
-        user.teachingProfile?.headline ?? null,
+      teachingVerification: user.teachingProfile?.verificationStatus ?? null,
+      teachingHeadline: user.teachingProfile?.headline ?? null,
     },
     learnerUpcoming: learnerBookings,
     teacherUpcoming: teacherBookings,
@@ -407,4 +345,3 @@ export async function getDashboardData() {
     recentClients: [],
   };
 }
-

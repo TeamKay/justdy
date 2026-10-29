@@ -55,12 +55,14 @@ export default function JustdyCheckout({
   const [checkoutReady, setCheckoutReady] = useState(false);
   const [paying, setPaying] = useState(false);
 
-  const checkoutActionsRef = useRef<StripeCheckoutLoadActionsSuccess | null>(null);
+  const checkoutActionsRef = useRef<StripeCheckoutLoadActionsSuccess | null>(
+    null,
+  );
   const checkoutInstanceRef = useRef<StripeCheckoutElementsSdk | null>(null);
   const paymentElementRef = useRef<StripePaymentElement | null>(null);
-  const billingAddressElementRef = useRef<
-    ReturnType<StripeCheckoutElementsSdk["createBillingAddressElement"]> | null
-  >(null);
+  const billingAddressElementRef = useRef<ReturnType<
+    StripeCheckoutElementsSdk["createBillingAddressElement"]
+  > | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -98,7 +100,9 @@ export default function JustdyCheckout({
           throw new Error("Secure payment is temporarily unavailable.");
         }
 
-        const checkout = (stripe as StripeWithCheckoutElements).initCheckoutElementsSdk({
+        const checkout = (
+          stripe as StripeWithCheckoutElements
+        ).initCheckoutElementsSdk({
           clientSecret: currentClientSecret,
           elementsOptions: {
             appearance: {
@@ -426,7 +430,8 @@ export default function JustdyCheckout({
 
             <div className="mt-4 flex items-center justify-center gap-2 text-center text-[10px] leading-4 text-slate-400">
               <LockKeyhole className="size-3" />
-              Secure card processing by Stripe · Your card details never touch Justdy servers.
+              Secure card processing by Stripe · Your card details never touch
+              Justdy servers.
             </div>
           </div>
         </div>

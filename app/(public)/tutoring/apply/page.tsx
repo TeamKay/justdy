@@ -1,17 +1,9 @@
 "use client";
 
-import {
-  FormEvent,
-  useEffect,
-  useState,
-} from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-type ApplicationStatus =
-  | "Pending"
-  | "Verified"
-  | "Rejected"
-  | null;
+type ApplicationStatus = "Pending" | "Verified" | "Rejected" | null;
 
 type TutorApplicationForm = {
   headline: string;
@@ -35,23 +27,15 @@ const initialForm: TutorApplicationForm = {
   description: "",
 };
 
-function normalizeStatus(
-  value: unknown,
-): ApplicationStatus {
-  if (
-    value === "Pending" ||
-    value === "Verified" ||
-    value === "Rejected"
-  ) {
+function normalizeStatus(value: unknown): ApplicationStatus {
+  if (value === "Pending" || value === "Verified" || value === "Rejected") {
     return value;
   }
 
   return null;
 }
 
-function statusLabel(
-  status: ApplicationStatus,
-) {
+function statusLabel(status: ApplicationStatus) {
   switch (status) {
     case "Pending":
       return "Under Review";
@@ -67,9 +51,7 @@ function statusLabel(
   }
 }
 
-function statusDescription(
-  status: ApplicationStatus,
-) {
+function statusDescription(status: ApplicationStatus) {
   switch (status) {
     case "Pending":
       return "Your tutor application has been submitted and is waiting for administrator review. You do not need to submit it again.";
@@ -88,45 +70,30 @@ function statusDescription(
 export default function TutorApplicationPage() {
   const router = useRouter();
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [saving, setSaving] =
-    useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const [message, setMessage] =
-    useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
-  const [status, setStatus] =
-    useState<ApplicationStatus>(null);
+  const [status, setStatus] = useState<ApplicationStatus>(null);
 
-  const [form, setForm] =
-    useState<TutorApplicationForm>(
-      initialForm,
-    );
+  const [form, setForm] = useState<TutorApplicationForm>(initialForm);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadProfile() {
       try {
-        const response = await fetch(
-          "/api/educator/profile",
-          {
-            cache: "no-store",
-          },
-        );
+        const response = await fetch("/api/educator/profile", {
+          cache: "no-store",
+        });
 
-        const data =
-          await response
-            .json()
-            .catch(() => null);
+        const data = await response.json().catch(() => null);
 
         if (response.status === 401) {
           if (!cancelled) {
-            setMessage(
-              "Please sign in to submit a tutor application.",
-            );
+            setMessage("Please sign in to submit a tutor application.");
           }
 
           return;
@@ -142,81 +109,41 @@ export default function TutorApplicationPage() {
           return;
         }
 
-        const profile =
-          data?.profile ??
-          data?.teachingProfile ??
-          data;
+        const profile = data?.profile ?? data?.teachingProfile ?? data;
 
-        if (
-          !cancelled &&
-          profile
-        ) {
-          setStatus(
-            normalizeStatus(
-              profile.verificationStatus,
-            ),
-          );
+        if (!cancelled && profile) {
+          setStatus(normalizeStatus(profile.verificationStatus));
 
           setForm({
-            headline:
-              profile.headline ?? "",
+            headline: profile.headline ?? "",
 
-            specialty:
-              profile.specialty ?? "",
+            specialty: profile.specialty ?? "",
 
             experience:
-              profile.experience !==
-                null &&
-              profile.experience !==
-                undefined
-                ? String(
-                    profile.experience,
-                  )
+              profile.experience !== null && profile.experience !== undefined
+                ? String(profile.experience)
                 : "",
 
-            subjects:
-              Array.isArray(
-                profile.subjects,
-              )
-                ? profile.subjects.join(
-                    ", ",
-                  )
-                : "",
+            subjects: Array.isArray(profile.subjects)
+              ? profile.subjects.join(", ")
+              : "",
 
-            gradeLevels:
-              Array.isArray(
-                profile.gradeLevels,
-              )
-                ? profile.gradeLevels.join(
-                    ", ",
-                  )
-                : "",
+            gradeLevels: Array.isArray(profile.gradeLevels)
+              ? profile.gradeLevels.join(", ")
+              : "",
 
             hourlyRate:
-              profile.hourlyRate !==
-                null &&
-              profile.hourlyRate !==
-                undefined
-                ? String(
-                    profile.hourlyRate /
-                      100,
-                  )
+              profile.hourlyRate !== null && profile.hourlyRate !== undefined
+                ? String(profile.hourlyRate / 100)
                 : "",
 
-            credentialUrl:
-              profile.credentialUrl ??
-              "",
+            credentialUrl: profile.credentialUrl ?? "",
 
-            description:
-              profile.description ??
-              "",
+            description: profile.description ?? "",
           });
         }
       } catch (error) {
-        console.error(
-          "Unable to load tutor profile:",
-          error,
-        );
+        console.error("Unable to load tutor profile:", error);
 
         if (!cancelled) {
           setMessage(
@@ -237,19 +164,14 @@ export default function TutorApplicationPage() {
     };
   }, []);
 
-  function updateField(
-    field: keyof TutorApplicationForm,
-    value: string,
-  ) {
+  function updateField(field: keyof TutorApplicationForm, value: string) {
     setForm((current) => ({
       ...current,
       [field]: value,
     }));
   }
 
-  async function submit(
-    event: FormEvent<HTMLFormElement>,
-  ) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (saving) {
@@ -260,51 +182,35 @@ export default function TutorApplicationPage() {
     setMessage(null);
 
     try {
-      const response = await fetch(
-        "/api/educator/apply",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            ...form,
-
-            experience:
-              form.experience,
-
-            hourlyRate:
-              form.hourlyRate,
-
-            subjects:
-              form.subjects
-                .split(",")
-                .map((value) =>
-                  value.trim(),
-                )
-                .filter(Boolean),
-
-            gradeLevels:
-              form.gradeLevels
-                .split(",")
-                .map((value) =>
-                  value.trim(),
-                )
-                .filter(Boolean),
-          }),
+      const response = await fetch("/api/educator/apply", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          ...form,
 
-      const data =
-        await response
-          .json()
-          .catch(() => null);
+          experience: form.experience,
+
+          hourlyRate: form.hourlyRate,
+
+          subjects: form.subjects
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean),
+
+          gradeLevels: form.gradeLevels
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean),
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
 
       if (!response.ok) {
         throw new Error(
-          data?.error ??
-            "Unable to submit your tutor application.",
+          data?.error ?? "Unable to submit your tutor application.",
         );
       }
 
@@ -314,10 +220,7 @@ export default function TutorApplicationPage() {
         );
       }
 
-      const nextStatus =
-        normalizeStatus(
-          data.application.status,
-        );
+      const nextStatus = normalizeStatus(data.application.status);
 
       setStatus(nextStatus);
 
@@ -326,10 +229,7 @@ export default function TutorApplicationPage() {
           "Your tutor application has been submitted for review.",
       );
     } catch (error) {
-      console.error(
-        "Tutor application submission error:",
-        error,
-      );
+      console.error("Tutor application submission error:", error);
 
       setMessage(
         error instanceof Error
@@ -351,14 +251,11 @@ export default function TutorApplicationPage() {
     );
   }
 
-  const isPending =
-    status === "Pending";
+  const isPending = status === "Pending";
 
-  const isVerified =
-    status === "Verified";
+  const isVerified = status === "Verified";
 
-  const isRejected =
-    status === "Rejected";
+  const isRejected = status === "Rejected";
 
   return (
     <main className="mx-auto max-w-3xl space-y-8 p-6 lg:p-10">
@@ -372,9 +269,7 @@ export default function TutorApplicationPage() {
         </button>
 
         <h1 className="text-3xl font-semibold">
-          {isVerified
-            ? "Teaching Profile"
-            : "Become a Tutor"}
+          {isVerified ? "Teaching Profile" : "Become a Tutor"}
         </h1>
 
         <p className="mt-2 text-muted-foreground">
@@ -385,10 +280,7 @@ export default function TutorApplicationPage() {
       </header>
 
       {status ? (
-        <section
-          className="rounded-xl border p-5"
-          aria-live="polite"
-        >
+        <section className="rounded-xl border p-5" aria-live="polite">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm text-muted-foreground">
@@ -412,25 +304,19 @@ export default function TutorApplicationPage() {
       ) : null}
 
       {message ? (
-        <div
-          className="rounded-xl border p-4 text-sm"
-          aria-live="polite"
-        >
+        <div className="rounded-xl border p-4 text-sm" aria-live="polite">
           {message}
         </div>
       ) : null}
 
       {isPending ? (
         <section className="rounded-xl border p-6">
-          <h2 className="text-lg font-semibold">
-            Application submitted
-          </h2>
+          <h2 className="text-lg font-semibold">Application submitted</h2>
 
           <p className="mt-2 text-sm text-muted-foreground">
-            Your application is currently being
-            reviewed by the Justdy administration
-            team. You will be able to teach once your
-            application has been approved.
+            Your application is currently being reviewed by the Justdy
+            administration team. You will be able to teach once your application
+            has been approved.
           </p>
 
           <button
@@ -442,30 +328,20 @@ export default function TutorApplicationPage() {
           </button>
         </section>
       ) : (
-        <form
-          onSubmit={submit}
-          className="space-y-6"
-        >
+        <form onSubmit={submit} className="space-y-6">
           {isRejected ? (
             <div className="rounded-xl border p-4 text-sm">
-              <p className="font-medium">
-                Update your application
-              </p>
+              <p className="font-medium">Update your application</p>
 
               <p className="mt-1 text-muted-foreground">
-                Review your information below,
-                make any necessary changes, and
-                submit it again for administrator
-                review.
+                Review your information below, make any necessary changes, and
+                submit it again for administrator review.
               </p>
             </div>
           ) : null}
 
           <div className="space-y-2">
-            <label
-              htmlFor="headline"
-              className="text-sm font-medium"
-            >
+            <label htmlFor="headline" className="text-sm font-medium">
               Teaching headline
             </label>
 
@@ -474,22 +350,14 @@ export default function TutorApplicationPage() {
               className="w-full rounded-lg border p-3"
               placeholder="For example: Experienced Mathematics Tutor"
               value={form.headline}
-              onChange={(event) =>
-                updateField(
-                  "headline",
-                  event.target.value,
-                )
-              }
+              onChange={(event) => updateField("headline", event.target.value)}
               required
               maxLength={160}
             />
           </div>
 
           <div className="space-y-2">
-            <label
-              htmlFor="specialty"
-              className="text-sm font-medium"
-            >
+            <label htmlFor="specialty" className="text-sm font-medium">
               Specialty
             </label>
 
@@ -498,22 +366,14 @@ export default function TutorApplicationPage() {
               className="w-full rounded-lg border p-3"
               placeholder="For example: Algebra and Geometry"
               value={form.specialty}
-              onChange={(event) =>
-                updateField(
-                  "specialty",
-                  event.target.value,
-                )
-              }
+              onChange={(event) => updateField("specialty", event.target.value)}
               required
               maxLength={160}
             />
           </div>
 
           <div className="space-y-2">
-            <label
-              htmlFor="experience"
-              className="text-sm font-medium"
-            >
+            <label htmlFor="experience" className="text-sm font-medium">
               Years of teaching experience
             </label>
 
@@ -527,19 +387,13 @@ export default function TutorApplicationPage() {
               placeholder="Years of experience"
               value={form.experience}
               onChange={(event) =>
-                updateField(
-                  "experience",
-                  event.target.value,
-                )
+                updateField("experience", event.target.value)
               }
             />
           </div>
 
           <div className="space-y-2">
-            <label
-              htmlFor="subjects"
-              className="text-sm font-medium"
-            >
+            <label htmlFor="subjects" className="text-sm font-medium">
               Subjects
             </label>
 
@@ -548,12 +402,7 @@ export default function TutorApplicationPage() {
               className="w-full rounded-lg border p-3"
               placeholder="Mathematics, Algebra, Geometry"
               value={form.subjects}
-              onChange={(event) =>
-                updateField(
-                  "subjects",
-                  event.target.value,
-                )
-              }
+              onChange={(event) => updateField("subjects", event.target.value)}
               required
             />
 
@@ -563,10 +412,7 @@ export default function TutorApplicationPage() {
           </div>
 
           <div className="space-y-2">
-            <label
-              htmlFor="gradeLevels"
-              className="text-sm font-medium"
-            >
+            <label htmlFor="gradeLevels" className="text-sm font-medium">
               Grade levels
             </label>
 
@@ -576,10 +422,7 @@ export default function TutorApplicationPage() {
               placeholder="Elementary, Middle School, High School"
               value={form.gradeLevels}
               onChange={(event) =>
-                updateField(
-                  "gradeLevels",
-                  event.target.value,
-                )
+                updateField("gradeLevels", event.target.value)
               }
               required
             />
@@ -590,10 +433,7 @@ export default function TutorApplicationPage() {
           </div>
 
           <div className="space-y-2">
-            <label
-              htmlFor="hourlyRate"
-              className="text-sm font-medium"
-            >
+            <label htmlFor="hourlyRate" className="text-sm font-medium">
               Hourly rate (USD)
             </label>
 
@@ -606,19 +446,13 @@ export default function TutorApplicationPage() {
               placeholder="Hourly rate"
               value={form.hourlyRate}
               onChange={(event) =>
-                updateField(
-                  "hourlyRate",
-                  event.target.value,
-                )
+                updateField("hourlyRate", event.target.value)
               }
             />
           </div>
 
           <div className="space-y-2">
-            <label
-              htmlFor="credentialUrl"
-              className="text-sm font-medium"
-            >
+            <label htmlFor="credentialUrl" className="text-sm font-medium">
               Credential / portfolio URL
             </label>
 
@@ -629,25 +463,18 @@ export default function TutorApplicationPage() {
               placeholder="https://example.com/your-profile"
               value={form.credentialUrl}
               onChange={(event) =>
-                updateField(
-                  "credentialUrl",
-                  event.target.value,
-                )
+                updateField("credentialUrl", event.target.value)
               }
             />
 
             <p className="text-xs text-muted-foreground">
-              Optional. You can provide a credential,
-              portfolio, professional profile, or
-              other supporting link.
+              Optional. You can provide a credential, portfolio, professional
+              profile, or other supporting link.
             </p>
           </div>
 
           <div className="space-y-2">
-            <label
-              htmlFor="description"
-              className="text-sm font-medium"
-            >
+            <label htmlFor="description" className="text-sm font-medium">
               Teaching experience and approach
             </label>
 
@@ -657,10 +484,7 @@ export default function TutorApplicationPage() {
               placeholder="Tell learners about your teaching experience, qualifications, and approach."
               value={form.description}
               onChange={(event) =>
-                updateField(
-                  "description",
-                  event.target.value,
-                )
+                updateField("description", event.target.value)
               }
               required
               maxLength={4000}

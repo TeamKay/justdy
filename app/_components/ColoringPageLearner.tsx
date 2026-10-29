@@ -32,26 +32,20 @@ export default function ColoringPageLearner({
   pages,
 }: ColoringPageLearnerProps) {
   const orderedPages = useMemo(
-    () =>
-      pages
-        .slice()
-        .sort((a, b) => a.index - b.index),
+    () => pages.slice().sort((a, b) => a.index - b.index),
     [pages],
   );
 
-  const [currentIndex, setCurrentIndex] =
-    useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-  const currentPage =
-    orderedPages[currentIndex];
+  const currentPage = orderedPages[currentIndex];
 
   if (!currentPage) {
     return null;
   }
 
   const hasPrevious = currentIndex > 0;
-  const hasNext =
-    currentIndex < orderedPages.length - 1;
+  const hasNext = currentIndex < orderedPages.length - 1;
 
   function previousPage() {
     if (hasPrevious) {
@@ -70,11 +64,7 @@ export default function ColoringPageLearner({
   }
 
   function openFullSize() {
-    window.open(
-      currentPage.url,
-      "_blank",
-      "noopener,noreferrer",
-    );
+    window.open(currentPage.url, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -150,12 +140,9 @@ export default function ColoringPageLearner({
 
             <div className="text-center">
               <p className="text-sm font-semibold text-slate-900">
-                Page {currentIndex + 1} of{" "}
-                {orderedPages.length}
+                Page {currentIndex + 1} of {orderedPages.length}
               </p>
-              <p className="text-xs text-slate-500">
-                Printable coloring page
-              </p>
+              <p className="text-xs text-slate-500">Printable coloring page</p>
             </div>
 
             <button
@@ -173,9 +160,7 @@ export default function ColoringPageLearner({
             <div className="print-target mx-auto w-full max-w-3xl bg-white shadow-sm print:max-w-none print:shadow-none">
               <img
                 src={currentPage.url}
-                alt={`${title} — page ${
-                  currentIndex + 1
-                }`}
+                alt={`${title} — page ${currentIndex + 1}`}
                 className="block h-auto w-full"
               />
             </div>
@@ -183,32 +168,22 @@ export default function ColoringPageLearner({
 
           {orderedPages.length > 1 ? (
             <div className="flex flex-wrap justify-center gap-2 border-t border-slate-100 px-4 py-4 print:hidden">
-              {orderedPages.map(
-                (page, index) => (
-                  <button
-                    key={`${page.index}-${page.url}`}
-                    type="button"
-                    onClick={() =>
-                      setCurrentIndex(index)
-                    }
-                    className={`h-9 min-w-9 rounded-lg px-3 text-sm font-semibold transition ${
-                      index === currentIndex
-                        ? "bg-slate-950 text-white"
-                        : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
-                    aria-label={`View page ${
-                      index + 1
-                    }`}
-                    aria-current={
-                      index === currentIndex
-                        ? "page"
-                        : undefined
-                    }
-                  >
-                    {index + 1}
-                  </button>
-                ),
-              )}
+              {orderedPages.map((page, index) => (
+                <button
+                  key={`${page.index}-${page.url}`}
+                  type="button"
+                  onClick={() => setCurrentIndex(index)}
+                  className={`h-9 min-w-9 rounded-lg px-3 text-sm font-semibold transition ${
+                    index === currentIndex
+                      ? "bg-slate-950 text-white"
+                      : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                  aria-label={`View page ${index + 1}`}
+                  aria-current={index === currentIndex ? "page" : undefined}
+                >
+                  {index + 1}
+                </button>
+              ))}
             </div>
           ) : null}
         </section>

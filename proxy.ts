@@ -1,6 +1,3 @@
-
-
-
 import arcjet, { createMiddleware, detectBot } from "@arcjet/next";
 import { env } from "./lib/env";
 import { NextRequest, NextResponse } from "next/server";

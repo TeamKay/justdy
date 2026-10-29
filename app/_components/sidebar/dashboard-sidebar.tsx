@@ -20,10 +20,8 @@ import {
   SlidersHorizontal,
   UserRound,
   TrendingUp,
-  Headphones,
   Sparkles,
   LibraryBig,
-  BookAIcon,
 } from "lucide-react";
 
 import {
@@ -51,18 +49,17 @@ import { authClient } from "@/lib/auth-client";
 import MyLogo from "../Logo";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
-export type NavCapability = "CAN_LEARN" | "CAN_TEACH";
-
 export interface NavItem {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
-  capability?: NavCapability;
 }
 
 export interface NavigationGroup {
   title: string;
   items: NavItem[];
+  /** Controls visibility using the user's application role, not capability assignments. */
+  access?: "learning" | "teaching";
 }
 
 const adminNavigation: NavigationGroup = {
@@ -74,6 +71,21 @@ const adminNavigation: NavigationGroup = {
       icon: LayoutDashboard,
     },
     {
+      title: "Tutoring requests",
+      url: "/admin/tutoring-requests",
+      icon: GraduationCap,
+    },
+    {
+      title: "Tutoring payments",
+      url: "/admin/tutoring-payments",
+      icon: GraduationCap,
+    },
+    {
+      title: "Tutoring sessions",
+      url: "/admin/tutoring-sessions",
+      icon: GraduationCap,
+    },
+    {
       title: "Educators",
       url: "/admin/educators",
       icon: GraduationCap,
@@ -82,11 +94,6 @@ const adminNavigation: NavigationGroup = {
       title: "My Profile",
       url: "/admin/profile",
       icon: BarChart3,
-    },
-    {
-      title: "Live Help",
-      url: "/admin/live-help",
-      icon: Headphones,
     },
     {
       title: "Availability",
@@ -104,11 +111,6 @@ const adminNavigation: NavigationGroup = {
       icon: CalendarDays,
     },
     {
-      title: "Sessions",
-      url: "/admin/sessions",
-      icon: Video,
-    },
-    {
       title: "Payouts",
       url: "/admin/payouts",
       icon: WalletCards,
@@ -123,113 +125,81 @@ const adminNavigation: NavigationGroup = {
       url: "/admin/settings",
       icon: Settings2,
     },
-    {
-  title: "Investments",
-  url: "/admin/investments",
-  icon: WalletCards,
-},
   ],
 };
 
 const userNavigation: NavigationGroup[] = [
   {
     title: "Learning",
+    access: "learning",
     items: [
       {
         title: "Dashboard",
         url: "/dashboard",
         icon: LayoutDashboard,
-        capability: "CAN_LEARN",
       },
       {
         title: "Create with AI",
         url: "/dashboard/create",
         icon: Sparkles,
-        capability: "CAN_LEARN",
       },
       {
         title: "My Library",
         url: "/dashboard/library",
         icon: LibraryBig,
-        capability: "CAN_LEARN",
       },
       {
         title: "My Sessions",
         url: "/dashboard/sessions",
         icon: CalendarDays,
-        capability: "CAN_LEARN",
-      },
-      {
-        title: "Homework Live",
-        url: "/live-help",
-        icon: BookAIcon,
-        capability: "CAN_LEARN",
       },
       {
         title: "Progress",
         url: "/dashboard/progress",
         icon: TrendingUp,
-        capability: "CAN_LEARN",
       },
       {
         title: "History",
         url: "/dashboard/history",
         icon: History,
-        capability: "CAN_LEARN",
-      },
-      {
-        title: "Credits",
-        url: "/dashboard/credits",
-        icon: CreditCard,
-        capability: "CAN_LEARN",
       },
     ],
   },
 
   {
     title: "Teaching",
+    access: "teaching",
     items: [
       {
         title: "Teaching Workspace",
         url: "/educator",
         icon: GraduationCap,
-        capability: "CAN_TEACH",
       },
       {
         title: "Availability",
         url: "/educator?tab=availability",
         icon: CalendarDays,
-        capability: "CAN_TEACH",
       },
       {
         title: "Tutoring Services",
         url: "/educator?tab=services",
         icon: SlidersHorizontal,
-        capability: "CAN_TEACH",
       },
       {
         title: "Teaching Profile",
         url: "/educator?tab=profile",
         icon: UserRound,
-        capability: "CAN_TEACH",
       },
       {
         title: "Teaching Sessions",
         url: "/educator/sessions",
         icon: Video,
-        capability: "CAN_TEACH",
       },
-      {
-        title: "Live Homework Help",
-        url: "/live-help",
-        icon: Headphones,
-        capability: "CAN_TEACH",
-      },
+
       {
         title: "Earnings",
         url: "/earnings",
         icon: WalletCards,
-        capability: "CAN_TEACH",
       },
     ],
   },
@@ -312,26 +282,21 @@ function NavIcon({
   );
 }
 
-function ChatHistorySection({
-  projectId,
-}: {
-  projectId: string | null;
-}) {
+function ChatHistorySection({ projectId }: { projectId: string | null }) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const activeConversationId = searchParams.get("conversationId");
 
-  const [conversations, setConversations] = React.useState<
-    Conversation[]
-  >([]);
+  const [conversations, setConversations] = React.useState<Conversation[]>([]);
 
   const [search, setSearch] = React.useState("");
   const [loading, setLoading] = React.useState(true);
 
-  const [actionConversationId, setActionConversationId] =
-    React.useState<string | null>(null);
+  const [actionConversationId, setActionConversationId] = React.useState<
+    string | null
+  >(null);
 
   const [deleteConversation, setDeleteConversation] =
     React.useState<Conversation | null>(null);
@@ -355,9 +320,7 @@ function ChatHistorySection({
       }
 
       const response = await fetch(
-        `/api/ai/chat${
-          params.toString() ? `?${params.toString()}` : ""
-        }`,
+        `/api/ai/chat${params.toString() ? `?${params.toString()}` : ""}`,
         {
           cache: "no-store",
         },
@@ -380,9 +343,7 @@ function ChatHistorySection({
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
-        const stored = window.localStorage.getItem(
-          "justdy:pinned-chats",
-        );
+        const stored = window.localStorage.getItem("justdy:pinned-chats");
 
         if (!stored) {
           return;
@@ -397,8 +358,7 @@ function ChatHistorySection({
         setPinnedIds(
           new Set(
             parsed.filter(
-              (value): value is string =>
-                typeof value === "string",
+              (value): value is string => typeof value === "string",
             ),
           ),
         );
@@ -470,8 +430,7 @@ function ChatHistorySection({
 
     window.addEventListener("justdy:chat-updated", refresh);
 
-    return () =>
-      window.removeEventListener("justdy:chat-updated", refresh);
+    return () => window.removeEventListener("justdy:chat-updated", refresh);
   }, [loadConversations]);
 
   const filteredConversations = React.useMemo(() => {
@@ -482,9 +441,7 @@ function ChatHistorySection({
     }
 
     return conversations.filter((conversation) =>
-      getConversationTitle(conversation.title)
-        .toLowerCase()
-        .includes(query),
+      getConversationTitle(conversation.title).toLowerCase().includes(query),
     );
   }, [conversations, search]);
 
@@ -497,10 +454,7 @@ function ChatHistorySection({
         return aPinned ? -1 : 1;
       }
 
-      return (
-        new Date(b.updatedAt).getTime() -
-        new Date(a.updatedAt).getTime()
-      );
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
   }, [filteredConversations, pinnedIds]);
 
@@ -520,9 +474,7 @@ function ChatHistorySection({
     return `/chat?${params.toString()}`;
   };
 
-  function requestDeleteConversation(
-    conversation: Conversation,
-  ) {
+  function requestDeleteConversation(conversation: Conversation) {
     if (actionConversationId) {
       return;
     }
@@ -549,21 +501,16 @@ function ChatHistorySection({
         params.set("projectId", projectId);
       }
 
-      const response = await fetch(
-        `/api/ai/chat?${params.toString()}`,
-        {
-          method: "DELETE",
-        },
-      );
+      const response = await fetch(`/api/ai/chat?${params.toString()}`, {
+        method: "DELETE",
+      });
 
       const data = (await response.json()) as {
         error?: string;
       };
 
       if (!response.ok) {
-        throw new Error(
-          data.error ?? "Unable to delete conversation.",
-        );
+        throw new Error(data.error ?? "Unable to delete conversation.");
       }
 
       setConversations((current) =>
@@ -630,14 +577,6 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
   const userImage = user?.image || "";
   const userEmail = user?.email || "";
 
-  /*
-   * Better Auth custom fields can be serialized differently across
-   * versions/configurations. Normalize the role before comparing it.
-   *
-   * This role check is for navigation UI only. Protected server routes
-   * must continue to authorize using the authenticated server session
-   * and database-backed authorization.
-   */
   const normalizedRole = String(
     (user as { role?: unknown } | null | undefined)?.role ?? "",
   )
@@ -646,64 +585,24 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
 
   const isAdmin = normalizedRole === "ADMIN";
 
-  const [capabilityKeys, setCapabilityKeys] =
-    React.useState<string[]>([]);
-
-  React.useEffect(() => {
-    if (!user?.id || isAdmin) {
-      return;
-    }
-
-    let cancelled = false;
-
-    void fetch("/api/user/capabilities", {
-      cache: "no-store",
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          return;
-        }
-
-        const data = (await response.json()) as {
-          capabilities?: string[];
-        };
-
-        if (!cancelled) {
-          setCapabilityKeys(data.capabilities ?? []);
-        }
-      })
-      .catch((error) => {
-        console.error(
-          "Failed to load account capabilities:",
-          error,
-        );
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAdmin, user?.id]);
-
-  const canLearn = capabilityKeys.includes("CAN_LEARN");
-  const canTeach = capabilityKeys.includes("CAN_TEACH");
+  const isLearner = normalizedRole === "LEARNER";
+  const isTutor = normalizedRole === "TUTOR";
 
   const visibleUserNavigation = React.useMemo<NavigationGroup[]>(
     () =>
-      userNavigation
-        .map((group) => ({
-          ...group,
-          items: group.items.filter((item) => {
-            if (!item.capability) {
-              return true;
-            }
+      userNavigation.filter((group) => {
+        if (group.access === "learning") {
+          return isLearner || isTutor;
+        }
 
-            return item.capability === "CAN_LEARN"
-              ? canLearn
-              : canTeach;
-          }),
-        }))
-        .filter((group) => group.items.length > 0),
-    [canLearn, canTeach],
+        if (group.access === "teaching") {
+          return isTutor;
+        }
+
+        // Account and other general groups are available to signed-in users.
+        return true;
+      }),
+    [isLearner, isTutor],
   );
 
   const visibleNavigation: NavigationGroup[] = isAdmin
@@ -721,102 +620,86 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
       .toUpperCase() || "JU";
 
   const isActive = (url: string) => {
-  const [targetPath, targetQuery] = url.split("?", 2);
+    const [targetPath, targetQuery] = url.split("?", 2);
 
-  // Dashboard should only be active on the exact dashboard route.
-  if (targetPath === "/dashboard") {
-    return pathname === "/dashboard";
-  }
-
-  // Admin Dashboard should only be active on the exact admin route.
-  if (targetPath === "/admin") {
-    return pathname === "/admin";
-  }
-
-  if (targetPath === "/educator") {
-    const requestedTab = targetQuery
-      ? new URLSearchParams(targetQuery).get("tab")
-      : null;
-
-    const currentTab = searchParams.get("tab");
-
-    if (pathname !== "/educator") {
-      return false;
+    // Dashboard should only be active on the exact dashboard route.
+    if (targetPath === "/dashboard") {
+      return pathname === "/dashboard";
     }
 
-    return (
-      (requestedTab ?? null) === (currentTab ?? null)
-    );
-  }
+    // Admin Dashboard should only be active on the exact admin route.
+    if (targetPath === "/admin") {
+      return pathname === "/admin";
+    }
 
-  if (targetPath === "/projects") {
-    return (
-      pathname === "/projects" ||
-      pathname?.startsWith("/projects/")
-    );
-  }
+    if (targetPath === "/educator") {
+      const requestedTab = targetQuery
+        ? new URLSearchParams(targetQuery).get("tab")
+        : null;
 
-  if (targetPath === "/dashboard/library") {
-    return (
-      pathname === "/dashboard/library" ||
-      pathname?.startsWith("/dashboard/library/")
-    );
-  }
+      const currentTab = searchParams.get("tab");
 
-  if (targetPath === "/settings") {
-    return (
-      pathname === "/settings" ||
-      pathname?.startsWith("/settings/")
-    );
-  }
+      if (pathname !== "/educator") {
+        return false;
+      }
 
-  return (
-    pathname === targetPath ||
-    pathname?.startsWith(`${targetPath}/`)
-  );
-};
+      return (requestedTab ?? null) === (currentTab ?? null);
+    }
 
-const renderNavigation = (groups: NavigationGroup[]) =>
-  groups.map((group) => (
-    <SidebarGroup
-      key={group.title}
-      className="p-0"
-    >
-      <SidebarGroupContent>
-        <SidebarMenu className="space-y-0.5">
-          {group.items.map((item) => {
-            const active = isActive(item.url);
+    if (targetPath === "/projects") {
+      return pathname === "/projects" || pathname?.startsWith("/projects/");
+    }
 
-            return (
-              <SidebarMenuItem
-                key={`${item.title}-${item.url}`}
-              >
-                <SidebarMenuButton
-                  asChild
-                  tooltip={item.title}
-                  data-active={active ? "true" : "false"}
-                  className={`h-10 rounded-xl px-3 text-[13px] font-medium transition-colors ${
-                    active
-                      ? "!bg-white/10 !text-white shadow-sm hover:!bg-white/10 hover:!text-white"
-                      : "!bg-transparent !text-white/75 hover:!bg-white/10 hover:!text-white"
-                  }`}
-                >
-                  <Link
-                    href={item.url}
-                    aria-current={active ? "page" : undefined}
-                    className="flex h-full w-full items-center gap-3"
+    if (targetPath === "/dashboard/library") {
+      return (
+        pathname === "/dashboard/library" ||
+        pathname?.startsWith("/dashboard/library/")
+      );
+    }
+
+    if (targetPath === "/settings") {
+      return pathname === "/settings" || pathname?.startsWith("/settings/");
+    }
+
+    return pathname === targetPath || pathname?.startsWith(`${targetPath}/`);
+  };
+
+  const renderNavigation = (groups: NavigationGroup[]) =>
+    groups.map((group) => (
+      <SidebarGroup key={group.title} className="p-0">
+        <SidebarGroupContent>
+          <SidebarMenu className="space-y-0.5">
+            {group.items.map((item) => {
+              const active = isActive(item.url);
+
+              return (
+                <SidebarMenuItem key={`${item.title}-${item.url}`}>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip={item.title}
+                    data-active={active ? "true" : "false"}
+                    className={`h-10 rounded-xl px-3 text-[13px] font-medium transition-colors ${
+                      active
+                        ? "!bg-white/10 !text-white shadow-sm hover:!bg-white/10 hover:!text-white"
+                        : "!bg-transparent !text-white/75 hover:!bg-white/10 hover:!text-white"
+                    }`}
                   >
-                    <NavIcon icon={item.icon} active={active} />
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            );
-          })}
-        </SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
-  ));
+                    <Link
+                      href={item.url}
+                      aria-current={active ? "page" : undefined}
+                      className="flex h-full w-full items-center gap-3"
+                    >
+                      <NavIcon icon={item.icon} active={active} />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            })}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    ));
 
   async function handleSignOut() {
     try {
@@ -831,11 +714,11 @@ const renderNavigation = (groups: NavigationGroup[]) =>
   return (
     <Sidebar
       collapsible="offcanvas"
-      className="border-r border-emerald-900/50 bg-[#181818] text-white [--sidebar-width:264px] shadow-[4px_0_24px_-24px_hsl(var(--foreground)/0.25)]"
+      className="border-r border-emerald-900/50 bg-[#122245] text-white [--sidebar-width:264px] shadow-[4px_0_24px_-24px_hsl(var(--foreground)/0.25)]"
       {...props}
     >
       {/* Sidebar Header */}
-      <SidebarHeader className="shrink-0 border-b border-emerald-900/50 bg-[#181818] px-3.5 py-2.5">
+      <SidebarHeader className="shrink-0 border-b border-emerald-900/50 bg-[#122245] px-3.5 py-2.5">
         <div className="flex h-8 min-w-0 items-center gap-2 overflow-hidden">
           <div className="min-w-0 flex-1 origin-left scale-[0.78]">
             <MyLogo />
@@ -850,12 +733,12 @@ const renderNavigation = (groups: NavigationGroup[]) =>
       </SidebarHeader>
 
       {/* Sidebar Navigation */}
-      <SidebarContent className="min-h-0 bg-[#181818] px-2 py-2.5">
+      <SidebarContent className="min-h-0 bg-[#122245] px-2 py-2.5">
         {renderNavigation(visibleNavigation)}
       </SidebarContent>
 
       {/* Sidebar Footer */}
-      <SidebarFooter className="border-t border-emerald-900/50 bg-[#181818] p-2">
+      <SidebarFooter className="border-t border-emerald-900/50 bg-[#122245] p-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -922,50 +805,35 @@ const renderNavigation = (groups: NavigationGroup[]) =>
 
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem
-              asChild
-              className="gap-2 rounded-lg"
-            >
+            <DropdownMenuItem asChild className="gap-2 rounded-lg">
               <Link href="/dashboard/settings">
                 <Settings2 className="size-4" />
                 Settings
               </Link>
             </DropdownMenuItem>
 
-            <DropdownMenuItem
-              asChild
-              className="gap-2 rounded-lg"
-            >
+            <DropdownMenuItem asChild className="gap-2 rounded-lg">
               <Link href="/dashboard/settings#appearance">
                 <SlidersHorizontal className="size-4" />
                 Appearance
               </Link>
             </DropdownMenuItem>
 
-            <DropdownMenuItem
-              asChild
-              className="gap-2 rounded-lg"
-            >
+            <DropdownMenuItem asChild className="gap-2 rounded-lg">
               <Link href="/credits">
                 <CreditCard className="size-4" />
                 Credits
               </Link>
             </DropdownMenuItem>
 
-            <DropdownMenuItem
-              asChild
-              className="gap-2 rounded-lg"
-            >
+            <DropdownMenuItem asChild className="gap-2 rounded-lg">
               <Link href="/dashboard/settings#profile">
                 <UserRound className="size-4" />
                 Profile
               </Link>
             </DropdownMenuItem>
 
-            <DropdownMenuItem
-              asChild
-              className="gap-2 rounded-lg"
-            >
+            <DropdownMenuItem asChild className="gap-2 rounded-lg">
               <Link href="/dashboard/settings#help">
                 <HelpCircle className="size-4" />
                 Help & support

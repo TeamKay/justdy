@@ -5,9 +5,7 @@ import {
   CalendarDays,
   CheckCircle2,
   BookOpen,
-  GraduationCap,
   Search,
-  TrendingUp,
   Users,
   Video,
   Sparkles,
@@ -54,20 +52,6 @@ type UpcomingTeacherLesson = {
   service: Service | null;
 };
 
-type CourseEnrollmentSummary = {
-  id: string;
-  progress: number;
-  status: string;
-  course: {
-    id: string;
-    title: string;
-    slug: string;
-    smallDescription: string | null;
-    category: string | null;
-    level: string;
-    duration: number | null;
-  };
-};
 
 type LearningActivity = {
   id: string;
@@ -115,6 +99,7 @@ type AdminStats = {
   totalUsers: number;
   pendingTeacherApprovals: number;
   totalBookings: number;
+  newTutoringRequests: number;
   scheduledBookings: number;
   completedSessions: number;
   payoutCount: number;
@@ -143,7 +128,6 @@ type DashboardViewProps = {
   teacherUpcoming: UpcomingTeacherLesson[];
   completedSessions: CompletedSession[];
   learningActivities: LearningActivity[];
-  courseEnrollments: CourseEnrollmentSummary[];
   latestPayout: LatestPayout;
   adminStats: AdminStats;
   clientGrowth: ClientGrowthPoint[];
@@ -225,14 +209,9 @@ function canJoinLesson(lesson: {
   const start = new Date(lesson.startTime).getTime();
   const end = new Date(lesson.endTime).getTime();
 
-  const joinWindowStart =
-    start - JOIN_WINDOW_MINUTES * 60 * 1000;
+  const joinWindowStart = start - JOIN_WINDOW_MINUTES * 60 * 1000;
 
-  return (
-    lesson.status === "Scheduled" &&
-    now >= joinWindowStart &&
-    now < end
-  );
+  return lesson.status === "Scheduled" && now >= joinWindowStart && now < end;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -266,9 +245,7 @@ function SectionHeader({
         </h2>
 
         {description ? (
-          <p className="mt-1 text-sm text-muted-foreground">
-            {description}
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         ) : null}
       </div>
 
@@ -304,9 +281,7 @@ function EmptyState({
         <Icon className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
       </div>
 
-      <h3 className="mt-4 font-semibold text-foreground">
-        {title}
-      </h3>
+      <h3 className="mt-4 font-semibold text-foreground">{title}</h3>
 
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
         {description}
@@ -361,18 +336,13 @@ function TeacherAdminDashboard({
   clientGrowth: ClientGrowthPoint[];
   recentClients: Person[];
 }) {
-  const latestGrowth =
-    clientGrowth[clientGrowth.length - 1]?.value ?? 0;
+  const latestGrowth = clientGrowth[clientGrowth.length - 1]?.value ?? 0;
 
-  const previousGrowth =
-    clientGrowth[clientGrowth.length - 2]?.value ?? 0;
+  const previousGrowth = clientGrowth[clientGrowth.length - 2]?.value ?? 0;
 
   const growthPercent =
     previousGrowth > 0
-      ? Math.round(
-          ((latestGrowth - previousGrowth) / previousGrowth) *
-            100,
-        )
+      ? Math.round(((latestGrowth - previousGrowth) / previousGrowth) * 100)
       : null;
 
   const firstName = account.name.split(" ")[0] || "there";
@@ -391,8 +361,8 @@ function TeacherAdminDashboard({
             </h1>
 
             <p className="mt-0 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-              Everything you need to manage your learners,
-              sessions, availability, and teaching activity.
+              Everything you need to manage your learners, sessions,
+              availability, and teaching activity.
             </p>
           </div>
 
@@ -404,20 +374,6 @@ function TeacherAdminDashboard({
               <CalendarDays className="h-4 w-4" />
               View bookings
             </Link>
-
-          
-
-            <Link
-              href="/admin/live-help"
-              className="inline-flex h-11 items-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
-            >
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-60" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
-              </span>
-              <MessageCircle className="h-4 w-4" />
-              Live Homework Help
-            </Link>
           </div>
         </div>
       </section>
@@ -426,9 +382,9 @@ function TeacherAdminDashboard({
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
           {
-            value: latestGrowth,
+            value: adminStats?.newTutoringRequests ?? 0,
             icon: Users,
-            detail: "New clients",
+            detail: "New tutoring requests",
           },
           {
             value: adminStats?.totalUsers ?? 0,
@@ -436,15 +392,12 @@ function TeacherAdminDashboard({
             detail: "Registered users",
           },
           {
-            value:
-              adminStats?.scheduledBookings ?? upcoming.length,
+            value: adminStats?.scheduledBookings ?? upcoming.length,
             icon: CalendarDays,
-            detail: "Upcoming lessons",
+            detail: "Upcoming sessions",
           },
           {
-            value:
-              adminStats?.completedSessions ??
-              completedSessions.length,
+            value: adminStats?.completedSessions ?? completedSessions.length,
             icon: CheckCircle2,
             detail: "Sessions completed",
           },
@@ -473,14 +426,12 @@ function TeacherAdminDashboard({
 
       {/* Main workspace */}
       <section className="grid gap-6">
-      <DashboardCard className="p-5 sm:p-6">
-        <div className="min-h-75">
-          <ClientGrowthChart points={clientGrowth} />
-        </div>
-      </DashboardCard>
-    </section>
-
-     
+        <DashboardCard className="p-5 sm:p-6">
+          <div className="min-h-75">
+            <ClientGrowthChart points={clientGrowth} />
+          </div>
+        </DashboardCard>
+      </section>
     </div>
   );
 }
@@ -489,129 +440,21 @@ function TeacherAdminDashboard({
 /* Learner dashboard                                                          */
 /* -------------------------------------------------------------------------- */
 
-function CourseProgressSection({
-  enrollments,
-}: {
-  enrollments: CourseEnrollmentSummary[];
-}) {
-  return (
-    <section>
-      <SectionHeader
-        eyebrow="Courses"
-        title="Continue learning"
-        description="Pick up where you left off."
-        href="/products"
-        linkText="Browse courses"
-      />
-
-      {enrollments.length ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {enrollments.slice(0, 6).map((enrollment) => {
-            const progress = Math.max(
-              0,
-              Math.min(100, enrollment.progress),
-            );
-
-            return (
-              <Link
-                href={`/courses/${enrollment.course.slug}`}
-                key={enrollment.id}
-                className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
-                    <BookOpen className="h-5 w-5" />
-                  </div>
-
-                  <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                    {enrollment.status}
-                  </span>
-                </div>
-
-                <h3 className="mt-5 line-clamp-2 font-semibold group-hover:text-emerald-800 dark:group-hover:text-emerald-300">
-                  {enrollment.course.title}
-                </h3>
-
-                <p className="mt-1 line-clamp-2 min-h-10 text-sm text-muted-foreground">
-                  {enrollment.course.smallDescription ??
-                    enrollment.course.category ??
-                    `${enrollment.course.level} course`}
-                </p>
-
-                <div className="mt-5">
-                  <div className="mb-2 flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">
-                      Progress
-                    </span>
-
-                    <span className="font-semibold">
-                      {Math.round(progress)}%
-                    </span>
-                  </div>
-
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-emerald-500 transition-all"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{enrollment.course.level}</span>
-
-                  {enrollment.course.duration ? (
-                    <span>
-                      {enrollment.course.duration} min
-                    </span>
-                  ) : null}
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      ) : (
-        <EmptyState
-          icon={BookOpen}
-          title="No enrolled courses yet"
-          description="Courses you enroll in will appear here with your saved progress."
-          href="/products"
-          action="Browse courses"
-        />
-      )}
-    </section>
-  );
-}
-
 function LearnerDashboard({
   account,
   upcoming,
   activities,
-  courseEnrollments,
   completedSessions,
 }: {
   account: DashboardViewProps["account"];
   upcoming: UpcomingLearnerLesson[];
   activities: LearningActivity[];
-  courseEnrollments: CourseEnrollmentSummary[];
   completedSessions: CompletedSession[];
 }) {
   const nextLesson = upcoming[0];
   const firstName = account.name.split(" ")[0] || "there";
 
   const completedCount = completedSessions.length;
-
-  const averageProgress =
-    courseEnrollments.length
-      ? Math.round(
-          courseEnrollments.reduce(
-            (total, course) =>
-              total +
-              Math.max(0, Math.min(100, course.progress)),
-            0,
-          ) / courseEnrollments.length,
-        )
-      : 0;
 
   return (
     <div className="space-y-8">
@@ -631,8 +474,7 @@ function LearnerDashboard({
             </h1>
 
             <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-              Continue building your skills with tutoring,
-              courses, practice, and personalized learning.
+              Continue building your skills with tutoring, practice, and personalized learning.
             </p>
           </div>
 
@@ -659,53 +501,15 @@ function LearnerDashboard({
       </section>
 
       {/* Learner overview */}
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid gap-3 sm:grid-cols-1">
         <DashboardCard className="p-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-muted-foreground">
-                Active courses
+                Sessions completed
               </p>
 
-              <p className="mt-2 text-2xl font-semibold">
-                {courseEnrollments.length}
-              </p>
-            </div>
-
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50">
-              <BookOpen className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
-            </div>
-          </div>
-        </DashboardCard>
-
-        <DashboardCard className="p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">
-                Course progress
-              </p>
-
-              <p className="mt-2 text-2xl font-semibold">
-                {averageProgress}%
-              </p>
-            </div>
-
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50">
-              <TrendingUp className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
-            </div>
-          </div>
-        </DashboardCard>
-
-        <DashboardCard className="p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">
-                Lessons completed
-              </p>
-
-              <p className="mt-2 text-2xl font-semibold">
-                {completedCount}
-              </p>
+              <p className="mt-2 text-2xl font-semibold">{completedCount}</p>
             </div>
 
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50">
@@ -719,7 +523,7 @@ function LearnerDashboard({
       <section>
         <SectionHeader
           eyebrow="Your schedule"
-          title="Next lesson"
+          title="Upcoming session"
           href="/tutoring/sessions"
           linkText="View all"
         />
@@ -730,15 +534,11 @@ function LearnerDashboard({
 
             <div className="relative flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-4">
-                <PersonAvatar
-                  person={nextLesson.educator}
-                  size={56}
-                />
+                <PersonAvatar person={nextLesson.educator} size={56} />
 
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-200">
-                    {nextLesson.service?.title ??
-                      "Tutoring lesson"}
+                    {nextLesson.service?.title ?? "Tutoring session"}
                   </p>
 
                   <h2 className="mt-1 text-xl font-semibold">
@@ -747,9 +547,7 @@ function LearnerDashboard({
 
                   <p className="mt-1 text-sm text-emerald-100/80">
                     {nextLesson.subject ?? "Mathematics"}
-                    {nextLesson.gradeLevel
-                      ? ` · ${nextLesson.gradeLevel}`
-                      : ""}
+                    {nextLesson.gradeLevel ? ` · ${nextLesson.gradeLevel}` : ""}
                   </p>
                 </div>
               </div>
@@ -767,13 +565,10 @@ function LearnerDashboard({
                 </div>
 
                 {(() => {
-                  const joinable =
-                    canJoinLesson(nextLesson);
+                  const joinable = canJoinLesson(nextLesson);
 
                   const href = joinable
-                    ? `/tutoring/sessions/${encodeURIComponent(
-                        nextLesson.id,
-                      )}`
+                    ? `/tutoring/sessions/${encodeURIComponent(nextLesson.id)}`
                     : nextLesson.tutoringSessionId
                       ? `/dashboard/tutoring/sessions/${encodeURIComponent(
                           nextLesson.tutoringSessionId,
@@ -790,11 +585,11 @@ function LearnerDashboard({
                       {joinable ? (
                         <>
                           <Video className="h-4 w-4" />
-                          Join lesson
+                          Join session
                         </>
                       ) : (
                         <>
-                          Open lesson
+                          Open session
                           <ArrowRight className="h-4 w-4" />
                         </>
                       )}
@@ -807,18 +602,13 @@ function LearnerDashboard({
         ) : (
           <EmptyState
             icon={CalendarDays}
-            title="No upcoming lessons"
+            title="No upcoming sessions"
             description="Find a tutor and book your next tutoring session to start learning."
             href="/tutoring"
             action="Find a tutor"
           />
         )}
       </section>
-
-      {/* Courses */}
-      <CourseProgressSection
-        enrollments={courseEnrollments}
-      />
 
       {/* Activity + history */}
       <section className="grid gap-6 lg:grid-cols-2">
@@ -843,21 +633,17 @@ function LearnerDashboard({
 
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">
-                      {activity.resource?.title ??
-                        "Learning activity"}
+                      {activity.resource?.title ?? "Learning activity"}
                     </p>
 
                     <p className="mt-0.5 text-xs capitalize text-muted-foreground">
-                      {activity.activityType} ·{" "}
-                      {activity.status}
+                      {activity.activityType} · {activity.status}
                     </p>
                   </div>
 
-                  {activity.score !== null &&
-                  activity.maxScore ? (
+                  {activity.score !== null && activity.maxScore ? (
                     <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                      {activity.score}/
-                      {activity.maxScore}
+                      {activity.score}/{activity.maxScore}
                     </span>
                   ) : null}
                 </div>
@@ -873,10 +659,7 @@ function LearnerDashboard({
         </DashboardCard>
 
         <DashboardCard className="p-5 sm:p-6">
-          <SectionHeader
-            eyebrow="History"
-            title="Recent lessons"
-          />
+          <SectionHeader eyebrow="History" title="Recent sessions" />
 
           {completedSessions.length ? (
             <div className="space-y-2">
@@ -885,21 +668,16 @@ function LearnerDashboard({
                   key={session.id}
                   className="flex items-center gap-3 rounded-xl border border-border/60 bg-background p-3.5"
                 >
-                  <PersonAvatar
-                    person={session.educator}
-                    size={40}
-                  />
+                  <PersonAvatar person={session.educator} size={40} />
 
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">
-                      {session.service?.title ??
-                        "Tutoring lesson"}
+                      {session.service?.title ?? "Tutoring session"}
                     </p>
 
                     <p className="mt-1 truncate text-xs text-muted-foreground">
-                      {session.educator?.name ??
-                        "Teacher"}{" "}
-                      · {formatDate(session.scheduledStart)}
+                      {session.educator?.name ?? "Teacher"} ·{" "}
+                      {formatDate(session.scheduledStart)}
                     </p>
                   </div>
 
@@ -910,8 +688,8 @@ function LearnerDashboard({
           ) : (
             <EmptyState
               icon={CheckCircle2}
-              title="No completed lessons yet"
-              description="Your tutoring history will appear here after your first completed lesson."
+              title="No completed sessions yet"
+              description="Your tutoring history will appear here after your first completed session."
             />
           )}
         </DashboardCard>
@@ -933,9 +711,7 @@ function LearnerDashboard({
               <MessageCircle className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
             </div>
 
-            <h3 className="mt-4 font-semibold">
-              Homework help
-            </h3>
+            <h3 className="mt-4 font-semibold">Homework help</h3>
 
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
               Get help understanding a difficult problem with a live tutor.
@@ -955,9 +731,7 @@ function LearnerDashboard({
               <Sparkles className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
             </div>
 
-            <h3 className="mt-4 font-semibold">
-              Create with AI
-            </h3>
+            <h3 className="mt-4 font-semibold">Create with AI</h3>
 
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
               Create learning materials, assessments, images, and more.
@@ -977,9 +751,7 @@ function LearnerDashboard({
               <Search className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
             </div>
 
-            <h3 className="mt-4 font-semibold">
-              Find a tutor
-            </h3>
+            <h3 className="mt-4 font-semibold">Find a tutor</h3>
 
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
               Find a tutor who matches your subject and learning goals.
@@ -1006,7 +778,6 @@ export default function DashboardView({
   teacherUpcoming,
   completedSessions,
   learningActivities,
-  courseEnrollments,
   latestPayout,
   adminStats,
   clientGrowth,
@@ -1014,7 +785,7 @@ export default function DashboardView({
 }: DashboardViewProps) {
   if (account.isTeacherAdmin) {
     return (
-      <main className="mx-auto w-full max-w-6xl mt-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <main className="mx-auto w-full max-w-7xl mt-5 px-4 py-6 sm:px-6 lg:px-12 lg:py-8">
         <TeacherAdminDashboard
           account={account}
           upcoming={teacherUpcoming}
@@ -1029,12 +800,11 @@ export default function DashboardView({
   }
 
   return (
-    <main className="mx-auto w-full max-w-6xl mt-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+    <main className="mx-auto w-full max-w-7xl mt-5 px-4 py-6 sm:px-6 lg:px-12 lg:py-8">
       <LearnerDashboard
         account={account}
         upcoming={learnerUpcoming}
         activities={learningActivities}
-        courseEnrollments={courseEnrollments}
         completedSessions={completedSessions}
       />
     </main>

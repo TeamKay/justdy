@@ -1,10 +1,7 @@
 // lib/tutoring/booking.ts
 
 import prisma from "@/lib/prisma";
-import {
-  CAPABILITIES,
-  hasCapability,
-} from "@/lib/auth/capabilities";
+import { CAPABILITIES, hasCapability } from "@/lib/auth/capabilities";
 import {
   getVerifiedTutor,
   requireVerifiedTutor,
@@ -42,10 +39,7 @@ import {
    TYPES
    ============================================================ */
 
-export type TutoringAvailabilityStatus =
-  | "Available"
-  | "Booked"
-  | "Blocked";
+export type TutoringAvailabilityStatus = "Available" | "Booked" | "Blocked";
 
 export type TutoringServiceInput = {
   teachingProfileId: string;
@@ -79,10 +73,7 @@ export async function canManageTutoringAvailability(
     return false;
   }
 
-  return hasCapability(
-    tutorId,
-    CAPABILITIES.TEACH,
-  );
+  return hasCapability(tutorId, CAPABILITIES.TEACH);
 }
 
 /**
@@ -169,9 +160,7 @@ export async function getAvailableTutoringSlots({
  *
  * The tutor must also have an active, verified TeachingProfile.
  */
-export async function getTutoringSlotForBooking(
-  availabilityId: string,
-) {
+export async function getTutoringSlotForBooking(availabilityId: string) {
   if (!availabilityId) {
     return null;
   }
@@ -253,38 +242,26 @@ export async function createTutoringSlot({
     throw new Error("Tutor ID is required.");
   }
 
-  if (
-    !(startTime instanceof Date) ||
-    Number.isNaN(startTime.getTime())
-  ) {
+  if (!(startTime instanceof Date) || Number.isNaN(startTime.getTime())) {
     throw new Error("A valid slot start time is required.");
   }
 
-  if (
-    !(endTime instanceof Date) ||
-    Number.isNaN(endTime.getTime())
-  ) {
+  if (!(endTime instanceof Date) || Number.isNaN(endTime.getTime())) {
     throw new Error("A valid slot end time is required.");
   }
 
   if (startTime >= endTime) {
-    throw new Error(
-      "Slot start time must be before the end time.",
-    );
+    throw new Error("Slot start time must be before the end time.");
   }
 
   const tutor = await requireVerifiedTutor(tutorId);
 
   if (!tutor) {
-    throw new Error(
-      "Tutor is not verified or does not exist.",
-    );
+    throw new Error("Tutor is not verified or does not exist.");
   }
 
   if (startTime <= new Date()) {
-    throw new Error(
-      "Tutoring slots must be scheduled in the future.",
-    );
+    throw new Error("Tutoring slots must be scheduled in the future.");
   }
 
   /*
@@ -299,31 +276,30 @@ export async function createTutoringSlot({
    * Blocked availability is excluded because a blocked window
    * does not represent active tutor availability.
    */
-  const overlappingAvailability =
-    await prisma.availability.findFirst({
-      where: {
-        educatorId: tutorId,
-        type: {
-          in: ["ONE_OFF", "OCCURRENCE"],
-        },
-
-        status: {
-          not: "Blocked",
-        },
-
-        startTime: {
-          lt: endTime,
-        },
-
-        endTime: {
-          gt: startTime,
-        },
+  const overlappingAvailability = await prisma.availability.findFirst({
+    where: {
+      educatorId: tutorId,
+      type: {
+        in: ["ONE_OFF", "OCCURRENCE"],
       },
 
-      select: {
-        id: true,
+      status: {
+        not: "Blocked",
       },
-    });
+
+      startTime: {
+        lt: endTime,
+      },
+
+      endTime: {
+        gt: startTime,
+      },
+    },
+
+    select: {
+      id: true,
+    },
+  });
 
   if (overlappingAvailability) {
     throw new Error(
@@ -365,35 +341,30 @@ export async function blockTutoringSlot({
   /*
    * Verify that the tutor owns the availability window.
    */
-  const availability =
-    await prisma.availability.findFirst({
-      where: {
-        id: slotId,
-        educatorId: tutorId,
-        type: {
-          in: ["ONE_OFF", "OCCURRENCE"],
-        },
+  const availability = await prisma.availability.findFirst({
+    where: {
+      id: slotId,
+      educatorId: tutorId,
+      type: {
+        in: ["ONE_OFF", "OCCURRENCE"],
       },
+    },
 
-      select: {
-        id: true,
-        educatorId: true,
-        status: true,
-        startTime: true,
-        endTime: true,
-      },
-    });
+    select: {
+      id: true,
+      educatorId: true,
+      status: true,
+      startTime: true,
+      endTime: true,
+    },
+  });
 
   if (!availability) {
-    throw new Error(
-      "Tutoring availability not found.",
-    );
+    throw new Error("Tutoring availability not found.");
   }
 
   if (availability.status === "Booked") {
-    throw new Error(
-      "A booked tutoring slot cannot be blocked.",
-    );
+    throw new Error("A booked tutoring slot cannot be blocked.");
   }
 
   if (availability.status === "Blocked") {
@@ -434,33 +405,28 @@ export async function unblockTutoringSlot({
     throw new Error("Availability ID is required.");
   }
 
-  const availability =
-    await prisma.availability.findFirst({
-      where: {
-        id: slotId,
-        educatorId: tutorId,
-        type: {
-          in: ["ONE_OFF", "OCCURRENCE"],
-        },
+  const availability = await prisma.availability.findFirst({
+    where: {
+      id: slotId,
+      educatorId: tutorId,
+      type: {
+        in: ["ONE_OFF", "OCCURRENCE"],
       },
+    },
 
-      select: {
-        id: true,
-        educatorId: true,
-        status: true,
-      },
-    });
+    select: {
+      id: true,
+      educatorId: true,
+      status: true,
+    },
+  });
 
   if (!availability) {
-    throw new Error(
-      "Tutoring availability not found.",
-    );
+    throw new Error("Tutoring availability not found.");
   }
 
   if (availability.status === "Booked") {
-    throw new Error(
-      "A booked tutoring slot cannot be reopened.",
-    );
+    throw new Error("A booked tutoring slot cannot be reopened.");
   }
 
   if (availability.status === "Available") {
@@ -487,9 +453,7 @@ export async function unblockTutoringSlot({
  *
  * Services are tied to TeachingProfile rather than User.role.
  */
-export async function getTutorTutoringServices(
-  tutorId: string,
-) {
+export async function getTutorTutoringServices(tutorId: string) {
   if (!tutorId) {
     return [];
   }
@@ -610,10 +574,7 @@ export async function validateTutoringAvailabilityForService({
     return false;
   }
 
-  if (
-    service.durationMinutes === null ||
-    service.durationMinutes <= 0
-  ) {
+  if (service.durationMinutes === null || service.durationMinutes <= 0) {
     return false;
   }
 
@@ -625,22 +586,15 @@ export async function validateTutoringAvailabilityForService({
    * This validation is only for concrete bookable slots, so
    * both values must exist before calculating duration.
    */
-  if (
-    !availability.startTime ||
-    !availability.endTime
-  ) {
+  if (!availability.startTime || !availability.endTime) {
     return false;
   }
 
   const availabilityDurationMinutes =
-    (availability.endTime.getTime() -
-      availability.startTime.getTime()) /
+    (availability.endTime.getTime() - availability.startTime.getTime()) /
     (1000 * 60);
 
-  return (
-    availabilityDurationMinutes >=
-    service.durationMinutes
-  );
+  return availabilityDurationMinutes >= service.durationMinutes;
 }
 
 /* ============================================================
@@ -652,9 +606,7 @@ export async function validateTutoringAvailabilityForService({
  *
  * This uses the canonical Booking model.
  */
-export async function getUpcomingTutorBookings(
-  tutorId: string,
-) {
+export async function getUpcomingTutorBookings(tutorId: string) {
   if (!tutorId) {
     return [];
   }
@@ -668,10 +620,7 @@ export async function getUpcomingTutorBookings(
       },
 
       status: {
-        in: [
-          "PendingPayment",
-          "Scheduled",
-        ],
+        in: ["PendingPayment", "Scheduled"],
       },
     },
 
@@ -716,9 +665,7 @@ export async function getUpcomingTutorBookings(
 /**
  * Get upcoming tutoring bookings for a learner.
  */
-export async function getUpcomingLearnerBookings(
-  learnerId: string,
-) {
+export async function getUpcomingLearnerBookings(learnerId: string) {
   if (!learnerId) {
     return [];
   }
@@ -732,10 +679,7 @@ export async function getUpcomingLearnerBookings(
       },
 
       status: {
-        in: [
-          "PendingPayment",
-          "Scheduled",
-        ],
+        in: ["PendingPayment", "Scheduled"],
       },
     },
 

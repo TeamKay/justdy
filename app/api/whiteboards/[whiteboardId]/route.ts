@@ -26,10 +26,7 @@ async function getAuthenticatedUser() {
 
     return session?.user ?? null;
   } catch (error) {
-    console.warn(
-      "Whiteboard session lookup failed; retrying once:",
-      error,
-    );
+    console.warn("Whiteboard session lookup failed; retrying once:", error);
 
     await new Promise((resolve) => {
       setTimeout(resolve, 150);
@@ -43,10 +40,7 @@ async function getAuthenticatedUser() {
   }
 }
 
-async function getAuthorizedWhiteboard(
-  whiteboardId: string,
-  userId: string,
-) {
+async function getAuthorizedWhiteboard(whiteboardId: string, userId: string) {
   /*
    * Tutoring whiteboards are shared by both booking participants.
    * The canonical tutoring whiteboard is stored with the student's
@@ -62,10 +56,7 @@ async function getAuthorizedWhiteboard(
         },
         {
           booking: {
-            OR: [
-              { studentId: userId },
-              { educatorId: userId },
-            ],
+            OR: [{ studentId: userId }, { educatorId: userId }],
           },
         },
         {
@@ -78,26 +69,17 @@ async function getAuthorizedWhiteboard(
   });
 }
 
-export async function GET(
-  _request: NextRequest,
-  context: Context,
-) {
+export async function GET(_request: NextRequest, context: Context) {
   try {
     const user = await getAuthenticatedUser();
 
     if (!user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { whiteboardId } = await context.params;
 
-    const whiteboard = await getAuthorizedWhiteboard(
-      whiteboardId,
-      user.id,
-    );
+    const whiteboard = await getAuthorizedWhiteboard(whiteboardId, user.id);
 
     if (!whiteboard) {
       return NextResponse.json(
@@ -108,10 +90,7 @@ export async function GET(
 
     return NextResponse.json({ whiteboard });
   } catch (error) {
-    console.error(
-      "GET /api/whiteboards/[whiteboardId] error:",
-      error,
-    );
+    console.error("GET /api/whiteboards/[whiteboardId] error:", error);
 
     return NextResponse.json(
       { error: "Failed to retrieve whiteboard" },
@@ -120,18 +99,12 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  context: Context,
-) {
+export async function PUT(request: NextRequest, context: Context) {
   try {
     const user = await getAuthenticatedUser();
 
     if (!user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { whiteboardId } = await context.params;
@@ -172,10 +145,7 @@ export async function PUT(
 
     return NextResponse.json({ whiteboard });
   } catch (error) {
-    console.error(
-      "PUT /api/whiteboards/[whiteboardId] error:",
-      error,
-    );
+    console.error("PUT /api/whiteboards/[whiteboardId] error:", error);
 
     return NextResponse.json(
       { error: "Failed to save whiteboard" },

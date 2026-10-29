@@ -22,7 +22,6 @@ import {
   LockKeyhole,
   Search,
   UserRound,
-
 } from "lucide-react";
 
 type Slot = {
@@ -324,95 +323,89 @@ function getTimeOptions(
   const options = new Map<string, TimeOption>();
 
   for (const availability of availabilities) {
-  const availabilityStart = new Date(availability.startTime).getTime();
-  const availabilityEnd = new Date(availability.endTime).getTime();
+    const availabilityStart = new Date(availability.startTime).getTime();
+    const availabilityEnd = new Date(availability.endTime).getTime();
 
-  if (
-    Number.isNaN(availabilityStart) ||
-    Number.isNaN(availabilityEnd) ||
-    availabilityEnd <= availabilityStart
-  ) {
-    continue;
-  }
-
-  const todayKey = localDateKey(new Date(nowMs));
-  const isToday = dateKey === todayKey;
-
-  // Ignore availability that has completely expired.
-  if (availabilityEnd <= nowMs) {
-    continue;
-  }
-
-  // For today, never offer a time before the current moment.
-  // For future dates, use the actual availability start.
-  const windowStart = Math.max(
-    availabilityStart,
-    dayStart,
-    isToday ? nowMs : dayStart,
-  );
-
-  const windowEnd = Math.min(
-    availabilityEnd,
-    dayEnd,
-  );
-
-  // There must be enough availability remaining for the selected session.
-  if (windowEnd - windowStart < duration * 60_000) {
-    continue;
-  }
-
-  let candidate = ceilToQuarterHour(windowStart);
-
-  while (candidate + duration * 60_000 <= windowEnd) {
-    const candidateEnd = candidate + duration * 60_000;
-
-    const overlapsBooking = bookings.some((booking) => {
-      const bookingStart = new Date(booking.startTime).getTime();
-      const bookingEnd = new Date(booking.endTime).getTime();
-
-      if (
-        Number.isNaN(bookingStart) ||
-        Number.isNaN(bookingEnd) ||
-        bookingEnd <= bookingStart
-      ) {
-        return false;
-      }
-
-      return candidate < bookingEnd && candidateEnd > bookingStart;
-    });
-
-    if (!overlapsBooking) {
-      const start = new Date(candidate);
-      const end = new Date(candidateEnd);
-      const value = start.toISOString();
-
-      options.set(value, {
-        value,
-        availabilityId: availability.id,
-        recurringRuleId: availability.recurringRuleId,
-        startTime: value,
-        endTime: end.toISOString(),
-      });
+    if (
+      Number.isNaN(availabilityStart) ||
+      Number.isNaN(availabilityEnd) ||
+      availabilityEnd <= availabilityStart
+    ) {
+      continue;
     }
 
-    candidate += 15 * 60 * 1000;
+    const todayKey = localDateKey(new Date(nowMs));
+    const isToday = dateKey === todayKey;
+
+    // Ignore availability that has completely expired.
+    if (availabilityEnd <= nowMs) {
+      continue;
+    }
+
+    // For today, never offer a time before the current moment.
+    // For future dates, use the actual availability start.
+    const windowStart = Math.max(
+      availabilityStart,
+      dayStart,
+      isToday ? nowMs : dayStart,
+    );
+
+    const windowEnd = Math.min(availabilityEnd, dayEnd);
+
+    // There must be enough availability remaining for the selected session.
+    if (windowEnd - windowStart < duration * 60_000) {
+      continue;
+    }
+
+    let candidate = ceilToQuarterHour(windowStart);
+
+    while (candidate + duration * 60_000 <= windowEnd) {
+      const candidateEnd = candidate + duration * 60_000;
+
+      const overlapsBooking = bookings.some((booking) => {
+        const bookingStart = new Date(booking.startTime).getTime();
+        const bookingEnd = new Date(booking.endTime).getTime();
+
+        if (
+          Number.isNaN(bookingStart) ||
+          Number.isNaN(bookingEnd) ||
+          bookingEnd <= bookingStart
+        ) {
+          return false;
+        }
+
+        return candidate < bookingEnd && candidateEnd > bookingStart;
+      });
+
+      if (!overlapsBooking) {
+        const start = new Date(candidate);
+        const end = new Date(candidateEnd);
+        const value = start.toISOString();
+
+        options.set(value, {
+          value,
+          availabilityId: availability.id,
+          recurringRuleId: availability.recurringRuleId,
+          startTime: value,
+          endTime: end.toISOString(),
+        });
+      }
+
+      candidate += 15 * 60 * 1000;
+    }
   }
-}
   return Array.from(options.values()).sort(
     (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
   );
 }
 
-
-
-const stripePublishableKey =
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
 const stripePromise = stripePublishableKey
   ? loadStripe(stripePublishableKey)
   : null;
 
-  type StripeWithCheckoutElements = Stripe & {
+type StripeWithCheckoutElements = Stripe & {
   initCheckoutElementsSdk(
     options: StripeCheckoutElementsSdkOptions,
   ): StripeCheckoutElementsSdk;
@@ -435,8 +428,8 @@ export default function TutoringBookPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const tutorId = searchParams.get("tutorId") || "";
-const [selectedStartTimeInput, setSelectedStartTimeInput] = useState("");
-const [selectedEndTimeInput, setSelectedEndTimeInput] = useState("");
+  const [selectedStartTimeInput, setSelectedStartTimeInput] = useState("");
+  const [selectedEndTimeInput, setSelectedEndTimeInput] = useState("");
   const [tutors, setTutors] = useState<Tutor[]>([]);
   const [tutor, setTutor] = useState<Tutor | null>(null);
   const [selectedDate, setSelectedDate] = useState("");
@@ -452,32 +445,36 @@ const [selectedEndTimeInput, setSelectedEndTimeInput] = useState("");
   const [tutorsLoaded, setTutorsLoaded] = useState(false);
   const [loadedTutorId, setLoadedTutorId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [checkoutClientSecret, setCheckoutClientSecret] = useState<string | null>(null);
+  const [checkoutClientSecret, setCheckoutClientSecret] = useState<
+    string | null
+  >(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [customerEmail, setCustomerEmail] = useState("");
   const [checkoutAmount, setCheckoutAmount] = useState<number | null>(null);
   const [checkoutReady, setCheckoutReady] = useState(false);
   const [paying, setPaying] = useState(false);
-  const checkoutActionsRef = useRef<StripeCheckoutLoadActionsSuccess | null>(null);
+  const checkoutActionsRef = useRef<StripeCheckoutLoadActionsSuccess | null>(
+    null,
+  );
   const checkoutInstanceRef = useRef<StripeCheckoutElementsSdk | null>(null);
   const paymentElementRef = useRef<StripePaymentElement | null>(null);
-  const billingAddressElementRef = useRef<
-    ReturnType<StripeCheckoutElementsSdk["createBillingAddressElement"]> | null
-  >(null);
+  const billingAddressElementRef = useRef<ReturnType<
+    StripeCheckoutElementsSdk["createBillingAddressElement"]
+  > | null>(null);
   // Capture the booking page's current time once when the component mounts.
   // Keeping this in state avoids calling Date.now() directly during render.
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
 
-useEffect(() => {
-  const interval = window.setInterval(() => {
-    setNowMs(Date.now());
-  }, 30_000);
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 30_000);
 
-  return () => {
-    window.clearInterval(interval);
-  };
-}, []);
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, []);
   useEffect(() => {
     let cancelled = false;
 
@@ -544,43 +541,45 @@ useEffect(() => {
           throw new Error("Secure payment is temporarily unavailable.");
         }
 
-        const checkout = (stripe as StripeWithCheckoutElements).initCheckoutElementsSdk({
+        const checkout = (
+          stripe as StripeWithCheckoutElements
+        ).initCheckoutElementsSdk({
           clientSecret,
-  elementsOptions: {
-    appearance: {
-      theme: "stripe",
-      variables: {
-        colorPrimary: "#3730ff",
-        colorBackground: "#ffffff",
-        colorText: "#111827",
-        colorDanger: "#dc2626",
-        fontFamily:
-          '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-        fontSizeBase: "14px",
-        spacingUnit: "4px",
-        borderRadius: "0px",
-      },
-      rules: {
-        ".Input": {
-          border: "1px solid #dfe3e8",
-          boxShadow: "none",
-          padding: "12px",
-        },
-        ".Input:focus": {
-          border: "1px solid #3730ff",
-          boxShadow: "0 0 0 1px #3730ff",
-        },
-        ".Label": {
-          fontSize: "13px",
-          fontWeight: "600",
-          color: "#111827",
-        },
-        ".Error": {
-          fontSize: "12px",
-        },
-      },
-    },
-  },
+          elementsOptions: {
+            appearance: {
+              theme: "stripe",
+              variables: {
+                colorPrimary: "#3730ff",
+                colorBackground: "#ffffff",
+                colorText: "#111827",
+                colorDanger: "#dc2626",
+                fontFamily:
+                  '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+                fontSizeBase: "14px",
+                spacingUnit: "4px",
+                borderRadius: "0px",
+              },
+              rules: {
+                ".Input": {
+                  border: "1px solid #dfe3e8",
+                  boxShadow: "none",
+                  padding: "12px",
+                },
+                ".Input:focus": {
+                  border: "1px solid #3730ff",
+                  boxShadow: "0 0 0 1px #3730ff",
+                },
+                ".Label": {
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  color: "#111827",
+                },
+                ".Error": {
+                  fontSize: "12px",
+                },
+              },
+            },
+          },
         });
 
         if (cancelled) return;
@@ -667,17 +666,13 @@ useEffect(() => {
           throw new Error(data?.error || "Unable to load tutors.");
         }
 
-        const availableTutors = Array.isArray(data?.tutors)
-          ? data.tutors
-          : [];
+        const availableTutors = Array.isArray(data?.tutors) ? data.tutors : [];
 
         if (!cancelled) {
           setTutors(availableTutors);
 
           const selected = tutorId
-            ? availableTutors.find(
-                (item: Tutor) => item.id === tutorId,
-              ) || null
+            ? availableTutors.find((item: Tutor) => item.id === tutorId) || null
             : null;
 
           setTutor(selected);
@@ -778,57 +773,56 @@ useEffect(() => {
     };
   }, [tutorId]);
 
-  const selectedTutor =
-    tutorId && tutor?.id === tutorId ? tutor : null;
+  const selectedTutor = tutorId && tutor?.id === tutorId ? tutor : null;
 
-const availableDateKeys = useMemo(() => {
-  const keys = new Set<string>();
+  const availableDateKeys = useMemo(() => {
+    const keys = new Set<string>();
 
-  if (!selectedTutor) return keys;
+    if (!selectedTutor) return keys;
 
-  const today = new Date(nowMs);
-  today.setHours(0, 0, 0, 0);
-  const todayMs = today.getTime();
+    const today = new Date(nowMs);
+    today.setHours(0, 0, 0, 0);
+    const todayMs = today.getTime();
 
-  for (const availability of selectedTutor.availabilities) {
-    const start = new Date(availability.startTime);
-    const end = new Date(availability.endTime);
+    for (const availability of selectedTutor.availabilities) {
+      const start = new Date(availability.startTime);
+      const end = new Date(availability.endTime);
 
-    if (
-      Number.isNaN(start.getTime()) ||
-      Number.isNaN(end.getTime()) ||
-      end.getTime() <= nowMs
-    ) {
-      continue;
-    }
-
-    const cursor = new Date(Math.max(start.getTime(), todayMs));
-    cursor.setHours(0, 0, 0, 0);
-
-    while (cursor.getTime() < end.getTime()) {
-      const key = localDateKey(cursor);
-
-      if (key) {
-        const options = getTimeOptions(
-          key,
-          sessionDuration,
-          selectedTutor.availabilities,
-          selectedTutor.bookings,
-          nowMs,
-        );
-
-        if (options.length > 0) {
-          keys.add(key);
-        }
+      if (
+        Number.isNaN(start.getTime()) ||
+        Number.isNaN(end.getTime()) ||
+        end.getTime() <= nowMs
+      ) {
+        continue;
       }
 
-      cursor.setDate(cursor.getDate() + 1);
+      const cursor = new Date(Math.max(start.getTime(), todayMs));
       cursor.setHours(0, 0, 0, 0);
-    }
-  }
 
-  return keys;
-}, [selectedTutor, sessionDuration, nowMs]);
+      while (cursor.getTime() < end.getTime()) {
+        const key = localDateKey(cursor);
+
+        if (key) {
+          const options = getTimeOptions(
+            key,
+            sessionDuration,
+            selectedTutor.availabilities,
+            selectedTutor.bookings,
+            nowMs,
+          );
+
+          if (options.length > 0) {
+            keys.add(key);
+          }
+        }
+
+        cursor.setDate(cursor.getDate() + 1);
+        cursor.setHours(0, 0, 0, 0);
+      }
+    }
+
+    return keys;
+  }, [selectedTutor, sessionDuration, nowMs]);
 
   const timeOptions = useMemo(
     () =>
@@ -940,19 +934,14 @@ const availableDateKeys = useMemo(() => {
         });
       }) || null
     );
-  }, [
-    selectedTutor,
-    selectedDate,
-    selectedStartTime,
-    selectedEndTime,
-  ]);
+  }, [selectedTutor, selectedDate, selectedStartTime, selectedEndTime]);
 
   const selectedTimeIsValid = Boolean(
     selectedStartTime &&
-      selectedEndTime &&
-      selectedSessionDuration != null &&
-      selectedSessionDuration > 0 &&
-      selectedSlot,
+    selectedEndTime &&
+    selectedSessionDuration != null &&
+    selectedSessionDuration > 0 &&
+    selectedSlot,
   );
 
   const selectedHourlyPrice = useMemo(() => {
@@ -986,15 +975,7 @@ const availableDateKeys = useMemo(() => {
 
     for (let day = 1; day <= daysInMonth; day += 1) {
       days.push(
-        new Date(
-          firstDay.getFullYear(),
-          firstDay.getMonth(),
-          day,
-          12,
-          0,
-          0,
-          0,
-        ),
+        new Date(firstDay.getFullYear(), firstDay.getMonth(), day, 12, 0, 0, 0),
       );
     }
 
@@ -1008,10 +989,10 @@ const availableDateKeys = useMemo(() => {
   const canContinueToPayment =
     Boolean(
       selectedTutor &&
-        selectedTimeIsValid &&
-        selectedSlot &&
-        selectedTutor.teachingProfile.hourlyRate != null &&
-        selectedTutor.teachingProfile.hourlyRate > 0,
+      selectedTimeIsValid &&
+      selectedSlot &&
+      selectedTutor.teachingProfile.hourlyRate != null &&
+      selectedTutor.teachingProfile.hourlyRate > 0,
     ) && !submitting;
 
   const paymentButtonReason = useMemo(() => {
@@ -1051,11 +1032,7 @@ const availableDateKeys = useMemo(() => {
 
     return tutors.filter((item) => {
       const profile = item.facilitatorProfile;
-      const haystack = [
-        item.name,
-        profile?.specialty,
-        profile?.description,
-      ]
+      const haystack = [item.name, profile?.specialty, profile?.description]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
@@ -1080,7 +1057,9 @@ const availableDateKeys = useMemo(() => {
       !selectedSlot ||
       selectedHourlyPrice == null
     ) {
-      toast.error("Select a date and time that falls within the tutor's availability.");
+      toast.error(
+        "Select a date and time that falls within the tutor's availability.",
+      );
       return;
     }
 
@@ -1160,9 +1139,7 @@ const availableDateKeys = useMemo(() => {
       }
 
       try {
-        window.sessionStorage.removeItem(
-          "justdy:pending-tutoring-booking",
-        );
+        window.sessionStorage.removeItem("justdy:pending-tutoring-booking");
       } catch (storageError) {
         console.error(
           "Failed to clear pending tutoring booking:",
@@ -1171,9 +1148,7 @@ const availableDateKeys = useMemo(() => {
       }
 
       const clientSecret =
-        typeof data?.clientSecret === "string"
-          ? data.clientSecret
-          : "";
+        typeof data?.clientSecret === "string" ? data.clientSecret : "";
 
       if (!clientSecret) {
         throw new Error(
@@ -1236,9 +1211,7 @@ const availableDateKeys = useMemo(() => {
             ) : filteredTutors.length === 0 ? (
               <div className="mt-10 rounded-none border border-border bg-card p-10 text-center">
                 <UserRound className="mx-auto h-8 w-8 text-muted-foreground" />
-                <h2 className="mt-4 text-lg font-semibold">
-                  No tutors found
-                </h2>
+                <h2 className="mt-4 text-lg font-semibold">No tutors found</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Try another search or check back when more tutors become
                   available.
@@ -1246,18 +1219,18 @@ const availableDateKeys = useMemo(() => {
               </div>
             ) : (
               <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredTutors.map((item) => {
-                    const profile = item.facilitatorProfile;
+                {filteredTutors.map((item) => {
+                  const profile = item.facilitatorProfile;
 
-                    return (
-                      <Link
-                        key={item.id}
-                        href={`/tutoring/tutors?tutorId=${encodeURIComponent(item.id)}`}
-                        className="group block h-full"
-                        aria-label={`View ${item.name}'s tutoring profile`}
-                      >
-                       <article
-                          className="
+                  return (
+                    <Link
+                      key={item.id}
+                      href={`/tutoring/tutors?tutorId=${encodeURIComponent(item.id)}`}
+                      className="group block h-full"
+                      aria-label={`View ${item.name}'s tutoring profile`}
+                    >
+                      <article
+                        className="
                             group relative h-120 w-full overflow-hidden
                             rounded-sm
                             border border-emerald-900/10
@@ -1268,20 +1241,19 @@ const availableDateKeys = useMemo(() => {
                             hover:shadow-[0_20px_50px_rgba(15,23,42,0.13)]
                             active:scale-[0.995]
                           "
-                        >
-                          {/* =========================================================
-                          * TOP — PROFILE IMAGE
-                          * ========================================================= */}
+                      >
+                        {/* =========================================================
+                         * TOP — PROFILE IMAGE
+                         * ========================================================= */}
 
-                          <div className="relative h-[52%] w-full overflow-hidden bg-slate-200">
-
-                            {item.imageUrl ? (
-                              <>
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={item.imageUrl}
-                                  alt={item.name}
-                                  className="
+                        <div className="relative h-[52%] w-full overflow-hidden bg-slate-200">
+                          {item.imageUrl ? (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={item.imageUrl}
+                                alt={item.name}
+                                className="
                                     absolute inset-0
                                     h-full w-full
                                     object-cover
@@ -1289,18 +1261,18 @@ const availableDateKeys = useMemo(() => {
                                     transition-transform duration-700 ease-out
                                     group-hover:scale-[1.035]
                                   "
-                                />
+                              />
 
-                                {/* Very subtle image treatment */}
-                                <div className="absolute inset-0 bg-linear-to-t from-slate-950/20 via-transparent to-transparent" />
-                              </>
-                            ) : (
-                              /* -------------------------------------------------------
-                              * FALLBACK
-                              * ------------------------------------------------------- */
+                              {/* Very subtle image treatment */}
+                              <div className="absolute inset-0 bg-linear-to-t from-slate-950/20 via-transparent to-transparent" />
+                            </>
+                          ) : (
+                            /* -------------------------------------------------------
+                             * FALLBACK
+                             * ------------------------------------------------------- */
 
-                              <div
-                                className="
+                            <div
+                              className="
                                   absolute inset-0
                                   flex items-center justify-center
                                   bg-linear-to-br
@@ -1308,28 +1280,27 @@ const availableDateKeys = useMemo(() => {
                                   via-slate-100
                                   to-sky-100
                                 "
-                              >
-                                <span
-                                  className="
+                            >
+                              <span
+                                className="
                                     text-7xl
                                     font-bold
                                     tracking-[-0.06em]
                                     text-emerald-900/80
                                   "
-                                >
-                                  {initials(item.name)}
-                                </span>
-                              </div>
-                            )}
-                          </div>
+                              >
+                                {initials(item.name)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
 
+                        {/* =========================================================
+                         * BOTTOM — PROFILE INFORMATION
+                         * ========================================================= */}
 
-                          {/* =========================================================
-                          * BOTTOM — PROFILE INFORMATION
-                          * ========================================================= */}
-
-                          <div
-                            className="
+                        <div
+                          className="
                               relative
                               flex h-[48%]
                               flex-col
@@ -1338,17 +1309,16 @@ const availableDateKeys = useMemo(() => {
                               pb-5
                               pt-5
                             "
-                          >
+                        >
+                          {/* -------------------------------------------------------
+                           * NAME + VERIFIED
+                           * ------------------------------------------------------- */}
 
-                            {/* -------------------------------------------------------
-                            * NAME + VERIFIED
-                            * ------------------------------------------------------- */}
-
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <h2
-                                    className="
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h2
+                                  className="
                                       truncate
                                       text-[24px]
                                       font-bold
@@ -1356,13 +1326,13 @@ const availableDateKeys = useMemo(() => {
                                       tracking-[-0.035em]
                                       text-emerald-950
                                     "
-                                  >
-                                    {item.name}
-                                  </h2>
+                                >
+                                  {item.name}
+                                </h2>
 
-                                  {/* Verified badge */}
-                                  <span
-                                    className="
+                                {/* Verified badge */}
+                                <span
+                                  className="
                                       flex h-6 w-6 shrink-0
                                       items-center justify-center
                                       rounded-full
@@ -1372,40 +1342,35 @@ const availableDateKeys = useMemo(() => {
                                       duration-300
                                       group-hover:scale-110
                                     "
-                                  >
-                                    <CheckCircle2
-                                      className="h-4 w-4 text-white"
-                                      strokeWidth={3}
-                                    />
-                                  </span>
+                                >
+                                  <CheckCircle2
+                                    className="h-4 w-4 text-white"
+                                    strokeWidth={3}
+                                  />
+                                </span>
+                              </div>
 
-                                </div>
+                              {/* Professional role */}
 
-
-                                {/* Professional role */}
-
-                                <p
-                                  className="
+                              <p
+                                className="
                                     mt-1
                                     text-sm
                                     font-medium
                                     text-slate-500
                                   "
-                                >
-                                  {profile?.specialty || "Mathematics Tutor"}
-                                </p>
-
-                              </div>
-
+                              >
+                                {profile?.specialty || "Mathematics Tutor"}
+                              </p>
                             </div>
+                          </div>
 
+                          {/* -------------------------------------------------------
+                           * DESCRIPTION
+                           * ------------------------------------------------------- */}
 
-                            {/* -------------------------------------------------------
-                            * DESCRIPTION
-                            * ------------------------------------------------------- */}
-
-                            <p
-                              className="
+                          <p
+                            className="
                                 mt-4
                                 line-clamp-2
                                 min-h-10.5
@@ -1413,19 +1378,18 @@ const availableDateKeys = useMemo(() => {
                                 leading-normal
                                 text-slate-600
                               "
-                            >
-                              {profile?.description ||
-                                "Personalized live tutoring focused on your learning goals."}
-                            </p>
+                          >
+                            {profile?.description ||
+                              "Personalized live tutoring focused on your learning goals."}
+                          </p>
 
-                            {/* -------------------------------------------------------
-                            * BOTTOM ACTION
-                            * ------------------------------------------------------- */}
+                          {/* -------------------------------------------------------
+                           * BOTTOM ACTION
+                           * ------------------------------------------------------- */}
 
-                            <div className="mt-5">
-
-                              <div
-                                className="
+                          <div className="mt-5">
+                            <div
+                              className="
                                   flex h-11
                                   w-full
                                   items-center
@@ -1443,24 +1407,23 @@ const availableDateKeys = useMemo(() => {
                                   group-hover:bg-emerald-950
                                   group-hover:shadow-[0_8px_24px_rgba(6,78,59,0.20)]
                                 "
-                              >
-                                View tutor profile
-
-                                <ArrowRight
-                                  className="
+                            >
+                              View tutor profile
+                              <ArrowRight
+                                className="
                                     h-4 w-4
                                     transition-transform
                                     duration-300
                                     group-hover:translate-x-1
                                   "
-                                />
-                              </div>
+                              />
                             </div>
                           </div>
-                        </article>
-                      </Link>
-                    );
-                  })}
+                        </div>
+                      </article>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1523,18 +1486,20 @@ const availableDateKeys = useMemo(() => {
                 )}
 
                 <div>
-                  <h1 className="text-xl font-semibold">{selectedTutor.name}</h1>
+                  <h1 className="text-xl font-semibold">
+                    {selectedTutor.name}
+                  </h1>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {selectedTutor.facilitatorProfile?.specialty ||
                       "Mathematics tutor"}
                   </p>
-                   <p className="mt-1 text-sm text-muted-foreground">
-                    {selectedTutor.facilitatorProfile?.experience}+ years of experience
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {selectedTutor.facilitatorProfile?.experience}+ years of
+                    experience
                   </p>
                 </div>
               </div>
 
-            
               <p className="mt-5 text-sm leading-6 text-muted-foreground">
                 {selectedTutor.facilitatorProfile?.description ||
                   "A verified Justdy tutor ready to help you."}
@@ -1550,85 +1515,85 @@ const availableDateKeys = useMemo(() => {
                     : "Rate unavailable"}
                 </div>
                 <div className="mt-2 text-xs text-muted-foreground">
-                  Your total is calculated from the tutor&apos;s hourly rate and the selected time.
+                  Your total is calculated from the tutor&apos;s hourly rate and
+                  the selected time.
                 </div>
               </div>
             </aside>
 
-           <form
-  onSubmit={submitBooking}
-  className="
+            <form
+              onSubmit={submitBooking}
+              className="
     relative overflow-hidden
     rounded-sm
     border border-slate-200/80
     bg-[#fffefa]
     shadow-[0_20px_60px_rgba(15,23,42,0.08)]
   "
->
-  {/* =========================================================
-   * SUBTLE TOP ACCENT
-   * ========================================================= */}
+            >
+              {/* =========================================================
+               * SUBTLE TOP ACCENT
+               * ========================================================= */}
 
-  <div className="absolute inset-x-0 top-0 h-1 bg-emerald-800" />
-  <div className="p-5 sm:p-7 lg:p-8">
-    <div className="mb-7">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <div
-              className="
+              <div className="absolute inset-x-0 top-0 h-1 bg-emerald-800" />
+              <div className="p-5 sm:p-7 lg:p-8">
+                <div className="mb-7">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="
                 flex h-9 w-9
                 items-center justify-center
                 rounded-xl
                 bg-emerald-50
                 text-emerald-800
               "
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                className="h-5 w-5"
-              >
-                <rect
-                  x="3"
-                  y="4"
-                  width="18"
-                  height="17"
-                  rx="3"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                />
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            className="h-5 w-5"
+                          >
+                            <rect
+                              x="3"
+                              y="4"
+                              width="18"
+                              height="17"
+                              rx="3"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            />
 
-                <path
-                  d="M8 2v4M16 2v4M3 9h18"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
+                            <path
+                              d="M8 2v4M16 2v4M3 9h18"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                            />
 
-                <path
-                  d="M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
+                            <path
+                              d="M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01"
+                              stroke="currentColor"
+                              strokeWidth="2.2"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </div>
 
-            <div>
-              <h2 className="text-lg font-bold tracking-[-0.02em] text-emerald-950">
-                Book a tutoring session
-              </h2>
-            </div>
-          </div>
-        </div>
+                        <div>
+                          <h2 className="text-lg font-bold tracking-[-0.02em] text-emerald-950">
+                            Book a tutoring session
+                          </h2>
+                        </div>
+                      </div>
+                    </div>
 
+                    {/* Selected date indicator */}
 
-        {/* Selected date indicator */}
-
-        {selectedDate ? (
-          <div
-            className="
+                    {selectedDate ? (
+                      <div
+                        className="
               hidden shrink-0
               rounded-full
               bg-emerald-50
@@ -1638,22 +1603,21 @@ const availableDateKeys = useMemo(() => {
               text-emerald-800
               sm:block
             "
-          >
-            {formatDateKey(selectedDate)}
-          </div>
-        ) : null}
-      </div>
-    </div>
+                      >
+                        {formatDateKey(selectedDate)}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
 
+                {/* =======================================================
+                 * STEP 1 — DATE
+                 * ======================================================= */}
 
-    {/* =======================================================
-     * STEP 1 — DATE
-     * ======================================================= */}
-
-    <section>
-      <div className="mb-3 flex items-center gap-3">
-        <div
-          className="
+                <section>
+                  <div className="mb-3 flex items-center gap-3">
+                    <div
+                      className="
             flex h-7 w-7
             items-center justify-center
             rounded-full
@@ -1662,34 +1626,32 @@ const availableDateKeys = useMemo(() => {
             font-bold
             text-white
           "
-        >
-          1
-        </div>
-        <div>
-          <h3 className="text-sm font-bold text-slate-900">
-            Choose a date
-          </h3>
+                    >
+                      1
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">
+                        Choose a date
+                      </h3>
 
-          <p className="text-xs text-slate-500">
-            Select one of the tutor&apos;s available days.
-          </p>
-        </div>
-      </div>
+                      <p className="text-xs text-slate-500">
+                        Select one of the tutor&apos;s available days.
+                      </p>
+                    </div>
+                  </div>
 
-
-      {selectedTutor.availabilities.length === 0 ? (
-
-        <div
-          className="
+                  {selectedTutor.availabilities.length === 0 ? (
+                    <div
+                      className="
             rounded-sm
             border border-slate-200
             bg-white
             px-5 py-6
             text-center
           "
-        >
-          <div
-            className="
+                    >
+                      <div
+                        className="
               mx-auto mb-3
               flex h-11 w-11
               items-center justify-center
@@ -1697,76 +1659,72 @@ const availableDateKeys = useMemo(() => {
               bg-slate-100
               text-slate-400
             "
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              className="h-5 w-5"
-            >
-              <rect
-                x="3"
-                y="4"
-                width="18"
-                height="17"
-                rx="3"
-                stroke="currentColor"
-                strokeWidth="1.7"
-              />
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          className="h-5 w-5"
+                        >
+                          <rect
+                            x="3"
+                            y="4"
+                            width="18"
+                            height="17"
+                            rx="3"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                          />
 
-              <path
-                d="M8 2v4M16 2v4M3 9h18"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
+                          <path
+                            d="M8 2v4M16 2v4M3 9h18"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </div>
 
-          <p className="text-sm font-semibold text-slate-700">
-            No upcoming availability
-          </p>
+                      <p className="text-sm font-semibold text-slate-700">
+                        No upcoming availability
+                      </p>
 
-          <p className="mt-1 text-xs text-slate-500">
-            This tutor currently has no available sessions.
-          </p>
-        </div>
-
-      ) : (
-
-        <div
-          className="
+                      <p className="mt-1 text-xs text-slate-500">
+                        This tutor currently has no available sessions.
+                      </p>
+                    </div>
+                  ) : (
+                    <div
+                      className="
             overflow-hidden
             rounded-sm
             border border-slate-200
             bg-slate-50/70
           "
-        >
+                    >
+                      {/* Calendar header */}
 
-          {/* Calendar header */}
-
-          <div
-            className="
+                      <div
+                        className="
               flex items-center justify-between
               border-b border-slate-200
               bg-white/70
               px-4 py-3
             "
-          >
-
-            <button
-              type="button"
-              onClick={() =>
-                setCalendarMonth(
-                  (current) =>
-                    new Date(
-                      current.getFullYear(),
-                      current.getMonth() - 1,
-                      1,
-                      12,
-                    ),
-                )
-              }
-              className="
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCalendarMonth(
+                              (current) =>
+                                new Date(
+                                  current.getFullYear(),
+                                  current.getMonth() - 1,
+                                  1,
+                                  12,
+                                ),
+                            )
+                          }
+                          className="
                 flex h-9 w-9
                 items-center justify-center
                 rounded-xl
@@ -1779,31 +1737,29 @@ const availableDateKeys = useMemo(() => {
                 hover:bg-emerald-50
                 hover:text-emerald-800
               "
-              aria-label="Previous month"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
+                          aria-label="Previous month"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </button>
 
+                        <div className="text-sm font-bold text-slate-800">
+                          {calendarMonthLabel(calendarMonth)}
+                        </div>
 
-            <div className="text-sm font-bold text-slate-800">
-              {calendarMonthLabel(calendarMonth)}
-            </div>
-
-
-            <button
-              type="button"
-              onClick={() =>
-                setCalendarMonth(
-                  (current) =>
-                    new Date(
-                      current.getFullYear(),
-                      current.getMonth() + 1,
-                      1,
-                      12,
-                    ),
-                )
-              }
-              className="
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCalendarMonth(
+                              (current) =>
+                                new Date(
+                                  current.getFullYear(),
+                                  current.getMonth() + 1,
+                                  1,
+                                  12,
+                                ),
+                            )
+                          }
+                          className="
                 flex h-9 w-9
                 items-center justify-center
                 rounded-xl
@@ -1816,18 +1772,16 @@ const availableDateKeys = useMemo(() => {
                 hover:bg-emerald-50
                 hover:text-emerald-800
               "
-              aria-label="Next month"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+                          aria-label="Next month"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </div>
 
-          </div>
+                      {/* Week labels */}
 
-
-          {/* Week labels */}
-
-          <div
-            className="
+                      <div
+                        className="
               grid grid-cols-7
               gap-1
               px-3 pt-3
@@ -1838,54 +1792,45 @@ const availableDateKeys = useMemo(() => {
               tracking-wider
               text-slate-400
             "
-          >
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-              (day) => (
-                <div key={day} className="py-2">
-                  {day}
-                </div>
-              ),
-            )}
-          </div>
+                      >
+                        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                          (day) => (
+                            <div key={day} className="py-2">
+                              {day}
+                            </div>
+                          ),
+                        )}
+                      </div>
 
+                      {/* Calendar days */}
 
-          {/* Calendar days */}
+                      <div className="grid grid-cols-7 gap-1 px-3 pb-4">
+                        {calendarDays.map((day, index) => {
+                          if (!day) {
+                            return (
+                              <div key={`empty-${index}`} className="h-11" />
+                            );
+                          }
 
-          <div className="grid grid-cols-7 gap-1 px-3 pb-4">
+                          const dayKey = localDateKey(day);
 
-            {calendarDays.map((day, index) => {
+                          const isAvailable = availableDateKeys.has(dayKey);
 
-              if (!day) {
-                return (
-                  <div
-                    key={`empty-${index}`}
-                    className="h-11"
-                  />
-                );
-              }
+                          const isSelected = selectedDate === dayKey;
 
-              const dayKey = localDateKey(day);
+                          const isToday = localDateKey(new Date()) === dayKey;
 
-              const isAvailable =
-                availableDateKeys.has(dayKey);
-
-              const isSelected =
-                selectedDate === dayKey;
-
-              const isToday =
-                localDateKey(new Date()) === dayKey;
-
-              return (
-                <button
-                  key={dayKey}
-                  type="button"
-                  disabled={!isAvailable}
-                  onClick={() => {
-                    setSelectedDate(dayKey);
-                    setSelectedStartTimeInput("");
-                    setSelectedEndTimeInput("");
-                  }}
-                  className={`
+                          return (
+                            <button
+                              key={dayKey}
+                              type="button"
+                              disabled={!isAvailable}
+                              onClick={() => {
+                                setSelectedDate(dayKey);
+                                setSelectedStartTimeInput("");
+                                setSelectedEndTimeInput("");
+                              }}
+                              className={`
                     relative
                     flex h-11
                     items-center
@@ -1918,62 +1863,53 @@ const availableDateKeys = useMemo(() => {
                           `
                     }
                   `}
-                  aria-label={`${formatDateKey(dayKey)}${
-                    isAvailable ? "" : " unavailable"
-                  }`}
-                >
+                              aria-label={`${formatDateKey(dayKey)}${
+                                isAvailable ? "" : " unavailable"
+                              }`}
+                            >
+                              {day.getDate()}
 
-                  {day.getDate()}
+                              {/* Available indicator */}
 
-                  {/* Available indicator */}
-
-                  {isAvailable && !isSelected ? (
-                    <span
-                      className="
+                              {isAvailable && !isSelected ? (
+                                <span
+                                  className="
                         absolute bottom-1.5
                         h-1 w-1
                         rounded-full
                         bg-emerald-500
                       "
-                    />
-                  ) : null}
+                                />
+                              ) : null}
 
+                              {/* Today indicator */}
 
-                  {/* Today indicator */}
-
-                  {isToday && !isSelected ? (
-                    <span
-                      className="
+                              {isToday && !isSelected ? (
+                                <span
+                                  className="
                         absolute right-1.5 top-1.5
                         h-1.5 w-1.5
                         rounded-full
                         bg-emerald-500
                       "
-                    />
-                  ) : null}
+                                />
+                              ) : null}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </section>
 
-                </button>
-              );
-            })}
+                {/* =======================================================
+                 * STEP 2 — TIME
+                 * ======================================================= */}
 
-          </div>
-
-        </div>
-      )}
-
-    </section>
-
-
-    {/* =======================================================
-     * STEP 2 — TIME
-     * ======================================================= */}
-
-    <section className="mt-7">
-
-      <div className="mb-3 flex items-center gap-3">
-
-        <div
-          className="
+                <section className="mt-7">
+                  <div className="mb-3 flex items-center gap-3">
+                    <div
+                      className="
             flex h-7 w-7
             items-center justify-center
             rounded-full
@@ -1982,29 +1918,24 @@ const availableDateKeys = useMemo(() => {
             font-bold
             text-white
           "
-        >
-          2
-        </div>
+                    >
+                      2
+                    </div>
 
-        <div>
-          <h3 className="text-sm font-bold text-slate-900">
-            Choose your session time
-          </h3>
-        </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">
+                        Choose your session time
+                      </h3>
+                    </div>
+                  </div>
 
-      </div>
+                  {selectedDate ? (
+                    timeOptions.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {/* Start time */}
 
-
-      {selectedDate ? (
-
-        timeOptions.length > 0 ? (
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-
-            {/* Start time */}
-
-            <div
-              className="
+                        <div
+                          className="
                 rounded-sm
                 border border-slate-200
                 bg-slate-50/70
@@ -2014,11 +1945,10 @@ const availableDateKeys = useMemo(() => {
                 focus-within:bg-white
                 focus-within:shadow-[0_0_0_3px_rgba(16,185,129,0.08)]
               "
-            >
-
-              <label
-                htmlFor="start-time"
-                className="
+                        >
+                          <label
+                            htmlFor="start-time"
+                            className="
                   mb-2
                   flex items-center gap-2
                   text-[11px]
@@ -2027,21 +1957,21 @@ const availableDateKeys = useMemo(() => {
                   tracking-[0.08em]
                   text-slate-500
                 "
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                Start time
-              </label>
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            Start time
+                          </label>
 
-              <input
-                id="start-time"
-                type="time"
-                lang="en-US"
-                step="60"
-                value={effectiveStartTimeInput}
-                onChange={(e) =>
-                  setSelectedStartTimeInput(e.target.value)
-                }
-                className="
+                          <input
+                            id="start-time"
+                            type="time"
+                            lang="en-US"
+                            step="60"
+                            value={effectiveStartTimeInput}
+                            onChange={(e) =>
+                              setSelectedStartTimeInput(e.target.value)
+                            }
+                            className="
                   h-11 w-full
                   border-0
                   bg-transparent
@@ -2051,15 +1981,13 @@ const availableDateKeys = useMemo(() => {
                   text-slate-900
                   outline-none
                 "
-              />
+                          />
+                        </div>
 
-            </div>
+                        {/* End time */}
 
-
-            {/* End time */}
-
-            <div
-              className="
+                        <div
+                          className="
                 rounded-sm
                 border border-slate-200
                 bg-slate-50/70
@@ -2069,11 +1997,10 @@ const availableDateKeys = useMemo(() => {
                 focus-within:bg-white
                 focus-within:shadow-[0_0_0_3px_rgba(16,185,129,0.08)]
               "
-            >
-
-              <label
-                htmlFor="end-time"
-                className="
+                        >
+                          <label
+                            htmlFor="end-time"
+                            className="
                   mb-2
                   flex items-center gap-2
                   text-[11px]
@@ -2082,21 +2009,21 @@ const availableDateKeys = useMemo(() => {
                   tracking-[0.08em]
                   text-slate-500
                 "
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                End time
-              </label>
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            End time
+                          </label>
 
-              <input
-                id="end-time"
-                type="time"
-                lang="en-US"
-                step="60"
-                value={effectiveEndTimeInput}
-                onChange={(e) =>
-                  setSelectedEndTimeInput(e.target.value)
-                }
-                className="
+                          <input
+                            id="end-time"
+                            type="time"
+                            lang="en-US"
+                            step="60"
+                            value={effectiveEndTimeInput}
+                            onChange={(e) =>
+                              setSelectedEndTimeInput(e.target.value)
+                            }
+                            className="
                   h-11 w-full
                   border-0
                   bg-transparent
@@ -2106,16 +2033,12 @@ const availableDateKeys = useMemo(() => {
                   text-slate-900
                   outline-none
                 "
-              />
-
-            </div>
-
-          </div>
-
-        ) : (
-
-          <div
-            className="
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className="
               rounded-sm
               border border-amber-200
               bg-amber-50
@@ -2123,23 +2046,22 @@ const availableDateKeys = useMemo(() => {
               text-sm
               text-amber-800
             "
-          >
-            <div className="font-semibold">
-              No session time available
-            </div>
+                      >
+                        <div className="font-semibold">
+                          No session time available
+                        </div>
 
-            <p className="mt-1 text-xs leading-5 text-amber-700">
-              No {sessionDuration}-minute session fits inside this
-              tutor&apos;s availability on {formatDateKey(selectedDate)}.
-              Choose another date or session length.
-            </p>
-          </div>
-        )
-
-      ) : (
-
-        <div
-          className="
+                        <p className="mt-1 text-xs leading-5 text-amber-700">
+                          No {sessionDuration}-minute session fits inside this
+                          tutor&apos;s availability on{" "}
+                          {formatDateKey(selectedDate)}. Choose another date or
+                          session length.
+                        </p>
+                      </div>
+                    )
+                  ) : (
+                    <div
+                      className="
             flex items-center gap-3
             rounded-sm
             border border-dashed border-slate-300
@@ -2148,9 +2070,9 @@ const availableDateKeys = useMemo(() => {
             text-sm
             text-slate-500
           "
-        >
-          <div
-            className="
+                    >
+                      <div
+                        className="
               flex h-8 w-8
               shrink-0
               items-center justify-center
@@ -2159,25 +2081,22 @@ const availableDateKeys = useMemo(() => {
               text-slate-400
               shadow-sm
             "
-          >
-            2
-          </div>
+                      >
+                        2
+                      </div>
+                      Select a date first to see available times.
+                    </div>
+                  )}
+                </section>
 
-          Select a date first to see available times.
-        </div>
-      )}
+                {/* =======================================================
+                 * STEP 3 — WHAT DO YOU NEED HELP WITH?
+                 * ======================================================= */}
 
-    </section>
-
-
-    {/* =======================================================
-     * STEP 3 — WHAT DO YOU NEED HELP WITH?
-     * ======================================================= */}
-
-    <section className="mt-7">
-      <div className="mb-3 flex items-center gap-3">
-        <div
-          className="
+                <section className="mt-7">
+                  <div className="mb-3 flex items-center gap-3">
+                    <div
+                      className="
             flex h-7 w-7
             items-center justify-center
             rounded-full
@@ -2186,25 +2105,23 @@ const availableDateKeys = useMemo(() => {
             font-bold
             text-white
           "
-        >
-          3
-        </div>
+                    >
+                      3
+                    </div>
 
-        <div>
-          <h3 className="text-sm font-bold text-slate-900">
-            Tell your tutor what you need
-          </h3>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">
+                        Tell your tutor what you need
+                      </h3>
 
-          <p className="text-xs text-slate-500">
-            Help your tutor prepare for your session.
-          </p>
-        </div>
+                      <p className="text-xs text-slate-500">
+                        Help your tutor prepare for your session.
+                      </p>
+                    </div>
+                  </div>
 
-      </div>
-
-
-      <div
-        className="
+                  <div
+                    className="
           overflow-hidden
           rounded-sm
           border border-slate-200
@@ -2214,14 +2131,13 @@ const availableDateKeys = useMemo(() => {
           focus-within:bg-white
           focus-within:shadow-[0_0_0_3px_rgba(16,185,129,0.08)]
         "
-      >
-
-        <textarea
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          rows={5}
-          placeholder="For example: I need help preparing for my algebra exam, especially equations and word problems."
-          className="
+                  >
+                    <textarea
+                      value={description}
+                      onChange={(event) => setDescription(event.target.value)}
+                      rows={5}
+                      placeholder="For example: I need help preparing for my algebra exam, especially equations and word problems."
+                      className="
             w-full
             resize-none
             border-0
@@ -2233,55 +2149,51 @@ const availableDateKeys = useMemo(() => {
             outline-none
             placeholder:text-slate-400
           "
-        />
+                    />
 
-        <div
-          className="
+                    <div
+                      className="
             flex items-center justify-between
             border-t border-slate-200/70
             px-4 py-2.5
           "
-        >
-          <span className="text-[11px] text-slate-400">
-            Optional
-          </span>
+                    >
+                      <span className="text-[11px] text-slate-400">
+                        Optional
+                      </span>
 
-          <span className="text-[11px] text-slate-400">
-            Share topics, goals, or questions
-          </span>
-        </div>
-      </div>
-    </section>
+                      <span className="text-[11px] text-slate-400">
+                        Share topics, goals, or questions
+                      </span>
+                    </div>
+                  </div>
+                </section>
 
+                {/* =======================================================
+                 * BOOKING SUMMARY
+                 * ======================================================= */}
 
-    {/* =======================================================
-     * BOOKING SUMMARY
-     * ======================================================= */}
-
-    <div
-      className="
+                <div
+                  className="
         mt-7
         overflow-hidden
         rounded-sm
         border border-emerald-900/10
         bg-emerald-50/70
       "
-    >
+                >
+                  {/* Summary heading */}
 
-      {/* Summary heading */}
-
-      <div
-        className="
+                  <div
+                    className="
           flex items-center justify-between
           border-b border-emerald-900/10
           px-4 py-3
         "
-      >
-
-        <div className="flex items-center gap-2">
-
-          <div
-            className="
+                  >
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="
               flex h-8 w-8
               items-center justify-center
               rounded-full
@@ -2289,69 +2201,62 @@ const availableDateKeys = useMemo(() => {
               text-white
               shadow-sm
             "
-          >
-            <LockKeyhole className="h-3 w-3" />
-          </div>
+                      >
+                        <LockKeyhole className="h-3 w-3" />
+                      </div>
 
-          <span className="text-sm font-bold text-emerald-950">
-            Booking summary
-          </span>
-        </div>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
-          Secure checkout
-        </span>
+                      <span className="text-sm font-bold text-emerald-950">
+                        Booking summary
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+                      Secure checkout
+                    </span>
+                  </div>
 
-      </div>
+                  {/* Summary details */}
+                  <div className="px-4 py-4">
+                    <div className="flex items-end justify-between gap-4">
+                      <div>
+                        <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                          Total today
+                        </p>
+                        <div className="mt-1 text-2xl font-bold tracking-tight text-emerald-950">
+                          {selectedTutor.teachingProfile.currency === "GHS"
+                            ? "GHS "
+                            : "$"}
+                          {selectedHourlyPrice != null
+                            ? (selectedHourlyPrice / 100).toFixed(2)
+                            : "0.00"}
+                        </div>
+                      </div>
 
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-slate-800">
+                          {selectedSessionDuration != null
+                            ? selectedSessionDuration
+                            : 0}{" "}
+                          minutes
+                        </p>
 
-      {/* Summary details */}
-      <div className="px-4 py-4">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
-              Total today
-            </p>
-            <div className="mt-1 text-2xl font-bold tracking-tight text-emerald-950">
-              {selectedTutor.teachingProfile.currency === "GHS"
-                ? "GHS "
-                : "$"}
-              {selectedHourlyPrice != null
-                ? (selectedHourlyPrice / 100).toFixed(2)
-                : "0.00"}
-            </div>
-          </div>
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          Tutoring session
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-          <div className="text-right">
+                {/* =======================================================
+                 * CHECKOUT BUTTON
+                 * ======================================================= */}
 
-            <p className="text-sm font-semibold text-slate-800">
-              {selectedSessionDuration != null
-                ? selectedSessionDuration
-                : 0}{" "}
-              minutes
-            </p>
-
-            <p className="mt-1 text-[11px] text-slate-500">
-              Tutoring session
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-
-    {/* =======================================================
-     * CHECKOUT BUTTON
-     * ======================================================= */}
-
-    <button
-      disabled={!canContinueToPayment}
-      type="submit"
-      title={
-        paymentButtonReason ||
-        "Continue to secure payment"
-      }
-      aria-disabled={!canContinueToPayment}
-      className="
+                <button
+                  disabled={!canContinueToPayment}
+                  type="submit"
+                  title={paymentButtonReason || "Continue to secure payment"}
+                  aria-disabled={!canContinueToPayment}
+                  className="
         mt-4
         flex h-14 w-full
         items-center justify-center
@@ -2375,36 +2280,33 @@ const availableDateKeys = useMemo(() => {
         disabled:text-slate-500
         disabled:shadow-none
       "
-    >
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Preparing secure checkout…
+                    </>
+                  ) : checkoutClientSecret ? (
+                    <>
+                      <LockKeyhole className="h-4 w-4" />
+                      Resume secure payment
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  ) : (
+                    <>
+                      <LockKeyhole className="h-4 w-4" />
+                      Continue to secure payment
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    </>
+                  )}
+                </button>
 
-      {submitting ? (
-        <>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Preparing secure checkout…
-        </>
-      ) : checkoutClientSecret ? (
-        <>
-          <LockKeyhole className="h-4 w-4" />
-          Resume secure payment
-          <ArrowRight className="h-4 w-4" />
-        </>
-      ) : (
-        <>
-          <LockKeyhole className="h-4 w-4" />
-          Continue to secure payment
-          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-        </>
-      )}
+                {/* =======================================================
+                 * SECURITY MESSAGE
+                 * ======================================================= */}
 
-    </button>
-
-
-    {/* =======================================================
-     * SECURITY MESSAGE
-     * ======================================================= */}
-
-    <div
-      className="
+                <div
+                  className="
         mt-4
         flex items-center justify-center
         gap-2
@@ -2413,34 +2315,28 @@ const availableDateKeys = useMemo(() => {
         leading-5
         text-slate-400
       "
-    >
-
-      <span
-        className="
+                >
+                  <span
+                    className="
           flex h-5 w-5
           items-center justify-center
           rounded-full
           bg-slate-100
           text-slate-500
         "
-      >
-        <LockKeyhole className="h-3 w-3" />
-      </span>
+                  >
+                    <LockKeyhole className="h-3 w-3" />
+                  </span>
 
-      <span>
-        Secure payment powered by Stripe
-      </span>
+                  <span>Secure payment powered by Stripe</span>
+                </div>
 
-    </div>
-
-
-    <p className="mt-2 text-center text-[10px] leading-4 text-slate-400">
-      After successful payment, your tutoring booking will be
-      confirmed automatically.
-    </p>
-
-  </div>
-</form>
+                <p className="mt-2 text-center text-[10px] leading-4 text-slate-400">
+                  After successful payment, your tutoring booking will be
+                  confirmed automatically.
+                </p>
+              </div>
+            </form>
           </div>
         )}
       </div>

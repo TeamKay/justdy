@@ -134,10 +134,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Failed to load tutoring availability:", error);
 
-    return errorResponse(
-      error,
-      "Failed to load tutoring availability.",
-    );
+    return errorResponse(error, "Failed to load tutoring availability.");
   }
 }
 
@@ -183,10 +180,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Failed to create tutoring availability:", error);
 
-    return errorResponse(
-      error,
-      "Failed to create tutoring availability.",
-    );
+    return errorResponse(error, "Failed to create tutoring availability.");
   }
 }
 
@@ -249,8 +243,7 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const durationMinutes =
-      (endTime.getTime() - startTime.getTime()) / 60000;
+    const durationMinutes = (endTime.getTime() - startTime.getTime()) / 60000;
 
     if (durationMinutes < 15) {
       return NextResponse.json(
@@ -324,8 +317,7 @@ export async function PATCH(request: Request) {
     if (overlapping) {
       return NextResponse.json(
         {
-          error:
-            "The updated availability overlaps another available slot.",
+          error: "The updated availability overlaps another available slot.",
         },
         {
           status: 409,
@@ -349,10 +341,7 @@ export async function PATCH(request: Request) {
   } catch (error) {
     console.error("Failed to update tutoring availability:", error);
 
-    return errorResponse(
-      error,
-      "Failed to update tutoring availability.",
-    );
+    return errorResponse(error, "Failed to update tutoring availability.");
   }
 }
 
@@ -439,9 +428,6 @@ export async function DELETE(request: Request) {
   } catch (error) {
     console.error("Failed to delete tutoring availability:", error);
 
-    return errorResponse(
-      error,
-      "Failed to delete tutoring availability.",
-    );
+    return errorResponse(error, "Failed to delete tutoring availability.");
   }
 }

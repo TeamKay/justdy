@@ -19,10 +19,7 @@ import {
 
 import EducatorVerificationActions from "@/app/_components/EducatorVerificationActions";
 
-type ApplicationStatus =
-  | "Pending"
-  | "Verified"
-  | "Rejected";
+type ApplicationStatus = "Pending" | "Verified" | "Rejected";
 
 type TutorApplication = {
   id: string;
@@ -87,10 +84,7 @@ function formatDate(date: Date | null) {
 function formatRelativeDate(date: Date | null) {
   if (!date) return "No date";
 
-  const diff = Math.max(
-    0,
-    Date.now() - new Date(date).getTime(),
-  );
+  const diff = Math.max(0, Date.now() - new Date(date).getTime());
 
   const minutes = Math.floor(diff / 60000);
 
@@ -108,10 +102,7 @@ function formatRelativeDate(date: Date | null) {
   return formatDate(date);
 }
 
-function formatHourlyRate(
-  amount: number | null,
-  currency: string,
-) {
+function formatHourlyRate(amount: number | null, currency: string) {
   if (amount === null || amount === undefined) {
     return "Rate not set";
   }
@@ -153,15 +144,13 @@ function statusIcon(status: ApplicationStatus) {
   return <Clock3 className="size-3.5" />;
 }
 
-
 export default function TutorApplicationsView({
   applications,
   selectedStatus,
   stats,
 }: Props) {
   const [query, setQuery] = React.useState("");
-  const [status, setStatus] =
-    React.useState<ApplicationStatus>(selectedStatus);
+  const [status, setStatus] = React.useState<ApplicationStatus>(selectedStatus);
 
   const filteredApplications = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -172,18 +161,10 @@ export default function TutorApplicationsView({
       }
 
       return (
-        application.user.name
-          .toLowerCase()
-          .includes(normalizedQuery) ||
-        application.user.email
-          .toLowerCase()
-          .includes(normalizedQuery) ||
-        (application.headline ?? "")
-          .toLowerCase()
-          .includes(normalizedQuery) ||
-        (application.specialty ?? "")
-          .toLowerCase()
-          .includes(normalizedQuery) ||
+        application.user.name.toLowerCase().includes(normalizedQuery) ||
+        application.user.email.toLowerCase().includes(normalizedQuery) ||
+        (application.headline ?? "").toLowerCase().includes(normalizedQuery) ||
+        (application.specialty ?? "").toLowerCase().includes(normalizedQuery) ||
         application.subjects.some((subject) =>
           subject.toLowerCase().includes(normalizedQuery),
         ) ||
@@ -194,11 +175,8 @@ export default function TutorApplicationsView({
     });
   }, [applications, query]);
 
-  const handleStatusChange = (
-    event: React.ChangeEvent<HTMLSelectElement>,
-  ) => {
-    const nextStatus =
-      event.target.value as ApplicationStatus;
+  const handleStatusChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const nextStatus = event.target.value as ApplicationStatus;
 
     setStatus(nextStatus);
 
@@ -224,13 +202,9 @@ export default function TutorApplicationsView({
           <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm text-muted-foreground shadow-sm">
             <GraduationCap className="size-4" />
 
-            <span>
-              {stats.pending.toLocaleString()} awaiting review
-            </span>
+            <span>{stats.pending.toLocaleString()} awaiting review</span>
           </div>
         </header>
-
-     
 
         <section className="mt-6 overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm">
           <div className="border-b border-border/70 p-5 sm:p-6">
@@ -242,8 +216,7 @@ export default function TutorApplicationsView({
 
                 <p className="mt-1 text-sm text-muted-foreground">
                   {filteredApplications.length.toLocaleString()} of{" "}
-                  {applications.length.toLocaleString()} applications
-                  shown
+                  {applications.length.toLocaleString()} applications shown
                 </p>
               </div>
 
@@ -253,35 +226,25 @@ export default function TutorApplicationsView({
 
                   <input
                     value={query}
-                    onChange={(event) =>
-                      setQuery(event.target.value)
-                    }
+                    onChange={(event) => setQuery(event.target.value)}
                     placeholder="Search applicants..."
                     className="h-10 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/10"
                   />
                 </div>
 
                 <label className="relative">
-                  <span className="sr-only">
-                    Filter applications
-                  </span>
+                  <span className="sr-only">Filter applications</span>
 
                   <select
                     value={status}
                     onChange={handleStatusChange}
                     className="h-10 appearance-none rounded-xl border border-border bg-background pl-3 pr-9 text-sm font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
                   >
-                    <option value="Pending">
-                      Pending applications
-                    </option>
+                    <option value="Pending">Pending applications</option>
 
-                    <option value="Verified">
-                      Verified tutors
-                    </option>
+                    <option value="Verified">Verified tutors</option>
 
-                    <option value="Rejected">
-                      Rejected applications
-                    </option>
+                    <option value="Rejected">Rejected applications</option>
                   </select>
 
                   <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -294,29 +257,17 @@ export default function TutorApplicationsView({
             <table className="w-full min-w-[1150px] text-left">
               <thead className="border-b border-border/70 bg-muted/20">
                 <tr className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  <th className="px-5 py-3.5 sm:px-6">
-                    Applicant
-                  </th>
+                  <th className="px-5 py-3.5 sm:px-6">Applicant</th>
 
-                  <th className="px-5 py-3.5">
-                    Application
-                  </th>
+                  <th className="px-5 py-3.5">Application</th>
 
-                  <th className="px-5 py-3.5">
-                    Teaching details
-                  </th>
+                  <th className="px-5 py-3.5">Teaching details</th>
 
-                  <th className="px-5 py-3.5">
-                    Rate
-                  </th>
+                  <th className="px-5 py-3.5">Rate</th>
 
-                  <th className="px-5 py-3.5">
-                    Submitted
-                  </th>
+                  <th className="px-5 py-3.5">Submitted</th>
 
-                  <th className="px-5 py-3.5">
-                    Action
-                  </th>
+                  <th className="px-5 py-3.5">Action</th>
                 </tr>
               </thead>
 
@@ -359,9 +310,7 @@ export default function TutorApplicationsView({
                                 application.verificationStatus,
                               )}`}
                             >
-                              {statusIcon(
-                                application.verificationStatus,
-                              )}
+                              {statusIcon(application.verificationStatus)}
 
                               {application.verificationStatus}
                             </span>
@@ -383,8 +332,7 @@ export default function TutorApplicationsView({
 
                     <td className="max-w-[300px] px-5 py-5">
                       <p className="text-sm font-semibold text-foreground">
-                        {application.headline ||
-                          "No teaching headline"}
+                        {application.headline || "No teaching headline"}
                       </p>
 
                       {application.specialty ? (
@@ -488,9 +436,7 @@ export default function TutorApplicationsView({
                       <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                         <Clock3 className="size-3.5" />
 
-                        {formatRelativeDate(
-                          application.createdAt,
-                        )}
+                        {formatRelativeDate(application.createdAt)}
                       </p>
 
                       {application.credentialUrl ? (
@@ -521,10 +467,7 @@ export default function TutorApplicationsView({
 
                 {!filteredApplications.length ? (
                   <tr>
-                    <td
-                      colSpan={6}
-                      className="px-6 py-16 text-center"
-                    >
+                    <td colSpan={6} className="px-6 py-16 text-center">
                       <div className="mx-auto flex max-w-sm flex-col items-center">
                         <div className="flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
                           <Search className="size-5" />
@@ -535,8 +478,8 @@ export default function TutorApplicationsView({
                         </h3>
 
                         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                          Try another search term or select a
-                          different application status.
+                          Try another search term or select a different
+                          application status.
                         </p>
                       </div>
                     </td>

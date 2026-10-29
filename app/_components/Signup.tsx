@@ -6,10 +6,7 @@ import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import {
-  Loader,
-  UserPlus,
-} from "lucide-react";
+import { Loader, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { signupSchema } from "@/lib/zodSchemas";
@@ -36,7 +33,6 @@ import {
 
 import LogoImg from "@/public/images/logo.png";
 
-
 interface SignupModalProps {
   children?: React.ReactNode;
   open?: boolean;
@@ -60,13 +56,9 @@ export function SignupModal({
 
   const isControlled = open !== undefined;
 
-  const isOpen = isControlled
-    ? open
-    : internalOpen;
+  const isOpen = isControlled ? open : internalOpen;
 
-  const handleOpenChange = isControlled
-    ? onOpenChange
-    : setInternalOpen;
+  const handleOpenChange = isControlled ? onOpenChange : setInternalOpen;
 
   const form = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
@@ -79,17 +71,13 @@ export function SignupModal({
     },
   });
 
-  async function onSubmit(
-    values: z.infer<typeof signupSchema>,
-  ) {
+  async function onSubmit(values: z.infer<typeof signupSchema>) {
     startTransition(async () => {
       try {
         const res = await signupUser(values);
 
         if (res.type === "exists_verified") {
-          toast.error(
-            "Account already exists. Please log in.",
-          );
+          toast.error("Account already exists. Please log in.");
 
           handleOpenChange?.(false);
 
@@ -99,9 +87,7 @@ export function SignupModal({
         }
 
         if (res.type === "exists_unverified") {
-          toast.error(
-            "An unverified account already exists with this email.",
-          );
+          toast.error("An unverified account already exists with this email.");
 
           handleOpenChange?.(false);
 
@@ -115,9 +101,7 @@ export function SignupModal({
         }
 
         if (res.type === "created") {
-          toast.success(
-            "Verification email sent! Please check your inbox.",
-          );
+          toast.success("Verification email sent! Please check your inbox.");
 
           handleOpenChange?.(false);
 
@@ -130,18 +114,11 @@ export function SignupModal({
           return;
         }
 
-        toast.error(
-          "Something went wrong. Please try again.",
-        );
+        toast.error("Something went wrong. Please try again.");
       } catch (error) {
-        console.error(
-          "SIGNUP MODAL ERROR:",
-          error,
-        );
+        console.error("SIGNUP MODAL ERROR:", error);
 
-        toast.error(
-          "Unable to create your account. Please try again.",
-        );
+        toast.error("Unable to create your account. Please try again.");
       }
     });
   }
@@ -190,15 +167,8 @@ export function SignupModal({
 
   return (
     <>
-      <Dialog
-        open={isOpen}
-        onOpenChange={handleOpenChange}
-      >
-        {children && (
-          <DialogTrigger asChild>
-            {children}
-          </DialogTrigger>
-        )}
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+        {children && <DialogTrigger asChild>{children}</DialogTrigger>}
 
         <DialogContent
           className="
@@ -278,9 +248,7 @@ export function SignupModal({
               {/* Form */}
               <Form {...form}>
                 <form
-                  onSubmit={form.handleSubmit(
-                    onSubmit,
-                  )}
+                  onSubmit={form.handleSubmit(onSubmit)}
                   className="space-y-3"
                 >
                   {/* Full Name */}
@@ -357,9 +325,7 @@ export function SignupModal({
                               onChange={(event) => {
                                 field.onChange(event);
 
-                                setPassword(
-                                  event.target.value,
-                                );
+                                setPassword(event.target.value);
                               }}
                               className="
                                 h-10
@@ -383,28 +349,23 @@ export function SignupModal({
                                 pt-0.5
                               "
                             >
-                              {[1, 2, 3, 4].map(
-                                (step) => (
-                                  <div
-                                    key={step}
-                                    className={`
+                              {[1, 2, 3, 4].map((step) => (
+                                <div
+                                  key={step}
+                                  className={`
                                       h-full
                                       flex-1
                                       rounded-full
                                       transition-all
                                       duration-300
                                       ${
-                                        strength >=
-                                        step
-                                          ? strengthColors[
-                                              strength
-                                            ]
+                                        strength >= step
+                                          ? strengthColors[strength]
                                           : "bg-gray-200"
                                       }
                                     `}
-                                  />
-                                ),
-                              )}
+                                />
+                              ))}
                             </div>
                           </div>
                         </FormControl>
@@ -469,17 +430,12 @@ export function SignupModal({
                   >
                     {isPending ? (
                       <>
-                        <Loader
-                          className="animate-spin"
-                          size={15}
-                        />
-
+                        <Loader className="animate-spin" size={15} />
                         Creating Account...
                       </>
                     ) : (
                       <>
                         <UserPlus size={15} />
-
                         Create Account
                       </>
                     )}
@@ -532,8 +488,6 @@ export function SignupModal({
           </div>
         </DialogContent>
       </Dialog>
-
-     
     </>
   );
 }

@@ -1,7 +1,13 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, Clock3, ExternalLink, UserRound } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  Clock3,
+  ExternalLink,
+  UserRound,
+} from "lucide-react";
 
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
@@ -45,7 +51,11 @@ export default async function EducatorSessionDetailPage({ params }: PageProps) {
 
   if (!user) redirect("/auth?mode=signin");
 
-  if (String(user.role ?? "").trim().toUpperCase() === "ADMIN") {
+  if (
+    String(user.role ?? "")
+      .trim()
+      .toUpperCase() === "ADMIN"
+  ) {
     redirect(`/admin/sessions/${id}`);
   }
 
@@ -116,20 +126,26 @@ export default async function EducatorSessionDetailPage({ params }: PageProps) {
         <header className="mt-6 rounded-3xl border border-border/70 bg-card p-6 shadow-sm sm:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-sm font-semibold text-emerald-600">Tutoring session</p>
+              <p className="text-sm font-semibold text-emerald-600">
+                Tutoring session
+              </p>
               <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
                 {tutoringSession.service?.title ?? "Tutoring session"}
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                {tutoringSession.learner.name ?? "Learner"} · {tutoringSession.service?.subject ?? "Tutoring"}
+                {tutoringSession.learner.name ?? "Learner"} ·{" "}
+                {tutoringSession.service?.subject ?? "Tutoring"}
               </p>
             </div>
 
             <div className="rounded-2xl bg-muted/50 p-4 text-sm">
-              <p className="font-semibold">{formatDate(tutoringSession.scheduledStart)}</p>
+              <p className="font-semibold">
+                {formatDate(tutoringSession.scheduledStart)}
+              </p>
               <p className="mt-1 flex items-center gap-1.5 text-muted-foreground">
                 <Clock3 className="size-3.5" />
-                {formatTime(tutoringSession.scheduledStart)} – {formatTime(tutoringSession.scheduledEnd)}
+                {formatTime(tutoringSession.scheduledStart)} –{" "}
+                {formatTime(tutoringSession.scheduledEnd)}
               </p>
             </div>
           </div>
@@ -138,20 +154,28 @@ export default async function EducatorSessionDetailPage({ params }: PageProps) {
             <div className="rounded-xl border border-border/60 p-4">
               <CalendarDays className="size-4 text-muted-foreground" />
               <p className="mt-2 text-xs text-muted-foreground">Status</p>
-              <p className="mt-1 text-sm font-semibold">{tutoringSession.status.replace("_", " ")}</p>
+              <p className="mt-1 text-sm font-semibold">
+                {tutoringSession.status.replace("_", " ")}
+              </p>
             </div>
             <div className="rounded-xl border border-border/60 p-4">
               <UserRound className="size-4 text-muted-foreground" />
               <p className="mt-2 text-xs text-muted-foreground">Learner</p>
-              <p className="mt-1 text-sm font-semibold">{tutoringSession.learner.name ?? "Learner"}</p>
+              <p className="mt-1 text-sm font-semibold">
+                {tutoringSession.learner.name ?? "Learner"}
+              </p>
             </div>
             <div className="rounded-xl border border-border/60 p-4">
               <Clock3 className="size-4 text-muted-foreground" />
               <p className="mt-2 text-xs text-muted-foreground">Duration</p>
               <p className="mt-1 text-sm font-semibold">
-                {tutoringSession.service?.durationMinutes ?? Math.round(
-                  (tutoringSession.scheduledEnd.getTime() - tutoringSession.scheduledStart.getTime()) / 60000,
-                )} minutes
+                {tutoringSession.service?.durationMinutes ??
+                  Math.round(
+                    (tutoringSession.scheduledEnd.getTime() -
+                      tutoringSession.scheduledStart.getTime()) /
+                      60000,
+                  )}{" "}
+                minutes
               </p>
             </div>
           </div>

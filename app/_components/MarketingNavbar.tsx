@@ -2,18 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import {
-  ChevronDown,
-  Menu,
-  Sparkles,
-  Video,
-  X,
-} from "lucide-react";
+import { ChevronDown, Menu, Sparkles, Video, X } from "lucide-react";
 
 import { authClient } from "@/lib/auth-client";
 import { UserDropdown } from "./UserDropdown";
-import { ThemeToggle } from "./themeToggle";
-
+import LogoImg from "@/public/images/logo.png";
+import Image from "next/image";
 
 const navigation = [
   {
@@ -38,9 +32,9 @@ const navigation = [
         icon: Video,
       },
       {
-        label: "My sessions",
-        description: "View your tutoring sessions",
-        href: "/tutoring/sessions",
+        label: "Learning packages",
+        description: "View our tutoring packages",
+        href: "/tutoring",
         icon: Video,
       },
     ],
@@ -63,13 +57,7 @@ export default function MarketingNavbar() {
   ------------------------------------------------------------- */
   useEffect(() => {
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-
-      if (currentScrollY <= 24) {
-        setIsFloating(false);
-      } else {
-        setIsFloating(true);
-      }
+      setIsFloating(window.scrollY > 24);
     };
 
     handleScroll();
@@ -126,72 +114,116 @@ export default function MarketingNavbar() {
       ? user.name.trim()
       : "User";
 
-  const userEmail =
-    typeof user?.email === "string" ? user.email : "";
+  const userEmail = typeof user?.email === "string" ? user.email : "";
 
-  const userImage =
-    typeof user?.image === "string" ? user.image : "";
+  const userImage = typeof user?.image === "string" ? user.image : "";
 
   const userRole =
-    typeof (user as { role?: unknown } | null | undefined)?.role ===
-    "string"
+    typeof (user as { role?: unknown } | null | undefined)?.role === "string"
       ? ((user as { role?: string }).role ?? "")
       : "";
 
-
   const isAdmin = userRole.trim().toUpperCase() === "ADMIN";
+
   const dashboardHref = isAdmin ? "/admin" : "/dashboard";
-  const dashboardLabel = isAdmin
-    ? "Admin dashboard"
-    : "Go to dashboard";
 
-  const showAuthenticatedUI =
-    !sessionPending && !!user;
+  const dashboardLabel = isAdmin ? "Admin dashboard" : "Go to dashboard";
 
-  const showUnauthenticatedUI =
-    !sessionPending && !user;
+  const showAuthenticatedUI = !sessionPending && !!user;
+
+  const showUnauthenticatedUI = !sessionPending && !user;
 
   return (
     <>
       {/* =========================================================
           HEADER
+          Uses the same background image, gradient, and grid
+          treatment as the landing-page hero.
       ========================================================== */}
       <header
-        className={`fixed top-0 z-1000 transition-all duration-300 ease-out ${
-         isFloating
-          ? "left-1/2 mt-3 w-[calc(100%-1.5rem)] max-w-230 -translate-x-1/2 rounded-sm bg-white shadow-sm backdrop-blur-xl sm:w-[calc(100%-3rem)] lg:mt-4"
-          : "inset-x-0 w-full bg-white "
+        className={`fixed top-0 z-1000 isolate transition-all duration-300 ease-out ${
+          isFloating
+            ? "left-1/2 mt-3 w-[calc(100%-1.5rem)] max-w-230 -translate-x-1/2 rounded-lg shadow-[0_18px_50px_rgba(0,0,0,.28)] sm:w-[calc(100%-3rem)] lg:mt-4"
+            : "inset-x-0 w-full"
         }`}
       >
+        {/* Landing-page photographic background */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-0"
+          className={`pointer-events-none absolute inset-0 z-0 ${
+            isFloating ? "rounded-xl" : ""
+          }`}
+          style={{
+            backgroundColor: "#071d2b",
+            backgroundImage: "url('/images/justdy-landing-background.png')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        />
+
+        {/* Navy, blue, and teal gradient overlay */}
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-0 z-1 ${
+            isFloating ? "rounded-xl" : ""
+          }`}
           style={{
             backgroundImage:
-              "radial-gradient(circle, rgba(255, 255, 255, 0.17) 1.35px, transparent 1.35px)",
+              "linear-gradient(110deg, rgba(3,24,37,.96) 0%, rgba(18,34,73,.89) 48%, rgba(3,45,48,.88) 100%)",
+          }}
+        />
+
+        {/* Subtle grid texture matching the hero */}
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-0 z-[2] ${
+            isFloating ? "rounded-xl" : ""
+          }`}
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px)",
+            backgroundSize: "54px 54px",
+          }}
+        />
+
+        {/* Soft dotted texture */}
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-0 z-[3] ${
+            isFloating ? "rounded-xl" : ""
+          }`}
+          style={{
+            backgroundImage:
+              "radial-gradient(circle, rgba(255,255,255,.10) 1px, transparent 1px)",
             backgroundSize: "32px 32px",
           }}
         />
+
+        {/* Navbar content */}
         <div
           className={`relative z-10 mx-auto flex h-15 items-center justify-between px-4 transition-all duration-300 sm:px-6 ${
-            isFloating
-              ? "max-w-230 lg:px-5"
-              : "max-w-7xl lg:px-12"
+            isFloating ? "max-w-230 lg:px-5" : "max-w-7xl lg:px-12"
           }`}
         >
           {/* =====================================================
               BRAND
           ====================================================== */}
+
           <Link
             href="/"
-            className="flex items-center gap-2.5"
+            className="group inline-flex flex-row items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10 hover:text-white"
             onClick={closeMobileMenu}
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-sm bg-primary text-primary-foreground shadow-sm">
-              <Sparkles className="h-4 w-4" />
-            </div>
+            <Image
+              src={LogoImg}
+              alt="Justdy logo"
+              width={34}
+              height={34}
+              priority
+              className="h-6 w-6 shrink-0 object-contain transition-transform duration-200 group-hover:scale-105"
+            />
 
-            <span className="text-lg font-semibold tracking-tight text-black">
+            <span className="text-[16px] font-bold tracking-[-0.04em] text-white transition-colors duration-200">
               Justdy
             </span>
           </Link>
@@ -200,16 +232,12 @@ export default function MarketingNavbar() {
               DESKTOP NAVIGATION
           ====================================================== */}
           <nav
-            className="hidden items-start justify-start gap-1.5 lg:flex"
+            className="hidden items-center justify-center gap-1.5 lg:flex"
             onMouseLeave={closeDropdown}
             onBlur={(event) => {
-              const nextFocused =
-                event.relatedTarget as Node | null;
+              const nextFocused = event.relatedTarget as Node | null;
 
-              if (
-                !nextFocused ||
-                !event.currentTarget.contains(nextFocused)
-              ) {
+              if (!nextFocused || !event.currentTarget.contains(nextFocused)) {
                 closeDropdown();
               }
             }}
@@ -217,58 +245,45 @@ export default function MarketingNavbar() {
             {/* Home */}
             <Link
               href="/"
-              className="rounded-sm px-3 py-2 text-sm font-medium text-emerald-950 transition hover:bg-muted"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10 hover:text-white"
             >
               Home
             </Link>
 
             {/* Dropdown menus */}
             {navigation.map((menu) => (
-              <div
-                key={menu.label}
-                className="relative"
-              >
+              <div key={menu.label} className="relative">
                 <button
                   type="button"
-                  onMouseEnter={() =>
-                    setOpenMenu(menu.label)
-                  }
-                  onFocus={() =>
-                    setOpenMenu(menu.label)
-                  }
+                  onMouseEnter={() => setOpenMenu(menu.label)}
+                  onFocus={() => setOpenMenu(menu.label)}
                   onClick={() =>
-                    setOpenMenu(
-                      openMenu === menu.label
-                        ? null
-                        : menu.label,
-                    )
+                    setOpenMenu(openMenu === menu.label ? null : menu.label)
                   }
-                  className={`inline-flex items-center gap-1 rounded-sm px-3 py-2 text-sm font-medium leading-5 transition ${
+                  className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium leading-5 transition ${
                     openMenu === menu.label
-                      ? "bg-white text-emerald-950"
-                      : "text-emerald-950 hover:bg-muted hover:text-emerald-950"
+                      ? "bg-white/10 text-white"
+                      : "text-white/85 hover:bg-white/10 hover:text-white"
                   }`}
-                  aria-expanded={
-                    openMenu === menu.label
-                  }
+                  aria-expanded={openMenu === menu.label}
                   aria-haspopup="true"
                 >
                   {menu.label}
 
-                  <ChevronDown className="h-3.5 w-3.5" />
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                      openMenu === menu.label ? "rotate-180" : ""
+                    }`}
+                  />
                 </button>
 
                 {openMenu === menu.label && (
                   <div
-                    className="absolute left-0 top-full z-1100 w-80 pt-2"
-                    onMouseEnter={() =>
-                      setOpenMenu(menu.label)
-                    }
-                    onFocus={() =>
-                      setOpenMenu(menu.label)
-                    }
+                    className="absolute left-0 top-full z-1100 w-80 pt-3"
+                    onMouseEnter={() => setOpenMenu(menu.label)}
+                    onFocus={() => setOpenMenu(menu.label)}
                   >
-                    <div className="relative z-1100 rounded-sm border border-white/10 bg-white p-2 shadow-2xl shadow-black/30 backdrop-blur-xl">
+                    <div className="relative z-1100 rounded-xl border border-white/10 bg-[#0b2635]/95 p-2 shadow-2xl shadow-black/30 backdrop-blur-xl">
                       {menu.items.map((item) => {
                         const Icon = item.icon;
 
@@ -277,18 +292,18 @@ export default function MarketingNavbar() {
                             key={item.label}
                             href={item.href}
                             onClick={closeDropdown}
-                            className="flex gap-3 rounded-sm p-3 transition hover:bg-muted"
+                            className="flex gap-3 rounded-lg p-3 transition hover:bg-white/10"
                           >
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-primary/10 text-primary">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[.07] text-emerald-300">
                               <Icon className="h-4 w-4" />
                             </div>
 
                             <div>
-                              <div className="text-sm font-semibold text-emerald-950">
+                              <div className="text-sm font-semibold text-white">
                                 {item.label}
                               </div>
 
-                              <div className="mt-0.5 text-xs leading-5 text-emerald-950">
+                              <div className="mt-0.5 text-xs leading-5 text-white/65">
                                 {item.description}
                               </div>
                             </div>
@@ -304,7 +319,7 @@ export default function MarketingNavbar() {
             {/* Resources */}
             <Link
               href="/products"
-              className="rounded-sm px-3 py-2 text-sm font-medium text-emerald-950 transition hover:bg-muted hover:text-foreground"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-white/85 transition hover:bg-white/10 hover:text-white"
             >
               Resources
             </Link>
@@ -314,26 +329,16 @@ export default function MarketingNavbar() {
               DESKTOP ACTIONS
           ====================================================== */}
           <div className="hidden items-center gap-2 lg:flex">
-            {/* =================================================
-                THEME TOGGLE
-            ================================================== */}
-    
-
             {sessionPending ? (
-              /*
-               * Keep authentication area visually stable
-               * while Better Auth checks the current session.
-               */
               <div
-                className="h-10 w-39 animate-pulse rounded-xl bg-muted"
+                className="h-10 w-39 animate-pulse rounded-xl border border-white/10 bg-white/10"
                 aria-hidden="true"
               />
             ) : showAuthenticatedUI ? (
               <>
-                {/* Authenticated user */}
                 <Link
                   href={dashboardHref}
-                  className="inline-flex h-10 items-center rounded-lg bg-[#181818] px-4 text-sm font-semibold text-white transition hover:bg-emerald-950"
+                  className="inline-flex h-8.5 items-center rounded-lg bg-white px-4 text-sm font-semibold text-slate-950 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#edf12b]"
                 >
                   {dashboardLabel}
                 </Link>
@@ -346,12 +351,9 @@ export default function MarketingNavbar() {
                 />
               </>
             ) : showUnauthenticatedUI ? (
-              /* =================================================
-                 NEW: FULL AUTH PAGE
-              ================================================== */
               <Link
                 href="/auth?mode=signin"
-                className="group ml-4 inline-flex h-8 rounded-lg items-center gap-2 bg-[#181818] px-7 py-4.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-emerald-950"
+                className="ml-3 inline-flex h-8.5 items-center justify-center rounded-lg bg-white px-6 text-sm font-semibold text-slate-950 shadow-sm transition hover:-translate-y-0.5 hover:bg-[#edf12b]"
               >
                 Sign in
               </Link>
@@ -362,9 +364,6 @@ export default function MarketingNavbar() {
               MOBILE ACTIONS
           ====================================================== */}
           <div className="flex items-center gap-2 lg:hidden">
-            {/* Theme toggle */}
-            <ThemeToggle />
-
             {showAuthenticatedUI && (
               <UserDropdown
                 email={userEmail}
@@ -376,16 +375,10 @@ export default function MarketingNavbar() {
 
             <button
               type="button"
-              aria-label={
-                mobileOpen
-                  ? "Close menu"
-                  : "Open menu"
-              }
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
               aria-expanded={mobileOpen}
-              onClick={() =>
-                setMobileOpen(!mobileOpen)
-              }
-              className="flex h-10 w-10 items-center justify-center rounded-sm border border-white/15 text-white/60 transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 bg-white/[.04] text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
             >
               {mobileOpen ? (
                 <X className="h-5 w-5" />
@@ -400,98 +393,100 @@ export default function MarketingNavbar() {
             MOBILE NAVIGATION
         ======================================================== */}
         {mobileOpen && (
-          <div className="relative border-t border-white/10 bg-[#0a0d16]/95 backdrop-blur-xl lg:hidden">
+          <div className="relative border-t border-white/10 bg-[#071d2b]/95 backdrop-blur-xl lg:hidden">
+            {/* Mobile menu grid texture */}
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-0"
               style={{
                 backgroundImage:
-                  "radial-gradient(circle, rgba(255, 255, 255, 0.17) 1.35px, transparent 1.35px)",
+                  "linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px)",
                 backgroundSize: "32px 32px",
               }}
             />
-            <div className="relative space-y-1 px-6 py-4 sm:px-8">
-              {/* =================================================
-                  APPEARANCE
-              ================================================== */}
-              <div className="mb-3 flex items-center justify-between rounded-sm border border-border/60 bg-muted/30 px-4 py-3">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">
-                    Appearance
-                  </p>
 
-                  <p className="mt-0.5 text-xs text-white/60">
-                    Choose your theme
-                  </p>
-                </div>
+            <div className="relative space-y-1 px-5 py-4 sm:px-8">
+              {/* Appearance information */}
+              <div className="mb-3 rounded-xl border border-white/10 bg-white/[.04] px-4 py-3">
+                <p className="text-sm font-semibold text-white">
+                  Welcome to Justdy
+                </p>
 
-                <ThemeToggle />
+                <p className="mt-1 text-xs leading-5 text-white/60">
+                  Personalized learning, all in one place.
+                </p>
               </div>
 
               {/* Home */}
               <Link
                 href="/"
                 onClick={closeMobileMenu}
-                className="block rounded-sm px-3 py-3 text-sm font-medium text-foreground transition hover:bg-muted"
+                className="block rounded-lg px-3 py-3 text-sm font-medium text-white/85 transition hover:bg-white/10 hover:text-white"
               >
                 Home
               </Link>
 
-              {/* AI Workspace */}
+              {/* AI Studio */}
               <Link
-                href="/dashboard"
+                href="/dashboard/create"
                 onClick={closeMobileMenu}
-                className="block rounded-sm px-3 py-3 text-sm font-medium text-white/60 transition hover:bg-muted hover:text-foreground"
+                className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/85 transition hover:bg-white/10 hover:text-white"
               >
-                AI Workspace
+                <Sparkles className="h-4 w-4 text-emerald-300" />
+                AI Studio
               </Link>
 
               {/* Tutoring */}
               <Link
                 href="/tutoring"
                 onClick={closeMobileMenu}
-                className="block rounded-xl px-3 py-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium text-white/85 transition hover:bg-white/10 hover:text-white"
               >
+                <Video className="h-4 w-4 text-emerald-300" />
                 Tutoring
+              </Link>
+
+              {/* My sessions */}
+              <Link
+                href="/tutoring/sessions"
+                onClick={closeMobileMenu}
+                className="block rounded-lg px-3 py-3 text-sm font-medium text-white/85 transition hover:bg-white/10 hover:text-white"
+              >
+                My sessions
               </Link>
 
               {/* Resources */}
               <Link
                 href="/products"
                 onClick={closeMobileMenu}
-                className="block rounded-xl px-3 py-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                className="block rounded-lg px-3 py-3 text-sm font-medium text-white/85 transition hover:bg-white/10 hover:text-white"
               >
                 Resources
               </Link>
 
-              {/* =================================================
-                  MOBILE AUTH ACTION
-              ================================================== */}
-              <div className="mt-3 border-t border-border/60 pt-4">
+              {/* Mobile authentication action */}
+              <div className="mt-3 border-t border-white/10 pt-4">
                 {sessionPending ? (
                   <div
-                    className="h-11 w-full animate-pulse rounded-xl bg-muted"
+                    className="h-11 w-full animate-pulse rounded-xl border border-white/10 bg-white/10"
                     aria-hidden="true"
                   />
                 ) : showAuthenticatedUI ? (
                   <Link
-                    href="/dashboard"
+                    href={dashboardHref}
                     onClick={closeMobileMenu}
-                    className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+                    className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-white text-sm font-semibold text-slate-950 transition hover:bg-[#edf12b]"
                   >
-                    Open AI Workspace
+                    {dashboardLabel}
                   </Link>
                 ) : showUnauthenticatedUI ? (
                   <Link
                     href="/auth?mode=signin"
                     onClick={closeMobileMenu}
-                    className="group inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/15 transition hover:-translate-y-0.5 hover:bg-primary/90"
+                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white text-sm font-semibold text-slate-950 shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:bg-[#edf12b]"
                   >
                     Sign in
-
-                    <span className="transition-transform group-hover:translate-x-0.5">
-                      →
-                    </span>
+                    <span aria-hidden="true">→</span>
                   </Link>
                 ) : null}
               </div>
@@ -503,10 +498,7 @@ export default function MarketingNavbar() {
       {/* =========================================================
           HEADER SPACER
       ========================================================== */}
-      <div
-        aria-hidden="true"
-        className="h-16"
-      />
+      <div aria-hidden="true" className="h-16" />
     </>
   );
 }

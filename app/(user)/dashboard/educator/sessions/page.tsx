@@ -1,7 +1,13 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, CheckCircle2, Clock3, Users } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  Users,
+} from "lucide-react";
 
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
@@ -47,7 +53,11 @@ export default async function EducatorSessionsPage() {
 
   if (!user) redirect("/auth?mode=signin");
 
-  if (String(user.role ?? "").trim().toUpperCase() === "ADMIN") {
+  if (
+    String(user.role ?? "")
+      .trim()
+      .toUpperCase() === "ADMIN"
+  ) {
     redirect("/admin/sessions");
   }
 
@@ -106,8 +116,9 @@ export default async function EducatorSessionsPage() {
             Teaching sessions
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Manage upcoming lessons and complete learner feedback from one place.
-            Feedback saved here flows directly into the learner&apos;s progress record.
+            Manage upcoming lessons and complete learner feedback from one
+            place. Feedback saved here flows directly into the learner&apos;s
+            progress record.
           </p>
         </header>
 
@@ -127,9 +138,14 @@ export default async function EducatorSessionsPage() {
           <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm">
             <Users className="size-5 text-muted-foreground" />
             <p className="mt-4 text-2xl font-bold">
-              {new Set([...upcoming, ...recent].map((item) => item.learner.id)).size}
+              {
+                new Set([...upcoming, ...recent].map((item) => item.learner.id))
+                  .size
+              }
             </p>
-            <p className="text-sm text-muted-foreground">Learners represented</p>
+            <p className="text-sm text-muted-foreground">
+              Learners represented
+            </p>
           </div>
         </section>
 
@@ -137,7 +153,8 @@ export default async function EducatorSessionsPage() {
           <div className="border-b border-border/70 p-5 sm:p-6">
             <h2 className="font-semibold">Upcoming</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Open a session to review the learner context and join when available.
+              Open a session to review the learner context and join when
+              available.
             </p>
           </div>
 
@@ -158,7 +175,8 @@ export default async function EducatorSessionsPage() {
                         {item.service?.title ?? "Tutoring session"}
                       </p>
                       <p className="mt-1 truncate text-sm text-muted-foreground">
-                        {item.learner.name ?? "Learner"} · {item.service?.subject ?? "Tutoring"}
+                        {item.learner.name ?? "Learner"} ·{" "}
+                        {item.service?.subject ?? "Tutoring"}
                       </p>
                     </div>
                   </div>
@@ -170,10 +188,13 @@ export default async function EducatorSessionsPage() {
                       </p>
                       <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Clock3 className="size-3" />
-                        {formatTime(item.scheduledStart)} – {formatTime(item.scheduledEnd)}
+                        {formatTime(item.scheduledStart)} –{" "}
+                        {formatTime(item.scheduledEnd)}
                       </p>
                     </div>
-                    <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClasses(item.status)}`}>
+                    <span
+                      className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClasses(item.status)}`}
+                    >
                       {item.status.replace("_", " ")}
                     </span>
                     <ArrowRight className="hidden size-4 text-muted-foreground sm:block" />
@@ -209,18 +230,27 @@ export default async function EducatorSessionsPage() {
                       {item.service?.title ?? "Tutoring session"}
                     </p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {item.learner.name ?? "Learner"} · {formatDate(item.scheduledStart)}
+                      {item.learner.name ?? "Learner"} ·{" "}
+                      {formatDate(item.scheduledStart)}
                     </p>
                     {item.topic ? (
-                      <p className="mt-1 text-xs text-muted-foreground">Topic: {item.topic}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Topic: {item.topic}
+                      </p>
                     ) : null}
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClasses(item.status)}`}>
+                    <span
+                      className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusClasses(item.status)}`}
+                    >
                       {item.status.replace("_", " ")}
                     </span>
-                    {item.status === "COMPLETED" && !item.nextStep && !item.needsPractice ? (
-                      <span className="text-xs font-semibold text-amber-600">Feedback needed</span>
+                    {item.status === "COMPLETED" &&
+                    !item.nextStep &&
+                    !item.needsPractice ? (
+                      <span className="text-xs font-semibold text-amber-600">
+                        Feedback needed
+                      </span>
                     ) : null}
                     <ArrowRight className="size-4 text-muted-foreground" />
                   </div>

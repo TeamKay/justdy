@@ -15,7 +15,10 @@ async function getCurrentUser() {
   return session?.user ?? null;
 }
 
-async function canManageEducatorWorkspace(user: { id: string; role?: string | null }) {
+async function canManageEducatorWorkspace(user: {
+  id: string;
+  role?: string | null;
+}) {
   if (user.role === "ADMIN") return true;
 
   return hasCapability(user.id, CAPABILITIES.TEACH);
@@ -495,18 +498,20 @@ export async function PATCH(request: NextRequest) {
         );
       }
 
-     const nextDuration =
-  typeof data.durationMinutes === "number"
-    ? data.durationMinutes
-    : existingService.durationMinutes;
+      const nextDuration =
+        typeof data.durationMinutes === "number"
+          ? data.durationMinutes
+          : existingService.durationMinutes;
       const nextPrice =
-  typeof data.price === "number"
-    ? data.price
-    : existingService.price;
+        typeof data.price === "number" ? data.price : existingService.price;
       const nextSubject = data.subject ?? existingService.subject;
       const nextGradeLevels = data.gradeLevels ?? existingService.gradeLevels;
 
-      if (nextDuration === null || nextDuration === undefined || nextDuration <= 0) {
+      if (
+        nextDuration === null ||
+        nextDuration === undefined ||
+        nextDuration <= 0
+      ) {
         return NextResponse.json(
           { error: "A published tutoring service must have a duration." },
           { status: 400 },

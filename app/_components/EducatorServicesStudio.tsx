@@ -146,7 +146,6 @@ export default function EducatorServicesStudio({
   const [loading, setLoading] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
 
-
   const subjects = useMemo(
     () => toStringArray(profile.subjects),
     [profile.subjects],
@@ -188,7 +187,6 @@ export default function EducatorServicesStudio({
   }
 
   function openEditForm(service: Service) {
-
     setEditingId(service.id);
 
     setForm({
@@ -340,7 +338,9 @@ export default function EducatorServicesStudio({
       );
 
       if (status === "Published") {
-        toast.success("Service published. Learners can now discover this offering when your educator profile is publicly eligible.");
+        toast.success(
+          "Service published. Learners can now discover this offering when your educator profile is publicly eligible.",
+        );
       } else if (status === "Archived") {
         toast.success("Service archived.");
       } else {
@@ -421,8 +421,13 @@ export default function EducatorServicesStudio({
                     <Sparkles className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <h2 id="service-modal-title" className="truncate text-base font-semibold text-white sm:text-lg">
-                      {editingId ? "Edit teaching service" : "Create Tutoring Package or Service"}
+                    <h2
+                      id="service-modal-title"
+                      className="truncate text-base font-semibold text-white sm:text-lg"
+                    >
+                      {editingId
+                        ? "Edit teaching service"
+                        : "Create Tutoring Package or Service"}
                     </h2>
                     <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
                       Define the service learners will see and book.
@@ -440,7 +445,9 @@ export default function EducatorServicesStudio({
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="min-h-0 overflow-y-auto bg-emerald-950 px-5 py-5 sm:px-7 sm:py-6"
+            <form
+              onSubmit={handleSubmit}
+              className="min-h-0 overflow-y-auto bg-emerald-950 px-5 py-5 sm:px-7 sm:py-6"
             >
               <div className="space-y-5">
                 <section className=" bg-emerald-950 shadow-sm">
@@ -455,12 +462,13 @@ export default function EducatorServicesStudio({
 
                       <div className="relative">
                         <input
-                       
                           type="text"
                           min="0"
                           step="0.01"
                           value={form.title}
-                          onChange={(event) => updateField("title", event.target.value)}
+                          onChange={(event) =>
+                            updateField("title", event.target.value)
+                          }
                           placeholder="e.g. Grade 5 Mathematics Support"
                           maxLength={120}
                           className="h-11 w-full rounded-none border border-emerald-900 bg-card px-3.5 text-sm text-white outline-none transition placeholder:text-muted-foreground hover:border-emerald-950 focus:border-emerald-950 focus:ring-emerald-950"
@@ -469,23 +477,24 @@ export default function EducatorServicesStudio({
                     </div>
 
                     <div className="sm:col-span-2">
-                    <label
-                      htmlFor="description"
-                      className="mb-1.5 block text-xs font-semibold text-white"
-                    >
-                      Describe the service
-                    </label>
+                      <label
+                        htmlFor="description"
+                        className="mb-1.5 block text-xs font-semibold text-white"
+                      >
+                        Describe the service
+                      </label>
 
-                    <textarea
-                      value={form.description}
-                        onChange={(event) => updateField("description", event.target.value)}
+                      <textarea
+                        value={form.description}
+                        onChange={(event) =>
+                          updateField("description", event.target.value)
+                        }
                         placeholder="Describe your teaching approach, what the learner will work on, and what makes this service useful..."
-                      rows={5}
-                      maxLength={2000}
-                      className="h-30 w-full resize-none rounded-none border border-emerald-900 bg-card px-3.5 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-muted-foreground hover:border-emerald-950 focus:border-emerald-950 focus:ring-emerald-950"
-                    />
-                  </div>
-
+                        rows={5}
+                        maxLength={2000}
+                        className="h-30 w-full resize-none rounded-none border border-emerald-900 bg-card px-3.5 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-muted-foreground hover:border-emerald-950 focus:border-emerald-950 focus:ring-emerald-950"
+                      />
+                    </div>
 
                     <div className="min-w-0">
                       <label
@@ -497,12 +506,13 @@ export default function EducatorServicesStudio({
 
                       <div className="relative">
                         <input
-                       
                           type="text"
                           min="0"
                           step="0.01"
                           value={form.subject}
-                         onChange={(event) => updateField("subject", event.target.value)}
+                          onChange={(event) =>
+                            updateField("subject", event.target.value)
+                          }
                           placeholder="Mathematics"
                           maxLength={120}
                           className="h-11 w-full rounded-none border border-emerald-900 bg-card px-3.5 text-sm text-white outline-none transition placeholder:text-muted-foreground hover:border-emerald-950 focus:border-emerald-950 focus:ring-emerald-950"
@@ -524,7 +534,7 @@ export default function EducatorServicesStudio({
                       </div>
                     </div>
 
-                      <div className="min-w-0">
+                    <div className="min-w-0">
                       <label
                         htmlFor="hourlyRate"
                         className="mb-1.5 block text-xs font-semibold text-white"
@@ -534,12 +544,13 @@ export default function EducatorServicesStudio({
 
                       <div className="relative">
                         <input
-                       
                           type="text"
                           min="0"
                           step="0.01"
-                         value={form.gradeLevels}
-                          onChange={(event) => updateField("gradeLevels", event.target.value)}
+                          value={form.gradeLevels}
+                          onChange={(event) =>
+                            updateField("gradeLevels", event.target.value)
+                          }
                           placeholder="Grade 4, Grade 5"
                           maxLength={120}
                           className="h-11 w-full rounded-none border border-emerald-900 bg-card px-3.5 text-sm text-white outline-none transition placeholder:text-muted-foreground hover:border-emerald-950 focus:border-emerald-950 focus:ring-emerald-950"
@@ -550,77 +561,76 @@ export default function EducatorServicesStudio({
                 </section>
 
                 <section className=" bg-emerald-950 shadow-sm">
-                 
                   <div className="grid gap-4 sm:grid-cols-3">
-              {/* Duration */}
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold tracking-tight text-white">
-                  Duration
-                </label>
+                    {/* Duration */}
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold tracking-tight text-white">
+                        Duration
+                      </label>
 
-                <div className="relative">
-                  <input
-                    type="number"
-                    min="15"
-                    step="15"
-                    value={form.durationMinutes}
-                    onChange={(event) =>
-                      updateField("durationMinutes", event.target.value)
-                    }
-                    placeholder="60"
-                    className="form-input w-full px-2 py-1 bg-emerald-950 pr-16 border border-emerald-900 text-white placeholder:text-muted-foreground"
-                  />
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="15"
+                          step="15"
+                          value={form.durationMinutes}
+                          onChange={(event) =>
+                            updateField("durationMinutes", event.target.value)
+                          }
+                          placeholder="60"
+                          className="form-input w-full px-2 py-1 bg-emerald-950 pr-16 border border-emerald-900 text-white placeholder:text-muted-foreground"
+                        />
 
-                  <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center border-l border-emerald-900 px-3 py-2 text-sm font-medium text-white">
-                    min
-                  </span>
-                </div>
-              </div>
+                        <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center border-l border-emerald-900 px-3 py-2 text-sm font-medium text-white">
+                          min
+                        </span>
+                      </div>
+                    </div>
 
-              {/* Price */}
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold tracking-tight text-white">
-                  Price
-                </label>
+                    {/* Price */}
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold tracking-tight text-white">
+                        Price
+                      </label>
 
-                <div className="relative">
-                  <DollarSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white" />
+                      <div className="relative">
+                        <DollarSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white" />
 
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.price}
-                    onChange={(event) =>
-                      updateField("price", event.target.value)
-                    }
-                    placeholder="35.00"
-                    className="form-input w-full px-2 py-1 bg-emerald-950 pl-9 border border-emerald-900 pr-3 text-white placeholder:text-white"
-                  />
-                </div>
-              </div>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={form.price}
+                          onChange={(event) =>
+                            updateField("price", event.target.value)
+                          }
+                          placeholder="35.00"
+                          className="form-input w-full px-2 py-1 bg-emerald-950 pl-9 border border-emerald-900 pr-3 text-white placeholder:text-white"
+                        />
+                      </div>
+                    </div>
 
-              {/* Currency */}
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold tracking-tight text-white">
-                  Currency
-                </label>
+                    {/* Currency */}
+                    <div className="space-y-2">
+                      <label className="block text-sm font-semibold tracking-tight text-white">
+                        Currency
+                      </label>
 
-                <select
-                  value={form.currency}
-                  onChange={(event) =>
-                    updateField(
-                      "currency",
-                      event.target.value as "USD" | "GHS"
-                    )
-                  }
-                  className="form-input w-full bg-emerald-950 text-white px-2 py-1 border border-emerald-900"
-                >
-                  <option value="USD">USD — US Dollar</option>
-                  <option value="GHS">GHS — Ghana Cedi</option>
-                </select>
-              </div>
-            </div>
+                      <select
+                        value={form.currency}
+                        onChange={(event) =>
+                          updateField(
+                            "currency",
+                            event.target.value as "USD" | "GHS",
+                          )
+                        }
+                        className="form-input w-full bg-emerald-950 text-white px-2 py-1 border border-emerald-900"
+                      >
+                        <option value="USD">USD — US Dollar</option>
+                        <option value="GHS">GHS — Ghana Cedi</option>
+                      </select>
+                    </div>
+                  </div>
                 </section>
               </div>
 
@@ -638,7 +648,11 @@ export default function EducatorServicesStudio({
                   disabled={loading}
                   className="inline-flex items-center justify-center gap-2 rounded-none bg-card px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
                   {editingId ? "Save changes" : "Save as draft"}
                 </button>
               </div>
@@ -652,13 +666,13 @@ export default function EducatorServicesStudio({
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-[26px] font-semibold tracking-[-0.035em] text-white sm:text-[30px]">
-                My Tutoring services
-              </h1>
+              My Tutoring services
+            </h1>
 
-              <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-500">
-                Create and manage the tutoring services students
-                can book with you.
-              </p>
+            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-500">
+              Create and manage the tutoring services students can book with
+              you.
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -698,12 +712,9 @@ export default function EducatorServicesStudio({
           </div>
         )}
       </section>
-
-    
     </div>
   );
 }
-
 
 function ServiceCard({
   service,
@@ -906,4 +917,3 @@ function EmptyServicesState({ onCreate }: { onCreate: () => void }) {
     </div>
   );
 }
-

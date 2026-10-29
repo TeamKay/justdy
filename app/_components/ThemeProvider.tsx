@@ -7,9 +7,7 @@ type ThemeProviderProps = {
   children: React.ReactNode;
 };
 
-export function ThemeProvider({
-  children,
-}: ThemeProviderProps) {
+export function ThemeProvider({ children }: ThemeProviderProps) {
   return (
     <NextThemesProvider
       attribute="class"

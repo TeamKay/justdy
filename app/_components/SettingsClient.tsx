@@ -59,7 +59,6 @@ export default function SettingsClient({ user }: Props) {
   return (
     <main className="min-h-full bg-white text-slate-950">
       <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
-
         {/* ====================================================== */}
         {/* HEADER                                                  */}
         {/* ====================================================== */}
@@ -72,8 +71,7 @@ export default function SettingsClient({ user }: Props) {
               </h1>
 
               <p className="mt-2 max-w-lg text-sm leading-6 text-slate-500">
-                Manage your account, billing, and workspace
-                preferences.
+                Manage your account, billing, and workspace preferences.
               </p>
             </div>
 
@@ -92,7 +90,6 @@ export default function SettingsClient({ user }: Props) {
         {/* ====================================================== */}
 
         <section className="overflow-hidden rounded-lg border border-[#181818]/20 bg-white ">
-
           {/* subtle header */}
           <div className="relative h-24 overflow-hidden bg-[#181818]">
             <div className="absolute -right-12 -top-24 size-64 rounded-lg bg-[#181818] blur-3xl" />
@@ -128,9 +125,7 @@ export default function SettingsClient({ user }: Props) {
                     </span>
                   </div>
 
-                  <p className="mt-1 text-sm text-slate-500">
-                    {user.email}
-                  </p>
+                  <p className="mt-1 text-sm text-slate-500">{user.email}</p>
                 </div>
               </div>
             </div>
@@ -157,7 +152,6 @@ export default function SettingsClient({ user }: Props) {
               </div>
 
               <div className="grid sm:grid-cols-2">
-
                 {/* Name */}
                 <div className="border-b border-slate-100 px-5 py-5 sm:border-r sm:px-6">
                   <div className="mb-2 flex items-center gap-2">
@@ -198,9 +192,7 @@ export default function SettingsClient({ user }: Props) {
                     </span>
                   </div>
 
-                  <p className="text-sm font-semibold text-slate-900">
-                    Justdy
-                  </p>
+                  <p className="text-sm font-semibold text-slate-900">Justdy</p>
                 </div>
 
                 {/* Status */}
@@ -233,7 +225,6 @@ export default function SettingsClient({ user }: Props) {
             <section className="overflow-hidden rounded-lg border border-violet-200 bg-linear-to-br from-violet-50 via-white to-indigo-50 shadow-[0_10px_35px_rgba(124,58,237,0.08)]">
               <div className="p-5 sm:p-6">
                 <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-
                   <div className="flex gap-4">
                     <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-violet-600 text-white shadow-sm">
                       <CreditCard className="size-5" />
@@ -251,9 +242,8 @@ export default function SettingsClient({ user }: Props) {
                       </div>
 
                       <p className="mt-1 max-w-md text-xs leading-5 text-slate-500">
-                        Manage your credits, view billing
-                        options, and choose a plan that fits
-                        your creative workflow.
+                        Manage your credits, view billing options, and choose a
+                        plan that fits your creative workflow.
                       </p>
                     </div>
                   </div>
@@ -268,7 +258,6 @@ export default function SettingsClient({ user }: Props) {
                 </div>
 
                 <div className="mt-6 grid gap-3 sm:grid-cols-3">
-
                   <div className="rounded-2xl border border-white/80 bg-white/80 p-4">
                     <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">
                       Plans
@@ -298,7 +287,6 @@ export default function SettingsClient({ user }: Props) {
                       Manage purchases
                     </p>
                   </div>
-
                 </div>
               </div>
             </section>
@@ -309,22 +297,18 @@ export default function SettingsClient({ user }: Props) {
           {/* ==================================================== */}
 
           <div className="space-y-6">
-
             {/* -------------------------------------------------- */}
             {/* SECURITY                                            */}
             {/* -------------------------------------------------- */}
 
             <section className="rounded-3xl border border-slate-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
-
               <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-5">
                 <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
                   <ShieldCheck className="size-4.5" />
                 </div>
 
                 <div>
-                  <h2 className="text-sm font-bold text-slate-950">
-                    Security
-                  </h2>
+                  <h2 className="text-sm font-bold text-slate-950">Security</h2>
 
                   <p className="mt-0.5 text-xs text-slate-500">
                     Your account protection status.
@@ -333,7 +317,6 @@ export default function SettingsClient({ user }: Props) {
               </div>
 
               <div className="p-5">
-
                 <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
                   <div className="flex items-start gap-3">
                     <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white text-emerald-600 shadow-sm">
@@ -346,13 +329,11 @@ export default function SettingsClient({ user }: Props) {
                       </p>
 
                       <p className="mt-1 text-xs leading-5 text-emerald-700/80">
-                        Your current Justdy session is
-                        authenticated and active.
+                        Your current Justdy session is authenticated and active.
                       </p>
                     </div>
                   </div>
                 </div>
-
               </div>
             </section>
 
@@ -361,7 +342,6 @@ export default function SettingsClient({ user }: Props) {
             {/* -------------------------------------------------- */}
 
             <section className="rounded-3xl border border-slate-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
-
               <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-5">
                 <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                   <CircleHelp className="size-4.5" />
@@ -379,10 +359,9 @@ export default function SettingsClient({ user }: Props) {
               </div>
 
               <div className="p-5">
-
                 <p className="text-xs leading-5 text-slate-500">
-                  Have a question about your account,
-                  credits, or something in your workspace?
+                  Have a question about your account, credits, or something in
+                  your workspace?
                 </p>
 
                 <a
@@ -415,20 +394,16 @@ export default function SettingsClient({ user }: Props) {
             {/* -------------------------------------------------- */}
 
             <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
-
               <div className="flex items-start gap-3">
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
                   <LogOut className="size-4" />
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-sm font-bold text-slate-950">
-                    Sign out
-                  </h2>
+                  <h2 className="text-sm font-bold text-slate-950">Sign out</h2>
 
                   <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Sign out of your Justdy account on this
-                    device.
+                    Sign out of your Justdy account on this device.
                   </p>
 
                   <button
@@ -439,9 +414,7 @@ export default function SettingsClient({ user }: Props) {
                   >
                     <LogOut className="size-3.5" />
 
-                    {signingOut
-                      ? "Signing out..."
-                      : "Sign out"}
+                    {signingOut ? "Signing out..." : "Sign out"}
                   </button>
                 </div>
               </div>
@@ -454,13 +427,9 @@ export default function SettingsClient({ user }: Props) {
         {/* ====================================================== */}
 
         <div className="mt-8 flex flex-col items-center justify-between gap-2 border-t border-slate-100 pt-6 text-[11px] text-slate-400 sm:flex-row">
-          <p>
-            Justdy · Creative workspace
-          </p>
+          <p>Justdy · Creative workspace</p>
 
-          <p>
-            Account settings
-          </p>
+          <p>Account settings</p>
         </div>
       </div>
     </main>

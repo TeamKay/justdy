@@ -86,9 +86,7 @@ export default async function LearnerSessionsPage() {
 
   if (!user.emailVerified) {
     redirect(
-      `/verify-request?email=${encodeURIComponent(
-        session.user.email ?? "",
-      )}`,
+      `/verify-request?email=${encodeURIComponent(session.user.email ?? "")}`,
     );
   }
 
@@ -188,17 +186,15 @@ export default async function LearnerSessionsPage() {
           </h1>
 
           <p className="mt-2 max-w-2xl text-muted-foreground">
-            Manage upcoming tutoring sessions and review what you learned
-            after each lesson.
+            Manage upcoming tutoring sessions and review what you learned after
+            each lesson.
           </p>
         </header>
 
         <section className="rounded-lg border bg-card p-5 shadow-sm sm:p-6">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold">
-                Upcoming sessions
-              </h2>
+              <h2 className="text-xl font-semibold">Upcoming sessions</h2>
 
               <p className="mt-1 text-sm text-muted-foreground">
                 Your next scheduled tutoring sessions.
@@ -212,9 +208,7 @@ export default async function LearnerSessionsPage() {
             <div className="mt-6 rounded-lg border border-dashed p-8 text-center">
               <CalendarDays className="mx-auto h-8 w-8 text-muted-foreground" />
 
-              <p className="mt-3 font-medium">
-                No upcoming sessions
-              </p>
+              <p className="mt-3 font-medium">No upcoming sessions</p>
 
               <p className="mt-1 text-sm text-muted-foreground">
                 Book a tutor when you are ready for your next lesson.
@@ -253,11 +247,8 @@ export default async function LearnerSessionsPage() {
                       60000,
                   );
 
-               
                 const sessionHref = joinable
-                  ? `/tutoring/sessions/${encodeURIComponent(
-                      item.bookingId,
-                    )}`
+                  ? `/tutoring/sessions/${encodeURIComponent(item.bookingId)}`
                   : `/tutoring/sessions/${item.id}`;
 
                 return (
@@ -297,9 +288,7 @@ export default async function LearnerSessionsPage() {
 
                     <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
                       <div className="rounded-lg bg-muted/50 p-3">
-                        <p className="text-xs text-muted-foreground">
-                          Date
-                        </p>
+                        <p className="text-xs text-muted-foreground">Date</p>
 
                         <p className="mt-1 font-medium">
                           {formatDate(item.scheduledStart)}
@@ -307,9 +296,7 @@ export default async function LearnerSessionsPage() {
                       </div>
 
                       <div className="rounded-lg bg-muted/50 p-3">
-                        <p className="text-xs text-muted-foreground">
-                          Time
-                        </p>
+                        <p className="text-xs text-muted-foreground">Time</p>
 
                         <p className="mt-1 font-medium">
                           {formatTime(item.scheduledStart)}
@@ -353,9 +340,7 @@ export default async function LearnerSessionsPage() {
         <section className="rounded-lg border bg-card p-5 shadow-sm sm:p-6">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold">
-                Completed sessions
-              </h2>
+              <h2 className="text-xl font-semibold">Completed sessions</h2>
 
               <p className="mt-1 text-sm text-muted-foreground">
                 Review your tutoring outcomes and next steps.
@@ -379,9 +364,7 @@ export default async function LearnerSessionsPage() {
                 >
                   <div className="min-w-0">
                     <p className="truncate font-medium">
-                      {item.service?.title ??
-                        item.topic ??
-                        "Tutoring session"}
+                      {item.service?.title ?? item.topic ?? "Tutoring session"}
                     </p>
 
                     <p className="mt-1 text-sm text-muted-foreground">

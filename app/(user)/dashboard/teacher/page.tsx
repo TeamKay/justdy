@@ -9,7 +9,9 @@ async function TeacherDashboardContent() {
   const data = await getDashboardData();
 
   if (!data.account.isTeacherAdmin) {
-    redirect(data.account.isLearner ? "/dashboard/learner" : "/auth?mode=signin");
+    redirect(
+      data.account.isLearner ? "/dashboard/learner" : "/auth?mode=signin",
+    );
   }
 
   return (

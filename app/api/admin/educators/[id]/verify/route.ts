@@ -3,14 +3,9 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import {
-  CAPABILITIES,
-  ensureCapabilities,
-} from "@/lib/auth/capabilities";
+import { CAPABILITIES, ensureCapabilities } from "@/lib/auth/capabilities";
 
-type VerificationAction =
-  | "verify"
-  | "reject";
+type VerificationAction = "verify" | "reject";
 
 export async function POST(
   req: Request,
@@ -25,19 +20,14 @@ export async function POST(
      * Only authenticated administrators may approve
      * or reject tutor applications.
      */
-    const session =
-      await auth.api.getSession({
-        headers: await headers(),
-      });
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
 
-    if (
-      !session?.user?.id ||
-      session.user.role !== "ADMIN"
-    ) {
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json(
         {
-          error:
-            "Administrator access required.",
+          error: "Administrator access required.",
         },
         { status: 403 },
       );
@@ -45,61 +35,49 @@ export async function POST(
 
     const { id } = await params;
 
-    const body =
-      (await req
-        .json()
-        .catch(() => ({}))) as {
-        action?: string;
-      };
+    const body = (await req.json().catch(() => ({}))) as {
+      action?: string;
+    };
 
-    if (
-      body.action !== "verify" &&
-      body.action !== "reject"
-    ) {
+    if (body.action !== "verify" && body.action !== "reject") {
       return NextResponse.json(
         {
-          error:
-            "Action must be verify or reject.",
+          error: "Action must be verify or reject.",
         },
         { status: 400 },
       );
     }
 
-    const action =
-      body.action as VerificationAction;
+    const action = body.action as VerificationAction;
 
     /*
      * Load the teaching profile together with
      * the associated account.
      */
-    const profile =
-      await prisma.teachingProfile.findUnique(
-        {
-          where: {
-            id,
-          },
+    const profile = await prisma.teachingProfile.findUnique({
+      where: {
+        id,
+      },
 
+      select: {
+        id: true,
+        userId: true,
+        verificationStatus: true,
+
+        user: {
           select: {
             id: true,
-            userId: true,
-            verificationStatus: true,
-
-            user: {
-              select: {
-                id: true,
-                role: true,
-                status: true,
-              },
-            },
+            role: true,
+            status: true,
           },
         },
-      );
+      },
+    });
 
     if (!profile) {
       return NextResponse.json(
         {
-          error:
-            "Teaching application not found.",
+          error: "Teaching application not found.",
         },
         { status: 404 },
       );
@@ -111,13 +89,10 @@ export async function POST(
      * They do not need to go through the normal
      * tutor approval process.
      */
-    if (
-      profile.user.role === "ADMIN"
-    ) {
+    if (profile.user.role === "ADMIN") {
       return NextResponse.json(
         {
-          error:
-            "Administrator teaching profiles do not require approval.",
+          error: "Administrator teaching profiles do not require approval.",
         },
         { status: 400 },
       );
@@ -127,9 +102,7 @@ export async function POST(
      * Only active learner accounts can be approved
      * as tutors.
      */
-    if (
-      profile.user.status !== "Active"
-    ) {
+    if (profile.user.status !== "Active") {
       return NextResponse.json(
         {
           error:
@@ -139,8 +112,7 @@ export async function POST(
       );
     }
 
-    const verified =
-      action === "verify";
+    const verified = action === "verify";
 
     /*
      * ---------------------------------------------------------
@@ -165,20 +137,16 @@ export async function POST(
         },
 
         data: {
-          verificationStatus:
-            "Verified",
+          verificationStatus: "Verified",
         },
       });
 
-      await ensureCapabilities(
-        profile.userId,
-        [
-          CAPABILITIES.LEARN,
-          CAPABILITIES.TEACH,
-          CAPABILITIES.TUTOR,
-          CAPABILITIES.RECEIVE_PAYOUTS,
-        ],
-      );
+      await ensureCapabilities(profile.userId, [
+        CAPABILITIES.LEARN,
+        CAPABILITIES.TEACH,
+        CAPABILITIES.TUTOR,
+        CAPABILITIES.RECEIVE_PAYOUTS,
+      ]);
 
       return NextResponse.json({
         success: true,
@@ -214,54 +182,14 @@ export async function POST(
       },
 
       data: {
-        verificationStatus:
-          "Rejected",
+        verificationStatus: "Rejected",
       },
     });
-
-    const teachingCapabilities =
-      await prisma.capability.findMany({
-        where: {
-          key: {
-            in: [
-              CAPABILITIES.TEACH,
-              CAPABILITIES.TUTOR,
-              CAPABILITIES.RECEIVE_PAYOUTS,
-            ],
-          },
-        },
-
-        select: {
-          id: true,
-        },
-      });
-
-    if (
-      teachingCapabilities.length > 0
-    ) {
-      await prisma.userCapability.deleteMany(
-        {
-          where: {
-            userId: profile.userId,
-
-            capabilityId: {
-              in: teachingCapabilities.map(
-                (capability) =>
-                  capability.id,
-              ),
-            },
-          },
-        },
-      );
-    }
 
     /*
      * Explicitly preserve learner access.
      */
-    await ensureCapabilities(
-      profile.userId,
-      [CAPABILITIES.LEARN],
-    );
+    await ensureCapabilities(profile.userId, [CAPABILITIES.LEARN]);
 
     return NextResponse.json({
       success: true,
@@ -269,15 +197,11 @@ export async function POST(
       userId: profile.userId,
     });
   } catch (error) {
-    console.error(
-      "Tutor verification error:",
-      error,
-    );
+    console.error("Tutor verification error:", error);
 
     return NextResponse.json(
       {
-        error:
-          "Unable to update tutor application.",
+        error: "Unable to update tutor application.",
       },
       { status: 500 },
     );

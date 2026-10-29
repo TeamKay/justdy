@@ -1,15 +1,14 @@
 // app/components/HeroLanding.tsx
-import Image from "next/image"
-import { Check } from "lucide-react"
-import Link from "next/link"
-import { buttonVariants } from "@/components/ui/button"
+import Image from "next/image";
+import { Check } from "lucide-react";
+import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
 
 export default function GameHeroLanding() {
   return (
     <section className="relative py-20 overflow-hidden">
       <div className="container mx-auto px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-
           {/* LEFT COLUMN — IMAGE */}
           <div className="relative flex justify-center">
             <div className="relative w-full max-w-xl">
@@ -27,7 +26,8 @@ export default function GameHeroLanding() {
           {/* RIGHT COLUMN — TEXT */}
           <div className="flex flex-col space-y-6">
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white-900">
-              Learning that kids love <br className="hidden md:block" /> and parents trust
+              Learning that kids love <br className="hidden md:block" /> and
+              parents trust
             </h1>
 
             <ul className="space-y-4 text-lg text-gray-100">
@@ -49,14 +49,16 @@ export default function GameHeroLanding() {
             </ul>
 
             <div className="pt-6">
-              <Link href="/signup" className={buttonVariants({ size: "lg", variant: "outline" })}>
+              <Link
+                href="/signup"
+                className={buttonVariants({ size: "lg", variant: "outline" })}
+              >
                 Sign up for free
               </Link>
             </div>
           </div>
-
         </div>
       </div>
     </section>
-  )
+  );
 }

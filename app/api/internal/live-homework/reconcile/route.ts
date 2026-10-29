@@ -1,8 +1,6 @@
 import { reconcileStaleLiveHomeworkReservations } from "@/lib/credits/live-homework-reconciliation";
 import { NextRequest, NextResponse } from "next/server";
 
-
-
 function isAuthorized(request: NextRequest) {
   const secret = process.env.INTERNAL_RECONCILE_SECRET?.trim();
   if (!secret) return false;

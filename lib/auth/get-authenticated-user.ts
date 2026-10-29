@@ -31,15 +31,6 @@ export const getAuthenticatedUser = cache(async () => {
       verificationStatus: true,
       stripeCustomerId: true,
 
-      // Capability flags make the application role-agnostic.
-      canLearn: true,
-      canTeach: true,
-      canTutor: true,
-      canCreateResources: true,
-      canPublish: true,
-      canSell: true,
-      canManageSchool: true,
-
       learningProfile: {
         select: {
           id: true,
@@ -77,19 +68,6 @@ export const getAuthenticatedUser = cache(async () => {
           specialties: true,
           websiteUrl: true,
           socialLinks: true,
-        },
-      },
-
-      capabilities: {
-        select: {
-          capability: {
-            select: {
-              id: true,
-              key: true,
-              name: true,
-              description: true,
-            },
-          },
         },
       },
 

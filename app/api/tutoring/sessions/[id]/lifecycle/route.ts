@@ -81,8 +81,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     if (action === "start") {
       const now = Date.now();
-      const joinStart =
-        startTime.getTime() - JOIN_WINDOW_MINUTES * 60 * 1000;
+      const joinStart = startTime.getTime() - JOIN_WINDOW_MINUTES * 60 * 1000;
 
       if (now < joinStart) {
         return NextResponse.json(
@@ -120,11 +119,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       }
 
       if (booking.tutoringSession?.status === "NO_SHOW") {
-  return NextResponse.json(
-    { error: "This tutoring session was recorded as a no-show." },
-    { status: 409 },
-  );
-}
+        return NextResponse.json(
+          { error: "This tutoring session was recorded as a no-show." },
+          { status: 409 },
+        );
+      }
 
       if (isTutor) {
         const tutor = await getVerifiedTutor(user.id);
@@ -151,8 +150,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
         }
 
         if (existing?.status === "NO_SHOW") {
-  throw new Error("SESSION_NO_SHOW");
-}
+          throw new Error("SESSION_NO_SHOW");
+        }
 
         if (existing) {
           return tx.tutoringSession.update({
@@ -302,11 +301,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     if (message === "SESSION_NO_SHOW") {
-  return NextResponse.json(
-    { error: "This tutoring session was recorded as a no-show." },
-    { status: 409 },
-  );
-}
+      return NextResponse.json(
+        { error: "This tutoring session was recorded as a no-show." },
+        { status: 409 },
+      );
+    }
 
     if (message === "SESSION_STATE_CHANGED") {
       return NextResponse.json(

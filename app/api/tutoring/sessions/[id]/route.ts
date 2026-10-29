@@ -4,10 +4,7 @@ import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getVerifiedTutor } from "@/lib/tutoring/authorization";
-import {
-  createDailyMeetingToken,
-  ensureDailyRoom,
-} from "@/lib/daily";
+import { createDailyMeetingToken, ensureDailyRoom } from "@/lib/daily";
 
 export const runtime = "nodejs";
 
@@ -86,23 +83,16 @@ async function getAuthorizedBooking(
     };
   }
 
-  const normalizedUserRole = String(
-    userRole ?? "",
-  )
+  const normalizedUserRole = String(userRole ?? "")
     .trim()
     .toUpperCase();
 
-const role:
-  | "customer"
-  | "tutor"
-  | null =
-  booking.studentId === userId
-    ? "customer"
-    : booking.educatorId === userId
-      ? "tutor"
-      : null;
-
-
+  const role: "customer" | "tutor" | null =
+    booking.studentId === userId
+      ? "customer"
+      : booking.educatorId === userId
+        ? "tutor"
+        : null;
 
   if (!role) {
     return {
@@ -142,30 +132,21 @@ function getJoinState(
   const start = startTime.getTime();
   const end = endTime.getTime();
 
-  const joinWindowStart =
-    start -
-    JOIN_WINDOW_MINUTES *
-      60 *
-      1000;
+  const joinWindowStart = start - JOIN_WINDOW_MINUTES * 60 * 1000;
 
-  const beforeJoinWindow =
-    now < joinWindowStart;
+  const beforeJoinWindow = now < joinWindowStart;
 
-  const afterSession =
-    now > end;
+  const afterSession = now > end;
 
   const sessionOpen =
     sessionStatus === null ||
-    sessionStatus ===
-      "SCHEDULED" ||
-    sessionStatus ===
-      "IN_PROGRESS";
+    sessionStatus === "SCHEDULED" ||
+    sessionStatus === "IN_PROGRESS";
 
   const canJoin =
     !beforeJoinWindow &&
     !afterSession &&
-    bookingStatus ===
-      "Scheduled" &&
+    bookingStatus === "Scheduled" &&
     sessionOpen;
 
   return {
@@ -175,45 +156,26 @@ function getJoinState(
 
     afterSession,
 
-    joinWindowStart:
-      new Date(
-        joinWindowStart,
-      ).toISOString(),
+    joinWindowStart: new Date(joinWindowStart).toISOString(),
   };
 }
 
-function getDailyRoomName(
-  bookingId: string,
-) {
+function getDailyRoomName(bookingId: string) {
   return `${DAILY_ROOM_PREFIX}${bookingId}`;
 }
 
-function isDailyRoomName(
-  value:
-    | string
-    | null
-    | undefined,
-): value is string {
-  return Boolean(
-    value?.startsWith(
-      DAILY_ROOM_PREFIX,
-    ),
-  );
+function isDailyRoomName(value: string | null | undefined): value is string {
+  return Boolean(value?.startsWith(DAILY_ROOM_PREFIX));
 }
 
-export async function GET(
-  _request: NextRequest,
-  context: RouteContext,
-) {
+export async function GET(_request: NextRequest, context: RouteContext) {
   try {
-    const user =
-      await getAuthenticatedUser();
+    const user = await getAuthenticatedUser();
 
     if (!user?.id) {
       return NextResponse.json(
         {
-          error:
-            "Unauthorized",
+          error: "Unauthorized",
         },
         {
           status: 401,
@@ -221,14 +183,12 @@ export async function GET(
       );
     }
 
-    const { id } =
-      await context.params;
+    const { id } = await context.params;
 
     if (!id) {
       return NextResponse.json(
         {
-          error:
-            "Session ID is required.",
+          error: "Session ID is required.",
         },
         {
           status: 400,
@@ -236,20 +196,12 @@ export async function GET(
       );
     }
 
-    const result =
-      await getAuthorizedBooking(
-        id,
-        user.id,
-        user.role,
-      );
+    const result = await getAuthorizedBooking(id, user.id, user.role);
 
-    if (
-      result.unauthorized
-    ) {
+    if (result.unauthorized) {
       return NextResponse.json(
         {
-          error:
-            "You are not authorized to access this tutoring session.",
+          error: "You are not authorized to access this tutoring session.",
         },
         {
           status: 403,
@@ -257,14 +209,10 @@ export async function GET(
       );
     }
 
-    if (
-      !result.booking ||
-      !result.role
-    ) {
+    if (!result.booking || !result.role) {
       return NextResponse.json(
         {
-          error:
-            "Tutoring session not found.",
+          error: "Tutoring session not found.",
         },
         {
           status: 404,
@@ -272,38 +220,22 @@ export async function GET(
       );
     }
 
-    const {
-      booking,
-      role,
-    } = result;
+    const { booking, role } = result;
 
-    const startTime =
-      booking.availability
-        ?.startTime ??
-      booking.startTime;
+    const startTime = booking.availability?.startTime ?? booking.startTime;
 
-    const endTime =
-      booking.availability
-        ?.endTime ??
-      booking.endTime;
+    const endTime = booking.availability?.endTime ?? booking.endTime;
 
-    const videoSessionAvailable =
-      isDailyRoomName(
-        booking.videoSessionId,
-      );
+    const videoSessionAvailable = isDailyRoomName(booking.videoSessionId);
 
-    const sessionStatus =
-      booking.tutoringSession
-        ?.status ??
-      null;
+    const sessionStatus = booking.tutoringSession?.status ?? null;
 
-    const joinState =
-      getJoinState(
-        startTime,
-        endTime,
-        booking.status,
-        sessionStatus,
-      );
+    const joinState = getJoinState(
+      startTime,
+      endTime,
+      booking.status,
+      sessionStatus,
+    );
 
     const viewerReview =
       role === "customer"
@@ -321,138 +253,82 @@ export async function GET(
       session: {
         id: booking.id,
 
-        bookingId:
-          booking.id,
+        bookingId: booking.id,
 
         role,
 
-        subject:
-          booking.subject,
+        subject: booking.subject,
 
-        gradeLevel:
-          booking.gradeLevel,
+        gradeLevel: booking.gradeLevel,
 
-        topic:
-          booking.description,
+        topic: booking.description,
 
-        description:
-          booking.description,
+        description: booking.description,
 
-        amount:
-          booking.service
-            ?.price ??
-          0,
+        amount: booking.service?.price ?? 0,
 
-        currency:
-          booking.service
-            ?.currency ??
-          "USD",
+        currency: booking.service?.currency ?? "USD",
 
-        status:
-          booking.status,
+        status: booking.status,
 
-        tutoringSessionStatus:
-          sessionStatus,
+        tutoringSessionStatus: sessionStatus,
 
         review: viewerReview,
 
-        feedback:
-          booking.tutoringSession
-            ? {
-                topic:
-                  booking
-                    .tutoringSession
-                    .topic,
+        feedback: booking.tutoringSession
+          ? {
+              topic: booking.tutoringSession.topic,
 
-                topicsCovered:
-                  booking
-                    .tutoringSession
-                    .topicsCovered,
+              topicsCovered: booking.tutoringSession.topicsCovered,
 
-                strengths:
-                  booking
-                    .tutoringSession
-                    .strengths,
+              strengths: booking.tutoringSession.strengths,
 
-                needsPractice:
-                  booking
-                    .tutoringSession
-                    .needsPractice,
+              needsPractice: booking.tutoringSession.needsPractice,
 
-                nextStep:
-                  booking
-                    .tutoringSession
-                    .nextStep,
+              nextStep: booking.tutoringSession.nextStep,
 
-                tutorNotes:
-                  role === "tutor"
-                    ? booking
-                        .tutoringSession
-                        .tutorNotes
-                    : null,
+              tutorNotes:
+                role === "tutor" ? booking.tutoringSession.tutorNotes : null,
 
-                learnerOutcome:
-                  booking
-                    .tutoringSession
-                    .learnerOutcome,
-              }
-            : null,
+              learnerOutcome: booking.tutoringSession.learnerOutcome,
+            }
+          : null,
 
-        startTime:
-          startTime.toISOString(),
+        startTime: startTime.toISOString(),
 
-        endTime:
-          endTime.toISOString(),
+        endTime: endTime.toISOString(),
 
         videoSessionAvailable,
 
-        canJoin:
-          joinState.canJoin,
+        canJoin: joinState.canJoin,
 
-        beforeJoinWindow:
-          joinState.beforeJoinWindow,
+        beforeJoinWindow: joinState.beforeJoinWindow,
 
-        afterSession:
-          joinState.afterSession,
+        afterSession: joinState.afterSession,
 
-        joinWindowStart:
-          joinState.joinWindowStart,
+        joinWindowStart: joinState.joinWindowStart,
 
-        tutor:
-          booking.educator,
+        tutor: booking.educator,
 
-        customer:
-          booking.student,
+        customer: booking.student,
 
-        service:
-          booking.service
-            ? {
-                id:
-                  booking.service
-                    .id,
+        service: booking.service
+          ? {
+              id: booking.service.id,
 
-                title:
-                  booking.service
-                    .title,
+              title: booking.service.title,
 
-                durationMinutes:
-                  booking
-                    .service
-                    .durationMinutes,
-              }
-            : null,
+              durationMinutes: booking.service.durationMinutes,
+            }
+          : null,
       },
     });
   } catch (error) {
-    console.error(
-      "GET /api/tutoring/sessions/[id] error:",
-      error,
-    );
+    console.error("GET /api/tutoring/sessions/[id] error:", error);
 
     return NextResponse.json(
       {
-        error:
-          "Failed to load tutoring session.",
+        error: "Failed to load tutoring session.",
       },
       {
         status: 500,
@@ -461,19 +337,14 @@ export async function GET(
   }
 }
 
-export async function POST(
-  _request: NextRequest,
-  context: RouteContext,
-) {
+export async function POST(_request: NextRequest, context: RouteContext) {
   try {
-    const user =
-      await getAuthenticatedUser();
+    const user = await getAuthenticatedUser();
 
     if (!user?.id) {
       return NextResponse.json(
         {
-          error:
-            "Unauthorized",
+          error: "Unauthorized",
         },
         {
           status: 401,
@@ -481,14 +352,12 @@ export async function POST(
       );
     }
 
-    const { id } =
-      await context.params;
+    const { id } = await context.params;
 
     if (!id) {
       return NextResponse.json(
         {
-          error:
-            "Session ID is required.",
+          error: "Session ID is required.",
         },
         {
           status: 400,
@@ -496,20 +365,12 @@ export async function POST(
       );
     }
 
-    const result =
-      await getAuthorizedBooking(
-        id,
-        user.id,
-        user.role,
-      );
+    const result = await getAuthorizedBooking(id, user.id, user.role);
 
-    if (
-      result.unauthorized
-    ) {
+    if (result.unauthorized) {
       return NextResponse.json(
         {
-          error:
-            "You are not authorized to join this tutoring session.",
+          error: "You are not authorized to join this tutoring session.",
         },
         {
           status: 403,
@@ -517,14 +378,10 @@ export async function POST(
       );
     }
 
-    if (
-      !result.booking ||
-      !result.role
-    ) {
+    if (!result.booking || !result.role) {
       return NextResponse.json(
         {
-          error:
-            "Tutoring session not found.",
+          error: "Tutoring session not found.",
         },
         {
           status: 404,
@@ -532,10 +389,7 @@ export async function POST(
       );
     }
 
-    const {
-      booking,
-      role,
-    } = result;
+    const { booking, role } = result;
 
     /*
      * Parents and guardians can manage the booking
@@ -543,19 +397,14 @@ export async function POST(
      * learner.
      */
 
-
     /*
      * Only scheduled bookings may enter the
      * live classroom.
      */
-    if (
-      booking.status !==
-      "Scheduled"
-    ) {
+    if (booking.status !== "Scheduled") {
       return NextResponse.json(
         {
-          error:
-            "This tutoring session is not scheduled for live access.",
+          error: "This tutoring session is not scheduled for live access.",
         },
         {
           status: 409,
@@ -563,36 +412,23 @@ export async function POST(
       );
     }
 
-    const startTime =
-      booking.availability
-        ?.startTime ??
-      booking.startTime;
+    const startTime = booking.availability?.startTime ?? booking.startTime;
 
-    const endTime =
-      booking.availability
-        ?.endTime ??
-      booking.endTime;
+    const endTime = booking.availability?.endTime ?? booking.endTime;
 
-    const joinState =
-      getJoinState(
-        startTime,
-        endTime,
-        booking.status,
-        booking.tutoringSession
-          ?.status ??
-          null,
-      );
+    const joinState = getJoinState(
+      startTime,
+      endTime,
+      booking.status,
+      booking.tutoringSession?.status ?? null,
+    );
 
-    if (
-      joinState.beforeJoinWindow
-    ) {
+    if (joinState.beforeJoinWindow) {
       return NextResponse.json(
         {
-          error:
-            "The tutoring session has not opened yet.",
+          error: "The tutoring session has not opened yet.",
 
-          joinWindowStart:
-            joinState.joinWindowStart,
+          joinWindowStart: joinState.joinWindowStart,
         },
         {
           status: 403,
@@ -600,13 +436,10 @@ export async function POST(
       );
     }
 
-    if (
-      joinState.afterSession
-    ) {
+    if (joinState.afterSession) {
       return NextResponse.json(
         {
-          error:
-            "The tutoring session has already ended.",
+          error: "The tutoring session has already ended.",
         },
         {
           status: 403,
@@ -617,15 +450,10 @@ export async function POST(
     /*
      * A completed session can never be re-entered.
      */
-    if (
-      booking.tutoringSession
-        ?.status ===
-      "COMPLETED"
-    ) {
+    if (booking.tutoringSession?.status === "COMPLETED") {
       return NextResponse.json(
         {
-          error:
-            "This tutoring session has already been completed.",
+          error: "This tutoring session has already been completed.",
         },
         {
           status: 409,
@@ -636,15 +464,10 @@ export async function POST(
     /*
      * A cancelled session can never be entered.
      */
-    if (
-      booking.tutoringSession
-        ?.status ===
-      "CANCELLED"
-    ) {
+    if (booking.tutoringSession?.status === "CANCELLED") {
       return NextResponse.json(
         {
-          error:
-            "This tutoring session has been cancelled.",
+          error: "This tutoring session has been cancelled.",
         },
         {
           status: 409,
@@ -656,26 +479,17 @@ export async function POST(
      * Tutors must be verified before receiving
      * access to the live classroom.
      */
-    const normalizedUserRole = String(
-      user.role ?? "",
-    )
+    const normalizedUserRole = String(user.role ?? "")
       .trim()
       .toUpperCase();
 
-    if (
-      role === "tutor" &&
-      normalizedUserRole !== "ADMIN"
-    ) {
-      const tutor =
-        await getVerifiedTutor(
-          user.id,
-        );
+    if (role === "tutor" && normalizedUserRole !== "ADMIN") {
+      const tutor = await getVerifiedTutor(user.id);
 
       if (!tutor) {
         return NextResponse.json(
           {
-            error:
-              "Your tutor verification is not currently active.",
+            error: "Your tutor verification is not currently active.",
           },
           {
             status: 403,
@@ -698,14 +512,9 @@ export async function POST(
      * This allows us to migrate without immediately
      * changing the Prisma schema.
      */
-    const videoSessionId =
-      isDailyRoomName(
-        booking.videoSessionId,
-      )
-        ? booking.videoSessionId
-        : getDailyRoomName(
-            booking.id,
-          );
+    const videoSessionId = isDailyRoomName(booking.videoSessionId)
+      ? booking.videoSessionId
+      : getDailyRoomName(booking.id);
 
     /*
      * Daily room opens at the same 30-minute
@@ -713,39 +522,24 @@ export async function POST(
      * business logic.
      */
     const joinWindowStart =
-      startTime.getTime() -
-      JOIN_WINDOW_MINUTES *
-        60 *
-        1000;
+      startTime.getTime() - JOIN_WINDOW_MINUTES * 60 * 1000;
 
     /*
      * Keep the room alive one hour after the
      * scheduled end time.
      */
-    const roomExpiresAt =
-      endTime.getTime() /
-        1000 +
-      TOKEN_BUFFER_SECONDS;
+    const roomExpiresAt = endTime.getTime() / 1000 + TOKEN_BUFFER_SECONDS;
 
     /*
      * Create or update the Daily room.
      */
-    const room =
-      await ensureDailyRoom({
-        roomName:
-          videoSessionId,
+    const room = await ensureDailyRoom({
+      roomName: videoSessionId,
 
-        notBefore:
-          Math.floor(
-            joinWindowStart /
-              1000,
-          ),
+      notBefore: Math.floor(joinWindowStart / 1000),
 
-        expiresAt:
-          Math.floor(
-            roomExpiresAt,
-          ),
-      });
+      expiresAt: Math.floor(roomExpiresAt),
+    });
 
     /*
      * Persist the Daily room name.
@@ -753,24 +547,18 @@ export async function POST(
      * This also replaces any old Vonage session ID
      * on existing bookings.
      */
-    if (
-      booking.videoSessionId !==
-      videoSessionId
-    ) {
-      await prisma.booking.updateMany(
-        {
-          where: {
-            id: booking.id,
+    if (booking.videoSessionId !== videoSessionId) {
+      await prisma.booking.updateMany({
+        where: {
+          id: booking.id,
 
-            status:
-              "Scheduled",
-          },
-
-          data: {
-            videoSessionId,
-          },
+          status: "Scheduled",
         },
-      );
+
+        data: {
+          videoSessionId,
+        },
+      });
     }
 
     /*
@@ -779,36 +567,24 @@ export async function POST(
      *
      * The token is intentionally NOT persisted.
      */
-    const token =
-      await createDailyMeetingToken({
-        roomName:
-          videoSessionId,
+    const token = await createDailyMeetingToken({
+      roomName: videoSessionId,
 
-        userId:
-          user.id,
+      userId: user.id,
 
-        userName:
-          user.name,
+      userName: user.name,
 
-        role,
+      role,
 
-        notBefore:
-          Math.floor(
-            joinWindowStart /
-              1000,
-          ),
+      notBefore: Math.floor(joinWindowStart / 1000),
 
-        expiresAt:
-          Math.floor(
-            roomExpiresAt,
-          ),
-      });
+      expiresAt: Math.floor(roomExpiresAt),
+    });
 
     return NextResponse.json({
       success: true,
 
-      bookingId:
-        booking.id,
+      bookingId: booking.id,
 
       /*
        * Kept under the old field name so existing
@@ -822,18 +598,14 @@ export async function POST(
       /*
        * New explicit Daily room URL.
        */
-      roomUrl:
-        room.url,
+      roomUrl: room.url,
 
       token,
 
       role,
     });
   } catch (error) {
-    console.error(
-      "POST /api/tutoring/sessions/[id] error:",
-      error,
-    );
+    console.error("POST /api/tutoring/sessions/[id] error:", error);
 
     const message =
       error instanceof Error
@@ -842,14 +614,11 @@ export async function POST(
 
     return NextResponse.json(
       {
-        error:
-          "Failed to join tutoring session.",
+        error: "Failed to join tutoring session.",
 
-        ...(process.env.NODE_ENV !==
-        "production"
+        ...(process.env.NODE_ENV !== "production"
           ? {
-              details:
-                message,
+              details: message,
             }
           : {}),
       },

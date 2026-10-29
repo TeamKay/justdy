@@ -1,4 +1,5 @@
-import * as React from "react";
+import { Heading, Text } from "@react-email/components";
+import JustdyEmailLayout, { justdyEmailColors as c } from "./JustdyEmailLayout";
 
 interface FreeConsultationEmailProps {
   name: string;
@@ -12,73 +13,30 @@ interface FreeConsultationEmailProps {
 export default function FreeConsultationEmail({
   name,
   subject,
+  gradeLevel,
   sessionDate,
   startTime,
   purpose,
 }: FreeConsultationEmailProps) {
   return (
-    <div
-      style={{
-        fontFamily: "Arial, sans-serif",
-        backgroundColor: "#f9fafb",
-        padding: "24px",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "600px",
-          margin: "0 auto",
-          backgroundColor: "#ffffff",
-          borderRadius: "12px",
-          padding: "32px",
-          border: "1px solid #e5e7eb",
-        }}
-      >
-        <h1 style={{ color: "#111827", fontSize: "22px", marginTop: "0" }}>
-          Free Consultation Confirmed! 🎉
-        </h1>
-        <p style={{ color: "#4b5563", fontSize: "15px", lineHeight: "1.5" }}>
-          Hi {name},
-        </p>
-        <p style={{ color: "#4b5563", fontSize: "15px", lineHeight: "1.5" }}>
-          Your 15-minute free consultation for <strong>{subject}</strong> has
-          been successfully scheduled. Here are your booking details:
-        </p>
-
-        <div
-          style={{
-            backgroundColor: "#f3f4f6",
-            borderRadius: "9px",
-            padding: "16px",
-            margin: "20px 0",
-          }}
-        >
-          <p style={{ margin: "4px 0", color: "#1f2937", fontSize: "14px" }}>
-            <strong>Subject:</strong> {subject}
-          </p>
-          <p style={{ margin: "4px 0", color: "#1f2937", fontSize: "14px" }}>
-            <strong>Date:</strong> {sessionDate}
-          </p>
-          <p style={{ margin: "4px 0", color: "#1f2937", fontSize: "14px" }}>
-            <strong>Time:</strong> {startTime}
-          </p>
-          {purpose && (
-            <p style={{ margin: "4px 0", color: "#1f2937", fontSize: "14px" }}>
-              <strong>Goal:</strong> {purpose}
-            </p>
-          )}
-        </div>
-
-        <p style={{ color: "#4b5563", fontSize: "14px" }}>
-          Our team will reach out with a meeting link shortly prior to your
-          scheduled time slot.
-        </p>
-
-        <p style={{ color: "#9ca3af", fontSize: "12px", marginTop: "24px" }}>
-          If you need to reschedule or have any questions, feel free to reply to
-          this email.
-        </p>
-      </div>
-    </div>
+    <JustdyEmailLayout preview="Your Justdy consultation details" footerNote="You received this email about your Justdy consultation.">
+      <Heading as="h1" style={{ margin: "0 0 18px", color: c.navy, fontSize: "25px", lineHeight: "1.3" }}>Your Free Consultation</Heading>
+      <Text style={{ margin: "0 0 14px", color: c.text, fontSize: "15px", lineHeight: "1.8" }}>Hello {name},</Text>
+      <Text style={{ margin: "0 0 22px", color: "#475569", fontSize: "15px", lineHeight: "1.8" }}>Your free consultation has been arranged. Here are the details:</Text>
+      <table role="presentation" width="100%" cellPadding="0" cellSpacing="0" style={{ borderCollapse: "collapse", border: `1px solid ${c.border}`, borderRadius: "10px" }}>
+        {[
+          ["Subject", subject],
+          ["Grade level", gradeLevel],
+          ["Date", sessionDate],
+          ["Start time", startTime],
+          ...(purpose ? [["Purpose", purpose]] : []),
+        ].map(([label, value]) => (
+          <tr key={label}>
+            <td style={{ padding: "12px 14px", borderBottom: `1px solid ${c.border}`, color: c.muted, fontSize: "13px", width: "38%" }}>{label}</td>
+            <td style={{ padding: "12px 14px", borderBottom: `1px solid ${c.border}`, color: c.text, fontSize: "14px", fontWeight: 600 }}>{value}</td>
+          </tr>
+        ))}
+      </table>
+    </JustdyEmailLayout>
   );
 }

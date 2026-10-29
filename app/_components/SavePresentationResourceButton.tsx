@@ -96,9 +96,7 @@ export default function SavePresentationResourceButton({
       </button>
 
       {error ? (
-        <p className="max-w-xs text-right text-xs text-destructive">
-          {error}
-        </p>
+        <p className="max-w-xs text-right text-xs text-destructive">{error}</p>
       ) : null}
     </div>
   );

@@ -24,26 +24,19 @@ import EducatorAvailabilityStudio from "@/app/_components/EducatorAvailablityStu
 import EducatorProfileForm from "@/app/_components/EducatorProfileForm";
 import EducatorServicesStudio from "@/app/_components/EducatorServicesStudio";
 
-type AvailabilityProps = ComponentProps<
-  typeof EducatorAvailabilityStudio
->;
+type AvailabilityProps = ComponentProps<typeof EducatorAvailabilityStudio>;
 
 type ProfileFormProps = ComponentProps<typeof EducatorProfileForm>;
 
 type ServicesProps = ComponentProps<typeof EducatorServicesStudio>;
 
-type AvailabilityItem =
-  AvailabilityProps["initialAvailability"][number];
+type AvailabilityItem = AvailabilityProps["initialAvailability"][number];
 
 type ServiceItem = ServicesProps["initialServices"][number];
 
 type ProfileFormValue = ProfileFormProps["initialProfile"];
 
-type TabId =
-  | "overview"
-  | "availability"
-  | "profile"
-  | "services";
+type TabId = "overview" | "availability" | "profile" | "services";
 
 interface EducatorTutoringTabsProps {
   profile: {
@@ -103,7 +96,7 @@ const navigationItems: Array<{
     description: "Your tutoring workspace",
     icon: LayoutDashboard,
   },
-   {
+  {
     id: "profile",
     label: "Teaching Profile",
     shortLabel: "Profile",
@@ -117,7 +110,7 @@ const navigationItems: Array<{
     description: "When students can book you",
     icon: CalendarDays,
   },
- 
+
   {
     id: "services",
     label: "Tutoring Services",
@@ -180,8 +173,7 @@ function formatMoney(
     return "Set your rate";
   }
 
-  const normalizedCurrency =
-    currency === "GHS" ? "GHS" : "USD";
+  const normalizedCurrency = currency === "GHS" ? "GHS" : "USD";
 
   return new Intl.NumberFormat(
     normalizedCurrency === "GHS" ? "en-GH" : "en-US",
@@ -216,12 +208,11 @@ export default function EducatorTutoringTabs({
       ? requestedTab
       : "overview";
 
-  const [activeTab, setActiveTab] =
-    useState<TabId>(initialTab);
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
 
-  const [localImageUrl, setLocalImageUrl] = useState<
-    string | null | undefined
-  >(imageUrl);
+  const [localImageUrl, setLocalImageUrl] = useState<string | null | undefined>(
+    imageUrl,
+  );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -252,16 +243,12 @@ export default function EducatorTutoringTabs({
         currency: profile.currency ?? "",
         subjects: profile.subjects,
         gradeLevels: profile.gradeLevels,
-        verificationStatus:
-          profile.verificationStatus,
+        verificationStatus: profile.verificationStatus,
       }
     : null;
 
   const profileComplete = Boolean(
-    profile &&
-      profile.headline &&
-      profile.specialty &&
-      profile.description,
+    profile && profile.headline && profile.specialty && profile.description,
   );
 
   const activeNavigation = navigationItems.find(
@@ -269,14 +256,10 @@ export default function EducatorTutoringTabs({
   );
 
   const displayName =
-    userName?.trim() ||
-    profile?.headline ||
-    "Your tutoring profile";
+    userName?.trim() || profile?.headline || "Your tutoring profile";
 
   const initials = getInitials(userName);
-  const handleImageSelection = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleImageSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
 
     if (!file) {
@@ -309,15 +292,13 @@ export default function EducatorTutoringTabs({
 
     const query = params.toString();
 
-    router.replace(
-      query ? `${pathname}?${query}` : pathname,
-      { scroll: false },
-    );
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
   };
 
   return (
     <div className="bg-background text-slate-900">
-      
       <section className="relative z-20">
         <div className="mx-auto max-w-310 px-5 sm:px-7 lg:px-9">
           <div className="flex h-12.5 items-stretch overflow-visible">
@@ -332,9 +313,7 @@ export default function EducatorTutoringTabs({
                     index > 0 ? "-ml-px" : ""
                   }`}
                   style={{
-                    zIndex: isActive
-                      ? 50
-                      : navigationItems.length - index,
+                    zIndex: isActive ? 50 : navigationItems.length - index,
                   }}
                 >
                   <button
@@ -348,42 +327,30 @@ export default function EducatorTutoringTabs({
                   >
                     <span
                       className={`absolute inset-0 transition ${
-                        isActive
-                          ? "bg-emerald-700"
-                          : "bg-card"
+                        isActive ? "bg-emerald-700" : "bg-card"
                       }`}
                     />
 
                     <span
                       className={`absolute inset-0 flex items-center justify-center gap-2 pr-5 ${
-                        isActive
-                          ? "text-white"
-                          : "text-white"
+                        isActive ? "text-white" : "text-white"
                       }`}
                     >
                       <Icon
                         className={`h-4 w-4 ${
-                          isActive
-                            ? "text-white"
-                            : "text-white"
+                          isActive ? "text-white" : "text-white"
                         }`}
                         strokeWidth={1.8}
                       />
 
                       <span
                         className={`text-xs font-semibold sm:text-sm ${
-                          isActive
-                            ? "text-white"
-                            : "text-white/30"
+                          isActive ? "text-white" : "text-white/30"
                         }`}
                       >
-                        <span className="sm:hidden">
-                          {item.shortLabel}
-                        </span>
+                        <span className="sm:hidden">{item.shortLabel}</span>
 
-                        <span className="hidden sm:inline">
-                          {item.label}
-                        </span>
+                        <span className="hidden sm:inline">{item.label}</span>
                       </span>
                     </span>
                   </button>
@@ -460,14 +427,12 @@ export default function EducatorTutoringTabs({
                     <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
                       <div className="p-7 sm:p-9 lg:p-11">
                         <h3 className="mt-3 max-w-xl text-3xl font-semibold leading-tight tracking-[-0.035em] text-white sm:text-4xl">
-                          Make it easy for students
-                          to choose you.
+                          Make it easy for students to choose you.
                         </h3>
 
                         <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">
-                          Your profile, services, and availability
-                          work together to create your student-facing
-                          tutoring presence.
+                          Your profile, services, and availability work together
+                          to create your student-facing tutoring presence.
                         </p>
 
                         <div className="mt-7 flex flex-wrap gap-2">
@@ -482,9 +447,7 @@ export default function EducatorTutoringTabs({
 
                           <button
                             type="button"
-                            onClick={() =>
-                              goTo("availability")
-                            }
+                            onClick={() => goTo("availability")}
                             className="inline-flex h-10 items-center gap-2 border border-emerald-900  px-4 text-xs font-semibold text-white transition hover:bg-emerald-950"
                           >
                             Manage availability
@@ -521,8 +484,7 @@ export default function EducatorTutoringTabs({
                               </div>
 
                               <h4 className="mt-3 text-lg font-semibold text-slate-950">
-                                {userName ||
-                                  "Your name"}
+                                {userName || "Your name"}
                               </h4>
 
                               <p className="mt-1 text-xs font-medium text-emerald-600">
@@ -561,15 +523,12 @@ export default function EducatorTutoringTabs({
                       onClick={() => goTo("profile")}
                       className="group p-5 text-left transition hover:bg-slate-50 lg:border-b-0 lg:border-r"
                     >
-                      
                       <p className="mt-5 text-xs font-medium text-white">
                         Profile
                       </p>
 
                       <p className="mt-1 text-lg font-semibold text-muted-foreground">
-                        {profileComplete
-                          ? "Complete"
-                          : "Needs setup"}
+                        {profileComplete ? "Complete" : "Needs setup"}
                       </p>
                     </button>
 
@@ -592,29 +551,23 @@ export default function EducatorTutoringTabs({
                       onClick={() => goTo("services")}
                       className="group p-5 text-left transition hover:bg-slate-50 sm:border-r lg:border-b-0"
                     >
-
                       <p className="mt-1 text-[30px] font-semibold text-amber-400">
                         {publishedServices.length}
                       </p>
 
                       <p className="mt-0.5 text-[11px] text-white">
-                         Services published
+                        Services published
                       </p>
                     </button>
 
                     <div className="p-5">
-                      
-
                       <p className="mt-5 text-xs font-medium text-slate-500">
                         Student visibility
                       </p>
 
                       <p className="mt-1 text-lg font-semibold text-white">
-                        {profileComplete
-                          ? "Ready"
-                          : "Setup"}
+                        {profileComplete ? "Ready" : "Setup"}
                       </p>
-
                     </div>
                   </section>
 
@@ -630,7 +583,8 @@ export default function EducatorTutoringTabs({
                             Upcoming sessions
                           </h3>
                           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                            Your next tutoring sessions and the learners you are teaching.
+                            Your next tutoring sessions and the learners you are
+                            teaching.
                           </p>
                         </div>
 
@@ -650,7 +604,9 @@ export default function EducatorTutoringTabs({
                             <button
                               key={session.id}
                               type="button"
-                              onClick={() => router.push(`/tutoring/sessions/${session.id}`)}
+                              onClick={() =>
+                                router.push(`/tutoring/sessions/${session.id}`)
+                              }
                               className="flex w-full items-center gap-3 rounded-xl border border-border/70 bg-card p-3 text-left transition hover:border-emerald-300 hover:shadow-sm"
                             >
                               <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-50 text-xs font-bold text-emerald-700">
@@ -696,7 +652,8 @@ export default function EducatorTutoringTabs({
                               No upcoming sessions
                             </p>
                             <p className="mt-1 text-xs text-muted-foreground">
-                              Once learners book you, your teaching schedule will appear here.
+                              Once learners book you, your teaching schedule
+                              will appear here.
                             </p>
                             <button
                               type="button"
@@ -760,7 +717,10 @@ export default function EducatorTutoringTabs({
                         {latestPayout ? (
                           <>
                             <p className="mt-5 text-2xl font-semibold tracking-tight text-foreground">
-                              {formatMoney(latestPayout.netAmount, profile?.currency)}
+                              {formatMoney(
+                                latestPayout.netAmount,
+                                profile?.currency,
+                              )}
                             </p>
                             <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
                               <span>{formatDate(latestPayout.createdAt)}</span>
@@ -775,7 +735,8 @@ export default function EducatorTutoringTabs({
                               No payouts yet
                             </p>
                             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                              Your payout activity will appear here after tutoring revenue is recorded.
+                              Your payout activity will appear here after
+                              tutoring revenue is recorded.
                             </p>
                           </div>
                         )}
@@ -882,9 +843,7 @@ export default function EducatorTutoringTabs({
 
                             <button
                               type="button"
-                              onClick={() =>
-                                fileInputRef.current?.click()
-                              }
+                              onClick={() => fileInputRef.current?.click()}
                               className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-md border border-white/20 bg-slate-900 text-white shadow-sm transition hover:bg-slate-700"
                               aria-label="Upload profile picture"
                             >
@@ -896,16 +855,13 @@ export default function EducatorTutoringTabs({
                               type="file"
                               accept="image/png,image/jpeg,image/webp"
                               className="hidden"
-                              onChange={
-                                handleImageSelection
-                              }
+                              onChange={handleImageSelection}
                             />
                           </div>
 
                           <div className="pb-1">
                             <h3 className="mt-1 text-xl font-semibold tracking-tight text-white">
-                              {userName ||
-                                "Your name"}
+                              {userName || "Your name"}
                             </h3>
 
                             <p className="mt-1 text-xs text-muted-foreground">
@@ -917,9 +873,7 @@ export default function EducatorTutoringTabs({
 
                         <button
                           type="button"
-                          onClick={() =>
-                            fileInputRef.current?.click()
-                          }
+                          onClick={() => fileInputRef.current?.click()}
                           className="inline-flex h-9 w-fit items-center gap-2 bg-emerald-900 px-3 text-xs font-semibold text-white transition hover:bg-emerald-950"
                         >
                           <Camera className="h-3.5 w-3.5" />
@@ -934,15 +888,11 @@ export default function EducatorTutoringTabs({
                           </span>
                         ) : null}
 
-                        {profile?.experience !==
-                        null &&
-                        profile?.experience !==
-                          undefined ? (
+                        {profile?.experience !== null &&
+                        profile?.experience !== undefined ? (
                           <span className="rounded-md bg-slate-100 px-2.5 py-1.5 text-[11px] font-medium text-slate-600">
                             {profile.experience}{" "}
-                            {profile.experience === 1
-                              ? "year"
-                              : "years"}{" "}
+                            {profile.experience === 1 ? "year" : "years"}{" "}
                             experience
                           </span>
                         ) : null}
@@ -959,19 +909,18 @@ export default function EducatorTutoringTabs({
                         </h3>
 
                         <p className="mt-1 text-xs text-muted-foreground">
-                          This information helps students decide
-                          whether you are the right tutor for them.
+                          This information helps students decide whether you are
+                          the right tutor for them.
                         </p>
                       </div>
 
                       <div className="p-6">
-                       <EducatorProfileForm
-  initialProfile={profileFormValue}
-  initialImageUrl={imageUrl ?? null}
-/>
+                        <EducatorProfileForm
+                          initialProfile={profileFormValue}
+                          initialImageUrl={imageUrl ?? null}
+                        />
                       </div>
                     </div>
-
                   </section>
                 </div>
               ) : null}
@@ -984,7 +933,7 @@ export default function EducatorTutoringTabs({
                   {/* Availability overview */}
                   <section className="grid gap-4 sm:grid-cols-3">
                     <div className="border border-emerald-900 bg-card p-5">
-                        <p className="mt-1 text-4xl font-semibold tracking-tight text-amber-500">
+                      <p className="mt-1 text-4xl font-semibold tracking-tight text-amber-500">
                         {availableSlots.length}
                       </p>
                       <p className="mt-2 text-xs font-medium text-white">
@@ -997,7 +946,7 @@ export default function EducatorTutoringTabs({
                     </div>
 
                     <div className="border border-emerald-900 bg-card p-5">
-                       <p className="mt-1 text-4xl font-semibold tracking-tight text-amber-500">
+                      <p className="mt-1 text-4xl font-semibold tracking-tight text-amber-500">
                         {bookedSlots.length}
                       </p>
                       <p className="mt-2 text-xs font-medium text-white">
@@ -1010,7 +959,7 @@ export default function EducatorTutoringTabs({
                     </div>
 
                     <div className="border border-emerald-900 bg-card p-5">
-                       <p className="mt-1 text-4xl font-semibold tracking-tight text-amber-500">
+                      <p className="mt-1 text-4xl font-semibold tracking-tight text-amber-500">
                         {publishedServices.length}
                       </p>
 
@@ -1033,8 +982,8 @@ export default function EducatorTutoringTabs({
                         </h3>
 
                         <p className="mt-1 text-xs text-muted-foreground">
-                          Add and manage the times when students
-                          can book your tutoring services.
+                          Add and manage the times when students can book your
+                          tutoring services.
                         </p>
                       </div>
 
@@ -1066,27 +1015,23 @@ export default function EducatorTutoringTabs({
                           }}
                           initialAvailability={initialAvailability}
                           publishedServices={services
-                            .filter(
-                              (service) => service.status ===
-                                "Published"
-                            )
+                            .filter((service) => service.status === "Published")
                             .map((service) => ({
                               id: service.id,
                               title: service.title,
                               subject: service.subject,
-                              durationMinutes: service.durationMinutes ??
-                                0,
+                              durationMinutes: service.durationMinutes ?? 0,
                               price: service.price,
                               currency: service.currency,
                               status: service.status,
-                            }))} initialRecurringRules={[]}                        />
+                            }))}
+                          initialRecurringRules={[]}
+                        />
                       ) : (
                         <EmptyProfileState
                           title="Create your profile first"
                           description="Your teaching profile is needed before availability can be configured."
-                          onClick={() =>
-                            goTo("profile")
-                          }
+                          onClick={() => goTo("profile")}
                         />
                       )}
                     </div>
@@ -1106,50 +1051,39 @@ export default function EducatorTutoringTabs({
                       </div>
 
                       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        {initialAvailability
-                          .slice(0, 6)
-                          .map((slot) => (
-                            <div
-                              key={slot.id}
-                              className="border border-slate-200 bg-white p-4"
-                            >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-50 text-emerald-600">
-                                  <CalendarDays className="h-4 w-4" />
-                                </div>
-
-                                <span
-                                  className={`rounded-md px-2 py-1 text-[10px] font-semibold ${
-                                    slot.status ===
-                                    "Available"
-                                      ? "bg-emerald-50 text-emerald-700"
-                                      : slot.status ===
-                                          "Booked"
-                                        ? "bg-blue-50 text-blue-700"
-                                        : "bg-slate-100 text-slate-500"
-                                  }`}
-                                >
-                                  {slot.status}
-                                </span>
+                        {initialAvailability.slice(0, 6).map((slot) => (
+                          <div
+                            key={slot.id}
+                            className="border border-slate-200 bg-white p-4"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-50 text-emerald-600">
+                                <CalendarDays className="h-4 w-4" />
                               </div>
 
-                              <p className="mt-4 text-sm font-semibold text-slate-900">
-                                {formatDate(
-                                  slot.startTime,
-                                )}
-                              </p>
-
-                              <p className="mt-1 text-xs text-slate-500">
-                                {formatTime(
-                                  slot.startTime,
-                                )}{" "}
-                                –{" "}
-                                {formatTime(
-                                  slot.endTime,
-                                )}
-                              </p>
+                              <span
+                                className={`rounded-md px-2 py-1 text-[10px] font-semibold ${
+                                  slot.status === "Available"
+                                    ? "bg-emerald-50 text-emerald-700"
+                                    : slot.status === "Booked"
+                                      ? "bg-blue-50 text-blue-700"
+                                      : "bg-slate-100 text-slate-500"
+                                }`}
+                              >
+                                {slot.status}
+                              </span>
                             </div>
-                          ))}
+
+                            <p className="mt-4 text-sm font-semibold text-slate-900">
+                              {formatDate(slot.startTime)}
+                            </p>
+
+                            <p className="mt-1 text-xs text-slate-500">
+                              {formatTime(slot.startTime)} –{" "}
+                              {formatTime(slot.endTime)}
+                            </p>
+                          </div>
+                        ))}
                       </div>
                     </section>
                   ) : null}
@@ -1231,8 +1165,8 @@ export default function EducatorTutoringTabs({
                         </h3>
 
                         <p className="mt-1 text-xs text-slate-500">
-                          Create the tutoring options students
-                          can choose when booking you.
+                          Create the tutoring options students can choose when
+                          booking you.
                         </p>
                       </div>
 
@@ -1256,13 +1190,11 @@ export default function EducatorTutoringTabs({
                         <EducatorServicesStudio
                           profile={{
                             id: profile.id,
-                            verificationStatus:
-                              profile.verificationStatus,
+                            verificationStatus: profile.verificationStatus,
                             headline: profile.headline,
                             specialty: profile.specialty,
                             subjects: profile.subjects,
-                            gradeLevels:
-                              profile.gradeLevels,
+                            gradeLevels: profile.gradeLevels,
                           }}
                           initialServices={services}
                         />
@@ -1270,9 +1202,7 @@ export default function EducatorTutoringTabs({
                         <EmptyProfileState
                           title="Create your profile first"
                           description="Your teaching profile is needed before tutoring services can be configured."
-                          onClick={() =>
-                            goTo("profile")
-                          }
+                          onClick={() => goTo("profile")}
                         />
                       )}
                     </div>
@@ -1291,58 +1221,52 @@ export default function EducatorTutoringTabs({
                         </h3>
 
                         <p className="mt-1 text-xs text-slate-500">
-                          These are the services students can
-                          select from your tutoring profile.
+                          These are the services students can select from your
+                          tutoring profile.
                         </p>
                       </div>
 
                       <div className="grid gap-3 md:grid-cols-2">
-                        {publishedServices.map(
-                          (service) => (
-                            <div
-                              key={service.id}
-                              className="border border-slate-200 bg-white p-5 transition hover:border-emerald-300 hover:shadow-sm"
-                            >
-                              <div className="flex items-start justify-between gap-4">
-                                <div>
-                                  <h4 className="text-sm font-semibold text-slate-950">
-                                    {service.title}
-                                  </h4>
+                        {publishedServices.map((service) => (
+                          <div
+                            key={service.id}
+                            className="border border-slate-200 bg-white p-5 transition hover:border-emerald-300 hover:shadow-sm"
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <h4 className="text-sm font-semibold text-slate-950">
+                                  {service.title}
+                                </h4>
 
-                                  <p className="mt-1 text-xs text-slate-500">
-                                    {service.subject ||
-                                      "Tutoring"}
-                                  </p>
-                                </div>
-
-                                <span className="rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">
-                                  Published
-                                </span>
-                              </div>
-
-                              {service.description ? (
-                                <p className="mt-4 line-clamp-2 text-xs leading-5 text-slate-500">
-                                  {service.description}
+                                <p className="mt-1 text-xs text-slate-500">
+                                  {service.subject || "Tutoring"}
                                 </p>
-                              ) : null}
-
-                              <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
-                                <span className="text-xs text-slate-400">
-                                  {service.durationMinutes
-                                    ? `${service.durationMinutes} min`
-                                    : "Flexible duration"}
-                                </span>
-
-                                <span className="text-sm font-semibold text-slate-900">
-                                  {formatMoney(
-                                    service.price,
-                                    service.currency,
-                                  )}
-                                </span>
                               </div>
+
+                              <span className="rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">
+                                Published
+                              </span>
                             </div>
-                          ),
-                        )}
+
+                            {service.description ? (
+                              <p className="mt-4 line-clamp-2 text-xs leading-5 text-slate-500">
+                                {service.description}
+                              </p>
+                            ) : null}
+
+                            <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
+                              <span className="text-xs text-slate-400">
+                                {service.durationMinutes
+                                  ? `${service.durationMinutes} min`
+                                  : "Flexible duration"}
+                              </span>
+
+                              <span className="text-sm font-semibold text-slate-900">
+                                {formatMoney(service.price, service.currency)}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </section>
                   ) : (
@@ -1356,9 +1280,9 @@ export default function EducatorTutoringTabs({
                       </h3>
 
                       <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-slate-500">
-                        Create a tutoring service above. Once
-                        published, students will be able to see
-                        and select it from your tutor profile.
+                        Create a tutoring service above. Once published,
+                        students will be able to see and select it from your
+                        tutor profile.
                       </p>
                     </section>
                   )}
@@ -1368,8 +1292,6 @@ export default function EducatorTutoringTabs({
           </div>
         </div>
       </main>
-
-   
     </div>
   );
 }
@@ -1389,9 +1311,7 @@ function EmptyProfileState({
         <UserRound className="h-5 w-5" />
       </div>
 
-      <h3 className="mt-4 text-sm font-semibold text-white">
-        {title}
-      </h3>
+      <h3 className="mt-4 text-sm font-semibold text-white">{title}</h3>
 
       <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-muted-foreground">
         {description}
