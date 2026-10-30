@@ -192,7 +192,7 @@ export default function MarketingNavbar() {
               </>
             )}
 
-            <Link href="/tutoring" className="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-xs bg-[#3f3830] px-7 text-[15px] font-semibold text-white transition-colors hover:bg-[#efa03b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#171717] focus-visible:ring-offset-2">
+            <Link href="/tutoring" className="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-lg bg-[#3f3830] px-7 text-[15px] font-semibold text-white transition-colors hover:bg-[#4b4742] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#171717] focus-visible:ring-offset-2">
               Request Tutoring
             </Link>
           </div>

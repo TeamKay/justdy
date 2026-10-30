@@ -182,7 +182,7 @@ export default function LandingPage() {
             </span>
             </h1>
 
-            <p className="mt-7 max-w-3xl text-base leading-7 text-slate-300/75 sm:text-lg sm:leading-8">
+            <p className="mt-7 max-w-3xl text-base leading-7 text-slate-300/75 sm:text-[16px] sm:leading-8">
               Stuck on a tricky problem? We’ve got you. Get friendly math tutoring,
               step-by-step homework help, and creative learning tools that make
               every little “aha!” moment count.

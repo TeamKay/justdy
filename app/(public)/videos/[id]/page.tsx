@@ -1,3 +1,5 @@
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 interface YouTubeVideoItem {
@@ -80,12 +82,24 @@ export default async function VideoPage({ params }: VideoPageProps) {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <section className="mx-auto w-full max-w-6xl px-4 pb-20 pt-24 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-7xl px-4 py-6 mt-6 sm:px-6 lg:px-8">
+       <div className="mb-0">
+        <Link
+          href="/videos"
+          className="group inline-flex items-center gap-2 rounded-lg border border-[#3F3838]/10 bg-white px-4 py-2.5 text-sm font-medium text-[#3F3838] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-[#3F3838]/20 hover:bg-[#FAF9F8] hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#3F3838]/10"
+        >
+          <ArrowLeft
+            className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5"
+            aria-hidden="true"
+          />
+          <span>Back home</span>
+        </Link>
+      </div>
+      <section className="mx-auto w-full max-w-7xl px-4 pb-20 pt-5 sm:px-6 lg:px-0">
         <div
           className="
             overflow-hidden
-            rounded-3xl
+            rounded-lg
             border border-border/70
             bg-card
             shadow-xl
