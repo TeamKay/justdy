@@ -483,7 +483,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       .trim()
       .toUpperCase();
 
-    if (role === "tutor" && normalizedUserRole !== "ADMIN") {
+    if (role === "tutor") {
       const tutor = await getVerifiedTutor(user.id);
 
       if (!tutor) {

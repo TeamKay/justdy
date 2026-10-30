@@ -199,47 +199,28 @@ export async function POST(
   let selectedTutor: { id: string; name: string; email: string } | null = null;
 
   if (tutorId !== null) {
-    const isAdminSelfAssignment =
-      tutorId === actor.id && actor.status === "Active" && actor.emailVerified;
+    const eligibleTutor = await prisma.user.findFirst({
+      where: {
+        id: tutorId as string,
+        role: { in: ["TUTOR", "ADMIN"] },
+        status: "Active",
+        emailVerified: true,
+        teachingProfile: { is: { verificationStatus: "Verified" } },
+      },
+      select: { id: true, name: true, email: true },
+    });
 
-    if (isAdminSelfAssignment) {
-      const admin = await prisma.user.findUnique({
-        where: { id: actor.id },
-        select: { id: true, name: true, email: true },
-      });
-
-      if (!admin) {
-        return NextResponse.json(
-          { error: "Could not find the administrator account." },
-          { status: 400 },
-        );
-      }
-
-      selectedTutor = admin;
-    } else {
-      const eligibleTutor = await prisma.user.findFirst({
-        where: {
-          id: tutorId as string,
-          role: "TUTOR",
-          status: "Active",
-          emailVerified: true,
-          teachingProfile: { is: { verificationStatus: "Verified" } },
+    if (!eligibleTutor) {
+      return NextResponse.json(
+        {
+          error:
+            "Choose an active, email-verified tutor or administrator with a verified teaching profile.",
         },
-        select: { id: true, name: true, email: true },
-      });
-
-      if (!eligibleTutor) {
-        return NextResponse.json(
-          {
-            error:
-              "Choose yourself as the administrator or choose an active, verified tutor with a verified teaching profile.",
-          },
-          { status: 400 },
-        );
-      }
-
-      selectedTutor = eligibleTutor;
+        { status: 400 },
+      );
     }
+
+    selectedTutor = eligibleTutor;
   }
 
   // Save first. Email delivery must never undo a successful assignment.

@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 
 import "./globals.css";
-
 import { Toaster } from "sonner";
-
+import ParentWelcomePopup from "./_components/ParentWelcomePopup";
 import { ThemeProvider } from "@/app/_components/ThemeProvider";
 
 export const metadata: Metadata = {
@@ -20,6 +19,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <ThemeProvider>
+           {/* <ParentWelcomePopup /> */}
           {children}
 
           <Toaster />

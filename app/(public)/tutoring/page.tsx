@@ -884,7 +884,7 @@ export default function TutoringBookPage() {
                     <button
                       type="button"
                       onClick={goNext}
-                      className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#122245] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-[#122245] hover:shadow-md"
+                      className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#3f3830] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-[#3f3830] hover:shadow-md"
                     >
                       Continue <ArrowRight className="h-4 w-4" />
                     </button>
@@ -893,7 +893,7 @@ export default function TutoringBookPage() {
                       type="button"
                       onClick={() => void submitIntake()}
                       disabled={submitting}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#122245] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-900 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#3f3830] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-[#3f3830] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {submitting ? (
                         <>

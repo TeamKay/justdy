@@ -22,6 +22,7 @@ import {
   XCircle,
   Star,
 } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
 
 import dynamic from "next/dynamic";
 import type { WhiteboardRealtimeData } from "@/app/_components/Whiteboard";
@@ -202,7 +203,6 @@ export default function TutoringSessionRoom({
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [remoteWhiteboardData, setRemoteWhiteboardData] =
     useState<WhiteboardRealtimeData | null>(null);
-  const [participantRailWidth, setParticipantRailWidth] = useState(350);
   const whiteboardSendRef = useRef<
     ((type: string, data?: unknown) => void) | null
   >(null);
@@ -241,6 +241,45 @@ export default function TutoringSessionRoom({
     }
   }, [bookingId]);
 
+  const [accountRole, setAccountRole] = useState<string>("");
+
+useEffect(() => {
+  let cancelled = false;
+
+  async function loadAccountRole() {
+    try {
+      const { data } = await authClient.getSession({
+        query: {
+          disableCookieCache: true,
+        },
+      });
+
+      if (!cancelled) {
+        setAccountRole(
+          String(data?.user?.role ?? "")
+            .trim()
+            .toUpperCase(),
+        );
+      }
+    } catch (error) {
+      console.error("Unable to determine account role:", error);
+    }
+  }
+
+  void loadAccountRole();
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
+
+const backToSessionsUrl =
+  accountRole === "ADMIN"
+    ? "/admin"
+    : accountRole === "TUTOR"
+      ? "/dashboard/educator"
+      : "/dashboard";
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadSession();
@@ -251,14 +290,17 @@ export default function TutoringSessionRoom({
     };
   }, [loadSession]);
 
-  useEffect(() => {
-    return () => {
-      if (whiteboardSignalTimerRef.current) {
-        clearTimeout(whiteboardSignalTimerRef.current);
-      }
-      whiteboardChunkBuffersRef.current.clear();
-    };
-  }, []);
+ useEffect(() => {
+  const chunkBuffers = whiteboardChunkBuffersRef.current;
+
+  return () => {
+    if (whiteboardSignalTimerRef.current) {
+      clearTimeout(whiteboardSignalTimerRef.current);
+    }
+
+    chunkBuffers.clear();
+  };
+}, []);
 
   const sendWhiteboardSnapshot = useCallback((data: WhiteboardRealtimeData) => {
     const sendSignal = whiteboardSendRef.current;
@@ -493,7 +535,7 @@ export default function TutoringSessionRoom({
       <main className="min-h-screen bg-background px-6 py-16">
         <div className="mx-auto max-w-3xl">
           <Link
-            href="/dashboard/sessions"
+            href={backToSessionsUrl}
             className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -526,9 +568,9 @@ export default function TutoringSessionRoom({
             topInset={VIDEO_FILMSTRIP_HEIGHT}
             remoteData={remoteWhiteboardData}
             onRealtimeChange={handleWhiteboardChange}
-            onClose={() => {
-              router.push("/dashboard/tutoring/sessions");
-            }}
+           onClose={() => {
+            router.push(backToSessionsUrl);
+          }}
           />
         </div>
 
@@ -587,13 +629,13 @@ export default function TutoringSessionRoom({
   return (
     <main className="min-h-screen bg-background px-6 py-8 text-foreground">
       <div className="mx-auto max-w-6xl">
-        <Link
-          href="/dashboard/sessions"
-          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to sessions
-        </Link>
+       <Link
+        href={backToSessionsUrl}
+        className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to sessions
+      </Link>
 
         {error && (
           <div className="mt-5 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
@@ -602,7 +644,7 @@ export default function TutoringSessionRoom({
         )}
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]">
-          <section className="rounded-3xl border border-border bg-card p-8 shadow-sm">
+          <section className="rounded-lg border border-border bg-card p-8 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-5">
               <div>
                 <div className="flex items-center gap-2 text-sm font-medium text-violet-600">
@@ -619,7 +661,7 @@ export default function TutoringSessionRoom({
                 </p>
               </div>
 
-              <div className="rounded-2xl bg-muted/50 px-4 py-3 text-right">
+              <div className="rounded-lg bg-muted/50 px-4 py-3 text-right">
                 <div className="text-xs text-muted-foreground">Session</div>
 
                 <div className="mt-1 text-sm font-semibold">
@@ -629,7 +671,7 @@ export default function TutoringSessionRoom({
             </div>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl bg-background p-5">
+              <div className="rounded-lg bg-background p-5">
                 <CalendarDays className="h-5 w-5 text-violet-600" />
 
                 <div className="mt-3 text-xs text-muted-foreground">Date</div>
@@ -639,7 +681,7 @@ export default function TutoringSessionRoom({
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-background p-5">
+              <div className="rounded-lg bg-background p-5">
                 <Clock3 className="h-5 w-5 text-violet-600" />
 
                 <div className="mt-3 text-xs text-muted-foreground">Time</div>
@@ -652,7 +694,7 @@ export default function TutoringSessionRoom({
             </div>
 
             {session.description && (
-              <div className="mt-6 rounded-2xl border border-border p-5">
+              <div className="mt-6 rounded-lg border border-border p-5">
                 <div className="text-sm font-semibold">
                   Message for the tutor
                 </div>
@@ -663,7 +705,7 @@ export default function TutoringSessionRoom({
               </div>
             )}
 
-            <div className="mt-8 rounded-3xl bg-background p-6 text-foreground">
+            <div className="mt-8 rounded-lg bg-background p-6 text-foreground">
               {session.beforeJoinWindow ? (
                 <>
                   <div className="flex items-center gap-3">
@@ -704,7 +746,7 @@ export default function TutoringSessionRoom({
               ) : session.canJoin ? (
                 <>
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/10">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
                       <Video className="h-5 w-5 text-emerald-400" />
                     </div>
 
@@ -723,7 +765,7 @@ export default function TutoringSessionRoom({
                     type="button"
                     onClick={joinSession}
                     disabled={joining}
-                    className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-600 px-5 py-3.5 text-sm font-semibold text-foreground transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-6 flex w-full items-center justify-center text-white gap-2 rounded-lg bg-violet-600 px-5 py-3.5 text-sm font-semibold transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {joining ? (
                       <>
@@ -732,7 +774,7 @@ export default function TutoringSessionRoom({
                       </>
                     ) : (
                       <>
-                        <Video className="h-4 w-4" />
+                        <Video className="h-4 w-4 text-white" />
                         Join live session
                       </>
                     )}
@@ -757,9 +799,9 @@ export default function TutoringSessionRoom({
             {session.role === "customer" &&
               session.tutoringSessionStatus === "COMPLETED" &&
               !session.review && (
-                <section className="mt-6 rounded-3xl border border-border bg-card p-6 shadow-sm">
+                <section className="mt-6 rounded-lg border border-border bg-card p-6 shadow-sm">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/10">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
                       <Star className="h-5 w-5 text-amber-500" />
                     </div>
                     <div>
@@ -817,7 +859,7 @@ export default function TutoringSessionRoom({
                         maxLength={2000}
                         rows={4}
                         placeholder="What did you find helpful about the session?"
-                        className="mt-2 w-full resize-none rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                        className="mt-2 w-full resize-none rounded-lg border border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
                       />
                       <div className="mt-1 text-right text-xs text-muted-foreground">
                         {reviewComment.length}/2000
@@ -825,7 +867,7 @@ export default function TutoringSessionRoom({
                     </div>
 
                     {reviewError && (
-                      <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                      <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
                         {reviewError}
                       </div>
                     )}
@@ -833,7 +875,7 @@ export default function TutoringSessionRoom({
                     <button
                       type="submit"
                       disabled={reviewSubmitting || reviewRating === 0}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {reviewSubmitting ? (
                         <>
@@ -851,7 +893,7 @@ export default function TutoringSessionRoom({
             {session.role === "customer" &&
               session.tutoringSessionStatus === "COMPLETED" &&
               (session.review || reviewSubmitted) && (
-                <section className="mt-6 rounded-3xl border border-border bg-card p-6 shadow-sm">
+                <section className="mt-6 rounded-lg border border-border bg-card p-6 shadow-sm">
                   <div className="flex items-center gap-3">
                     <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                     <div>
@@ -868,7 +910,7 @@ export default function TutoringSessionRoom({
           </section>
 
           <aside className="space-y-5">
-            <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
               <div className="text-sm font-medium text-muted-foreground">
                 {session.role === "tutor" ? "Customer" : "Your tutor"}
               </div>
@@ -879,10 +921,10 @@ export default function TutoringSessionRoom({
                   <img
                     src={otherParticipant.imageUrl}
                     alt={otherParticipant.name}
-                    className="h-14 w-14 rounded-2xl object-cover"
+                    className="h-14 w-14 rounded-lg object-cover"
                   />
                 ) : (
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100 text-lg font-semibold text-violet-700">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-violet-100 text-lg font-semibold text-violet-700">
                     {otherParticipant?.name?.charAt(0).toUpperCase()}
                   </div>
                 )}
@@ -898,7 +940,7 @@ export default function TutoringSessionRoom({
               </div>
             </div>
 
-            <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <Pencil className="h-4 w-4 text-violet-600" />
                 Shared classroom
@@ -927,7 +969,7 @@ export default function TutoringSessionRoom({
               </div>
             </div>
 
-            <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
               <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Session details
               </div>

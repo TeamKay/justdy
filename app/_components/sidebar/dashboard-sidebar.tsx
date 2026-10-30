@@ -139,16 +139,6 @@ const userNavigation: NavigationGroup[] = [
         icon: LayoutDashboard,
       },
       {
-        title: "Create with AI",
-        url: "/dashboard/create",
-        icon: Sparkles,
-      },
-      {
-        title: "My Library",
-        url: "/dashboard/library",
-        icon: LibraryBig,
-      },
-      {
         title: "My Sessions",
         url: "/dashboard/sessions",
         icon: CalendarDays,

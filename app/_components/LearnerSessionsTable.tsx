@@ -1,14 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import TutoringSessionScheduler from "./TutoringSessionScheduler";
 import Link from "next/link";
 import {
-  CalendarDays,
-  Clock3,
-  GraduationCap,
   Search,
-  UserRound,
   Video,
   X,
 } from "lucide-react";
@@ -153,9 +150,33 @@ export default function LearnerSessionsTable({
   summary,
 }: Props) {
   const router = useRouter();
+  const [searchTerm, setSearchTerm] = useState(search);
+  const [statusFilter, setStatusFilter] = useState(status || "ALL");
   const [selectedLearnerKey, setSelectedLearnerKey] = useState<string | null>(
     null,
   );
+
+  // Apply search and status changes automatically, without a Search button.
+  // A short debounce avoids requesting a new server render for every keystroke.
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      const params = new URLSearchParams();
+
+      if (searchTerm.trim()) {
+        params.set("search", searchTerm.trim());
+      }
+      if (statusFilter && statusFilter !== "ALL") {
+        params.set("status", statusFilter);
+      }
+
+      const query = params.toString();
+      router.replace(query ? `/admin/tutoring-sessions?${query}` : "/admin/tutoring-sessions", {
+        scroll: false,
+      });
+    }, 200);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchTerm, statusFilter, router]);
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
@@ -243,10 +264,9 @@ export default function LearnerSessionsTable({
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-7xl space-y-6 p-6 lg:p-8">
+      <div className="mx-auto max-w-7xl space-y-6 p-6 lg:p-12">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm text-muted-foreground">Administration</p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight">
               Tutoring Sessions
             </h1>
@@ -263,38 +283,11 @@ export default function LearnerSessionsTable({
           </Link>
         </header>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <SummaryCard
-            label="Learners with sessions"
-            value={learners.length}
-            icon={UserRound}
-          />
-          <SummaryCard
-            label="Actual sessions"
-            value={summary.actual}
-            icon={Video}
-          />
-          <SummaryCard
-            label="Planned sessions"
-            value={summary.planned}
-            icon={CalendarDays}
-          />
-          <SummaryCard
-            label="Completed actual sessions"
-            value={summary.completed}
-            icon={GraduationCap}
-          />
-        </div>
-
-        <section className="overflow-hidden rounded-xl border bg-card">
+        <section className="overflow-hidden rounded-lg border bg-card">
           <div className="border-b p-5">
             <h2 className="font-semibold">Learners</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Select View to open all planned and actual sessions for a learner.
-            </p>
             <form
-              method="get"
-              action="/admin/sessions"
+              onSubmit={(event) => event.preventDefault()}
               className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px_auto]"
             >
               <div className="relative">
@@ -302,14 +295,18 @@ export default function LearnerSessionsTable({
                 <input
                   name="search"
                   type="search"
-                  defaultValue={search}
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder="Search learner, tutor, subject, or session..."
+                  aria-label="Search learners, tutors, subjects, or sessions"
                   className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary"
                 />
               </div>
               <select
                 name="status"
-                defaultValue={status}
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                aria-label="Filter sessions by status"
                 className="h-10 rounded-lg border bg-background px-3 text-sm"
               >
                 <option value="ALL">All statuses</option>
@@ -319,20 +316,16 @@ export default function LearnerSessionsTable({
                 <option value="CANCELLED">Cancelled</option>
                 <option value="NO_SHOW">No show</option>
               </select>
-              <div className="flex gap-2">
-                <button
-                  className="h-10 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground hover:opacity-90"
-                  type="submit"
-                >
-                  Search
-                </button>
-                <Link
-                  href="/admin/sessions"
-                  className="inline-flex h-10 items-center rounded-lg border px-4 text-sm hover:bg-muted"
-                >
-                  Reset
-                </Link>
-              </div>
+              <Link
+                href="/admin/tutoring-sessions"
+                onClick={() => {
+                  setSearchTerm("");
+                  setStatusFilter("ALL");
+                }}
+                className="inline-flex h-10 items-center justify-center rounded-lg border px-4 text-sm hover:bg-muted"
+              >
+                Reset
+              </Link>
             </form>
           </div>
 
@@ -441,22 +434,16 @@ export default function LearnerSessionsTable({
             role="dialog"
             aria-modal="true"
             aria-labelledby="learner-session-modal-title"
-            className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-2xl border bg-card shadow-2xl"
+            className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-lg border bg-card shadow-2xl"
           >
-            <div className="flex items-start justify-between gap-4 border-b p-5 sm:p-6">
+            <div className="flex items-start justify-between gap-4 border-b p-5 sm:p-5">
               <div className="min-w-0">
-                <p className="text-sm text-muted-foreground">
-                  Learner sessions
-                </p>
                 <h2
                   id="learner-session-modal-title"
                   className="mt-1 truncate text-xl font-bold"
                 >
                   {selectedLearner.name}
                 </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {selectedLearner.email || "No email recorded"}
-                </p>
               </div>
               <button
                 type="button"
@@ -489,7 +476,7 @@ export default function LearnerSessionsTable({
                       return (
                         <article
                           key={item.id}
-                          className="rounded-xl border p-4"
+                          className="rounded-lg border p-4"
                         >
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div>
@@ -498,11 +485,11 @@ export default function LearnerSessionsTable({
                                   Session {item.sessionNumber}
                                 </h4>
                                 <span
-                                  className={`rounded-full border px-2 py-0.5 text-xs ${statusClass(item.status)}`}
+                                  className={`rounded-lg border px-2 py-0.5 text-xs ${statusClass(item.status)}`}
                                 >
                                   {labelStatus(item.status)}
                                 </span>
-                                <span className="rounded-full border px-2 py-0.5 text-xs">
+                                <span className="rounded-lg border px-2 py-0.5 text-xs">
                                   Planned
                                 </span>
                               </div>
@@ -548,6 +535,38 @@ export default function LearnerSessionsTable({
                               </button>
                             )}
                           </div>
+                                                    {!item.bookingId ? (
+                            <div className="mt-4">
+                              <TutoringSessionScheduler
+                                requestId={`${request.id}-${item.id}`}
+                                sessions={[
+                                  {
+                                    id: item.id,
+                                    sessionNumber: item.sessionNumber,
+                                    status: item.status,
+                                    scheduledStart: item.scheduledStart
+                                      ? new Date(
+                                          item.scheduledStart,
+                                        ).toISOString()
+                                      : null,
+                                    scheduledEnd: item.scheduledEnd
+                                      ? new Date(
+                                          item.scheduledEnd,
+                                        ).toISOString()
+                                      : null,
+                                    durationMinutes: item.durationMinutes,
+                                    timeZone: item.timeZone,
+                                    subject: item.subject,
+                                    gradeLevel: item.gradeLevel,
+                                    tutorNotes: null,
+                                  },
+                                ]}
+                                defaultDurationMinutes={
+                                  item.durationMinutes ?? 60
+                                }
+                              />
+                            </div>
+                          ) : null}
                           <p className="mt-3 text-xs text-muted-foreground">
                             {item.bookingId
                               ? `Classroom booking ID: ${item.bookingId}`
@@ -652,29 +671,5 @@ export default function LearnerSessionsTable({
         </div>
       ) : null}
     </main>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string;
-  value: number;
-  icon: typeof Video;
-}) {
-  return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <div className="rounded-lg bg-muted p-2">
-          <Icon className="h-4 w-4" />
-        </div>
-      </div>
-      <p className="mt-3 text-2xl font-bold tracking-tight">
-        {value.toLocaleString()}
-      </p>
-    </div>
   );
 }

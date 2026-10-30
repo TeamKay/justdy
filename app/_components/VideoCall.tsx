@@ -2707,31 +2707,41 @@ export default function VideoCall({
     );
   };
 
-  const handleSessionExit = useCallback(async () => {
-    if (role === "educator") {
+ const handleSessionExit = useCallback(async () => {
+  if (role === "educator") {
+    try {
+      // Only leave and navigate after the server confirms the session ended.
+      await onEndSession?.();
+
       try {
-        await onEndSession?.();
+        await callRef.current?.leave();
       } catch (error) {
-        console.error("Failed to end tutoring session:", error);
-      } finally {
-        try {
-          await callRef.current?.leave();
-        } catch (error) {
-          console.debug("Unable to leave Daily call:", error);
-        }
-        router.push("/tutoring/sessions");
+        console.debug("Unable to leave Daily call:", error);
       }
-      return;
+
+      router.push("/tutoring/session-complete?role=educator");
+    } catch (error) {
+      console.error("Failed to end tutoring session:", error);
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to end the tutoring session. Please try again.",
+      );
     }
 
-    try {
-      await callRef.current?.leave();
-    } catch (error) {
-      console.debug("Unable to leave Daily call:", error);
-    } finally {
-      router.push("/tutoring/sessions");
-    }
-  }, [onEndSession, role, router]);
+    return;
+  }
+
+  // A learner leaves the call without ending the tutor's session lifecycle.
+  try {
+    await callRef.current?.leave();
+  } catch (error) {
+    console.debug("Unable to leave Daily call:", error);
+  } finally {
+    router.push("/tutoring/session-complete?role=student");
+  }
+}, [onEndSession, role, router]);
 
   return (
     <div

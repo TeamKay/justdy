@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Github, MessageCircle, Sparkles, Youtube } from "lucide-react";
+import LogoImg from "@/public/images/logo.png";
+import Image from "next/image";
 
 const footerGroups = [
   {
@@ -62,28 +64,33 @@ export default function MarketingFooter() {
 
   return (
     <footer className="w-full  bg-background">
-      <div className="mx-auto max-w-7xl px-6 sm:px-10 lg:px-8">
+      <div className="mx-auto max-w-6xl px-6 sm:px-10 lg:px-8">
         {/* Brand and social links */}
-        <div className="flex flex-col gap-7 pt-20 sm:flex-row sm:items-center sm:justify-between sm:py-8">
+        <div className="flex flex-col gap-7 pt-20 sm:flex-row sm:items-center sm:justify-between sm:py-5">
           <Link
             href="/"
             aria-label="Justdy home"
             className="group inline-flex w-fit items-center gap-3"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500 text-[#091d33] transition-colors group-hover:bg-sky-400">
-              <Sparkles className="h-5 w-5" />
-            </span>
+             <Image
+               src={LogoImg}
+               alt="Justdy logo"
+               width={40}
+               height={40}
+               priority
+               className="h-6 w-6 shrink-0 object-contain transition-transform duration-200 group-hover:scale-105"
+             />
 
-            <span className="text-[22px] font-semibold tracking-tight text-[#091d33]">
+            <span className="text-[22px] font-semibold tracking-tight text-[#3f3830]">
               Justdy
             </span>
           </Link>
 
-          <div className="flex items-center gap-6 text-neutral-400">
+          <div className="flex items-center gap-6 text-[#3f3830]">
             <a
               href="#"
               aria-label="YouTube"
-              className="transition-colors hover:text-white"
+              className="transition-colors hover:text-[#c09769]"
             >
               <Youtube className="h-6 w-6" />
             </a>
@@ -91,7 +98,7 @@ export default function MarketingFooter() {
             <a
               href="#"
               aria-label="GitHub"
-              className="transition-colors hover:text-white"
+              className="transition-colors hover:text-[#c09769]"
             >
               <Github className="h-6 w-6" />
             </a>
@@ -99,7 +106,7 @@ export default function MarketingFooter() {
             <a
               href="#"
               aria-label="X"
-              className="text-[27px] leading-none font-light transition-colors hover:text-white"
+              className="text-[27px] leading-none font-light transition-colors hover:text-[#c09769]"
             >
               𝕏
             </a>
@@ -107,20 +114,20 @@ export default function MarketingFooter() {
             <a
               href="#"
               aria-label="Discord"
-              className="transition-colors hover:text-white"
+              className="transition-colors hover:text-[#c09769]"
             >
               <MessageCircle className="h-6 w-6" />
             </a>
           </div>
         </div>
 
-        <div className="border-t border-neutral-800" />
+        <div className="border-t border-neutral-300" />
 
         {/* Five-column navigation layout */}
-        <div className="grid grid-cols-2 gap-x-8 gap-y-10 py-10 sm:grid-cols-3 lg:grid-cols-[1fr_1fr_1fr_0.8fr_1.45fr] lg:gap-x-10 lg:py-14">
+        <div className="grid grid-cols-2 gap-x-8 gap-y-10 py-10 sm:grid-cols-3 lg:grid-cols-[1fr_1fr_1fr_0.8fr_1.45fr] lg:gap-x-10 lg:py-10">
           {footerGroups.map((group) => (
             <div key={group.title}>
-              <h3 className="text-base font-bold text-emerald-950">
+              <h3 className="text-base font-bold text-[#3f3830]">
                 {group.title}
               </h3>
 
@@ -145,7 +152,7 @@ export default function MarketingFooter() {
 
           {/* Company */}
           <div>
-            <h3 className="text-base font-medium text-emerald-950">Company</h3>
+            <h3 className="text-base font-bold text-[#3f3830]">Company</h3>
 
             <ul className="mt-6 space-y-4">
               {companyLinks.map((link) => (
@@ -160,7 +167,7 @@ export default function MarketingFooter() {
 
           {/* Newsletter */}
           <div className="col-span-2 sm:col-span-3 lg:col-span-1">
-            <h3 className="text-base font-medium text-emerald-950">
+            <h3 className="text-base font-bold text-[#3f3830]">
               Newsletter
             </h3>
 
@@ -173,12 +180,12 @@ export default function MarketingFooter() {
                 required
                 placeholder="Your email"
                 aria-label="Email address"
-                className="h-11 min-w-0 flex-1 rounded-xl border border-neutral-700 bg-[#1d1d1d] px-4 text-sm text-white outline-none transition placeholder:text-neutral-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+                className="h-11 min-w-0 flex-1 rounded-lg border border-neutral-700 bg-[#ffffff] px-4 text-sm text-white outline-none transition placeholder:text-neutral-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
               />
 
               <button
                 type="submit"
-                className="h-11 shrink-0 rounded-xl bg-sky-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-sky-500"
+                className="h-11 shrink-0 rounded-lg bg-[#3f3830] px-5 text-sm font-semibold text-white transition-colors hover:bg-sky-500"
               >
                 Submit
               </button>
