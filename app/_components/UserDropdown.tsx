@@ -41,11 +41,11 @@ export function UserDropdown({ email, image, name }: UserDropdownProps) {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="relative h-9 w-9 rounded-full ring-offset-background transition-all hover:ring-2 hover:ring-primary/20"
+          className="relative h-9 w-9 rounded-full ring-offset-background bg-[#f58750] text-white transition-all hover:ring-2 hover:ring-primary/20 hover:bg-[#c38c70]"
         >
           <Avatar className="h-9 w-9 border">
             <AvatarImage src={image} alt={name} />
-            <AvatarFallback className="bg-primary/10 text-xs">
+            <AvatarFallback className="bg-primary/10 text-xs text-white">
               {name.charAt(0)}
             </AvatarFallback>
           </Avatar>

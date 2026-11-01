@@ -14,6 +14,7 @@ type ProfileBody = {
   currency?: unknown;
   subjects?: unknown;
   gradeLevels?: unknown;
+  imageUrl?: unknown;
 };
 
 type CurrentUser = {
@@ -108,6 +109,41 @@ function parseHourlyRateInCents(value: unknown): number | null {
 
 function parseCurrency(value: unknown): "USD" | "GHS" {
   return value === "GHS" ? "GHS" : "USD";
+}
+
+/**
+ * Profile photos are uploaded by UploadThing in the client.
+ * This route only stores the returned permanent HTTPS URL.
+ */
+function parseImageUrl(value: unknown): {
+  valid: boolean;
+  imageUrl: string | null;
+} {
+  if (value === null || value === undefined || value === "") {
+    return { valid: true, imageUrl: null };
+  }
+
+  if (typeof value !== "string" || value.length > 2048) {
+    return { valid: false, imageUrl: null };
+  }
+
+  const imageUrl = value.trim();
+
+  if (!imageUrl) {
+    return { valid: true, imageUrl: null };
+  }
+
+  try {
+    const parsed = new URL(imageUrl);
+
+    if (parsed.protocol !== "https:") {
+      return { valid: false, imageUrl: null };
+    }
+
+    return { valid: true, imageUrl };
+  } catch {
+    return { valid: false, imageUrl: null };
+  }
 }
 
 /*
@@ -218,6 +254,17 @@ export async function POST(req: Request) {
 
     const body = (await req.json().catch(() => ({}))) as ProfileBody;
 
+    const parsedImage = body.imageUrl === undefined
+      ? null
+      : parseImageUrl(body.imageUrl);
+
+    if (parsedImage && !parsedImage.valid) {
+      return NextResponse.json(
+        { error: "Profile image URL must be a valid HTTPS URL." },
+        { status: 400 },
+      );
+    }
+
     const experience = parseExperience(body.experience);
 
     const hourlyRate = parseHourlyRateInCents(body.hourlyRate);
@@ -273,10 +320,19 @@ export async function POST(req: Request) {
       },
     });
 
+    // Save the uploaded profile photo on User, not TeachingProfile.
+    if (parsedImage) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { imageUrl: parsedImage.imageUrl },
+      });
+    }
+
     return NextResponse.json(
       {
         success: true,
         profile,
+        imageUrl: parsedImage?.imageUrl,
       },
       { status: 201 },
     );
@@ -346,6 +402,17 @@ export async function PATCH(req: Request) {
     }
 
     const body = (await req.json().catch(() => ({}))) as ProfileBody;
+
+    const parsedImage = body.imageUrl === undefined
+      ? null
+      : parseImageUrl(body.imageUrl);
+
+    if (parsedImage && !parsedImage.valid) {
+      return NextResponse.json(
+        { error: "Profile image URL must be a valid HTTPS URL." },
+        { status: 400 },
+      );
+    }
 
     const data: {
       headline?: string | null;
@@ -427,9 +494,18 @@ export async function PATCH(req: Request) {
       data,
     });
 
+    // Keep the profile photo on the User record used by public tutor APIs.
+    if (parsedImage) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { imageUrl: parsedImage.imageUrl },
+      });
+    }
+
     return NextResponse.json({
       success: true,
       profile: updatedProfile,
+      imageUrl: parsedImage?.imageUrl,
     });
   } catch (error) {
     console.error("Update teaching profile error:", error);

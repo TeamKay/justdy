@@ -43,14 +43,6 @@ export async function getDashboardData() {
     redirect(`/verify-request?email=${encodeURIComponent(user.email)}`);
   }
 
-  /*
-   * Justdy has two primary account roles:
-   *
-   * ADMIN -> tutor + platform administration workspace
-   * LEARNER -> learner workspace
-   *
-   * Capabilities still control specific actions.
-   */
   const normalizedRole = String(user.role ?? "")
     .trim()
     .toUpperCase();
@@ -60,15 +52,17 @@ export async function getDashboardData() {
 
   const now = new Date();
 
-
-
   /*
-   * IMPORTANT:
+   * LEARNER DASHBOARD DATA
    *
-   * Use endTime > now rather than startTime >= now.
-   * A session remains an active/upcoming session after
-   * its scheduled start until its scheduled end.
+   * Keep the upcoming lesson query small because it only powers
+   * the next-lessons section on the dashboard.
+   *
+   * The progress page uses a larger history window for activity,
+   * completed sessions, weekly trends, subject summaries, and
+   * tutor feedback.
    */
+
   const learnerBookingsPromise = isLearner
     ? prisma.booking
         .findMany({
@@ -163,8 +157,13 @@ export async function getDashboardData() {
       })
     : Promise.resolve([]);
 
- 
-
+  /*
+   * Retrieve a larger learner activity history so the progress page
+   * can calculate activity completion, scores, streaks, and trends.
+   *
+   * Keep the teacher/admin query empty because these records are
+   * only used by the learner progress experience.
+   */
   const learningActivitiesPromise = isLearner
     ? prisma.learningActivity.findMany({
         where: {
@@ -173,7 +172,7 @@ export async function getDashboardData() {
         orderBy: {
           createdAt: "desc",
         },
-        take: 6,
+        take: 365,
         select: {
           id: true,
           activityType: true,
@@ -186,6 +185,11 @@ export async function getDashboardData() {
       })
     : Promise.resolve([]);
 
+  /*
+   * Learners need a larger completed-session history for their
+   * progress page, subject activity, learning streaks, and tutor
+   * feedback. Teacher dashboards retain the smaller recent list.
+   */
   const completedSessionsPromise = prisma.tutoringSession.findMany({
     where: {
       OR: [
@@ -197,7 +201,7 @@ export async function getDashboardData() {
     orderBy: {
       scheduledStart: "desc",
     },
-    take: 6,
+    take: isLearner ? 365 : 6,
     select: {
       id: true,
       scheduledStart: true,
@@ -300,40 +304,41 @@ export async function getDashboardData() {
     : Promise.resolve(null);
 
   const [
-  learnerBookings,
-  teacherBookings,
-  learningActivities,
-  completedSessions,
-  latestPayout,
-  adminStats,
-] = await Promise.all([
-  learnerBookingsPromise,
-  teacherBookingsPromise,
-  learningActivitiesPromise,
-  completedSessionsPromise,
-  latestPayoutPromise,
-  adminStatsPromise,
-]);
+    learnerBookings,
+    teacherBookings,
+    learningActivities,
+    completedSessions,
+    latestPayout,
+    adminStats,
+  ] = await Promise.all([
+    learnerBookingsPromise,
+    teacherBookingsPromise,
+    learningActivitiesPromise,
+    completedSessionsPromise,
+    latestPayoutPromise,
+    adminStatsPromise,
+  ]);
 
- return {
-  account: {
-    name: user.name ?? "there",
-    email: user.email,
-    imageUrl: user.imageUrl,
-    isLearner,
-    isTeacherAdmin,
-    teachingVerification: user.teachingProfile?.verificationStatus ?? null,
-    teachingHeadline: user.teachingProfile?.headline ?? null,
-  },
-  learnerUpcoming: learnerBookings,
-  teacherUpcoming: teacherBookings,
-  completedSessions,
-  learningActivities,
-  latestPayout,
-  adminStats,
-  // These remain empty because the current dashboard source does not
-  // populate client-growth or recent-client records yet.
-  clientGrowth: [],
-  recentClients: [],
-};
+  return {
+    account: {
+      name: user.name ?? "there",
+      email: user.email,
+      imageUrl: user.imageUrl,
+      isLearner,
+      isTeacherAdmin,
+      teachingVerification: user.teachingProfile?.verificationStatus ?? null,
+      teachingHeadline: user.teachingProfile?.headline ?? null,
+    },
+    learnerUpcoming: learnerBookings,
+    teacherUpcoming: teacherBookings,
+    completedSessions,
+    learningActivities,
+    latestPayout,
+    adminStats,
+
+    // These remain empty because the current dashboard source does not
+    // populate client-growth or recent-client records yet.
+    clientGrowth: [],
+    recentClients: [],
+  };
 }

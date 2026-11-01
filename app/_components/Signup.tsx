@@ -576,13 +576,11 @@ export function SignupPage({ onSwitchToSignin }: SignupPageProps) {
   return (
     <div className="w-full">
       <div className="mb-8 text-center">
-        <div className="mb-4 flex justify-center">
-          <Image src={LogoImg} alt="Justdy" width={44} height={44} priority />
-        </div>
-        <h2 className="text-2xl font-bold tracking-tight text-white">
+       
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">
           Create your account
         </h2>
-        <p className="mt-2 text-sm text-white/45">
+        <p className="mt-2 text-sm text-foreground">
           Create your Justdy learner account.
         </p>
       </div>
@@ -598,8 +596,8 @@ export function SignupPage({ onSwitchToSignin }: SignupPageProps) {
                   <Input
                     placeholder="Full Name"
                     {...field}
-                    className="h-11 bg-white/5 border-white/10 text-white text-sm placeholder:text-white/30 focus:border-[#857938] focus:ring-[#857938]/20"
-                  />
+                   className="h-11 rounded-lg border-border bg-background text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                   />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -617,8 +615,8 @@ export function SignupPage({ onSwitchToSignin }: SignupPageProps) {
                     placeholder="Email Address"
                     autoComplete="email"
                     {...field}
-                    className="h-11 bg-white/5 border-white/10 text-white text-sm placeholder:text-white/30 focus:border-[#857938] focus:ring-[#857938]/20"
-                  />
+                    className="h-11 rounded-lg border-border bg-background text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                   />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -641,8 +639,8 @@ export function SignupPage({ onSwitchToSignin }: SignupPageProps) {
                         field.onChange(event);
                         setPassword(event.target.value);
                       }}
-                      className="h-11 bg-white/5 border-white/10 text-white text-sm placeholder:text-white/30 focus:border-[#857938] focus:ring-[#857938]/20"
-                    />
+                      className="h-11 rounded-lg border-border bg-background text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                   />
                     <div className="flex h-1 gap-1 px-0.5">
                       {[1, 2, 3, 4].map((step) => (
                         <div
@@ -673,8 +671,8 @@ export function SignupPage({ onSwitchToSignin }: SignupPageProps) {
                     placeholder="Confirm Password"
                     autoComplete="new-password"
                     {...field}
-                    className="h-11 bg-white/5 border-white/10 text-white text-sm placeholder:text-white/30 focus:border-[#857938] focus:ring-[#857938]/20"
-                  />
+                     className="h-11 rounded-lg border-border bg-background text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                   />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -684,7 +682,7 @@ export function SignupPage({ onSwitchToSignin }: SignupPageProps) {
           <Button
             type="submit"
             disabled={isPending}
-            className="mt-2 h-11 w-full flex items-center justify-center gap-2 bg-[#857938] hover:bg-[#756a30] text-white font-semibold transition-all shadow-md shadow-[#857938]/20"
+            className="mt-2 h-11 w-full flex items-center justify-center gap-2 bg-[#f58750] hover:bg-[#c38c70] text-white font-semibold transition-all shadow-md shadow-[#857938]/20"
           >
             {isPending ? (
               <>
@@ -702,7 +700,7 @@ export function SignupPage({ onSwitchToSignin }: SignupPageProps) {
       </Form>
 
       <div className="pt-6 text-center">
-        <p className="text-sm text-white/45">
+        <p className="text-sm text-foreground">
           Already have an account?{" "}
           <button
             type="button"
@@ -713,10 +711,6 @@ export function SignupPage({ onSwitchToSignin }: SignupPageProps) {
           </button>
         </p>
       </div>
-
-      <p className="mt-8 text-center text-[10px] uppercase tracking-[0.2em] text-white/20">
-        Protected by SSL Encryption
-      </p>
     </div>
   );
 }

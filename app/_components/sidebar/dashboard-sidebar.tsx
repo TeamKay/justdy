@@ -3,7 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-
+import LogoImg from "@/public/images/logo.png";
+import Image from "next/image";
 import {
   ChevronDown,
   BarChart3,
@@ -20,6 +21,7 @@ import {
   SlidersHorizontal,
   UserRound,
   TrendingUp,
+  PiggyBank,
   Sparkles,
   LibraryBig,
 } from "lucide-react";
@@ -121,6 +123,11 @@ const adminNavigation: NavigationGroup = {
       icon: BarChart3,
     },
     {
+      title: "Investments",
+      url: "/admin/investments",
+      icon: PiggyBank,
+    },
+    {
       title: "Settings",
       url: "/admin/settings",
       icon: Settings2,
@@ -147,11 +154,6 @@ const userNavigation: NavigationGroup[] = [
         title: "Progress",
         url: "/dashboard/progress",
         icon: TrendingUp,
-      },
-      {
-        title: "History",
-        url: "/dashboard/history",
-        icon: History,
       },
     ],
   },
@@ -266,7 +268,7 @@ function NavIcon({
   return (
     <Icon
       className={`size-[17px] shrink-0 ${
-        active ? "text-white" : "text-white/75"
+        active ? "text-white" : "text-[#52645A]"
       }`}
     />
   );
@@ -554,15 +556,11 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
-
   const { data: session } = authClient.useSession();
   const user = session?.user;
-
   const projectId = searchParams.get("projectId");
   const conversationId = searchParams.get("conversationId");
-
   const isChat = pathname === "/chat" || pathname === "/dashboard";
-
   const userName = user?.name || "Justdy User";
   const userImage = user?.image || "";
   const userEmail = user?.email || "";
@@ -668,10 +666,10 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
                     asChild
                     tooltip={item.title}
                     data-active={active ? "true" : "false"}
-                    className={`h-10 rounded-xl px-3 text-[13px] font-medium transition-colors ${
+                    className={`h-10 rounded-lg px-3 text-[15px] font-medium transition-colors ${
                       active
-                        ? "!bg-white/10 !text-white shadow-sm hover:!bg-white/10 hover:!text-white"
-                        : "!bg-transparent !text-white/75 hover:!bg-white/10 hover:!text-white"
+                        ? "!bg-[#173B2F] !text-white shadow-sm hover:!bg-[#245640] hover:!text-white"
+                        : "!bg-transparent !text-[#101813] hover:!bg-[#fafaf9] hover:!text-[#173B2F]"
                     }`}
                   >
                     <Link
@@ -704,18 +702,46 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
   return (
     <Sidebar
       collapsible="offcanvas"
-      className="border-r border-emerald-900/50 bg-[#122245] text-white [--sidebar-width:264px] shadow-[4px_0_24px_-24px_hsl(var(--foreground)/0.25)]"
+      className="relative isolate overflow-hidden border-r border-[#E2B982] bg-[#FAD6AC] text-[#173B2F] [--sidebar-width:264px] shadow-[4px_0_24px_-24px_hsl(var(--foreground)/0.25)]"
       {...props}
     >
+      {/* Landing-page dotted background */}
+      <div
+        className="pointer-events-none absolute inset-0 z-0"
+        aria-hidden="true"
+        style={{
+          backgroundColor: "#FAD6AC",
+          backgroundImage:
+            "radial-gradient(circle, rgba(139,85,35,0.62) 1.15px, transparent 1.3px)",
+          backgroundSize: "16px 16px",
+        }}
+      />
+
       {/* Sidebar Header */}
-      <SidebarHeader className="shrink-0 border-b border-emerald-900/50 bg-[#122245] px-3.5 py-2.5">
-        <div className="flex h-8 min-w-0 items-center gap-2 overflow-hidden">
-          <div className="min-w-0 flex-1 origin-left scale-[0.78]">
-            <MyLogo />
+      <SidebarHeader className="relative z-10 shrink-0 border-b border-[#E2B982] bg-transparent px-3.5 py-2.5">
+        <div className="flex h-8 min-w-0 items-center justify-between gap-2 overflow-hidden">
+          <div>
+             <Link
+             href="/"
+             className="group inline-flex flex-row items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-[#173B2F]/90 transition hover:bg-[#173B2F]/6 hover:text-[#0B2D22]"
+           >
+             <Image
+               src={LogoImg}
+               alt="Justdy logo"
+               width={34}
+               height={34}
+               priority
+               className="h-6 w-6 shrink-0 object-contain transition-transform duration-200 group-hover:scale-105"
+             />
+
+             <span className="text-[20px] font-bold tracking-[-0.04em] text-[#173B2F] transition-colors duration-200">
+               Justdy
+             </span>
+           </Link>
           </div>
 
           <SidebarTrigger
-            className="size-8 shrink-0 rounded-lg text-white/70 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/30"
+            className="size-8 shrink-0 rounded-lg text-[#52645A] transition-colors hover:bg-[#F4AB52]/15 hover:text-[#173B2F] focus-visible:ring-2 focus-visible:ring-[#B97832]/40"
             aria-label="Close sidebar"
             title="Close sidebar"
           />
@@ -723,43 +749,43 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
       </SidebarHeader>
 
       {/* Sidebar Navigation */}
-      <SidebarContent className="min-h-0 bg-[#122245] px-2 py-2.5">
+      <SidebarContent className="relative z-10 min-h-0 bg-transparent px-2 py-2.5">
         {renderNavigation(visibleNavigation)}
       </SidebarContent>
 
       {/* Sidebar Footer */}
-      <SidebarFooter className="border-t border-emerald-900/50 bg-[#122245] p-2">
+      <SidebarFooter className="relative z-10 border-t border-[#E2B982] bg-transparent p-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               id="account-menu-trigger"
               type="button"
-              className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left outline-none transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/30"
+              className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left outline-none transition hover:bg-[#F4AB52]/15 focus-visible:ring-2 focus-visible:ring-[#B97832]/40"
               aria-label="Open account menu"
             >
-              <Avatar className="size-8 shrink-0 border border-white/20">
+              <Avatar className="size-8 shrink-0 border border-[#B97832]/25">
                 <AvatarImage
                   src={userImage}
                   alt={userName}
                   className="object-cover"
                 />
 
-                <AvatarFallback className="bg-white/10 text-[11px] font-semibold text-white">
+                <AvatarFallback className="bg-[#173B2F] text-[11px] font-semibold text-white">
                   {userInitials}
                 </AvatarFallback>
               </Avatar>
 
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold text-white">
+                <p className="truncate text-xs font-semibold text-[#173B2F]">
                   {userName}
                 </p>
 
-                <p className="truncate text-[10px] text-white/60">
+                <p className="truncate text-[10px] text-[#52645A]">
                   {userEmail || "Personal workspace"}
                 </p>
               </div>
 
-              <ChevronDown className="size-4 shrink-0 text-white/60" />
+              <ChevronDown className="size-4 shrink-0 text-[#52645A]" />
             </button>
           </DropdownMenuTrigger>
 

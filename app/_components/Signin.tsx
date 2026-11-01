@@ -282,11 +282,7 @@ export function SigninPage({ onSwitchToSignup }: SigninPageProps) {
   return (
     <div className="w-full text-foreground">
       <div className="p-6 sm:p-8">
-        <div className="mb-7">
-          <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-            <ShieldCheck className="h-5 w-5" />
-          </div>
-
+        <div className="mb-7 text-center">
           <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             Welcome back
           </h2>
@@ -317,7 +313,7 @@ export function SigninPage({ onSwitchToSignup }: SigninPageProps) {
                         field.onChange(e);
                         setLoginError(null);
                       }}
-                      className="h-11 rounded-md border-border bg-background text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                      className="h-11 rounded-lg border-border bg-background text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
                     />
                   </FormControl>
 
@@ -366,7 +362,7 @@ export function SigninPage({ onSwitchToSignup }: SigninPageProps) {
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="mt-2 h-11 w-full rounded-md bg-emerald-900 font-semibold text-white shadow-sm transition-all hover:bg-emerald-950"
+              className="mt-2 h-11 w-full rounded-lg bg-[#f58750] font-semibold text-white shadow-sm transition-all hover:bg-[#c38c70]"
             >
               {isSubmitting ? (
                 <span className="flex items-center gap-2">
