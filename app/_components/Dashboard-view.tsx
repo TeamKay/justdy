@@ -186,7 +186,7 @@ function PersonAvatar({
 
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-full bg-emerald-100 font-semibold text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
+      className="flex shrink-0 items-center justify-center rounded-lg bg-emerald-100 font-semibold text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
       style={{ width: size, height: size }}
     >
       {getInitials(person?.name)}
@@ -456,7 +456,7 @@ function LearnerDashboard({
   return (
     <div className="space-y-8">
       {/* Learner hero */}
-      <section className="relative overflow-hidden rounded-3xl border border-border/70 bg-card p-6 shadow-sm sm:p-8 lg:p-10">
+      <section className="relative overflow-hidden rounded-lg border border-border/70 bg-card p-6 shadow-sm sm:p-8 lg:p-10">
         <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-emerald-100/70 blur-3xl dark:bg-emerald-950/30" />
 
         <div className="relative flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">

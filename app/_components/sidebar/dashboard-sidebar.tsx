@@ -24,6 +24,7 @@ import {
   PiggyBank,
   Sparkles,
   LibraryBig,
+  PencilRuler,
 } from "lucide-react";
 
 import {
@@ -86,6 +87,11 @@ const adminNavigation: NavigationGroup = {
       title: "Tutoring sessions",
       url: "/admin/tutoring-sessions",
       icon: GraduationCap,
+    },
+    {
+      title: "Whiteboard Studio",
+      url: "/admin/whiteboard",
+      icon: PencilRuler,
     },
     {
       title: "Educators",

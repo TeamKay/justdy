@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 function DashboardLoading() {
   return (
-    <div className="min-h-[70vh] animate-pulse space-y-6 bg-muted/20 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-[70vh] animate-pulse space-y-6 bg-white p-4 sm:p-6 lg:p-8">
       <div className="h-40 rounded-3xl bg-muted" />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
