@@ -8,6 +8,7 @@ import {
   useMemo,
   useId,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   Circle,
   CircleHelp,
@@ -41,6 +42,8 @@ import {
   BookOpen,
   X,
   PanelRight,
+  PanelLeftClose,
+  PanelLeftOpen,
   Shapes,
   Crosshair,
   Crop,
@@ -51,6 +54,7 @@ import {
   Upload,
   Eye,
   EyeOff,
+  Play,
 } from "lucide-react";
 import MyLogo from "@/app/_components/Logo";
 
@@ -64,6 +68,18 @@ type DesmosGraphingCalculator = {
   ) => void;
   getState?: () => DesmosGraphState;
   setState?: (state: DesmosGraphState) => void;
+  setExpression?: (expression: {
+    id: string;
+    latex: string;
+    color?: string;
+    hidden?: boolean;
+  }) => void;
+  setExpressions?: (expressions: Array<{
+    id: string;
+    latex: string;
+    color?: string;
+    hidden?: boolean;
+  }>) => void;
   destroy: () => void;
   resize?: () => void;
 };
@@ -98,6 +114,208 @@ declare global {
     };
   }
 }
+
+type GraphStudioPreset = {
+  id: string;
+  label: string;
+  description: string;
+  expressions: Array<{ id: string; latex: string; color?: string }>;
+};
+
+const GRAPH_STUDIO_PRESETS: Record<"graphs" | "geometry", GraphStudioPreset[]> = {
+  graphs: [
+    {
+      id: "linear",
+      label: "Linear graph",
+      description: "y = 2x + 1",
+      expressions: [{ id: "justdy-linear", latex: "y=2x+1" }],
+    },
+    {
+      id: "quadratic",
+      label: "Quadratic",
+      description: "y = x² − 4",
+      expressions: [{ id: "justdy-quadratic", latex: "y=x^2-4" }],
+    },
+    {
+      id: "absolute",
+      label: "Absolute value",
+      description: "y = |x|",
+      expressions: [{ id: "justdy-absolute", latex: "y=\\left|x\\right|" }],
+    },
+    {
+      id: "sine",
+      label: "Sine curve",
+      description: "y = sin(x)",
+      expressions: [{ id: "justdy-sine", latex: "y=\\sin(x)" }],
+    },
+    {
+      id: "circle-graph",
+      label: "Circle equation",
+      description: "x² + y² = 9",
+      expressions: [{ id: "justdy-circle-equation", latex: "x^2+y^2=9" }],
+    },
+    {
+      id: "slope",
+      label: "Slope demonstration",
+      description: "y = mx + c",
+      expressions: [
+        { id: "justdy-slope-m", latex: "m=2" },
+        { id: "justdy-slope-c", latex: "c=1" },
+        { id: "justdy-slope-line", latex: "y=m x+c" },
+      ],
+    },
+  ],
+  geometry: [
+    {
+      id: "points",
+      label: "Plot points",
+      description: "A(2, 3), B(−3, 1)",
+      expressions: [
+        { id: "justdy-point-a", latex: "A=(2,3)" },
+        { id: "justdy-point-b", latex: "B=(-3,1)" },
+      ],
+    },
+    {
+      id: "triangle",
+      label: "Triangle",
+      description: "Plot and join three vertices",
+      expressions: [
+        { id: "justdy-triangle-a", latex: "A=(0,0)" },
+        { id: "justdy-triangle-b", latex: "B=(4,0)" },
+        { id: "justdy-triangle-c", latex: "C=(1,3)" },
+        { id: "justdy-triangle-poly", latex: "polygon(A,B,C)" },
+      ],
+    },
+    {
+      id: "rectangle",
+      label: "Rectangle",
+      description: "Four plotted vertices",
+      expressions: [
+        { id: "justdy-rect-a", latex: "A=(-2,-1)" },
+        { id: "justdy-rect-b", latex: "B=(3,-1)" },
+        { id: "justdy-rect-c", latex: "C=(3,2)" },
+        { id: "justdy-rect-d", latex: "D=(-2,2)" },
+        { id: "justdy-rect-poly", latex: "polygon(A,B,C,D)" },
+      ],
+    },
+    {
+      id: "circle",
+      label: "Circle",
+      description: "Centre (1, 2), radius 3",
+      expressions: [
+        { id: "justdy-circle-center", latex: "(x-1)^2+(y-2)^2=9" },
+        { id: "justdy-circle-point", latex: "C=(1,2)" },
+      ],
+    },
+    {
+      id: "right-triangle",
+      label: "Right triangle",
+      description: "Right angle at the origin",
+      expressions: [
+        { id: "justdy-right-a", latex: "A=(0,0)" },
+        { id: "justdy-right-b", latex: "B=(4,0)" },
+        { id: "justdy-right-c", latex: "C=(0,3)" },
+        { id: "justdy-right-poly", latex: "polygon(A,B,C)" },
+      ],
+    },
+    {
+      id: "midpoint",
+      label: "Midpoint",
+      description: "A, B and their midpoint M",
+      expressions: [
+        { id: "justdy-mid-a", latex: "A=(-2,1)" },
+        { id: "justdy-mid-b", latex: "B=(4,5)" },
+        { id: "justdy-mid-m", latex: "M=(1,3)" },
+      ],
+    },
+    {
+      id: "perpendicular",
+      label: "Perpendicular line",
+      description: "Meet at 90° through A",
+      expressions: [
+        { id: "justdy-perp-a", latex: "A=(1,1)" },
+        { id: "justdy-perp-base", latex: "y=2x-1" },
+        { id: "justdy-perp-line", latex: "y=-\\frac{1}{2}(x-1)+1" },
+      ],
+    },
+    {
+      id: "parallel",
+      label: "Parallel lines",
+      description: "Same gradient, different intercepts",
+      expressions: [
+        { id: "justdy-parallel-one", latex: "y=2x-1" },
+        { id: "justdy-parallel-two", latex: "y=2x+3" },
+      ],
+    },
+    {
+      id: "distance",
+      label: "Distance formula",
+      description: "Distance between A and B",
+      expressions: [
+        { id: "justdy-distance-a", latex: "A=(-2,1)" },
+        { id: "justdy-distance-b", latex: "B=(4,5)" },
+        { id: "justdy-distance-value", latex: "d=\\sqrt{(4-(-2))^2+(5-1)^2}" },
+      ],
+    },
+    {
+      id: "angle-bisector",
+      label: "Angle bisector",
+      description: "Bisect the angle at C",
+      expressions: [
+        { id: "justdy-bisect-a", latex: "A=(0,0)" },
+        { id: "justdy-bisect-b", latex: "B=(4,0)" },
+        { id: "justdy-bisect-c", latex: "C=(2,3)" },
+        { id: "justdy-bisect-poly", latex: "polygon(A,B,C)" },
+        { id: "justdy-bisect-line", latex: "x=2" },
+      ],
+    },
+    {
+      id: "reflection",
+      label: "Reflection",
+      description: "Reflect a triangle in the y-axis",
+      expressions: [
+        { id: "justdy-ref-a", latex: "A=(1,1)" },
+        { id: "justdy-ref-b", latex: "B=(4,1)" },
+        { id: "justdy-ref-c", latex: "C=(2,3)" },
+        { id: "justdy-ref-poly", latex: "polygon(A,B,C)" },
+        { id: "justdy-ref-ap", latex: "A'=(-1,1)" },
+        { id: "justdy-ref-bp", latex: "B'=(-4,1)" },
+        { id: "justdy-ref-cp", latex: "C'=(-2,3)" },
+        { id: "justdy-ref-polyp", latex: "polygon(A',B',C')" },
+      ],
+    },
+    {
+      id: "rotation",
+      label: "Rotation 90°",
+      description: "Rotate a triangle about origin",
+      expressions: [
+        { id: "justdy-rot-a", latex: "A=(1,1)" },
+        { id: "justdy-rot-b", latex: "B=(4,1)" },
+        { id: "justdy-rot-c", latex: "C=(2,3)" },
+        { id: "justdy-rot-poly", latex: "polygon(A,B,C)" },
+        { id: "justdy-rot-ap", latex: "A'=(-1,1)" },
+        { id: "justdy-rot-bp", latex: "B'=(-1,4)" },
+        { id: "justdy-rot-cp", latex: "C'=(-3,2)" },
+        { id: "justdy-rot-polyp", latex: "polygon(A',B',C')" },
+      ],
+    },
+    {
+      id: "translation",
+      label: "Translation",
+      description: "Move a triangle by (3, 2)",
+      expressions: [
+        { id: "justdy-trans-a", latex: "A=(0,0)" },
+        { id: "justdy-trans-b", latex: "B=(2,0)" },
+        { id: "justdy-trans-c", latex: "C=(1,2)" },
+        { id: "justdy-trans-poly", latex: "polygon(A,B,C)" },
+        { id: "justdy-trans-ap", latex: "A'=(3,2)" },
+        { id: "justdy-trans-bp", latex: "B'=(5,2)" },
+        { id: "justdy-trans-cp", latex: "C'=(4,4)" },
+        { id: "justdy-trans-polyp", latex: "polygon(A',B',C')" },
+      ],
+    },
+  ],
+};
 
 const DESMOS_API_SCRIPT_ID = "justdy-desmos-graphing-api";
 const DESMOS_API_KEY =
@@ -226,6 +444,129 @@ type ImageElement = {
   sourceType?: "image" | "pdf";
 };
 
+type TeachingTemplate =
+  | "definition"
+  | "key-concept"
+  | "important-rule"
+  | "algorithm"
+  | "worked-example"
+  | "remember"
+  | "quick-question";
+
+type TeachingSection = "introduction" | "definitions" | "concepts" | "rules" | "examples" | "practice";
+
+type TeachingSubtopic = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type TeachingLesson = {
+  id: string;
+  name: string;
+  subtopics: TeachingSubtopic[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+type TeachingLibraryItem = {
+  id: string;
+  template: TeachingTemplate;
+  heading: string;
+  body: string;
+  /** Optional ordered solution steps for worked examples. */
+  steps?: string[];
+  lessonId?: string;
+  subtopicId?: string;
+  section?: TeachingSection;
+  order?: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+const DEFAULT_TEACHING_LESSON_ID = "default-teaching-lesson";
+const DEFAULT_TEACHING_SUBTOPIC_ID = "default-teaching-subtopic";
+
+const TEACHING_SECTIONS: Record<TeachingSection, string> = {
+  introduction: "Introduction",
+  definitions: "Definitions",
+  concepts: "Key Concepts",
+  rules: "Rules & Algorithms",
+  examples: "Worked Examples",
+  practice: "Practice & Review",
+};
+
+function getDefaultTeachingSection(template: TeachingTemplate): TeachingSection {
+  if (template === "definition") return "definitions";
+  if (template === "key-concept") return "concepts";
+  if (template === "important-rule" || template === "algorithm") return "rules";
+  if (template === "worked-example") return "examples";
+  return "practice";
+}
+
+const TEACHING_TEMPLATES: Record<
+  TeachingTemplate,
+  { label: string; eyebrow: string; accent: string; tint: string; heading: string; placeholder: string }
+> = {
+  definition: {
+    label: "Definition",
+    eyebrow: "LEARN THE MEANING",
+    accent: "#2563eb",
+    tint: "#eff6ff",
+    heading: "Definition",
+    placeholder: "Explain the meaning of the term...",
+  },
+  "key-concept": {
+    label: "Key Concept",
+    eyebrow: "CORE IDEA",
+    accent: "#7c3aed",
+    tint: "#f5f3ff",
+    heading: "Key Concept",
+    placeholder: "Describe the main idea students should understand...",
+  },
+  "important-rule": {
+    label: "Important Rule",
+    eyebrow: "REMEMBER THIS RULE",
+    accent: "#d97706",
+    tint: "#fffbeb",
+    heading: "Important Rule",
+    placeholder: "Write the rule and explain when it applies...",
+  },
+  algorithm: {
+    label: "Algorithm",
+    eyebrow: "FOLLOW THESE STEPS",
+    accent: "#0f766e",
+    tint: "#f0fdfa",
+    heading: "Algorithm",
+    placeholder: "List the ordered steps students should follow...",
+  },
+  "worked-example": {
+    label: "Worked Example",
+    eyebrow: "STEP-BY-STEP",
+    accent: "#059669",
+    tint: "#ecfdf5",
+    heading: "Worked Example",
+    placeholder: "Enter the problem or question students will solve...",
+  },
+  remember: {
+    label: "Remember",
+    eyebrow: "QUICK REMINDER",
+    accent: "#e11d48",
+    tint: "#fff1f2",
+    heading: "Remember",
+    placeholder: "Write the important point students should not forget...",
+  },
+  "quick-question": {
+    label: "Quick Question",
+    eyebrow: "CHECK YOUR UNDERSTANDING",
+    accent: "#0891b2",
+    tint: "#ecfeff",
+    heading: "Quick Question",
+    placeholder: "Write a question for students to answer...",
+  },
+};
+
 type TextElement = {
   id: string;
   type: "text" | "equation";
@@ -237,6 +578,12 @@ type TextElement = {
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
+  teachingTemplate?: TeachingTemplate;
+  heading?: string;
+  body?: string;
+  cardEyebrow?: string;
+  cardWidth?: number;
+  cardHeight?: number;
   // Equations can be stretched independently in X/Y while selected.
   scaleX?: number;
   scaleY?: number;
@@ -278,6 +625,10 @@ export type WhiteboardRealtimeData = {
   width: number;
   tool: Tool;
   formulaCategory: FormulaCategory;
+  teachingLibrary?: TeachingLibraryItem[];
+  teachingLessons?: TeachingLesson[];
+  activeTeachingLessonId?: string;
+  activeTeachingSubtopicId?: string;
   savedAt?: string;
   /** Runtime-only realtime ordering metadata. */
   realtimeOriginId?: string;
@@ -315,6 +666,10 @@ type SavedWhiteboardData = {
   width?: number;
   tool?: Tool;
   formulaCategory?: FormulaCategory;
+  teachingLibrary?: TeachingLibraryItem[];
+  teachingLessons?: TeachingLesson[];
+  activeTeachingLessonId?: string;
+  activeTeachingSubtopicId?: string;
   savedAt?: string;
   realtimeOriginId?: string;
   realtimeRevision?: number;
@@ -419,6 +774,20 @@ function parseSavedBoardData(value: unknown): SavedWhiteboardData | null {
     formulaCategory: isFormulaCategory(candidate.formulaCategory)
       ? candidate.formulaCategory
       : undefined,
+    teachingLibrary: Array.isArray(candidate.teachingLibrary)
+      ? (candidate.teachingLibrary as TeachingLibraryItem[])
+      : undefined,
+    teachingLessons: Array.isArray(candidate.teachingLessons)
+      ? (candidate.teachingLessons as TeachingLesson[])
+      : undefined,
+    activeTeachingLessonId:
+      typeof candidate.activeTeachingLessonId === "string"
+        ? candidate.activeTeachingLessonId
+        : undefined,
+    activeTeachingSubtopicId:
+      typeof candidate.activeTeachingSubtopicId === "string"
+        ? candidate.activeTeachingSubtopicId
+        : undefined,
     savedAt:
       typeof candidate.savedAt === "string" ? candidate.savedAt : undefined,
     realtimeOriginId:
@@ -525,6 +894,25 @@ const LATEX_SYMBOLS = [
   ["⇒", "\\Rightarrow "],
   ["↕", "\\updownarrow "],
   ["⇔", "\\Leftrightarrow "],
+] as const;
+
+const LATEX_QUICK_STRUCTURES = [
+  { label: "Fraction", value: "\\frac{}{}", hint: "Numerator / denominator" },
+  { label: "Power", value: "x^{}", hint: "Superscript" },
+  { label: "Subscript", value: "x_{}", hint: "Subscript" },
+  { label: "Square root", value: "\\sqrt{}", hint: "Radical" },
+  { label: "Nth root", value: "\\sqrt[n]{}", hint: "Root with index" },
+  { label: "Quadratic formula", value: "x=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}", hint: "Solve ax² + bx + c = 0" },
+  { label: "Circle area", value: "A=\\pi r^2", hint: "Area of a circle" },
+  { label: "Trigonometry", value: "\\sin(\\theta)=\\frac{\\text{opposite}}{\\text{hypotenuse}}", hint: "Sine ratio" },
+  { label: "Simultaneous equations", value: "\\text{(1) }2x+y=7;\\;\\text{(2) }x-y=2", hint: "Two equations" },
+  { label: "Definite integral", value: "\\int_{a}^{b} f(x)\\,dx", hint: "Integral with limits" },
+  { label: "Summation", value: "\\sum_{i=1}^{n} x_i", hint: "Sigma notation" },
+  { label: "2×2 matrix", value: "\\begin{pmatrix}a&b\\\\c&d\\end{pmatrix}", hint: "Parentheses matrix" },
+  { label: "Square matrix", value: "\\begin{bmatrix}a&b&c\\\\d&e&f\\\\g&h&i\\end{bmatrix}", hint: "Bracketed matrix" },
+  { label: "Determinant", value: "\\begin{vmatrix}a&b\\\\c&d\\end{vmatrix}", hint: "Two-by-two determinant" },
+  { label: "Cases", value: "\\begin{cases}x^2,&x\\geq 0\\\\-x,&x<0\\end{cases}", hint: "Piecewise definition" },
+  { label: "Aligned equations", value: "\\begin{aligned}2x+y&=7\\\\x-y&=2\\end{aligned}", hint: "Align at equals" },
 ] as const;
 
 const LATEX_LETTER_LABELS = new Set([
@@ -756,6 +1144,8 @@ const MATH_SYMBOLS: Record<string, string> = {
   div: "÷",
   le: "≤",
   ge: "≥",
+  geq: "≥",
+  leq: "≤",
   neq: "≠",
   approx: "≈",
   propto: "∝",
@@ -844,7 +1234,7 @@ function latexToReadable(text: string): string {
     value = value.replace(/\\text\{([^{}]*)\}/g, "$1");
     value = value.replace(/\\left|\\right/g, "");
     value = value.replace(/\\,|\\;|\\!|\\quad/g, " ");
-    value = value.replace(/\\sqrt\{([^{}]*)\}/g, "√($1)");
+    value = value.replace(/\\sqrt(?:\[([^\]]+)\])?\{([^{}]*)\}/g, (_match, index, radicand) => `${index ? `${index}√` : "√"}(${radicand})`);
     value = value.replace(/\\sqrt\s*([A-Za-z0-9])/g, "√$1");
     value = value.replace(/\^\{([^{}]*)\}/g, "^$1");
     value = value.replace(/_\{([^{}]*)\}/g, "_$1");
@@ -859,8 +1249,125 @@ function latexToReadable(text: string): string {
   return convert(text);
 }
 
+type StructuredMathLayout = {
+  environment: "matrix" | "pmatrix" | "bmatrix" | "Bmatrix" | "vmatrix" | "Vmatrix" | "cases" | "aligned";
+  rows: string[][];
+  columnWidths: number[];
+  rowHeight: number;
+  width: number;
+  height: number;
+  padding: number;
+};
+
+function parseStructuredMath(
+  text: string,
+  fontSize: number,
+  ctx?: CanvasRenderingContext2D | null,
+): StructuredMathLayout | null {
+  const match = text.trim().match(
+    /^\\begin\{(matrix|pmatrix|bmatrix|Bmatrix|vmatrix|Vmatrix|cases|aligned)\}([\s\S]*?)\\end\{\1\}$/,
+  );
+  if (!match) return null;
+
+  const environment = match[1] as StructuredMathLayout["environment"];
+  const body = match[2].trim();
+  const rows = body
+    .split(/\\\\/)
+    .map((row) => row.trim())
+    .filter(Boolean)
+    .map((row) => row.split("&").map((cell) => cell.trim()));
+
+  if (!rows.length) return null;
+
+  const columnCount = Math.max(...rows.map((row) => row.length));
+  const normalizedRows = rows.map((row) =>
+    Array.from({ length: columnCount }, (_, index) => row[index] ?? ""),
+  );
+  const padding = fontSize * (environment === "aligned" ? 0.45 : 0.7);
+  const columnWidths = Array.from({ length: columnCount }, (_, column) =>
+    Math.max(
+      fontSize * 0.7,
+      ...normalizedRows.map((row) =>
+        measureMathRenderWidth(row[column], fontSize * 0.94, ctx),
+      ),
+    ),
+  );
+  const rowHeight = fontSize * 1.55;
+  const delimiterWidth =
+    environment === "matrix" || environment === "aligned" ? 0 :
+    environment === "cases" ? fontSize * 0.62 : fontSize * 0.9;
+  const width =
+    columnWidths.reduce((sum, value) => sum + value, 0) +
+    Math.max(0, columnCount - 1) * padding +
+    delimiterWidth * 2 +
+    (environment === "cases" ? fontSize * 0.25 : 0);
+  const height = Math.max(fontSize * 1.35, normalizedRows.length * rowHeight);
+
+  return {
+    environment,
+    rows: normalizedRows,
+    columnWidths,
+    rowHeight,
+    width,
+    height,
+    padding,
+  };
+}
+
 function renderLatexPreview(text: string, color: string) {
   const value = text.trim();
+  const structured = parseStructuredMath(value, 22);
+  if (structured) {
+    const isCases = structured.environment === "cases";
+    const isAligned = structured.environment === "aligned";
+    const grid = (
+      <span
+        className="inline-grid items-center gap-x-3 gap-y-1 font-serif text-lg"
+        style={{
+          color,
+          gridTemplateColumns: `repeat(${structured.columnWidths.length}, max-content)`,
+        }}
+      >
+        {structured.rows.flatMap((row, rowIndex) =>
+          row.map((cell, columnIndex) => (
+            <span
+              key={`${rowIndex}-${columnIndex}`}
+              className={isAligned && columnIndex === 0 ? "text-right" : "text-left"}
+            >
+              {latexToReadable(cell)}
+            </span>
+          )),
+        )}
+      </span>
+    );
+    if (isCases) {
+      return (
+        <span className="inline-flex items-center gap-1" style={{ color }}>
+          <span className="font-serif text-5xl leading-none">{"{"}</span>
+          {grid}
+        </span>
+      );
+    }
+    if (["pmatrix", "bmatrix", "Bmatrix", "vmatrix", "Vmatrix"].includes(structured.environment)) {
+      const delimiters: Record<string, [string, string]> = {
+        pmatrix: ["(", ")"],
+        bmatrix: ["[", "]"],
+        Bmatrix: ["{", "}"],
+        vmatrix: ["|", "|"],
+        Vmatrix: ["‖", "‖"],
+      };
+      const [left, right] = delimiters[structured.environment];
+      return (
+        <span className="inline-flex items-center gap-1" style={{ color }}>
+          <span className="font-serif text-4xl leading-none">{left}</span>
+          {grid}
+          <span className="font-serif text-4xl leading-none">{right}</span>
+        </span>
+      );
+    }
+    return grid;
+  }
+
   const fraction = value.match(/^\\frac\{([^{}]*)\}\{([^{}]*)\}$/);
   if (fraction) {
     return (
@@ -896,6 +1403,10 @@ function estimateMathMetrics(
   fontSize: number,
   ctx?: CanvasRenderingContext2D | null,
 ) {
+  const structured = parseStructuredMath(text, fontSize, ctx);
+  if (structured) {
+    return { width: structured.width, height: structured.height };
+  }
   const readable = latexToReadable(text);
   const plainWidth = ctx
     ? ctx.measureText(readable).width
@@ -932,8 +1443,66 @@ function drawMathEquation(
   fontSize: number,
   color: string,
 ) {
-  // Lightweight LaTeX-style renderer for the canvas. It supports common
-  // classroom notation without requiring an external math-rendering package.
+  // Structured environments are laid out as aligned rows and columns before
+  // falling back to the inline LaTeX renderer below.
+  const structured = parseStructuredMath(text, fontSize, ctx);
+  if (structured) {
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(1, fontSize * 0.045);
+
+    const { environment, rows, columnWidths, rowHeight, width, height, padding } = structured;
+    const startX = x;
+    const topY = y + fontSize - height / 2;
+    const isCases = environment === "cases";
+    const leftDelimiter =
+      environment === "pmatrix" ? "(" :
+      environment === "bmatrix" ? "[" :
+      environment === "Bmatrix" ? "{" :
+      environment === "vmatrix" ? "|" :
+      environment === "Vmatrix" ? "‖" : "";
+    const rightDelimiter =
+      environment === "pmatrix" ? ")" :
+      environment === "bmatrix" ? "]" :
+      environment === "Bmatrix" ? "}" :
+      environment === "vmatrix" ? "|" :
+      environment === "Vmatrix" ? "‖" : "";
+    const delimiterWidth =
+      environment === "matrix" || environment === "aligned" ? 0 :
+      isCases ? fontSize * 0.62 : fontSize * 0.9;
+    const cursorX = startX + (isCases ? fontSize * 0.7 : delimiterWidth);
+
+    rows.forEach((row, rowIndex) => {
+      const baseline = topY + rowHeight * (rowIndex + 0.5) + fontSize * 0.3;
+      let cellX = cursorX;
+      row.forEach((cell, columnIndex) => {
+        const cellWidth = columnWidths[columnIndex] ?? fontSize;
+        const actualWidth = measureMathRenderWidth(cell, fontSize * 0.94, ctx);
+        const isAlignedLabel = environment === "aligned" && columnIndex === 0;
+        const cellOrigin = isAlignedLabel
+          ? cellX + cellWidth - actualWidth
+          : cellX + (cellWidth - actualWidth) / 2;
+        drawMathEquation(ctx, cell, cellOrigin, baseline - fontSize * 0.94, fontSize * 0.94, color);
+        cellX += cellWidth + padding;
+      });
+    });
+
+    if (isCases) {
+      ctx.font = `${fontSize * 2.15}px Cambria Math, STIX Two Math, serif`;
+      ctx.textBaseline = "middle";
+      ctx.fillText("{", startX, topY + height / 2);
+    } else if (leftDelimiter) {
+      ctx.font = `${fontSize * 1.65}px Cambria Math, STIX Two Math, serif`;
+      ctx.textBaseline = "middle";
+      ctx.fillText(leftDelimiter, startX, topY + height / 2);
+      ctx.fillText(rightDelimiter, startX + width - delimiterWidth, topY + height / 2);
+    }
+    ctx.restore();
+    return;
+  }
+
+  // Lightweight LaTeX-style renderer for inline classroom notation.
   const render = (
     source: string,
     size: number,
@@ -1018,21 +1587,33 @@ function drawMathEquation(
           continue;
         }
         if (command === "sqrt") {
+          let rootIndex = "";
+          if (source[i] === "[") {
+            const closeIndex = source.indexOf("]", i + 1);
+            if (closeIndex !== -1) {
+              rootIndex = source.slice(i + 1, closeIndex);
+              i = closeIndex + 1;
+            }
+          }
           const radicand = readGroup();
           const metrics = estimateMathMetrics(radicand, size * 0.9, ctx);
+          const radicalX = cursorX + (rootIndex ? size * 0.24 : 0);
+          if (rootIndex) {
+            render(rootIndex, size * 0.43, cursorX, originY - size * 0.48);
+          }
           ctx.strokeStyle = color;
           ctx.lineWidth = Math.max(1, size * 0.07);
           ctx.beginPath();
-          ctx.moveTo(cursorX, originY - size * 0.28);
-          ctx.lineTo(cursorX + size * 0.18, originY + size * 0.05);
-          ctx.lineTo(cursorX + size * 0.34, originY - size * 0.62);
+          ctx.moveTo(radicalX, originY - size * 0.28);
+          ctx.lineTo(radicalX + size * 0.18, originY + size * 0.05);
+          ctx.lineTo(radicalX + size * 0.34, originY - size * 0.62);
           ctx.lineTo(
-            cursorX + size * 0.34 + metrics.width,
+            radicalX + size * 0.34 + metrics.width,
             originY - size * 0.62,
           );
           ctx.stroke();
-          render(radicand, size * 0.9, cursorX + size * 0.36, originY);
-          cursorX += size * 0.36 + metrics.width + size * 0.08;
+          render(radicand, size * 0.9, radicalX + size * 0.36, originY);
+          cursorX += (rootIndex ? size * 0.24 : 0) + size * 0.36 + metrics.width + size * 0.08;
           continue;
         }
         if (command === "text") {
@@ -1086,6 +1667,9 @@ function measureMathRenderWidth(
   fontSize: number,
   ctx?: CanvasRenderingContext2D | null,
 ): number {
+  const structured = parseStructuredMath(text, fontSize, ctx);
+  if (structured) return structured.width;
+
   const measure = (source: string, size: number): number => {
     let cursorX = 0;
     let i = 0;
@@ -1143,8 +1727,17 @@ function measureMathRenderWidth(
         }
 
         if (command === "sqrt") {
+          let rootIndex = "";
+          if (source[i] === "[") {
+            const closeIndex = source.indexOf("]", i + 1);
+            if (closeIndex !== -1) {
+              rootIndex = source.slice(i + 1, closeIndex);
+              i = closeIndex + 1;
+            }
+          }
           const radicand = readGroup();
-          cursorX += size * 0.36 + measure(radicand, size * 0.9) + size * 0.08;
+          cursorX += (rootIndex ? size * 0.24 + measure(rootIndex, size * 0.43) * 0.55 : 0) +
+            size * 0.36 + measure(radicand, size * 0.9) + size * 0.08;
           continue;
         }
 
@@ -1236,6 +1829,19 @@ function getElementBounds(
       top: element.y,
       right: element.x + element.width,
       bottom: element.y + element.height,
+    };
+  }
+
+  if (element.type === "text" && element.teachingTemplate) {
+    const scaleX = Math.max(0.25, element.scaleX ?? 1);
+    const scaleY = Math.max(0.25, element.scaleY ?? 1);
+    const width = (element.cardWidth ?? 360) * scaleX;
+    const height = (element.cardHeight ?? 190) * scaleY;
+    return {
+      left: element.x,
+      top: element.y,
+      right: element.x + width,
+      bottom: element.y + height,
     };
   }
 
@@ -1559,10 +2165,27 @@ export default function Whiteboard({
   );
   const [showGraphSettings, setShowGraphSettings] = useState(false);
   const [showGraphEditor, setShowGraphEditor] = useState(false);
+  const [graphStudioTab, setGraphStudioTab] = useState<"graphs" | "geometry">("graphs");
+  const [showGraphStudioPresets, setShowGraphStudioPresets] = useState(true);
+  const [graphConnectionPoints, setGraphConnectionPoints] = useState("A, B, C");
+  const [graphConnectionMode, setGraphConnectionMode] = useState<"polygon" | "segments">("polygon");
+  const [graphConnectionError, setGraphConnectionError] = useState<string | null>(null);
+  const [graphConstructionType, setGraphConstructionType] = useState<"line" | "parallel" | "perpendicular" | "perp-bisector" | "angle-bisector" | "midpoint" | "distance" | "reflect-y" | "rotate-90" | "translate">("perpendicular");
+  const [graphConstructionPoints, setGraphConstructionPoints] = useState({ a: "A", b: "B", c: "C", p: "P" });
+  const [graphConstructionVector, setGraphConstructionVector] = useState({ x: "2", y: "1" });
+  const [graphAvailablePointLabels, setGraphAvailablePointLabels] = useState<string[]>([]);
+  const [graphConstructionError, setGraphConstructionError] = useState<string | null>(null);
   const [graphLoadError, setGraphLoadError] = useState<string | null>(null);
   const graphContainerRef = useRef<HTMLDivElement | null>(null);
   const graphCalculatorRef = useRef<DesmosGraphingCalculator | null>(null);
   const graphEditingElementIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!showGraphEditor) return;
+    const frame = window.requestAnimationFrame(() => {
+      graphCalculatorRef.current?.resize?.();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [showGraphEditor, showGraphStudioPresets]);
   const [showCalculator, setShowCalculator] = useState(false);
   const [calculatorValue, setCalculatorValue] = useState("");
   const [calculatorResult, setCalculatorResult] = useState("");
@@ -1840,6 +2463,104 @@ export default function Whiteboard({
   >(null);
   const [showTextFormattingColors, setShowTextFormattingColors] =
     useState(false);
+  const [teachingLibrary, setTeachingLibrary] = useState<TeachingLibraryItem[]>([]);
+  const [teachingLessons, setTeachingLessons] = useState<TeachingLesson[]>([
+    { id: DEFAULT_TEACHING_LESSON_ID, name: "General lesson", subtopics: [{ id: DEFAULT_TEACHING_SUBTOPIC_ID, name: "General", createdAt: new Date(0).toISOString(), updatedAt: new Date(0).toISOString() }], createdAt: new Date(0).toISOString(), updatedAt: new Date(0).toISOString() },
+  ]);
+  const [activeTeachingLessonId, setActiveTeachingLessonId] = useState(DEFAULT_TEACHING_LESSON_ID);
+  const [activeTeachingSubtopicId, setActiveTeachingSubtopicId] = useState(DEFAULT_TEACHING_SUBTOPIC_ID);
+  const [newTeachingSubtopicName, setNewTeachingSubtopicName] = useState("");
+  const [isCreatingTeachingSubtopic, setIsCreatingTeachingSubtopic] = useState(false);
+  const [showAllLessonMaterials, setShowAllLessonMaterials] = useState(false);
+  const [isCreatingTeachingLesson, setIsCreatingTeachingLesson] = useState(false);
+  const [newTeachingLessonName, setNewTeachingLessonName] = useState("");
+  const [pendingTeachingDelete, setPendingTeachingDelete] = useState<{ type: "topic" | "subtopic"; id: string; name: string } | null>(null);
+  const [teachingLibraryOpen, setTeachingLibraryOpen] = useState(false);
+  const [openTeachingActionMenu, setOpenTeachingActionMenu] = useState<{ itemId: string; top: number; right: number } | null>(null);
+  const [teachingPresentationOpen, setTeachingPresentationOpen] = useState(true);
+  const [teachingPanelVisible, setTeachingPanelVisible] = useState(false);
+  const [teachingPresentationIndex, setTeachingPresentationIndex] = useState(0);
+  const [teachingRevealedStepCount, setTeachingRevealedStepCount] = useState(0);
+  const [teachingLibrarySearch, setTeachingLibrarySearch] = useState("");
+  const [teachingLibraryFilter, setTeachingLibraryFilter] = useState<"all" | TeachingTemplate>("all");
+  const [teachingSectionFilter, setTeachingSectionFilter] = useState<"all" | TeachingSection>("all");
+  const [teachingEditor, setTeachingEditor] = useState<{
+    open: boolean;
+    template: TeachingTemplate;
+    heading: string;
+    body: string;
+    stepsText: string;
+    section: TeachingSection;
+    subtopicId: string;
+    editingElementId: string | null;
+    editingLibraryItemId: string | null;
+    returnToLibrary: boolean;
+  }>({
+    open: false,
+    template: "definition",
+    heading: TEACHING_TEMPLATES.definition.heading,
+    body: "",
+    stepsText: "",
+    section: "definitions",
+    subtopicId: DEFAULT_TEACHING_SUBTOPIC_ID,
+    editingElementId: null,
+    editingLibraryItemId: null,
+    returnToLibrary: false,
+  });
+
+  // Teaching Mode behaves like an auto-hiding side panel: it is shown when
+  // presentation starts, hides as the pointer leaves its area, and reappears
+  // when the pointer approaches the right edge. The narrow edge handle keeps
+  // the panel discoverable on touch devices as well.
+  useEffect(() => {
+    // This effect only synchronizes the panel with external pointer movement.
+    // Visibility is also gated by teachingPresentationOpen in the rendered UI,
+    // so no synchronous state update is needed when the mode closes.
+    if (!teachingPresentationOpen) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      // IMPORTANT: reveal from the browser viewport edge, not rootRef or the
+      // whiteboard boundary. The user wants to move all the way to the far
+      // right of the screen before Teaching Mode appears.
+      const viewportRight = window.innerWidth;
+      const revealThreshold = 1; // final 1 CSS pixel of the browser viewport
+      const panelWidth = 280;
+
+      const pointerInsideVisiblePanel =
+        event.clientX >= viewportRight - panelWidth &&
+        event.clientX <= viewportRight;
+
+      const pointerAtFarRightScreenEdge =
+        event.clientX >= viewportRight - revealThreshold &&
+        event.clientX <= viewportRight;
+
+      setTeachingPanelVisible((visible) =>
+        visible ? pointerInsideVisiblePanel : pointerAtFarRightScreenEdge,
+      );
+    };
+
+    window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    return () => window.removeEventListener("pointermove", handlePointerMove);
+  }, [teachingPresentationOpen]);
+
+  const activeTeachingLesson = teachingLessons.find((lesson) => lesson.id === activeTeachingLessonId);
+  const activeTeachingSubtopics = activeTeachingLesson?.subtopics ?? [];
+  const activeTeachingSubtopic = activeTeachingSubtopics.find((subtopic) => subtopic.id === activeTeachingSubtopicId) ?? activeTeachingSubtopics[0] ?? null;
+
+  const activeLessonTeachingMaterials = useMemo(() => {
+    const sectionOrder = Object.keys(TEACHING_SECTIONS) as TeachingSection[];
+    return teachingLibrary
+      .filter((item) => (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === activeTeachingLessonId)
+      .filter((item) => !activeTeachingSubtopicId || (item.subtopicId ?? DEFAULT_TEACHING_SUBTOPIC_ID) === activeTeachingSubtopicId)
+      .sort((a, b) => {
+        const sectionA = sectionOrder.indexOf(a.section ?? getDefaultTeachingSection(a.template));
+        const sectionB = sectionOrder.indexOf(b.section ?? getDefaultTeachingSection(b.template));
+        return sectionA - sectionB || (a.order ?? 0) - (b.order ?? 0) || a.createdAt.localeCompare(b.createdAt);
+      });
+  }, [activeTeachingLessonId, activeTeachingSubtopicId, teachingLibrary]);
+
+  const currentTeachingPresentationItem =
+    activeLessonTeachingMaterials[teachingPresentationIndex] ?? null;
 
   const drawingRef = useRef(false);
   const startPointRef = useRef<Point | null>(null);
@@ -2252,7 +2973,144 @@ export default function Whiteboard({
   );
 
   const drawText = useCallback(
-    (ctx: CanvasRenderingContext2D, element: TextElement) => {
+    (ctx: CanvasRenderingContext2D, element: TextElement, showClose = false) => {
+      if (element.type === "text" && element.teachingTemplate) {
+        const style = TEACHING_TEMPLATES[element.teachingTemplate];
+        const scaleX = Math.max(0.25, element.scaleX ?? 1);
+        const scaleY = Math.max(0.25, element.scaleY ?? 1);
+        const cardWidth = element.cardWidth ?? 360;
+        const cardHeight = element.cardHeight ?? 190;
+        const isLessonTitle = element.cardEyebrow === "";
+        ctx.save();
+        ctx.translate(element.x, element.y);
+        ctx.scale(scaleX, scaleY);
+
+        if (!isLessonTitle) {
+          // Standard teaching cards retain their white card surface and accent.
+          ctx.shadowColor = "rgba(15, 23, 42, 0.12)";
+          ctx.shadowBlur = 16;
+          ctx.shadowOffsetY = 5;
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(0, 0, cardWidth, cardHeight, 16);
+          ctx.fill();
+          ctx.shadowColor = "transparent";
+          ctx.shadowBlur = 0;
+          ctx.shadowOffsetY = 0;
+          ctx.strokeStyle = "#e2e8f0";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(0, 0, cardWidth, cardHeight, 16);
+          ctx.clip();
+          ctx.fillStyle = style.accent;
+          ctx.fillRect(0, 0, 7, cardHeight);
+          ctx.restore();
+
+          // Card content starts directly with its heading; no eyebrow/tag label.
+          ctx.fillStyle = "#0f172a";
+          ctx.font = "700 21px Inter, sans-serif";
+          ctx.textBaseline = "top";
+          ctx.fillText((element.heading ?? style.heading).slice(0, 42), 22, 22);
+        } else {
+          // Lesson title: a simple white, resizable card with centered bold text.
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath();
+          ctx.roundRect(0, 0, cardWidth, cardHeight, 12);
+          ctx.fill();
+          ctx.strokeStyle = "#e2e8f0";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          const title = element.heading ?? style.heading;
+          const horizontalPadding = 28;
+          const maxTextWidth = Math.max(40, cardWidth - horizontalPadding * 2);
+          const fontSize = Math.min(34, Math.max(20, cardHeight * 0.42));
+          ctx.fillStyle = "#000000";
+          ctx.font = `800 ${fontSize}px Inter, sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+
+          // Wrap long lesson names and center the complete title in the card.
+          const words = title.split(/\s+/).filter(Boolean);
+          const lines: string[] = [];
+          let line = "";
+          for (const word of words) {
+            const candidate = line ? `${line} ${word}` : word;
+            if (ctx.measureText(candidate).width > maxTextWidth && line) {
+              lines.push(line);
+              line = word;
+            } else {
+              line = candidate;
+            }
+          }
+          if (line) lines.push(line);
+          const lineHeight = fontSize * 1.18;
+          const firstLineY = cardHeight / 2 - ((lines.length - 1) * lineHeight) / 2;
+          lines.forEach((textLine, index) => {
+            ctx.fillText(textLine, cardWidth / 2, firstLineY + index * lineHeight, maxTextWidth);
+          });
+        }
+
+        // Close control is visible only for the currently selected card.
+        const closeX = cardWidth - 20;
+        const closeY = isLessonTitle ? 18 : 20;
+        if (showClose) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(closeX, closeY, 10, 0, Math.PI * 2);
+          ctx.fillStyle = "#fff1f2";
+          ctx.fill();
+          ctx.strokeStyle = "#fecdd3";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.strokeStyle = "#e11d48";
+          ctx.lineWidth = 1.8;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(closeX - 3, closeY - 3);
+          ctx.lineTo(closeX + 3, closeY + 3);
+          ctx.moveTo(closeX + 3, closeY - 3);
+          ctx.lineTo(closeX - 3, closeY + 3);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        if (isLessonTitle) {
+          ctx.restore();
+          return;
+        }
+
+        ctx.fillStyle = "#334155";
+        ctx.font = "400 15px Inter, sans-serif";
+        const body = element.body ?? element.text;
+        const words = body.split(/\s+/);
+        const lines: string[] = [];
+        let line = "";
+        const maxWidth = cardWidth - 44;
+        for (const word of words) {
+          const candidate = line ? `${line} ${word}` : word;
+          if (ctx.measureText(candidate).width > maxWidth && line) {
+            lines.push(line);
+            line = word;
+          } else {
+            line = candidate;
+          }
+        }
+        if (line) lines.push(line);
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(18, 52, cardWidth - 36, Math.max(20, cardHeight - 64));
+        ctx.clip();
+        lines.forEach((textLine, index) => {
+          ctx.fillText(textLine, 22, 56 + index * 20, maxWidth);
+        });
+        ctx.restore();
+        ctx.restore();
+        return;
+      }
+
       if (element.type === "equation") {
         const scaleX = Math.max(0.2, element.scaleX ?? 1);
         const scaleY = Math.max(0.2, element.scaleY ?? 1);
@@ -2519,6 +3377,17 @@ export default function Whiteboard({
         };
       }
 
+      if (original.type === "text" && original.teachingTemplate) {
+        const isLessonTitle = original.cardEyebrow === "";
+        return {
+          ...original,
+          x: left,
+          y: top,
+          cardWidth: Math.max(isLessonTitle ? 180 : 240, newWidth),
+          cardHeight: Math.max(isLessonTitle ? 64 : 140, newHeight),
+        };
+      }
+
       if (original.type === "text") {
         return {
           ...original,
@@ -2742,7 +3611,7 @@ export default function Whiteboard({
         elementToDraw.type === "text" ||
         elementToDraw.type === "equation"
       )
-        drawText(ctx, elementToDraw as TextElement);
+        drawText(ctx, elementToDraw as TextElement, elementToDraw.id === selectedElementId);
     }
 
     if (currentStrokeRef.current) drawStroke(ctx, currentStrokeRef.current);
@@ -2794,6 +3663,7 @@ export default function Whiteboard({
     panOffset.x,
     panOffset.y,
     resizeCanvas,
+    selectedElementId,
   ]);
 
   // backgroundImageVersion is intentionally a render trigger. The image is
@@ -3328,6 +4198,187 @@ export default function Whiteboard({
     }
   };
 
+  const applyGraphStudioPreset = useCallback((preset: GraphStudioPreset) => {
+    const calculator = graphCalculatorRef.current;
+    if (!calculator) {
+      setGraphLoadError("The graphing calculator is still loading. Please try again in a moment.");
+      return;
+    }
+    if (calculator.setExpressions) {
+      calculator.setExpressions(preset.expressions);
+    } else if (calculator.setExpression) {
+      preset.expressions.forEach((expression) => calculator.setExpression?.(expression));
+    } else {
+      setGraphLoadError("This graphing calculator session does not support quick presets. Enter the expression directly instead.");
+    }
+  }, []);
+
+  const connectGraphPoints = useCallback(() => {
+    const calculator = graphCalculatorRef.current;
+    if (!calculator) {
+      setGraphConnectionError("The graphing calculator is still loading. Please try again in a moment.");
+      return;
+    }
+
+    const labels = graphConnectionPoints
+      .split(/[;,\s]+/)
+      .map((label) => label.trim())
+      .filter(Boolean);
+    const validLabel = /^[A-Za-z][A-Za-z0-9_']*$/;
+    if (labels.length < 2 || labels.some((label) => !validLabel.test(label))) {
+      setGraphConnectionError("Enter at least two valid point names, separated by commas (for example: A, B, C).");
+      return;
+    }
+    if (new Set(labels).size !== labels.length) {
+      setGraphConnectionError("Each point name should appear only once.");
+      return;
+    }
+
+    const expressions = graphConnectionMode === "polygon"
+      ? [{ id: "justdy-user-connection-polygon", latex: `polygon(${labels.join(",")})` }]
+      : labels.slice(0, -1).map((label, index) => ({
+          id: `justdy-user-connection-segment-${index + 1}`,
+          latex: `segment(${label},${labels[index + 1]})`,
+        }));
+
+    if (calculator.setExpressions) {
+      calculator.setExpressions(expressions);
+      setGraphConnectionError(null);
+    } else if (calculator.setExpression) {
+      expressions.forEach((expression) => calculator.setExpression?.(expression));
+      setGraphConnectionError(null);
+    } else {
+      setGraphConnectionError("This calculator session cannot create connections. Enter the expressions directly instead.");
+    }
+  }, [graphConnectionMode, graphConnectionPoints]);
+
+  const refreshGraphPointSuggestions = useCallback(() => {
+    const calculator = graphCalculatorRef.current;
+    if (!calculator?.getState) {
+      setGraphConstructionError("The graphing calculator is not ready to read its plotted points yet.");
+      return;
+    }
+    const state = calculator.getState();
+    const expressionState = state.expressions as { list?: Array<{ latex?: string }> } | undefined;
+    const labels = (expressionState?.list ?? [])
+      .map((expression) => expression.latex?.match(/^\s*([A-WZ])(?:_\{?[^}]+\}?|_[A-Za-z0-9]+)?\s*=/)?.[1])
+      .filter((label): label is string => Boolean(label));
+    const uniqueLabels = Array.from(new Set(labels));
+    setGraphAvailablePointLabels(uniqueLabels);
+    setGraphConstructionError(uniqueLabels.length
+      ? null
+      : "No named points found yet. Add points such as A=(0,0), then refresh suggestions.");
+  }, []);
+
+  const applyGraphConstruction = useCallback(() => {
+    const calculator = graphCalculatorRef.current;
+    if (!calculator) {
+      setGraphConstructionError("The graphing calculator is still loading. Please try again in a moment.");
+      return;
+    }
+
+    const { a, b, c, p } = graphConstructionPoints;
+    const pointNameIsValid = (name: string) => /^[A-WZ]$/.test(name.trim());
+    const requiredNames: string[] = graphConstructionType === "line" || graphConstructionType === "midpoint" || graphConstructionType === "distance" || graphConstructionType === "perp-bisector"
+      ? [a, b]
+      : graphConstructionType === "parallel" || graphConstructionType === "perpendicular"
+        ? [a, b, p]
+        : graphConstructionType === "angle-bisector"
+          ? [a, b, c]
+          : [a, b, c];
+
+    if (requiredNames.some((name) => !pointNameIsValid(name))) {
+      setGraphConstructionError("Use single capital-letter point names A–W or Z. Avoid X and Y because they are graph coordinates.");
+      return;
+    }
+    if (new Set(requiredNames).size !== requiredNames.length) {
+      setGraphConstructionError("The points used by this construction must have different names.");
+      return;
+    }
+
+    const dx = `(${b}.x-${a}.x)`;
+    const dy = `(${b}.y-${a}.y)`;
+    let expressions: Array<{ id: string; latex: string }> = [];
+
+    switch (graphConstructionType) {
+      case "line":
+        expressions = [{ id: "justdy-construction-line-ab", latex: `${dy}(x-${a}.x)-${dx}(y-${a}.y)=0` }];
+        break;
+      case "parallel":
+        expressions = [{ id: "justdy-construction-parallel", latex: `${dy}(x-${p}.x)-${dx}(y-${p}.y)=0` }];
+        break;
+      case "perpendicular":
+        expressions = [{ id: "justdy-construction-perpendicular", latex: `${dx}(x-${p}.x)+${dy}(y-${p}.y)=0` }];
+        break;
+      case "perp-bisector":
+        expressions = [
+          { id: "justdy-construction-midpoint", latex: `M_{jd}=midpoint(${a},${b})` },
+          { id: "justdy-construction-perp-bisector", latex: `${dx}(x-M_{jd}.x)+${dy}(y-M_{jd}.y)=0` },
+        ];
+        break;
+      case "angle-bisector": {
+        const distanceAB = `distance(${a},${b})`;
+        const distanceAC = `distance(${a},${c})`;
+        const unitX = `((${b}.x-${a}.x)/${distanceAB}+(${c}.x-${a}.x)/${distanceAC})`;
+        const unitY = `((${b}.y-${a}.y)/${distanceAB}+(${c}.y-${a}.y)/${distanceAC})`;
+        expressions = [{ id: "justdy-construction-angle-bisector", latex: `${unitY}(x-${a}.x)-${unitX}(y-${a}.y)=0` }];
+        break;
+      }
+      case "midpoint":
+        expressions = [
+          { id: "justdy-construction-midpoint-point", latex: `M_{jd}=midpoint(${a},${b})` },
+          { id: "justdy-construction-midpoint-segment", latex: `segment(${a},${b})` },
+        ];
+        break;
+      case "distance":
+        expressions = [{ id: "justdy-construction-distance", latex: `d_{jd}=distance(${a},${b})` }];
+        break;
+      case "reflect-y":
+        expressions = [
+          { id: "justdy-construction-reflect-a", latex: `${a}_1=(-${a}.x,${a}.y)` },
+          { id: "justdy-construction-reflect-b", latex: `${b}_1=(-${b}.x,${b}.y)` },
+          { id: "justdy-construction-reflect-c", latex: `${c}_1=(-${c}.x,${c}.y)` },
+          { id: "justdy-construction-reflect-polygon", latex: `polygon(${a}_1,${b}_1,${c}_1)` },
+        ];
+        break;
+      case "rotate-90":
+        expressions = [
+          { id: "justdy-construction-rotate-a", latex: `${a}_1=(-${a}.y,${a}.x)` },
+          { id: "justdy-construction-rotate-b", latex: `${b}_1=(-${b}.y,${b}.x)` },
+          { id: "justdy-construction-rotate-c", latex: `${c}_1=(-${c}.y,${c}.x)` },
+          { id: "justdy-construction-rotate-polygon", latex: `polygon(${a}_1,${b}_1,${c}_1)` },
+        ];
+        break;
+      case "translate": {
+        const tx = Number(graphConstructionVector.x);
+        const ty = Number(graphConstructionVector.y);
+        if (!Number.isFinite(tx) || !Number.isFinite(ty)) {
+          setGraphConstructionError("Enter valid numeric values for the horizontal and vertical translation.");
+          return;
+        }
+        expressions = [
+          { id: "justdy-construction-translate-a", latex: `${a}_1=(${a}.x+(${tx}),${a}.y+(${ty}))` },
+          { id: "justdy-construction-translate-b", latex: `${b}_1=(${b}.x+(${tx}),${b}.y+(${ty}))` },
+          { id: "justdy-construction-translate-c", latex: `${c}_1=(${c}.x+(${tx}),${c}.y+(${ty}))` },
+          { id: "justdy-construction-translate-polygon", latex: `polygon(${a}_1,${b}_1,${c}_1)` },
+        ];
+        break;
+      }
+    }
+
+    if (calculator.setExpressions) {
+      calculator.setExpressions(expressions);
+      setGraphConstructionError(null);
+      setShowGraphStudioPresets(false);
+    } else if (calculator.setExpression) {
+      expressions.forEach((expression) => calculator.setExpression?.(expression));
+      setGraphConstructionError(null);
+      setShowGraphStudioPresets(false);
+    } else {
+      setGraphConstructionError("This calculator session cannot create constructions. Enter the expressions directly instead.");
+    }
+  }, [graphConstructionPoints, graphConstructionType, graphConstructionVector]);
+
   const insertGraphFromDesmos = useCallback(() => {
     const calculator = graphCalculatorRef.current;
     const canvas = canvasRef.current;
@@ -3634,6 +4685,342 @@ export default function Whiteboard({
     [duplicateSelectedElement, elements, getPoint, selectedElementId, tool],
   );
 
+  const openTeachingEditor = useCallback(
+    (
+      template: TeachingTemplate = "definition",
+      element?: TextElement,
+      libraryItem?: TeachingLibraryItem,
+    ) => {
+      setTeachingEditor({
+        open: true,
+        template: libraryItem?.template ?? element?.teachingTemplate ?? template,
+        heading:
+          libraryItem?.heading ??
+          element?.heading ??
+          TEACHING_TEMPLATES[template].heading,
+        body: libraryItem?.body ?? element?.body ?? "",
+        stepsText: libraryItem?.steps?.join("\n") ?? "",
+        section: libraryItem?.section ?? getDefaultTeachingSection(libraryItem?.template ?? element?.teachingTemplate ?? template),
+        subtopicId: libraryItem?.subtopicId ?? activeTeachingSubtopicId ?? DEFAULT_TEACHING_SUBTOPIC_ID,
+        editingElementId: element?.id ?? null,
+        editingLibraryItemId: libraryItem?.id ?? null,
+        returnToLibrary: !element,
+      });
+      setTeachingLibraryOpen(false);
+    },
+    [activeTeachingSubtopicId],
+  );
+
+  const createTeachingLesson = useCallback(() => {
+    const name = newTeachingLessonName.trim();
+    if (!name) return;
+    const now = new Date().toISOString();
+    const firstSubtopic: TeachingSubtopic = { id: createId(), name: "Overview", createdAt: now, updatedAt: now };
+    const lesson: TeachingLesson = { id: createId(), name, subtopics: [firstSubtopic], createdAt: now, updatedAt: now };
+    setTeachingLessons((previous) => [...previous, lesson]);
+    setActiveTeachingLessonId(lesson.id);
+    setActiveTeachingSubtopicId(firstSubtopic.id);
+    setShowAllLessonMaterials(false);
+    setNewTeachingLessonName("");
+    setIsCreatingTeachingLesson(false);
+  }, [newTeachingLessonName]);
+
+  const createTeachingSubtopic = useCallback(() => {
+    const name = newTeachingSubtopicName.trim();
+    if (!name) return;
+    const now = new Date().toISOString();
+    const subtopic: TeachingSubtopic = { id: createId(), name, createdAt: now, updatedAt: now };
+    setTeachingLessons((previous) => previous.map((lesson) =>
+      lesson.id === activeTeachingLessonId
+        ? { ...lesson, subtopics: [...(lesson.subtopics ?? []), subtopic], updatedAt: now }
+        : lesson,
+    ));
+    setActiveTeachingSubtopicId(subtopic.id);
+    setNewTeachingSubtopicName("");
+    setIsCreatingTeachingSubtopic(false);
+    setTeachingPresentationIndex(0);
+  }, [activeTeachingLessonId, newTeachingSubtopicName]);
+
+  const confirmDeleteTeachingGroup = useCallback(() => {
+    if (!pendingTeachingDelete) return;
+    const now = new Date().toISOString();
+    if (pendingTeachingDelete.type === "topic") {
+      const remaining = teachingLessons.filter((lesson) => lesson.id !== pendingTeachingDelete.id);
+      const nextLessons = remaining.length > 0 ? remaining : [{
+        id: DEFAULT_TEACHING_LESSON_ID,
+        name: "General lesson",
+        subtopics: [{ id: DEFAULT_TEACHING_SUBTOPIC_ID, name: "General", createdAt: now, updatedAt: now }],
+        createdAt: now,
+        updatedAt: now,
+      }];
+      setTeachingLessons(nextLessons);
+      setTeachingLibrary((previous) => previous.filter((item) => (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) !== pendingTeachingDelete.id));
+      if (activeTeachingLessonId === pendingTeachingDelete.id) {
+        const nextLesson = nextLessons[0];
+        setActiveTeachingLessonId(nextLesson.id);
+        setActiveTeachingSubtopicId(nextLesson.subtopics[0]?.id ?? DEFAULT_TEACHING_SUBTOPIC_ID);
+      }
+      setShowAllLessonMaterials(false);
+    } else {
+      const lesson = teachingLessons.find((entry) => entry.id === activeTeachingLessonId);
+      if (lesson) {
+        const remaining = lesson.subtopics.filter((subtopic) => subtopic.id !== pendingTeachingDelete.id);
+        const nextSubtopics = remaining.length > 0 ? remaining : [{
+          id: DEFAULT_TEACHING_SUBTOPIC_ID,
+          name: "General",
+          createdAt: now,
+          updatedAt: now,
+        }];
+        setTeachingLessons((previous) => previous.map((entry) => entry.id === lesson.id
+          ? { ...entry, subtopics: nextSubtopics, updatedAt: now }
+          : entry));
+        setTeachingLibrary((previous) => previous.filter((item) =>
+          !((item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === lesson.id && (item.subtopicId ?? DEFAULT_TEACHING_SUBTOPIC_ID) === pendingTeachingDelete.id)
+        ));
+        if (activeTeachingSubtopicId === pendingTeachingDelete.id) setActiveTeachingSubtopicId(nextSubtopics[0].id);
+      }
+    }
+    setPendingTeachingDelete(null);
+  }, [pendingTeachingDelete, teachingLessons, activeTeachingLessonId, activeTeachingSubtopicId]);
+
+  const startTeachingPresentation = useCallback(() => {
+    setTeachingPresentationIndex(0);
+    setTeachingRevealedStepCount(0);
+    setTeachingLibraryOpen(false);
+    setTeachingPresentationOpen(true);
+  }, []);
+
+  const copyTeachingMaterialToActiveLesson = useCallback((item: TeachingLibraryItem) => {
+    const now = new Date().toISOString();
+    setTeachingLibrary((previous) => [
+      {
+        ...item,
+        id: createId(),
+        lessonId: activeTeachingLessonId,
+        subtopicId: activeTeachingSubtopicId,
+        order: previous.filter(
+          (entry) =>
+            (entry.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === activeTeachingLessonId &&
+            (entry.section ?? getDefaultTeachingSection(entry.template)) ===
+              (item.section ?? getDefaultTeachingSection(item.template)),
+        ).length,
+        heading: `${item.heading} (copy)`,
+        createdAt: now,
+        updatedAt: now,
+      },
+      ...previous,
+    ]);
+  }, [activeTeachingLessonId, activeTeachingSubtopicId]);
+
+  const moveTeachingLibraryItem = useCallback((itemId: string, direction: -1 | 1) => {
+    setTeachingLibrary((previous) => {
+      const current = previous.find((item) => item.id === itemId);
+      if (!current) return previous;
+      const lessonId = current.lessonId ?? DEFAULT_TEACHING_LESSON_ID;
+      const section = current.section ?? getDefaultTeachingSection(current.template);
+      const group = previous
+        .filter(
+          (item) =>
+            (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === lessonId &&
+            (item.section ?? getDefaultTeachingSection(item.template)) === section,
+        )
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const index = group.findIndex((item) => item.id === itemId);
+      const targetIndex = index + direction;
+      if (index < 0 || targetIndex < 0 || targetIndex >= group.length) return previous;
+      const reordered = [...group];
+      [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+      const orderById = new Map(reordered.map((item, order) => [item.id, order]));
+      return previous.map((item) =>
+        orderById.has(item.id)
+          ? { ...item, order: orderById.get(item.id)!, updatedAt: new Date().toISOString() }
+          : item,
+      );
+    });
+  }, []);
+
+  const insertTeachingLibraryItem = useCallback(
+    (item: TeachingLibraryItem, dropPosition?: Point) => {
+      const canvas = canvasRef.current;
+      const cardWidth = 360;
+      const cardHeight = Math.max(
+        190,
+        Math.min(360, 110 + Math.ceil(item.body.length / 42) * 20),
+      );
+      const element: TextElement = {
+        id: createId(),
+        type: "text",
+        x: dropPosition
+          ? Math.max(16, Math.min((canvas?.width ?? 900) - cardWidth - 16, dropPosition.x - cardWidth / 2))
+          : Math.max(16, (canvas?.width ?? 900) / 2 - cardWidth / 2),
+        y: dropPosition
+          ? Math.max(16, Math.min((canvas?.height ?? 600) - cardHeight - 16, dropPosition.y - cardHeight / 2))
+          : Math.max(16, (canvas?.height ?? 600) / 2 - cardHeight / 2),
+        text: item.body,
+        color: "#0f172a",
+        fontSize: 16,
+        bold: false,
+        italic: false,
+        underline: false,
+        teachingTemplate: item.template,
+        heading: item.heading,
+        body: item.body,
+        cardWidth,
+        cardHeight,
+      };
+
+      pushHistory();
+      updateCurrentPage((page) => ({
+        ...page,
+        elements: [...page.elements, element],
+      }));
+      setSelectedElementId(element.id);
+      setSelectedElementIds([element.id]);
+      setTool("select");
+      setTeachingLibraryOpen(false);
+      textPlacementArmedRef.current = false;
+    },
+    [pushHistory, updateCurrentPage],
+  );
+
+  const insertTeachingLessonTitle = useCallback(
+    (lesson: TeachingLesson, dropPosition?: Point) => {
+      const canvas = canvasRef.current;
+      const titleText = lesson.name.trim();
+      if (!titleText) return;
+
+      const cardWidth = Math.min(900, Math.max(320, titleText.length * 22 + 56));
+      const cardHeight = 64;
+      const element: TextElement = {
+        id: createId(),
+        type: "text",
+        x: dropPosition
+          ? Math.max(16, Math.min((canvas?.width ?? 900) - cardWidth - 16, dropPosition.x - cardWidth / 2))
+          : Math.max(16, (canvas?.width ?? 900) / 2 - cardWidth / 2),
+        y: dropPosition
+          ? Math.max(16, Math.min((canvas?.height ?? 600) - cardHeight - 16, dropPosition.y - cardHeight / 2))
+          : Math.max(16, (canvas?.height ?? 600) / 2 - cardHeight / 2),
+        text: "",
+        color: "#0f172a",
+        fontSize: 21,
+        bold: true,
+        italic: false,
+        underline: false,
+        teachingTemplate: "key-concept",
+        cardEyebrow: "",
+        heading: titleText,
+        body: "",
+        cardWidth,
+        cardHeight,
+      };
+
+      pushHistory();
+      updateCurrentPage((page) => ({
+        ...page,
+        elements: [...page.elements, element],
+      }));
+      setSelectedElementId(element.id);
+      setSelectedElementIds([element.id]);
+      setTool("select");
+      setTeachingLibraryOpen(false);
+      textPlacementArmedRef.current = false;
+    },
+    [pushHistory, updateCurrentPage],
+  );
+
+  const saveTeachingElement = useCallback(() => {
+    const heading = teachingEditor.heading.trim();
+    const body = teachingEditor.body.trim();
+    if (!heading && !body) return;
+
+    const normalizedHeading =
+      heading || TEACHING_TEMPLATES[teachingEditor.template].heading;
+
+    if (teachingEditor.editingElementId) {
+      pushHistory();
+      updateCurrentPage((page) => ({
+        ...page,
+        elements: page.elements.map((element: WhiteboardElement) => {
+          if (element.id !== teachingEditor.editingElementId) return element;
+          if (element.type !== "text") return element;
+          return {
+            ...element,
+            teachingTemplate: teachingEditor.template,
+            heading: normalizedHeading,
+            body,
+            text: body,
+            cardHeight: Math.max(
+              element.cardHeight ?? 190,
+              Math.min(360, 110 + Math.ceil(body.length / 42) * 20),
+            ),
+          };
+        }),
+      }));
+      setSelectedElementId(teachingEditor.editingElementId);
+      setSelectedElementIds([teachingEditor.editingElementId]);
+    } else if (teachingEditor.editingLibraryItemId) {
+      const now = new Date().toISOString();
+      setTeachingLibrary((previous) =>
+        previous.map((item) =>
+          item.id === teachingEditor.editingLibraryItemId
+            ? {
+                ...item,
+                template: teachingEditor.template,
+                heading: normalizedHeading,
+                body,
+                steps:
+                  teachingEditor.template === "worked-example"
+                    ? teachingEditor.stepsText.split(/\r?\n/).map((step) => step.trim()).filter(Boolean)
+                    : [],
+                section: teachingEditor.section,
+                subtopicId: teachingEditor.subtopicId,
+                updatedAt: now,
+              }
+            : item,
+        ),
+      );
+    } else {
+      const now = new Date().toISOString();
+      const item: TeachingLibraryItem = {
+        id: createId(),
+        template: teachingEditor.template,
+        heading: normalizedHeading,
+        body,
+        steps:
+          teachingEditor.template === "worked-example"
+            ? teachingEditor.stepsText.split(/\r?\n/).map((step) => step.trim()).filter(Boolean)
+            : [],
+        lessonId: activeTeachingLessonId,
+        subtopicId: teachingEditor.subtopicId,
+        section: teachingEditor.section,
+        order: teachingLibrary.filter(
+          (entry) =>
+            (entry.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === activeTeachingLessonId &&
+            (entry.section ?? getDefaultTeachingSection(entry.template)) === teachingEditor.section,
+        ).length,
+        createdAt: now,
+        updatedAt: now,
+      };
+      setTeachingLibrary((previous) => [item, ...previous]);
+    }
+
+    const returnToLibrary = teachingEditor.returnToLibrary || !teachingEditor.editingElementId;
+    setTeachingEditor((previous) => ({
+      ...previous,
+      open: false,
+      editingElementId: null,
+      editingLibraryItemId: null,
+      stepsText: "",
+    }));
+    if (returnToLibrary) setTeachingLibraryOpen(true);
+    setTool("select");
+    textPlacementArmedRef.current = false;
+  }, [activeTeachingLessonId, pushHistory, teachingEditor, teachingLibrary, updateCurrentPage]);
+
+  const deleteTeachingLibraryItem = useCallback((id: string) => {
+    setTeachingLibrary((previous) => previous.filter((item) => item.id !== id));
+  }, []);
+
   const handleCanvasDoubleClick = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
       if (tool !== "select") return;
@@ -3668,6 +5055,8 @@ export default function Whiteboard({
 
       if (hit.type === "equation") {
         openLatexEditor(hit.text, hit.id, hit.color);
+      } else if (hit.teachingTemplate) {
+        openTeachingEditor(hit.teachingTemplate, hit);
       } else {
         setShowTextFormattingColors(false);
         openTextEditor(
@@ -3683,7 +5072,15 @@ export default function Whiteboard({
         );
       }
     },
-    [elements, gridSize, openLatexEditor, openTextEditor, snapToGrid, tool],
+    [
+      elements,
+      gridSize,
+      openLatexEditor,
+      openTeachingEditor,
+      openTextEditor,
+      snapToGrid,
+      tool,
+    ],
   );
 
   const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -3701,6 +5098,43 @@ export default function Whiteboard({
 
     const point = getPoint(event.nativeEvent);
     startPointRef.current = point;
+
+    // Teaching cards have a visible close icon in their top-right corner.
+    // In Select mode, handle that hit target before resize handles or dragging.
+    if (tool === "select") {
+      const teachingCardToClose = [...elements].reverse().find((element) => {
+        if (element.type !== "text" || !element.teachingTemplate || element.id !== selectedElementId) return false;
+        const scaleX = Math.max(0.25, element.scaleX ?? 1);
+        const scaleY = Math.max(0.25, element.scaleY ?? 1);
+        const cardWidth = element.cardWidth ?? 360;
+        const centerX = element.x + (cardWidth - 20) * scaleX;
+        const closeY = element.cardEyebrow === "" ? 18 : 20;
+        const centerY = element.y + closeY * scaleY;
+        return (
+          Math.abs(point.x - centerX) <= 13 * scaleX &&
+          Math.abs(point.y - centerY) <= 13 * scaleY
+        );
+      });
+
+      if (teachingCardToClose) {
+        pushHistory();
+        updateCurrentPage((page) => ({
+          ...page,
+          elements: page.elements.filter(
+            (element) => element.id !== teachingCardToClose.id,
+          ),
+        }));
+        setSelectedElementId((current) =>
+          current === teachingCardToClose.id ? null : current,
+        );
+        setSelectedElementIds((current) =>
+          current.filter((id) => id !== teachingCardToClose.id),
+        );
+        drawingRef.current = false;
+        transformRef.current = null;
+        return;
+      }
+    }
 
     if (tool === "hand") {
       drawingRef.current = true;
@@ -4270,6 +5704,53 @@ export default function Whiteboard({
     const boardData = parseSavedBoardData(input);
     if (!boardData) return;
 
+    const defaultLesson: TeachingLesson = {
+      id: DEFAULT_TEACHING_LESSON_ID,
+      name: "General lesson",
+      subtopics: [{ id: DEFAULT_TEACHING_SUBTOPIC_ID, name: "General", createdAt: new Date(0).toISOString(), updatedAt: new Date(0).toISOString() }],
+      createdAt: new Date(0).toISOString(),
+      updatedAt: new Date(0).toISOString(),
+    };
+    const loadedLessons = Array.isArray(boardData.teachingLessons)
+      ? boardData.teachingLessons.filter(
+          (lesson) => lesson && typeof lesson.id === "string" && typeof lesson.name === "string",
+        )
+      : [];
+    const rawTeachingLibrary = Array.isArray(boardData.teachingLibrary)
+      ? boardData.teachingLibrary
+      : [];
+    const needsLegacyLesson = rawTeachingLibrary.some((item) => !item.lessonId);
+    const normalizedLessons = (loadedLessons.length > 0 ? [...loadedLessons] : [defaultLesson]).map((lesson) => ({
+      ...lesson,
+      subtopics: Array.isArray(lesson.subtopics) && lesson.subtopics.length > 0
+        ? lesson.subtopics
+        : [{ id: `${lesson.id}-general`, name: "General", createdAt: lesson.createdAt, updatedAt: lesson.updatedAt }],
+    }));
+    if (needsLegacyLesson && !normalizedLessons.some((lesson) => lesson.id === DEFAULT_TEACHING_LESSON_ID)) {
+      normalizedLessons.unshift(defaultLesson);
+    }
+    setTeachingLessons(normalizedLessons);
+    const requestedActiveLessonId = boardData.activeTeachingLessonId;
+    const resolvedLessonId = requestedActiveLessonId && normalizedLessons.some((lesson) => lesson.id === requestedActiveLessonId)
+      ? requestedActiveLessonId
+      : normalizedLessons[0]?.id ?? DEFAULT_TEACHING_LESSON_ID;
+    setActiveTeachingLessonId(resolvedLessonId);
+    const resolvedSubtopics = normalizedLessons.find((lesson) => lesson.id === resolvedLessonId)?.subtopics ?? [];
+    setActiveTeachingSubtopicId(
+      boardData.activeTeachingSubtopicId && resolvedSubtopics.some((subtopic) => subtopic.id === boardData.activeTeachingSubtopicId)
+        ? boardData.activeTeachingSubtopicId
+        : resolvedSubtopics[0]?.id ?? DEFAULT_TEACHING_SUBTOPIC_ID,
+    );
+    setTeachingLibrary(
+      rawTeachingLibrary.map((item, index) => ({
+        ...item,
+        lessonId: item.lessonId ?? DEFAULT_TEACHING_LESSON_ID,
+        subtopicId: item.subtopicId ?? normalizedLessons.find((lesson) => lesson.id === (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID))?.subtopics?.[0]?.id ?? DEFAULT_TEACHING_SUBTOPIC_ID,
+        section: item.section ?? getDefaultTeachingSection(item.template),
+        order: typeof item.order === "number" ? item.order : index,
+      })),
+    );
+
     if (Array.isArray(boardData.pages) && boardData.pages.length > 0) {
       setPages(boardData.pages);
       const nextPageIndex = Math.min(
@@ -4355,6 +5836,10 @@ export default function Whiteboard({
         bookingId,
         pages,
         currentPageIndex,
+        teachingLibrary,
+        teachingLessons,
+        activeTeachingLessonId,
+        activeTeachingSubtopicId,
         showGrid,
         backgroundColor,
         backgroundImage,
@@ -4414,6 +5899,10 @@ export default function Whiteboard({
       saveLocalBoardCache,
       pages,
       currentPageIndex,
+      teachingLibrary,
+      teachingLessons,
+      activeTeachingLessonId,
+      activeTeachingSubtopicId,
       showGrid,
       backgroundColor,
       backgroundImage,
@@ -4546,6 +6035,10 @@ export default function Whiteboard({
       bookingId,
       pages,
       currentPageIndex,
+      teachingLibrary,
+      teachingLessons,
+      activeTeachingLessonId,
+      activeTeachingSubtopicId,
       showGrid,
       backgroundColor,
       backgroundImage,
@@ -4566,6 +6059,10 @@ export default function Whiteboard({
       bookingId,
       pages,
       currentPageIndex,
+      teachingLibrary,
+      teachingLessons,
+      activeTeachingLessonId,
+      activeTeachingSubtopicId,
       showGrid,
       backgroundColor,
       backgroundImage,
@@ -4586,6 +6083,9 @@ export default function Whiteboard({
       bookingId: data.bookingId,
       pages: data.pages,
       currentPageIndex: data.currentPageIndex,
+      teachingLibrary: data.teachingLibrary,
+      teachingLessons: data.teachingLessons,
+      activeTeachingLessonId: data.activeTeachingLessonId,
       showGrid: data.showGrid,
       backgroundColor: data.backgroundColor,
       backgroundImage: data.backgroundImage,
@@ -4653,6 +6153,9 @@ export default function Whiteboard({
     buildRealtimeData,
     getRealtimeSignature,
     onRealtimeChange,
+    teachingLibrary,
+    teachingLessons,
+    activeTeachingLessonId,
   ]);
 
   useEffect(() => {
@@ -4682,6 +6185,7 @@ export default function Whiteboard({
     databaseWhiteboardId,
     whiteboardReady,
     pages,
+    teachingLibrary,
     currentPageIndex,
     showGrid,
     backgroundColor,
@@ -5456,7 +6960,7 @@ export default function Whiteboard({
 
       {showTeacherControls && showGraphEditor && (
         <div
-          className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/55 p-2 backdrop-blur-[2px]"
           role="dialog"
           aria-modal="true"
           aria-labelledby="create-graph-title"
@@ -5468,16 +6972,18 @@ export default function Whiteboard({
           }}
         >
           <div
-            className="flex h-[min(784px,calc(100vh-32px))] w-[min(775px,calc(100vw-32px))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/25"
+            className="flex h-[96vh] max-h-[1100px] w-[98vw] max-w-[1800px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/25"
             onPointerDown={(event) => event.stopPropagation()}
           >
-            <div className="flex h-20 shrink-0 items-center justify-between border-b border-slate-200 px-5">
-              <h2
-                id="create-graph-title"
-                className="text-[18px] font-bold tracking-tight text-slate-800"
-              >
-                Create Graph
-              </h2>
+            <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 px-4 sm:px-5">
+              <div className="flex min-w-0 items-center gap-3">
+                <h2 id="create-graph-title" className="truncate text-base font-bold tracking-tight text-slate-800 sm:text-lg">
+                  Graph & Geometry Studio
+                </h2>
+                <span className="hidden rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-500 sm:inline-flex">
+                  Expanded workspace
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={() => {
@@ -5486,26 +6992,231 @@ export default function Whiteboard({
                 }}
                 title="Close"
                 aria-label="Close graph editor"
-                className="flex size-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+                className="flex size-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
               >
                 <X className="size-5" />
               </button>
             </div>
 
-            <div className="min-h-0 flex-1 px-6 py-9">
+            <div className="relative flex min-h-0 flex-1 flex-col p-2 sm:p-3">
+              <div className="relative z-20 mb-2 flex shrink-0 items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowGraphStudioPresets((visible) => !visible)}
+                  aria-expanded={showGraphStudioPresets}
+                  aria-controls="graph-studio-presets"
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                  title={showGraphStudioPresets ? "Close presets" : "Open graph and geometry presets"}
+                >
+                  <PanelLeftOpen className="size-4" />
+                  Presets
+                  <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">{graphStudioTab === "graphs" ? "Graphing" : "Geometry"}</span>
+                </button>
+                <span className="hidden text-[11px] text-slate-400 sm:block">
+                  Select Presets for quick starts · the graphing workspace stays full size
+                </span>
+              </div>
+
+              {showGraphStudioPresets && (
+                <div
+                  id="graph-studio-presets"
+                  className="absolute left-2 top-12 z-30 max-h-[min(76vh,720px)] w-[min(560px,calc(100%-16px))] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-900/20 sm:left-3 sm:top-14 sm:p-4"
+                >
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-800">Quick-start presets</h3>
+                      <p className="mt-0.5 text-[11px] text-slate-500">Choose a starter, then continue working on the graph.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowGraphStudioPresets(false)}
+                      aria-label="Close presets popup"
+                      title="Close presets"
+                      className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                  <div className="mb-3 flex items-center rounded-lg bg-slate-100 p-1">
+                    <button
+                      type="button"
+                      onClick={() => setGraphStudioTab("graphs")}
+                      className={`flex-1 rounded-md px-3 py-2 text-xs font-bold transition ${graphStudioTab === "graphs" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                    >
+                      Graphing
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGraphStudioTab("geometry")}
+                      className={`flex-1 rounded-md px-3 py-2 text-xs font-bold transition ${graphStudioTab === "geometry" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                    >
+                      Geometry
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {GRAPH_STUDIO_PRESETS[graphStudioTab].map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => {
+                          applyGraphStudioPreset(preset);
+                          setShowGraphStudioPresets(false);
+                        }}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left transition hover:border-emerald-300 hover:bg-emerald-50"
+                      >
+                        <span className="block text-xs font-bold text-slate-800">{preset.label}</span>
+                        <span className="mt-0.5 block text-[10px] text-slate-500">{preset.description}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {graphStudioTab === "geometry" && (
+                    <>
+                    <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/60 p-3">
+                      <div className="mb-2">
+                        <h4 className="text-xs font-bold text-slate-800">Connect plotted points</h4>
+                        <p className="mt-0.5 text-[10px] leading-relaxed text-slate-500">Create point labels in Desmos first (such as A=(0,0), B=(4,0), C=(2,3)), then enter their names below.</p>
+                      </div>
+                      <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500" htmlFor="graph-connection-points">Point names, in order</label>
+                      <input
+                        id="graph-connection-points"
+                        value={graphConnectionPoints}
+                        onChange={(event) => {
+                          setGraphConnectionPoints(event.target.value);
+                          setGraphConnectionError(null);
+                        }}
+                        placeholder="A, B, C"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                      />
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setGraphConnectionMode("polygon")}
+                          aria-pressed={graphConnectionMode === "polygon"}
+                          className={`rounded-lg px-3 py-2 text-[11px] font-bold transition ${graphConnectionMode === "polygon" ? "bg-indigo-600 text-white" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+                        >
+                          Closed shape
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setGraphConnectionMode("segments")}
+                          aria-pressed={graphConnectionMode === "segments"}
+                          className={`rounded-lg px-3 py-2 text-[11px] font-bold transition ${graphConnectionMode === "segments" ? "bg-indigo-600 text-white" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+                        >
+                          Join with lines
+                        </button>
+                        <button
+                          type="button"
+                          onClick={connectGraphPoints}
+                          className="ml-auto rounded-lg bg-emerald-600 px-3.5 py-2 text-[11px] font-bold text-white transition hover:bg-emerald-700"
+                        >
+                          Connect points
+                        </button>
+                      </div>
+                      {graphConnectionError && (
+                        <p role="alert" className="mt-2 text-[10px] font-semibold text-red-600">{graphConnectionError}</p>
+                      )}
+                      <p className="mt-2 text-[10px] text-slate-500">Closed shape joins the last point back to the first. Join with lines connects each adjacent pair only.</p>
+                    </div>
+
+                    <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
+                      <div className="mb-2">
+                        <h4 className="text-xs font-bold text-slate-800">Interactive construction tools</h4>
+                        <p className="mt-0.5 text-[10px] leading-relaxed text-slate-500">Build constructions from points already plotted in Desmos. The results update when draggable source points move.</p>
+                      </div>
+                      <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500" htmlFor="graph-construction-type">Construction</label>
+                      <select
+                        id="graph-construction-type"
+                        value={graphConstructionType}
+                        onChange={(event) => {
+                          setGraphConstructionType(event.target.value as typeof graphConstructionType);
+                          setGraphConstructionError(null);
+                        }}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                      >
+                        <option value="line">Line through two points</option>
+                        <option value="parallel">Parallel line through a point</option>
+                        <option value="perpendicular">Perpendicular line through a point</option>
+                        <option value="perp-bisector">Perpendicular bisector</option>
+                        <option value="angle-bisector">Angle bisector</option>
+                        <option value="midpoint">Midpoint of a segment</option>
+                        <option value="distance">Distance between two points</option>
+                        <option value="reflect-y">Reflect triangle across y-axis</option>
+                        <option value="rotate-90">Rotate triangle 90° anticlockwise</option>
+                        <option value="translate">Translate triangle</option>
+                      </select>
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        {([
+                          ["a", "Point A / vertex"],
+                          ["b", "Point B"],
+                          ...(["angle-bisector", "reflect-y", "rotate-90", "translate"].includes(graphConstructionType) ? [["c", "Point C"]] : []),
+                          ...(["parallel", "perpendicular"].includes(graphConstructionType) ? [["p", "Through point P"]] : []),
+                        ] as Array<["a" | "b" | "c" | "p", string]>).map(([key, label]) => (
+                          <label key={key} className="block text-[10px] font-semibold text-slate-600">
+                            {label}
+                            <input
+                              value={graphConstructionPoints[key]}
+                              maxLength={1}
+                              list="graph-plotted-point-labels"
+                              onChange={(event) => {
+                                setGraphConstructionPoints((current) => ({ ...current, [key]: event.target.value.toUpperCase() }));
+                                setGraphConstructionError(null);
+                              }}
+                              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold uppercase text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                            />
+                          </label>
+                        ))}
+                      </div>
+                      <datalist id="graph-plotted-point-labels">
+                        {graphAvailablePointLabels.map((label) => <option key={label} value={label} />)}
+                      </datalist>
+                      <button
+                        type="button"
+                        onClick={refreshGraphPointSuggestions}
+                        className="mt-2 rounded-md border border-emerald-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-emerald-700 transition hover:bg-emerald-50"
+                      >
+                        Refresh plotted point suggestions{graphAvailablePointLabels.length ? ` (${graphAvailablePointLabels.length})` : ""}
+                      </button>
+                      {graphConstructionType === "translate" && (
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                          <label className="block text-[10px] font-semibold text-slate-600">Horizontal shift (h)
+                            <input type="number" step="any" value={graphConstructionVector.x} onChange={(event) => setGraphConstructionVector((current) => ({ ...current, x: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-800 outline-none focus:border-emerald-400" />
+                          </label>
+                          <label className="block text-[10px] font-semibold text-slate-600">Vertical shift (k)
+                            <input type="number" step="any" value={graphConstructionVector.y} onChange={(event) => setGraphConstructionVector((current) => ({ ...current, y: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-800 outline-none focus:border-emerald-400" />
+                          </label>
+                        </div>
+                      )}
+                      <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
+                        {graphConstructionType === "angle-bisector" ? "A is the vertex of ∠BAC; B and C lie on its arms." : graphConstructionType === "parallel" || graphConstructionType === "perpendicular" ? "A and B define the reference line; P is the point the new line passes through." : ["reflect-y", "rotate-90", "translate"].includes(graphConstructionType) ? "A, B and C are the vertices of the original triangle. The transformed triangle is added alongside it." : "Enter the existing point labels exactly as they appear in the Desmos expression list."}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={applyGraphConstruction}
+                        className="mt-3 w-full rounded-lg bg-emerald-600 px-3.5 py-2.5 text-[11px] font-bold text-white transition hover:bg-emerald-700"
+                      >
+                        Create construction
+                      </button>
+                      {graphConstructionError && <p role="alert" className="mt-2 text-[10px] font-semibold text-red-600">{graphConstructionError}</p>}
+                    </div>
+                    </>
+                  )}
+                </div>
+              )}
+
               {graphLoadError ? (
-                <div className="flex h-full items-center justify-center rounded-lg border border-red-200 bg-red-50 px-6 text-center text-sm font-semibold text-red-700">
+                <div className="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-red-200 bg-red-50 px-6 text-center text-sm font-semibold text-red-700">
                   {graphLoadError}
                 </div>
               ) : (
                 <div
                   ref={graphContainerRef}
-                  className="h-full w-full overflow-hidden bg-white"
+                  className="min-h-[300px] flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white"
                 />
               )}
             </div>
 
-            <div className="flex h-[66px] shrink-0 items-center justify-end gap-3 border-t border-slate-200 px-6">
+            <div className="flex h-14 shrink-0 items-center justify-end gap-3 border-t border-slate-200 px-4 sm:px-6">
               <button
                 type="button"
                 onClick={() => {
@@ -5519,9 +7230,9 @@ export default function Whiteboard({
               <button
                 type="button"
                 onClick={insertGraphFromDesmos}
-                className="rounded-xl bg-[#3f8062] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#356f55]"
+                className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
               >
-                Insert
+                Insert graph on whiteboard
               </button>
             </div>
           </div>
@@ -5921,16 +7632,21 @@ export default function Whiteboard({
         >
           <div
             data-latex-editor
-            className="w-[min(780px,calc(100vw-32px))] overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-2xl"
+            className="max-h-[calc(100dvh-24px)] w-[min(900px,calc(100vw-32px))] overflow-y-auto overscroll-contain rounded-[14px] border border-slate-200 bg-white shadow-2xl"
             onPointerDown={(event) => event.stopPropagation()}
           >
             <div className="flex items-center justify-between px-6 py-5">
-              <h2
-                id="latex-editor-title"
-                className="text-xl font-extrabold tracking-[-0.02em] text-slate-900"
-              >
-                LaTeX formula editor
-              </h2>
+              <div>
+                <h2
+                  id="latex-editor-title"
+                  className="text-xl font-extrabold tracking-[-0.02em] text-slate-900"
+                >
+                  Mathematics equation editor
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Build fractions, roots, matrices, cases, aligned equations and symbols.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => {
@@ -5953,7 +7669,7 @@ export default function Whiteboard({
               </button>
             </div>
 
-            <div className="px-6 pb-6">
+            <div className="px-5 pb-5">
               <div className="grid grid-cols-2 gap-3">
                 <textarea
                   ref={latexInputRef}
@@ -6031,7 +7747,36 @@ export default function Whiteboard({
                 ))}
               </div>
 
-              <div className="mt-3 flex items-center gap-2">
+              <div className="mt-4">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Quick structures
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    Select a structure to insert it at the cursor
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                  {LATEX_QUICK_STRUCTURES.map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => insertLatexModalAtCursor(item.value)}
+                      className="min-h-[58px] rounded-lg border border-slate-200 bg-white px-2 py-2 text-left transition hover:border-emerald-300 hover:bg-emerald-50"
+                      title={item.hint}
+                    >
+                      <span className="block text-xs font-bold text-slate-700">
+                        {item.label}
+                      </span>
+                      <span className="mt-1 block truncate font-mono text-[10px] text-slate-400">
+                        {item.hint}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center gap-2">
                 {(["All", "Math", "Arrow", "Letter"] as const).map((tab) => (
                   <button
                     key={tab}
@@ -6178,6 +7923,35 @@ export default function Whiteboard({
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerUp}
+              onDragOver={(event) => {
+                const types = event.dataTransfer.types;
+                if (
+                  types.includes("application/x-justdy-teaching-card") ||
+                  types.includes("application/x-justdy-teaching-lesson")
+                ) {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "copy";
+                }
+              }}
+              onDrop={(event) => {
+                const lessonPayload = event.dataTransfer.getData("application/x-justdy-teaching-lesson");
+                const materialPayload = event.dataTransfer.getData("application/x-justdy-teaching-card");
+                if (!lessonPayload && !materialPayload) return;
+                event.preventDefault();
+                try {
+                  const point = getPoint(event.nativeEvent);
+                  if (lessonPayload) {
+                    const lesson = JSON.parse(lessonPayload) as TeachingLesson;
+                    insertTeachingLessonTitle(lesson, point);
+                  } else {
+                    const item = JSON.parse(materialPayload) as TeachingLibraryItem;
+                    insertTeachingLibraryItem(item, point);
+                  }
+                  setTeachingPanelVisible(false);
+                } catch {
+                  // Ignore malformed drag payloads rather than interrupting drawing.
+                }
+              }}
               onDoubleClick={handleCanvasDoubleClick}
               onContextMenu={handleCanvasContextMenu}
               style={{
@@ -6353,6 +8127,21 @@ export default function Whiteboard({
                 }`}
               >
                 <Type className="size-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowShapeToolsPopup(false);
+                  setShowFormulaMenu(false);
+                  setShowUploadMenu(false);
+                  setTeachingLibraryOpen(true);
+                }}
+                title="Teaching materials library"
+                aria-label="Open teaching materials library"
+                className="flex size-8 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-blue-50 hover:text-blue-700"
+              >
+                <BookOpen className="size-4" />
               </button>
 
               <button
@@ -6701,6 +8490,8 @@ export default function Whiteboard({
                 setShowFormulaMenu(false);
                 setShowGraphSettings(false);
                 setGraphLoadError(null);
+                setGraphStudioTab("graphs");
+                setShowGraphStudioPresets(true);
                 setShowGraphEditor(true);
               }}
               className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
@@ -7736,6 +9527,991 @@ export default function Whiteboard({
           </aside>
         )}
       </div>
+
+      {/* Lesson Teaching Panel */}
+      {teachingPresentationOpen && (
+        <>
+          <aside
+            className={`fixed inset-y-0 right-0 z-880 flex w-70 max-w-[min(280px,100vw)] flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-200 ease-out ${teachingPresentationOpen && teachingPanelVisible ? "translate-x-0 pointer-events-auto" : "translate-x-full pointer-events-none"}`}
+            aria-label="Lesson teaching panel"
+            aria-hidden={!teachingPresentationOpen || !teachingPanelVisible}
+            onPointerLeave={(event) => {
+              // Keep the panel open while a native drag is in progress.
+              if (event.buttons !== 0) return;
+              setTeachingPanelVisible(false);
+            }}
+          >
+            <div className="shrink-0 border-b border-slate-100 bg-slate-50 px-3 py-3">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+                    <Play className="size-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="truncate text-sm font-bold text-slate-900">Teaching Mode</h2>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  
+                  <button
+                    type="button"
+                    onClick={() => setTeachingPanelVisible(false)}
+                    aria-label="Hide teaching panel"
+                    className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+              </div>
+
+              <label htmlFor="teaching-panel-lesson-select" className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                Select lesson
+              </label>
+              <select
+                id="teaching-panel-lesson-select"
+                value={activeTeachingLessonId}
+                onChange={(event) => {
+                  const nextLesson = teachingLessons.find((lesson) => lesson.id === event.target.value);
+                  setActiveTeachingLessonId(event.target.value);
+                  setActiveTeachingSubtopicId(nextLesson?.subtopics?.[0]?.id ?? DEFAULT_TEACHING_SUBTOPIC_ID);
+                  setTeachingPresentationIndex(0);
+                  setTeachingRevealedStepCount(0);
+                }}
+                className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              >
+                {teachingLessons.map((lesson) => (
+                  <option key={lesson.id} value={lesson.id}>{lesson.name}</option>
+                ))}
+              </select>
+              <div className="mt-3">
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <label htmlFor="teaching-panel-subtopic-select" className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Subtopics</label>
+                </div>
+                <select
+                  id="teaching-panel-subtopic-select"
+                  value={activeTeachingSubtopic?.id ?? ""}
+                  onChange={(event) => { setActiveTeachingSubtopicId(event.target.value); setTeachingPresentationIndex(0); setTeachingRevealedStepCount(0); }}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                >
+                  {activeTeachingSubtopics.map((subtopic) => <option key={subtopic.id} value={subtopic.id}>{subtopic.name}</option>)}
+                </select>
+                {isCreatingTeachingSubtopic && (
+                  <div className="mt-2 flex gap-1.5">
+                    <input value={newTeachingSubtopicName} onChange={(event) => setNewTeachingSubtopicName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") createTeachingSubtopic(); if (event.key === "Escape") setIsCreatingTeachingSubtopic(false); }} placeholder="e.g. What are integers?" aria-label="New subtopic name" className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2.5 py-2 text-xs outline-none focus:border-blue-400" />
+                    <button type="button" onClick={createTeachingSubtopic} disabled={!newTeachingSubtopicName.trim()} className="rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-bold text-white disabled:opacity-40">Add</button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-slate-50/50 p-3">
+              <article
+                draggable
+                onDragStart={(event) => {
+                  const lesson = teachingLessons.find((entry) => entry.id === activeTeachingLessonId);
+                  if (!lesson) {
+                    event.preventDefault();
+                    return;
+                  }
+                  event.dataTransfer.effectAllowed = "copy";
+                  event.dataTransfer.setData("application/x-justdy-teaching-lesson", JSON.stringify(lesson));
+                  event.dataTransfer.setData("text/plain", lesson.name);
+                }}
+                className="cursor-grab rounded-lg border border-blue-200 bg-white p-3 shadow-sm transition hover:border-blue-400 hover:shadow-md active:cursor-grabbing"
+                title="Drag this lesson title onto the whiteboard"
+              >
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="rounded-lg bg-blue-50 px-2 py-1 text-[9px] font-extrabold uppercase tracking-wide text-blue-700">
+                    Main topic
+                  </span>
+                  <span className="text-[9px] font-semibold text-slate-400">Heading</span>
+                </div>
+                <h3 className="text-base font-extrabold leading-snug text-slate-900">
+                  {teachingLessons.find((entry) => entry.id === activeTeachingLessonId)?.name ?? "Selected lesson"}
+                </h3>
+              </article>
+
+              {activeTeachingSubtopic && (
+                <article
+                  draggable
+                  onDragStart={(event) => {
+                    const lesson = teachingLessons.find((entry) => entry.id === activeTeachingLessonId);
+                    if (!lesson) { event.preventDefault(); return; }
+                    const subtopicTitle = { ...lesson, name: activeTeachingSubtopic.name };
+                    event.dataTransfer.effectAllowed = "copy";
+                    event.dataTransfer.setData("application/x-justdy-teaching-lesson", JSON.stringify(subtopicTitle));
+                    event.dataTransfer.setData("text/plain", activeTeachingSubtopic.name);
+                  }}
+                  className="cursor-grab rounded-lg border border-violet-200 bg-violet-50 p-3 shadow-sm active:cursor-grabbing"
+                  title="Drag this subtopic heading onto the whiteboard"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="rounded-md bg-blue-50 px-2 py-1 text-[9px] font-extrabold uppercase tracking-wide text-blue-700">
+                    Current subtopic
+                  </span>
+                  <span className="text-[9px] font-semibold text-slate-400">Sub Heading</span>
+                </div>
+                  <h3 className="text-sm font-extrabold leading-snug text-slate-900">{activeTeachingSubtopic.name}</h3>
+                  
+                </article>
+              )}
+
+              {activeLessonTeachingMaterials.length > 0 ? (
+                activeLessonTeachingMaterials.map((item, index) => {
+                  const templateStyle = TEACHING_TEMPLATES[item.template];
+                  const isSelected = index === teachingPresentationIndex;
+                  return (
+                    <article
+                      key={item.id}
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = "copy";
+                        event.dataTransfer.setData("application/x-justdy-teaching-card", JSON.stringify(item));
+                        event.dataTransfer.setData("text/plain", item.heading);
+                        setTeachingPresentationIndex(index);
+                        setTeachingRevealedStepCount(0);
+                      }}
+                      onClick={() => {
+                        setTeachingPresentationIndex(index);
+                        setTeachingRevealedStepCount(0);
+                      }}
+                      className={`cursor-grab rounded-lg border bg-white p-3 shadow-sm transition active:cursor-grabbing ${isSelected ? "border-blue-300 ring-1 ring-blue-100" : "border-slate-200 hover:border-blue-200 hover:shadow-md"}`}
+                      style={{ borderTopWidth: 3, borderTopColor: templateStyle.accent }}
+                      title="Drag this material onto the whiteboard"
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span
+                          className="rounded-md px-2 py-1 text-[9px] font-extrabold tracking-wide"
+                          style={{ color: templateStyle.accent, backgroundColor: templateStyle.tint }}
+                        >
+                          {templateStyle.label}
+                        </span>
+                        <span className="truncate text-[9px] font-semibold text-slate-400">
+                          {TEACHING_SECTIONS[item.section ?? getDefaultTeachingSection(item.template)]}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-bold leading-snug text-slate-900">{item.heading}</h3>
+                      <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-slate-700">
+                        {item.body}
+                      </p>
+                      {item.template === "worked-example" && (item.steps?.length ?? 0) > 0 && (
+                        <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/70 px-2.5 py-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[9px] font-extrabold uppercase tracking-wide text-emerald-800">Worked solution</span>
+                            <span className="text-[9px] font-semibold text-emerald-700">{item.steps?.length} steps</span>
+                          </div>
+                          {isSelected && (
+                            <>
+                              <div className="mt-2 space-y-1.5">
+                                {(item.steps ?? []).slice(0, teachingRevealedStepCount).map((step, stepIndex) => (
+                                  <div key={`${item.id}-step-${stepIndex}`} className="flex gap-2 rounded-md bg-white/80 px-2 py-1.5">
+                                    <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[8px] font-bold text-white">{stepIndex + 1}</span>
+                                    <p className="whitespace-pre-wrap text-[10px] leading-4 text-slate-700">{step}</p>
+                                  </div>
+                                ))}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  const stepIndex = teachingRevealedStepCount;
+                                  const nextStep = (item.steps ?? [])[stepIndex];
+                                  if (!nextStep) return;
+                                  insertTeachingLibraryItem({
+                                    ...item,
+                                    heading: `${item.heading} — Step ${stepIndex + 1}`,
+                                    body: `Step ${stepIndex + 1}\n${nextStep}`,
+                                  });
+                                  setTeachingRevealedStepCount(stepIndex + 1);
+                                }}
+                                disabled={teachingRevealedStepCount >= (item.steps?.length ?? 0)}
+                                className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-2 py-2 text-[9px] font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                <Eye className="size-3" />
+                                {teachingRevealedStepCount >= (item.steps?.length ?? 0) ? "All steps revealed" : `Reveal step ${teachingRevealedStepCount + 1} on board`}
+                              </button>
+                            </>
+                          )}
+                          {!isSelected && (
+                            <p className="mt-1 text-[9px] text-emerald-700">Select this card to reveal its solution steps.</p>
+                          )}
+                        </div>
+                      )}
+                     
+                    </article>
+                  );
+                })
+              ) : (
+                <div className="flex min-h-full flex-col items-center justify-center px-3 py-10 text-center">
+                  <BookOpen className="mb-3 size-9 text-slate-300" />
+                  <h3 className="text-sm font-bold text-slate-800">No materials in this lesson yet</h3>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Choose another lesson or open the Library to prepare definitions, rules and examples.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setTeachingLibraryOpen(true)}
+                    className="mt-4 rounded-lg bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700"
+                  >
+                    Open materials library
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {activeLessonTeachingMaterials.length > 0 && (
+              <div className="shrink-0 border-t border-slate-100 bg-white px-3 py-2.5">
+                <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-blue-300 bg-blue-50 px-2.5 py-2.5 text-center text-[9px] font-semibold text-blue-700">
+                  <span aria-hidden="true" className="text-sm">↗</span>
+                  Drag any card above onto the whiteboard
+                </div>
+              </div>
+            )}
+          </aside>
+
+          {!teachingPanelVisible && (
+            <button
+              type="button"
+              onPointerEnter={(event) => {
+                if (event.clientX >= window.innerWidth - 1) setTeachingPanelVisible(true);
+              }}
+              onPointerMove={(event) => {
+                if (event.clientX >= window.innerWidth - 1) setTeachingPanelVisible(true);
+              }}
+              onClick={() => setTeachingPanelVisible(true)}
+              className="fixed right-0 top-1/2 z-[881] flex h-24 w-[2px] -translate-y-1/2 items-center justify-center rounded-l-md border border-r-0 border-slate-200 bg-white/95 text-slate-500 shadow-xl transition-colors hover:text-blue-600"
+              aria-label="Show teaching panel"
+              title="Move to the far-right edge to show the teaching panel"
+            >
+              <PanelRight className="size-3" />
+            </button>
+          )}
+        </>
+      )}
+
+            {/* Teaching Materials Library */}
+      {teachingLibraryOpen && (
+        <div
+          className="absolute inset-0 z-[890] flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-[3px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="teaching-library-title"
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) setTeachingLibraryOpen(false);
+          }}
+        >
+          <div
+            className="flex max-h-[calc(100dvh-24px)] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl"
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-4">
+              <div>
+                <h2 id="teaching-library-title" className="text-base font-bold text-slate-900">
+                  Teaching Materials Library
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Choose a topic and subtopic, then manage its teaching materials in a table.
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setOpenTeachingActionMenu(null); setTeachingLibraryOpen(false); }}
+                  aria-label="Close teaching materials library"
+                  className="flex size-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="border-b border-slate-100 bg-slate-50/70 px-4 py-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {/* Topic selector — displayed first, to the left of Subtopic */}
+                <div className="min-w-0">
+                  <label htmlFor="teaching-lesson-select" className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                    Topic
+                  </label>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <select
+                      id="teaching-lesson-select"
+                      value={activeTeachingLessonId}
+                      onChange={(event) => {
+                        const nextLesson = teachingLessons.find((lesson) => lesson.id === event.target.value);
+                        setActiveTeachingLessonId(event.target.value);
+                        setActiveTeachingSubtopicId(nextLesson?.subtopics?.[0]?.id ?? DEFAULT_TEACHING_SUBTOPIC_ID);
+                        setTeachingPresentationIndex(0);
+                        setShowAllLessonMaterials(false);
+                      }}
+                      className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-blue-400"
+                    >
+                      {teachingLessons.map((lesson) => (
+                        <option key={lesson.id} value={lesson.id}>{lesson.name}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatingTeachingLesson((value) => !value)}
+                      className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-white text-blue-700 hover:bg-blue-50"
+                      aria-label="Create new topic"
+                      title="Create new topic"
+                    >
+                      <Plus className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const topic = teachingLessons.find((lesson) => lesson.id === activeTeachingLessonId);
+                        if (topic) setPendingTeachingDelete({ type: "topic", id: topic.id, name: topic.name });
+                      }}
+                      disabled={!activeTeachingLesson || teachingLessons.length === 0}
+                      className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label="Delete selected topic and all its subtopics and materials"
+                      title="Delete topic"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
+                </div>
+                {/* Subtopic selector — displayed second, to the right of Topic */}
+                <div className="min-w-0">
+                  <label htmlFor="teaching-library-subtopic-select" className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                    Subtopic
+                  </label>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <select
+                      id="teaching-library-subtopic-select"
+                      aria-label="Select subtopic"
+                      value={activeTeachingSubtopic?.id ?? ""}
+                      onChange={(event) => setActiveTeachingSubtopicId(event.target.value)}
+                      className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-violet-400"
+                    >
+                      {activeTeachingSubtopics.map((subtopic) => <option key={subtopic.id} value={subtopic.id}>{subtopic.name}</option>)}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatingTeachingSubtopic((value) => !value)}
+                      className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-violet-200 bg-white text-violet-700 hover:bg-violet-50"
+                      aria-label="Create new subtopic"
+                      title="Create new subtopic"
+                    >
+                      <Plus className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (activeTeachingSubtopic) setPendingTeachingDelete({ type: "subtopic", id: activeTeachingSubtopic.id, name: activeTeachingSubtopic.name });
+                      }}
+                      disabled={!activeTeachingSubtopic || activeTeachingSubtopics.length === 0}
+                      className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label="Delete selected subtopic and its materials"
+                      title="Delete subtopic"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+
+                     <div className="mt-0 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setShowAllLessonMaterials((value) => !value)}
+                        className={`rounded-lg border px-3 py-2 text-[10px] font-bold transition ${
+                          showAllLessonMaterials
+                            ? "border-violet-300 bg-violet-50 text-violet-700"
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        {showAllLessonMaterials ? "Showing all" : "Browse all"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {isCreatingTeachingLesson && (
+              <div className="flex gap-2 border-b border-slate-100 px-4 py-3">
+                <input
+                  autoFocus
+                  value={newTeachingLessonName}
+                  onChange={(event) => setNewTeachingLessonName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") createTeachingLesson();
+                    if (event.key === "Escape") setIsCreatingTeachingLesson(false);
+                  }}
+                  placeholder="e.g. Grade 8 — Fractions"
+                  aria-label="New lesson name"
+                  className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400"
+                />
+                <button
+                  type="button"
+                  onClick={createTeachingLesson}
+                  disabled={!newTeachingLessonName.trim()}
+                  className="rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-bold text-white disabled:opacity-40"
+                >
+                  Create
+                </button>
+              </div>
+            )}
+
+            {isCreatingTeachingSubtopic && (
+              <div className="flex gap-2 border-b border-slate-100 px-4 py-3">
+                <input
+                  autoFocus
+                  value={newTeachingSubtopicName}
+                  onChange={(event) => setNewTeachingSubtopicName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") createTeachingSubtopic();
+                    if (event.key === "Escape") setIsCreatingTeachingSubtopic(false);
+                  }}
+                  placeholder="e.g. Types of integers"
+                  aria-label="New subtopic name"
+                  className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-violet-400"
+                />
+                <button
+                  type="button"
+                  onClick={createTeachingSubtopic}
+                  disabled={!newTeachingSubtopicName.trim()}
+                  className="rounded-lg bg-violet-600 px-3 py-2 text-[10px] font-bold text-white disabled:opacity-40"
+                >
+                  Add subtopic
+                </button>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row">
+              <input
+                value={teachingLibrarySearch}
+                onChange={(event) => setTeachingLibrarySearch(event.target.value)}
+                placeholder="Search saved definitions, rules, examples..."
+                className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+                aria-label="Search teaching materials"
+              />
+              <button
+                type="button"
+                onClick={() => openTeachingEditor("definition")}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-blue-700"
+              >
+                <Plus className="size-4" />
+                Create material
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2 px-4 pt-3">
+              <button
+                type="button"
+                onClick={() => setTeachingLibraryFilter("all")}
+                className={`rounded-lg px-3 py-1.5 text-[11px] font-bold ${
+                  teachingLibraryFilter === "all"
+                    ? "bg-slate-900 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                All ({teachingLibrary.filter((item) =>
+                  showAllLessonMaterials ||
+                  (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === activeTeachingLessonId
+                ).length})
+              </button>
+              {(Object.keys(TEACHING_TEMPLATES) as TeachingTemplate[]).map((template) => {
+                const count = teachingLibrary.filter(
+                  (item) =>
+                    item.template === template &&
+                    (showAllLessonMaterials ||
+                      (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === activeTeachingLessonId),
+                ).length;
+                return (
+                  <button
+                    key={template}
+                    type="button"
+                    onClick={() => setTeachingLibraryFilter(template)}
+                    className={`rounded-lg px-3 py-1.5 text-[11px] font-bold ${
+                      teachingLibraryFilter === template
+                        ? "bg-blue-600 text-white"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    {TEACHING_TEMPLATES[template].label} ({count})
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
+              <label htmlFor="teaching-section-filter" className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                Section
+              </label>
+              <select
+                id="teaching-section-filter"
+                value={teachingSectionFilter}
+                onChange={(event) => setTeachingSectionFilter(event.target.value as "all" | TeachingSection)}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-slate-700"
+              >
+                <option value="all">All sections</option>
+                {(Object.keys(TEACHING_SECTIONS) as TeachingSection[]).map((section) => (
+                  <option key={section} value={section}>{TEACHING_SECTIONS[section]}</option>
+                ))}
+              </select>
+              <p className="ml-auto text-[10px] text-slate-400">
+                New materials are saved under {teachingLessons.find((lesson) => lesson.id === activeTeachingLessonId)?.name ?? "the selected lesson"} → {activeTeachingSubtopic?.name ?? "General"}.
+              </p>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              {(() => {
+                const query = teachingLibrarySearch.trim().toLowerCase();
+                const filteredItems = teachingLibrary
+                  .filter((item) => {
+                    const itemLessonId = item.lessonId ?? DEFAULT_TEACHING_LESSON_ID;
+                    const itemSection = item.section ?? getDefaultTeachingSection(item.template);
+                    const matchesLesson = showAllLessonMaterials || itemLessonId === activeTeachingLessonId;
+                    const matchesSubtopic = showAllLessonMaterials || itemLessonId !== activeTeachingLessonId || !activeTeachingSubtopicId || (item.subtopicId ?? DEFAULT_TEACHING_SUBTOPIC_ID) === activeTeachingSubtopicId;
+                    const matchesSection = teachingSectionFilter === "all" || itemSection === teachingSectionFilter;
+                    const matchesTemplate =
+                      teachingLibraryFilter === "all" ||
+                      item.template === teachingLibraryFilter;
+                    const matchesSearch =
+                      !query ||
+                      item.heading.toLowerCase().includes(query) ||
+                      item.body.toLowerCase().includes(query);
+                    return matchesLesson && matchesSubtopic && matchesSection && matchesTemplate && matchesSearch;
+                  })
+                  .sort((a, b) => {
+                    const sectionA = Object.keys(TEACHING_SECTIONS).indexOf(a.section ?? getDefaultTeachingSection(a.template));
+                    const sectionB = Object.keys(TEACHING_SECTIONS).indexOf(b.section ?? getDefaultTeachingSection(b.template));
+                    return sectionA - sectionB || (a.order ?? 0) - (b.order ?? 0);
+                  });
+
+                if (filteredItems.length === 0) {
+                  return (
+                    <div className="flex min-h-48 flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 text-center">
+                      <BookOpen className="mb-3 size-8 text-slate-300" />
+                      <p className="text-sm font-bold text-slate-700">
+                        {teachingLibrary.length === 0 ? "Your library is empty" : "No matching materials in this view"}
+                      </p>
+                      <p className="mt-1 max-w-sm text-xs leading-5 text-slate-500">
+                        Create definitions, rules, algorithms, worked examples and questions here. They stay off the board until you insert them.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => openTeachingEditor("definition")}
+                        className="mt-4 rounded-lg bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700"
+                      >
+                        Create your first material
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-800">
+                          {showAllLessonMaterials ? "All topics" : teachingLessons.find((lesson) => lesson.id === activeTeachingLessonId)?.name ?? "Topic"}
+                          {!showAllLessonMaterials && <span className="font-normal text-slate-400"> / {activeTeachingSubtopic?.name ?? "Subtopic"}</span>}
+                        </p>
+                        <p className="mt-1 text-[11px] text-slate-500">{filteredItems.length} {filteredItems.length === 1 ? "material" : "materials"} · Select a row action to manage or present it</p>
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-200 table-fixed text-left">
+                        <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                          <tr className="border-b border-slate-200">
+                            <th className="w-10 px-3 py-3">#</th>
+                            <th className="w-28 px-3 py-3">Type</th>
+                            <th className="w-[23%] px-3 py-3">Material title</th>
+                            <th className="px-3 py-3">Content preview</th>
+                            <th className="w-52 px-3 py-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredItems.map((item, index) => {
+                            const style = TEACHING_TEMPLATES[item.template];
+                            const runAction = (action: string) => {
+                              setOpenTeachingActionMenu(null);
+                                        switch (action) {
+                                          case "insert":
+                                            insertTeachingLibraryItem(item);
+                                            break;
+                                          case "edit":
+                                            openTeachingEditor(item.template, undefined, item);
+                                            break;
+                                          case "move-up":
+                                            moveTeachingLibraryItem(item.id, -1);
+                                            break;
+                                          case "move-down":
+                                            moveTeachingLibraryItem(item.id, 1);
+                                            break;
+                                          case "copy": {
+                                            const now = new Date().toISOString();
+                                            setTeachingLibrary((previous) => [{
+                                              ...item,
+                                              id: createId(),
+                                              lessonId: activeTeachingLessonId,
+                                              subtopicId: activeTeachingSubtopicId,
+                                              order: previous.filter((entry) =>
+                                                (entry.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === activeTeachingLessonId &&
+                                                (entry.subtopicId ?? DEFAULT_TEACHING_SUBTOPIC_ID) === activeTeachingSubtopicId &&
+                                                (entry.section ?? getDefaultTeachingSection(entry.template)) ===
+                                                  (item.section ?? getDefaultTeachingSection(item.template))
+                                              ).length,
+                                              heading: `${item.heading} (copy)`,
+                                              createdAt: now,
+                                              updatedAt: now,
+                                            }, ...previous]);
+                                            break;
+                                          }
+                                          case "to-topic":
+                                            copyTeachingMaterialToActiveLesson(item);
+                                            break;
+                                          case "delete":
+                                            deleteTeachingLibraryItem(item.id);
+                                            break;
+                                          default:
+                                            break;
+                                        }
+                            };
+                            return (
+                              <tr key={item.id} className="group relative z-0 align-top transition-colors hover:bg-blue-50/40 [&:has(details[open])]:z-50">
+                                <td className="px-3 py-3 text-xs font-semibold tabular-nums text-slate-400">{index + 1}</td>
+                                <td className="px-3 py-3">
+                                  <span className="inline-flex rounded-md px-2 py-1 text-[10px] font-bold" style={{ color: style.accent, backgroundColor: style.tint }}>{style.label}</span>
+                                 
+                                </td>
+                                <td className="wrap-break-word px-3 py-3">
+                                  <p className="text-xs font-bold leading-5 text-slate-800">{item.heading}</p>
+                                  {showAllLessonMaterials && <p className="mt-1 text-[10px] text-violet-600">{teachingLessons.find((lesson) => lesson.id === (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID))?.name ?? "General lesson"} / {teachingLessons.find((lesson) => lesson.id === (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID))?.subtopics?.find((subtopic) => subtopic.id === item.subtopicId)?.name ?? "General"}</p>}
+                                </td>
+                                <td className="px-3 py-3"><p className="line-clamp-1 whitespace-pre-wrap wrap-break-word text-xs leading-5 text-slate-600" title={item.body}>{item.body}</p></td>
+                                <td className="px-3 py-3">
+                                  <div className="flex justify-end">
+                                    <button
+                                      type="button"
+                                      aria-label={`Actions for ${item.heading}`}
+                                      title="Actions"
+                                      aria-expanded={openTeachingActionMenu?.itemId === item.id}
+                                      onClick={(event) => {
+                                        const rect = event.currentTarget.getBoundingClientRect();
+                                        const hasToTopic = showAllLessonMaterials && (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) !== activeTeachingLessonId;
+                                        const menuHeight = hasToTopic ? 240 : 208;
+                                        const top = rect.top >= menuHeight + 12
+                                          ? rect.top - menuHeight - 6
+                                          : Math.min(rect.bottom + 6, window.innerHeight - menuHeight - 8);
+                                        setOpenTeachingActionMenu((current) => current?.itemId === item.id ? null : {
+                                          itemId: item.id,
+                                          top: Math.max(8, top),
+                                          right: Math.max(8, window.innerWidth - rect.right),
+                                        });
+                                      }}
+                                      className={`flex size-8 cursor-pointer items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 ${openTeachingActionMenu?.itemId === item.id ? "bg-blue-50 text-blue-700" : ""}`}
+                                    >
+                                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+                                    </button>
+                                    {openTeachingActionMenu?.itemId === item.id && createPortal(
+                                      <div
+                                        role="menu"
+                                        aria-label={`Actions for ${item.heading}`}
+                                        style={{ position: "fixed", top: openTeachingActionMenu.top, right: openTeachingActionMenu.right, zIndex: 2147483000 }}
+                                        className="w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-2xl"
+                                      >
+                                        <button type="button" role="menuitem" onClick={() => runAction("insert")} className="block w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50">Insert</button>
+                                        <button type="button" role="menuitem" onClick={() => runAction("edit")} className="block w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50">Edit</button>
+                                        <button type="button" role="menuitem" onClick={() => runAction("move-up")} className="block w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50">↑ Move earlier</button>
+                                        <button type="button" role="menuitem" onClick={() => runAction("move-down")} className="block w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50">↓ Move later</button>
+                                        <button type="button" role="menuitem" onClick={() => runAction("copy")} className="block w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50">Copy</button>
+                                        {showAllLessonMaterials && (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) !== activeTeachingLessonId && (
+                                          <button type="button" role="menuitem" onClick={() => runAction("to-topic")} className="block w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50">To topic</button>
+                                        )}
+                                        <button type="button" role="menuitem" onClick={() => runAction("delete")} className="block w-full px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50">Delete</button>
+                                      </div>,
+                                      document.body
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-5 py-3">
+              <p className="text-[10px] text-slate-500">
+                {teachingLibrary.filter((item) =>
+                  showAllLessonMaterials ||
+                  (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === activeTeachingLessonId
+                ).length} saved {teachingLibrary.filter((item) =>
+                  showAllLessonMaterials ||
+                  (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === activeTeachingLessonId
+                ).length === 1 ? "material" : "materials"}
+              </p>
+              <button
+                type="button"
+                onClick={() => setTeachingLibraryOpen(false)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+          {pendingTeachingDelete && (
+            <div className="absolute inset-0 z-[2] flex items-center justify-center bg-slate-950/35 p-4" role="alertdialog" aria-modal="true" aria-labelledby="delete-teaching-group-title">
+              <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+                <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-red-50 text-red-600"><Trash2 className="size-5" /></div>
+                <h3 id="delete-teaching-group-title" className="text-sm font-bold text-slate-900">Delete {pendingTeachingDelete.type}?</h3>
+                <p className="mt-2 text-xs leading-5 text-slate-600">
+                  Delete <strong>{pendingTeachingDelete.name}</strong>{pendingTeachingDelete.type === "topic" ? " and all of its subtopics and saved teaching materials" : " and all teaching materials saved under it"}? This action cannot be undone.
+                </p>
+                <div className="mt-5 flex justify-end gap-2">
+                  <button type="button" onClick={() => setPendingTeachingDelete(null)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
+                  <button type="button" onClick={confirmDeleteTeachingGroup} className="rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white hover:bg-red-700">Delete permanently</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Teaching Elements editor */}
+      {teachingEditor.open && (
+        <div
+          className="absolute inset-0 z-[900] flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-[3px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="teaching-elements-title"
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) {
+              if (teachingEditor.returnToLibrary) setTeachingLibraryOpen(true);
+                setTeachingEditor((previous) => ({ ...previous, open: false }));
+            }
+          }}
+        >
+          <div
+            className="flex max-h-[calc(100dvh-24px)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-start justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">
+              <div>
+                <h2 id="teaching-elements-title" className="text-base font-bold text-slate-900">
+                  Teaching Elements
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Prepare and save this material. It will not appear on the board until you insert it.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (teachingEditor.returnToLibrary) setTeachingLibraryOpen(true);
+                setTeachingEditor((previous) => ({ ...previous, open: false }));
+                }}
+                aria-label="Close teaching elements editor"
+                className="flex size-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                  Choose a template
+                </label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {(Object.keys(TEACHING_TEMPLATES) as TeachingTemplate[]).map((template) => {
+                    const style = TEACHING_TEMPLATES[template];
+                    const active = teachingEditor.template === template;
+                    return (
+                      <button
+                        key={template}
+                        type="button"
+                        onClick={() =>
+                          setTeachingEditor((previous) => ({
+                            ...previous,
+                            template,
+                            heading:
+                              previous.heading === TEACHING_TEMPLATES[previous.template].heading
+                                ? style.heading
+                                : previous.heading,
+                          }))
+                        }
+                        className={`rounded-xl border px-3 py-2 text-left text-xs font-bold transition ${
+                          active
+                            ? "border-blue-500 bg-blue-50 text-blue-800 ring-2 ring-blue-500/10"
+                            : "border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                        }`}
+                      >
+                        <span
+                          className="mb-1.5 block h-1.5 w-8 rounded-full"
+                          style={{ backgroundColor: style.accent }}
+                        />
+                        {style.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="teaching-element-subtopic" className="mb-1.5 block text-xs font-bold text-slate-700">
+                  Subtopic
+                </label>
+                <select
+                  id="teaching-element-subtopic"
+                  value={teachingEditor.subtopicId}
+                  onChange={(event) => setTeachingEditor((previous) => ({ ...previous, subtopicId: event.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+                >
+                  {activeTeachingSubtopics.map((subtopic) => <option key={subtopic.id} value={subtopic.id}>{subtopic.name}</option>)}
+                </select>
+                {activeTeachingSubtopics.length === 0 && <p className="mt-1 text-[10px] text-amber-600">Create a subtopic in the Teaching Mode panel first.</p>}
+              </div>
+
+              <div>
+                <label htmlFor="teaching-element-section" className="mb-1.5 block text-xs font-bold text-slate-700">
+                  Lesson section
+                </label>
+                <select
+                  id="teaching-element-section"
+                  value={teachingEditor.section}
+                  onChange={(event) =>
+                    setTeachingEditor((previous) => ({
+                      ...previous,
+                      section: event.target.value as TeachingSection,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+                >
+                  {(Object.keys(TEACHING_SECTIONS) as TeachingSection[]).map((section) => (
+                    <option key={section} value={section}>{TEACHING_SECTIONS[section]}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="teaching-element-heading" className="mb-1.5 block text-xs font-bold text-slate-700">
+                  Heading
+                </label>
+                <input
+                  id="teaching-element-heading"
+                  value={teachingEditor.heading}
+                  onChange={(event) =>
+                    setTeachingEditor((previous) => ({
+                      ...previous,
+                      heading: event.target.value,
+                    }))
+                  }
+                  maxLength={80}
+                  placeholder="Enter a heading"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="teaching-element-body" className="mb-1.5 block text-xs font-bold text-slate-700">
+                  {teachingEditor.template === "worked-example" ? "Problem / question" : "Teaching content"}
+                </label>
+                <textarea
+                  id="teaching-element-body"
+                  value={teachingEditor.body}
+                  onChange={(event) =>
+                    setTeachingEditor((previous) => ({
+                      ...previous,
+                      body: event.target.value,
+                    }))
+                  }
+                  rows={3}
+                  maxLength={1200}
+                  placeholder={TEACHING_TEMPLATES[teachingEditor.template].placeholder}
+                  className="w-full resize-y rounded-xl border border-slate-200 px-3 py-2 text-sm leading-5 text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+                />
+                <p className="mt-1 text-right text-[10px] text-slate-400">
+                  {teachingEditor.body.length}/1200 characters
+                </p>
+              </div>
+
+              {teachingEditor.template === "worked-example" && (
+                <div>
+                  <label htmlFor="teaching-example-steps" className="mb-1.5 block text-xs font-bold text-slate-700">
+                    Solution steps
+                  </label>
+                  <textarea
+                    id="teaching-example-steps"
+                    value={teachingEditor.stepsText}
+                    onChange={(event) =>
+                      setTeachingEditor((previous) => ({
+                        ...previous,
+                        stepsText: event.target.value,
+                      }))
+                    }
+                    rows={4}
+                    maxLength={6000}
+                    placeholder={"Enter one solution step per line.\nExample: Subtract 3 from both sides.\nDivide both sides by 2."}
+                    className="w-full resize-y rounded-xl border border-slate-200 px-3 py-2 text-sm leading-5 text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+                  />
+                  <p className="mt-1 text-[10px] leading-4 text-slate-400">
+                    Each non-empty line becomes a separate step that you can reveal during the lesson.
+                  </p>
+                </div>
+              )}
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                  Preview
+                </p>
+                <div
+                  className="rounded-xl border border-slate-200 bg-white p-2.5"
+                  style={{ borderLeft: `4px solid ${TEACHING_TEMPLATES[teachingEditor.template].accent}` }}
+                >
+                  <span
+                    className="inline-block rounded-md px-2 py-1 text-[9px] font-bold tracking-wide"
+                    style={{
+                      color: TEACHING_TEMPLATES[teachingEditor.template].accent,
+                      backgroundColor: TEACHING_TEMPLATES[teachingEditor.template].tint,
+                    }}
+                  >
+                    {TEACHING_TEMPLATES[teachingEditor.template].eyebrow}
+                  </span>
+                  <p className="mt-1.5 text-sm font-bold text-slate-900">
+                    {teachingEditor.heading || "Your heading"}
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-xs leading-4 text-slate-600">
+                    {teachingEditor.body || "Your teaching content will appear here."}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-100 bg-slate-50/95 px-4 py-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  if (teachingEditor.returnToLibrary) setTeachingLibraryOpen(true);
+                setTeachingEditor((previous) => ({ ...previous, open: false }));
+                }}
+                className="rounded-xl px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveTeachingElement}
+                disabled={!teachingEditor.heading.trim() && !teachingEditor.body.trim()}
+                className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {teachingEditor.editingElementId
+                  ? "Save changes"
+                  : teachingEditor.editingLibraryItemId
+                    ? "Update saved material"
+                    : "Save to Library"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Professional page rename dialog */}
       {renamePageState.open && (

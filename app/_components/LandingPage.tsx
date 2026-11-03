@@ -149,19 +149,24 @@ export default function LandingPage() {
              
             {/* Centered hero content */}
             <div className="mx-auto flex max-w-5xl flex-col items-center text-center">
-              <div className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white px-4 py-2 text-xs font-medium text-black shadow-sm backdrop-blur-md">
-               <span className="h-2 w-2 rounded-lg bg-lime-300 shadow-[0_0_12px_rgba(190,242,100,.75)]" />
-               Middle school to High school readiness
-               <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
-             </div>
+            <div className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white px-4 py-2 text-xs font-medium text-black shadow-sm backdrop-blur-md">
+                <span className="h-2 w-2 rounded-lg bg-lime-300 shadow-[0_0_12px_rgba(190,242,100,.75)]" />
+                Math Mastery Made Simple
+                <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
+              </div>
+
               {/* Main heading */}
-              <h1 className="mx-auto mt-7 max-w-6xl text-4xl font-semibold leading-[1.08] tracking-[-.055em] text-[#372149] sm:text-5xl lg:text-[3.5em]">
-                Math Mastery for high school success
+              <h1 className="mx-auto mt-7 max-w-6xl text-4xl font-semibold leading-[1.08] tracking-[-.055em] text-[#372149] sm:text-5xl lg:text-[3.8em]">
+                You Deserve to Shine in Math.
+                <span className="block text-[3.0rem] text-[#ffffff]">
+                  Build Confidence, Unlock Potential.
+                </span>
               </h1>
 
               {/* Supporting description */}
-              <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-[#66584B] sm:text-lg sm:leading-8">
-                Help your Grades 6–8 child build strong math foundations, close learning gaps, and gain confidence through personalized tutoring and independent practice
+              <p className="mx-auto mt-6 max-w-3xl text-base leading-7 text-[#66584B] sm:text-lg sm:leading-8">
+                Help your child understand mathematics, overcome learning challenges,
+                and develop the confidence to reach their full potential—one step at a time.
               </p>
 
               {/* Call-to-action buttons */}
