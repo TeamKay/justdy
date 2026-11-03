@@ -16,7 +16,7 @@ const resourceItems = [
   { label: "Free resources", href: "/" },
   { label: "Shop now", href: "/" },
   { label: "Video lessons", href: "/videos" },
-  { label: "Games & puzzles", href: "/" },
+  { label: "Games & puzzles", href: "/games" },
   { label: "Create with AI", href: "/" },
 ];
 

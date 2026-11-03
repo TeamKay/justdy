@@ -37,6 +37,7 @@ import {
   ChevronUp,
   Grid2X2,
   Layers3,
+  List,
   Plus,
   Ruler,
   BookOpen,
@@ -475,6 +476,8 @@ type TeachingLibraryItem = {
   template: TeachingTemplate;
   heading: string;
   body: string;
+  /** Preferred body font size when this material is placed on the board. */
+  fontSize?: number;
   /** Optional ordered solution steps for worked examples. */
   steps?: string[];
   lessonId?: string;
@@ -2489,6 +2492,7 @@ export default function Whiteboard({
     template: TeachingTemplate;
     heading: string;
     body: string;
+    fontSize: number;
     stepsText: string;
     section: TeachingSection;
     subtopicId: string;
@@ -2500,6 +2504,7 @@ export default function Whiteboard({
     template: "definition",
     heading: TEACHING_TEMPLATES.definition.heading,
     body: "",
+    fontSize: 18,
     stepsText: "",
     section: "definitions",
     subtopicId: DEFAULT_TEACHING_SUBTOPIC_ID,
@@ -3010,7 +3015,8 @@ export default function Whiteboard({
 
           // Card content starts directly with its heading; no eyebrow/tag label.
           ctx.fillStyle = "#0f172a";
-          ctx.font = "700 21px Inter, sans-serif";
+          const headingFontSize = Math.max(18, Math.min(36, 21 + ((element.fontSize ?? 18) - 18) * 0.45));
+          ctx.font = `700 ${headingFontSize}px Inter, sans-serif`;
           ctx.textBaseline = "top";
           ctx.fillText((element.heading ?? style.heading).slice(0, 42), 22, 22);
         } else {
@@ -3082,29 +3088,54 @@ export default function Whiteboard({
           return;
         }
 
+        const bodyFontSize = Math.max(12, Math.min(36, element.fontSize || 18));
+        const lineHeight = bodyFontSize * 1.4;
         ctx.fillStyle = "#334155";
-        ctx.font = "400 15px Inter, sans-serif";
+        ctx.font = `400 ${bodyFontSize}px Inter, sans-serif`;
+        ctx.textBaseline = "top";
         const body = element.body ?? element.text;
-        const words = body.split(/\s+/);
-        const lines: string[] = [];
-        let line = "";
+        const sourceLines = body.split(/\r?\n/);
+        const lines: Array<{ text: string; bullet: boolean }> = [];
         const maxWidth = cardWidth - 44;
-        for (const word of words) {
-          const candidate = line ? `${line} ${word}` : word;
-          if (ctx.measureText(candidate).width > maxWidth && line) {
-            lines.push(line);
-            line = word;
-          } else {
-            line = candidate;
+
+        sourceLines.forEach((sourceLine) => {
+          const trimmedLine = sourceLine.trim();
+          if (!trimmedLine) {
+            lines.push({ text: "", bullet: false });
+            return;
           }
-        }
-        if (line) lines.push(line);
+          const bullet = /^(?:•|\*|-)\s+/.test(trimmedLine);
+          const content = bullet ? trimmedLine.replace(/^(?:•|\*|-)\s+/, "") : trimmedLine;
+          const bulletIndent = bullet ? bodyFontSize * 1.25 : 0;
+          const availableWidth = maxWidth - bulletIndent;
+          const words = content.split(/\s+/);
+          let line = "";
+          let firstWrappedLine = true;
+          words.forEach((word) => {
+            const candidate = line ? `${line} ${word}` : word;
+            if (ctx.measureText(candidate).width > availableWidth && line) {
+              lines.push({ text: line, bullet: bullet && firstWrappedLine });
+              firstWrappedLine = false;
+              line = word;
+            } else {
+              line = candidate;
+            }
+          });
+          if (line) lines.push({ text: line, bullet: bullet && firstWrappedLine });
+        });
+
         ctx.save();
         ctx.beginPath();
         ctx.rect(18, 52, cardWidth - 36, Math.max(20, cardHeight - 64));
         ctx.clip();
-        lines.forEach((textLine, index) => {
-          ctx.fillText(textLine, 22, 56 + index * 20, maxWidth);
+        lines.forEach((renderedLine, index) => {
+          const lineY = 56 + index * lineHeight;
+          if (renderedLine.bullet) {
+            ctx.beginPath();
+            ctx.arc(25, lineY + bodyFontSize * 0.48, Math.max(2, bodyFontSize * 0.12), 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.fillText(renderedLine.text, renderedLine.bullet ? 22 + bodyFontSize * 1.25 : 22, lineY, maxWidth);
         });
         ctx.restore();
         ctx.restore();
@@ -4699,6 +4730,7 @@ export default function Whiteboard({
           element?.heading ??
           TEACHING_TEMPLATES[template].heading,
         body: libraryItem?.body ?? element?.body ?? "",
+        fontSize: libraryItem?.fontSize ?? element?.fontSize ?? 18,
         stepsText: libraryItem?.steps?.join("\n") ?? "",
         section: libraryItem?.section ?? getDefaultTeachingSection(libraryItem?.template ?? element?.teachingTemplate ?? template),
         subtopicId: libraryItem?.subtopicId ?? activeTeachingSubtopicId ?? DEFAULT_TEACHING_SUBTOPIC_ID,
@@ -4858,7 +4890,7 @@ export default function Whiteboard({
           : Math.max(16, (canvas?.height ?? 600) / 2 - cardHeight / 2),
         text: item.body,
         color: "#0f172a",
-        fontSize: 16,
+        fontSize: item.fontSize ?? 18,
         bold: false,
         italic: false,
         underline: false,
@@ -4949,9 +4981,10 @@ export default function Whiteboard({
             heading: normalizedHeading,
             body,
             text: body,
+            fontSize: teachingEditor.fontSize,
             cardHeight: Math.max(
               element.cardHeight ?? 190,
-              Math.min(360, 110 + Math.ceil(body.length / 42) * 20),
+              Math.min(520, 110 + Math.ceil(body.length / 42) * teachingEditor.fontSize * 1.2),
             ),
           };
         }),
@@ -4968,6 +5001,7 @@ export default function Whiteboard({
                 template: teachingEditor.template,
                 heading: normalizedHeading,
                 body,
+                fontSize: teachingEditor.fontSize,
                 steps:
                   teachingEditor.template === "worked-example"
                     ? teachingEditor.stepsText.split(/\r?\n/).map((step) => step.trim()).filter(Boolean)
@@ -4986,6 +5020,7 @@ export default function Whiteboard({
         template: teachingEditor.template,
         heading: normalizedHeading,
         body,
+        fontSize: teachingEditor.fontSize,
         steps:
           teachingEditor.template === "worked-example"
             ? teachingEditor.stepsText.split(/\r?\n/).map((step) => step.trim()).filter(Boolean)
@@ -10290,7 +10325,7 @@ export default function Whiteboard({
           }}
         >
           <div
-            className="flex max-h-[calc(100dvh-24px)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+            className="flex max-h-[calc(100dvh-24px)] w-full max-w-xl flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl"
             onPointerDown={(event) => event.stopPropagation()}
           >
             <div className="flex shrink-0 items-start justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">
@@ -10320,7 +10355,7 @@ export default function Whiteboard({
                 <label className="mb-1.5 block text-xs font-bold text-slate-700">
                   Choose a template
                 </label>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {(Object.keys(TEACHING_TEMPLATES) as TeachingTemplate[]).map((template) => {
                     const style = TEACHING_TEMPLATES[template];
                     const active = teachingEditor.template === template;
@@ -10338,7 +10373,7 @@ export default function Whiteboard({
                                 : previous.heading,
                           }))
                         }
-                        className={`rounded-xl border px-3 py-2 text-left text-xs font-bold transition ${
+                        className={`rounded-lg border px-3 py-2 text-left text-xs font-bold transition ${
                           active
                             ? "border-blue-500 bg-blue-50 text-blue-800 ring-2 ring-blue-500/10"
                             : "border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
@@ -10371,27 +10406,6 @@ export default function Whiteboard({
               </div>
 
               <div>
-                <label htmlFor="teaching-element-section" className="mb-1.5 block text-xs font-bold text-slate-700">
-                  Lesson section
-                </label>
-                <select
-                  id="teaching-element-section"
-                  value={teachingEditor.section}
-                  onChange={(event) =>
-                    setTeachingEditor((previous) => ({
-                      ...previous,
-                      section: event.target.value as TeachingSection,
-                    }))
-                  }
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-                >
-                  {(Object.keys(TEACHING_SECTIONS) as TeachingSection[]).map((section) => (
-                    <option key={section} value={section}>{TEACHING_SECTIONS[section]}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
                 <label htmlFor="teaching-element-heading" className="mb-1.5 block text-xs font-bold text-slate-700">
                   Heading
                 </label>
@@ -10410,10 +10424,69 @@ export default function Whiteboard({
                 />
               </div>
 
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <label htmlFor="teaching-element-font-size" className="text-xs font-bold text-slate-700">
+                    Board content font size
+                  </label>
+                  <span className="rounded-md bg-white px-2 py-1 text-xs font-bold tabular-nums text-slate-700">
+                    {teachingEditor.fontSize}px
+                  </span>
+                </div>
+                <input
+                  id="teaching-element-font-size"
+                  type="range"
+                  min={14}
+                  max={32}
+                  step={1}
+                  value={teachingEditor.fontSize}
+                  onChange={(event) =>
+                    setTeachingEditor((previous) => ({
+                      ...previous,
+                      fontSize: Number(event.target.value),
+                    }))
+                  }
+                  className="w-full accent-blue-600"
+                />
+                <p className="mt-1 text-[10px] text-slate-500">
+                  Larger text makes teaching cards easier to read when displayed on the board.
+                </p>
+              </div>
+
               <div>
-                <label htmlFor="teaching-element-body" className="mb-1.5 block text-xs font-bold text-slate-700">
-                  {teachingEditor.template === "worked-example" ? "Problem / question" : "Teaching content"}
-                </label>
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <label htmlFor="teaching-element-body" className="block text-xs font-bold text-slate-700">
+                    {teachingEditor.template === "worked-example" ? "Problem / question" : "Teaching content"}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const textarea = document.getElementById("teaching-element-body") as HTMLTextAreaElement | null;
+                      const current = teachingEditor.body;
+                      const start = textarea?.selectionStart ?? current.length;
+                      const end = textarea?.selectionEnd ?? start;
+                      const selectedText = current.slice(start, end);
+                      const source = selectedText || "";
+                      const bulletText = source
+                        ? source.split(/\\r?\\n/).map((line) => line.trim() ? `• ${line.replace(/^(?:•|\*|-)\s+/, "")}` : "").join("\\n")
+                        : "• ";
+                      const nextBody = current.slice(0, start) + bulletText + current.slice(end);
+                      setTeachingEditor((previous) => ({ ...previous, body: nextBody }));
+                      requestAnimationFrame(() => {
+                        const nextTextarea = document.getElementById("teaching-element-body") as HTMLTextAreaElement | null;
+                        if (!nextTextarea) return;
+                        nextTextarea.focus();
+                        const cursor = start + bulletText.length;
+                        nextTextarea.setSelectionRange(cursor, cursor);
+                      });
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50"
+                    title="Insert bullets for the selected lines or at the cursor"
+                  >
+                    <List className="size-3.5" />
+                    Bulleted list
+                  </button>
+                </div>
                 <textarea
                   id="teaching-element-body"
                   value={teachingEditor.body}
@@ -10478,7 +10551,7 @@ export default function Whiteboard({
                   <p className="mt-1.5 text-sm font-bold text-slate-900">
                     {teachingEditor.heading || "Your heading"}
                   </p>
-                  <p className="mt-1 whitespace-pre-wrap text-xs leading-4 text-slate-600">
+                  <p className="mt-1 whitespace-pre-wrap text-slate-600" style={{ fontSize: Math.max(11, teachingEditor.fontSize - 5), lineHeight: 1.4 }}>
                     {teachingEditor.body || "Your teaching content will appear here."}
                   </p>
                 </div>

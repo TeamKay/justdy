@@ -719,7 +719,7 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
           backgroundColor: "#FAD6AC",
           backgroundImage:
             "radial-gradient(circle, rgba(139,85,35,0.62) 1.15px, transparent 1.3px)",
-          backgroundSize: "16px 16px",
+          backgroundSize: "25px 25px",
         }}
       />
 
