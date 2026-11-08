@@ -52,6 +52,29 @@ model User {
   reviewsReceived                     TutorReview[]               @relation("TutorReviewEducator")
   investmentProfile                   InvestmentProfile?
 
+  // Social identity and publishing
+  socialProfile   SocialProfile?
+  uploadedMedia   UploadedMedia[]  @relation("UploadedMediaUploader")
+  socialPosts     SocialPost[]     @relation("SocialPostAuthor")
+  socialComments  SocialComment[]  @relation("SocialCommentAuthor")
+  socialReactions SocialReaction[]
+  socialBookmarks SocialBookmark[]
+
+  // Following
+  socialFollowsInitiated SocialFollow[] @relation("SocialFollowFollower")
+  socialFollowsReceived  SocialFollow[] @relation("SocialFollowFollowing")
+
+  // Safety and moderation
+  socialBlocksInitiated   SocialBlock[]            @relation("SocialBlockBlocker")
+  socialBlocksReceived    SocialBlock[]            @relation("SocialBlockBlocked")
+  socialReportsFiled      SocialReport[]           @relation("SocialReportReporter")
+  socialReportsReviewed   SocialReport[]           @relation("SocialReportReviewer")
+  socialModerationActions SocialModerationAction[] @relation("SocialModerationActor")
+
+  // Guardian relationships
+  guardianshipsInitiated GuardianLink[] @relation("GuardianLinkGuardian")
+  guardianshipsReceived  GuardianLink[] @relation("GuardianLinkLearner")
+
   @@map("user")
 }
 
@@ -319,7 +342,7 @@ model Availability {
 }
 
 model Booking {
-  id                String             @id @default(cuid())
+  id                String                     @id @default(cuid())
   studentId         String
   educatorId        String
   serviceId         String?
@@ -328,19 +351,19 @@ model Booking {
   endTime           DateTime
   subject           String?
   gradeLevel        String?
-  status            BookingStatus      @default(Scheduled)
+  status            BookingStatus              @default(Scheduled)
   description       String?
   stripeSessionId   String?
   paymentIntentId   String?
-  payoutStatus      PayoutStatus       @default(Unpaid)
+  payoutStatus      PayoutStatus               @default(Unpaid)
   videoSessionId    String?
   videoSessionToken String?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  availability      Availability?      @relation(fields: [availabilityId], references: [id], onDelete: SetNull)
-  educator          User               @relation("EducatorBookings", fields: [educatorId], references: [id], onDelete: Cascade)
-  service           Service?           @relation(fields: [serviceId], references: [id])
-  student           User               @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  availability      Availability?              @relation(fields: [availabilityId], references: [id], onDelete: SetNull)
+  educator          User                       @relation("EducatorBookings", fields: [educatorId], references: [id], onDelete: Cascade)
+  service           Service?                   @relation(fields: [serviceId], references: [id])
+  student           User                       @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
   whiteboard        Whiteboard?
   tutoringSession   TutoringSession?
   reminders         TutoringReminder[]
@@ -821,8 +844,8 @@ model TutoringOnboardingSession {
   createdAt           DateTime                  @default(now())
   updatedAt           DateTime                  @updatedAt
   onboardingRequest   TutoringOnboardingRequest @relation(fields: [onboardingRequestId], references: [id], onDelete: Cascade)
-  bookingId String? @unique
-  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  bookingId           String?                   @unique
+  booking             Booking?                  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
 
   @@unique([onboardingRequestId, sessionNumber])
   @@index([onboardingRequestId, status])
@@ -838,6 +861,228 @@ model LearnerSetupEmailLink {
   @@index([expiresAt])
 }
 
+model SocialProfile {
+  id                 String              @id @default(cuid())
+  userId             String              @unique
+  username           String              @unique
+  displayName        String
+  bio                String?             @db.Text
+  isPrivate          Boolean             @default(true)
+  ageBand            SocialAgeBand       @default(UNKNOWN)
+  ageAssuranceStatus AgeAssuranceStatus  @default(UNVERIFIED)
+  ageVerifiedAt      DateTime?
+  status             SocialAccountStatus @default(ACTIVE)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([ageBand, ageAssuranceStatus])
+  @@map("social_profile")
+}
+
+model UploadedMedia {
+  id             String               @id @default(cuid())
+  uploaderId     String
+  uploadThingKey String               @unique
+  url            String               @db.Text
+  fileName       String
+  mimeType       String
+  type           UploadedMediaType
+  purpose        UploadedMediaPurpose @default(GENERAL)
+  sizeBytes      BigInt
+  status         UploadedMediaStatus  @default(UPLOADED)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  uploader User              @relation("UploadedMediaUploader", fields: [uploaderId], references: [id], onDelete: Cascade)
+  posts    SocialPostMedia[]
+
+  @@index([uploaderId, createdAt])
+  @@index([status, createdAt])
+  @@index([purpose, status])
+  @@map("uploaded_media")
+}
+
+model SocialPost {
+  id              String               @id @default(cuid())
+  authorId        String
+  content         String?              @db.Text
+  visibility      SocialPostVisibility @default(FOLLOWERS)
+  status          SocialPostStatus     @default(DRAFT)
+  commentsEnabled Boolean              @default(true)
+  publishedAt     DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  author    User              @relation("SocialPostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  media     SocialPostMedia[]
+  comments  SocialComment[]
+  reactions SocialReaction[]
+  bookmarks SocialBookmark[]
+
+  @@index([authorId, createdAt])
+  @@index([status, visibility, publishedAt])
+  @@map("social_post")
+}
+
+model SocialPostMedia {
+  id        String   @id @default(cuid())
+  postId    String
+  mediaId   String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  post  SocialPost    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  media UploadedMedia @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+
+  @@unique([postId, mediaId])
+  @@unique([postId, position])
+  @@index([mediaId])
+  @@map("social_post_media")
+}
+
+model SocialComment {
+  id        String              @id @default(cuid())
+  postId    String
+  authorId  String
+  parentId  String?
+  content   String              @db.Text
+  status    SocialCommentStatus @default(VISIBLE)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  post    SocialPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author  User            @relation("SocialCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  parent  SocialComment?  @relation("SocialCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies SocialComment[] @relation("SocialCommentReplies")
+
+  @@index([postId, createdAt])
+  @@index([authorId, createdAt])
+  @@index([parentId, createdAt])
+  @@map("social_comment")
+}
+
+model SocialReaction {
+  id        String             @id @default(cuid())
+  postId    String
+  userId    String
+  type      SocialReactionType @default(LIKE)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  post SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([userId, createdAt])
+  @@map("social_reaction")
+}
+
+model SocialFollow {
+  id          String             @id @default(cuid())
+  followerId  String
+  followingId String
+  status      SocialFollowStatus @default(ACCEPTED)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  follower  User @relation("SocialFollowFollower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("SocialFollowFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followingId, status, createdAt])
+  @@index([followerId, status, createdAt])
+  @@map("social_follow")
+}
+
+model SocialBookmark {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([userId, createdAt])
+  @@map("social_bookmark")
+}
+
+model SocialBlock {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("SocialBlockBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("SocialBlockBlocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("social_block")
+}
+
+model SocialReport {
+  id         String                 @id @default(cuid())
+  reporterId String
+  reviewerId String?
+  targetType SocialReportTargetType
+  targetId   String
+  reason     SocialReportReason
+  details    String?                @db.Text
+  status     SocialReportStatus     @default(OPEN)
+  reviewedAt DateTime?
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+
+  reporter User  @relation("SocialReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reviewer User? @relation("SocialReportReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([targetType, targetId])
+  @@index([status, createdAt])
+  @@index([reporterId, createdAt])
+  @@map("social_report")
+}
+
+model SocialModerationAction {
+  id          String                     @id @default(cuid())
+  moderatorId String
+  targetType  SocialReportTargetType
+  targetId    String
+  action      SocialModerationActionType
+  reason      String?                    @db.Text
+  metadata    Json?
+  createdAt   DateTime                   @default(now())
+
+  moderator User @relation("SocialModerationActor", fields: [moderatorId], references: [id], onDelete: Restrict)
+
+  @@index([targetType, targetId, createdAt])
+  @@index([moderatorId, createdAt])
+  @@map("social_moderation_action")
+}
+
+model GuardianLink {
+  id               String             @id @default(cuid())
+  guardianId       String
+  learnerId        String
+  status           GuardianLinkStatus @default(PENDING)
+  relationship     String?
+  consentGrantedAt DateTime?
+  verifiedAt       DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  guardian User @relation("GuardianLinkGuardian", fields: [guardianId], references: [id], onDelete: Cascade)
+  learner  User @relation("GuardianLinkLearner", fields: [learnerId], references: [id], onDelete: Cascade)
+
+  @@unique([guardianId, learnerId])
+  @@index([learnerId, status])
+  @@index([guardianId, status])
+  @@map("guardian_link")
+}
 
 // ============================================================
 // PERSONAL INVESTMENT TRACKER
@@ -854,6 +1099,7 @@ enum InvestmentAccountProvider {
 
 enum InvestmentAccountType {
   ROTH_IRA
+  TAXABLE_BROKERAGE
   TREASURY_BILLS
   STOCKS
   MUTUAL_FUND
@@ -908,32 +1154,32 @@ model InvestmentProfile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user            User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accounts        InvestmentAccount[]
-  assets          InvestmentAsset[]
-  snapshots       InvestmentPortfolioSnapshot[]
-  importBatches   InvestmentImportBatch[]
+  user          User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts      InvestmentAccount[]
+  assets        InvestmentAsset[]
+  snapshots     InvestmentPortfolioSnapshot[]
+  importBatches InvestmentImportBatch[]
 
   @@map("investment_profile")
 }
 
 model InvestmentAccount {
-  id        String                   @id @default(cuid())
-  profileId String
-  name      String
-  provider  InvestmentAccountProvider
-  type      InvestmentAccountType
-  currency  CurrencyType
-  country   String
-  notes     String?                  @db.Text
-  isActive  Boolean                  @default(true)
+  id           String                    @id @default(cuid())
+  profileId    String
+  name         String
+  provider     InvestmentAccountProvider
+  type         InvestmentAccountType
+  currency     CurrencyType
+  country      String
+  notes        String?                   @db.Text
+  isActive     Boolean                   @default(true)
   lastSyncedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile      InvestmentProfile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  transactions InvestmentTransaction[]
+  profile       InvestmentProfile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  transactions  InvestmentTransaction[]
   importBatches InvestmentImportBatch[]
 
   @@index([profileId, isActive])
@@ -942,7 +1188,7 @@ model InvestmentAccount {
 }
 
 model InvestmentAsset {
-  id             String               @id @default(cuid())
+  id             String              @id @default(cuid())
   profileId      String
   name           String
   symbol         String?
@@ -950,12 +1196,12 @@ model InvestmentAsset {
   currency       CurrencyType
   exchange       String?
   externalSymbol String?
-  isActive       Boolean              @default(true)
+  isActive       Boolean             @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile      InvestmentProfile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile      InvestmentProfile        @relation(fields: [profileId], references: [id], onDelete: Cascade)
   transactions InvestmentTransaction[]
   prices       InvestmentPriceHistory[]
   treasuryBill InvestmentTreasuryBill?
@@ -967,32 +1213,32 @@ model InvestmentAsset {
 }
 
 model InvestmentTransaction {
-  id          String                     @id @default(cuid())
-  accountId   String
-  assetId     String?
+  id            String  @id @default(cuid())
+  accountId     String
+  assetId       String?
   importBatchId String?
 
-  type        InvestmentTransactionType
-  occurredAt  DateTime
-  currency    CurrencyType
+  type       InvestmentTransactionType
+  occurredAt DateTime
+  currency   CurrencyType
 
   // Amounts use decimal arithmetic rather than floating-point values.
   // Amount represents the transaction's absolute monetary amount.
-  amount      Decimal                    @db.Decimal(20, 8)
-  quantity    Decimal?                   @db.Decimal(28, 10)
-  unitPrice   Decimal?                   @db.Decimal(20, 8)
-  fees        Decimal                    @default(0) @db.Decimal(20, 8)
+  amount    Decimal  @db.Decimal(20, 8)
+  quantity  Decimal? @db.Decimal(28, 10)
+  unitPrice Decimal? @db.Decimal(20, 8)
+  fees      Decimal  @default(0) @db.Decimal(20, 8)
 
   externalId  String?
-  description String?                    @db.Text
-  notes       String?                    @db.Text
+  description String? @db.Text
+  notes       String? @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  account     InvestmentAccount       @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  asset       InvestmentAsset?        @relation(fields: [assetId], references: [id], onDelete: SetNull)
-  importBatch InvestmentImportBatch?  @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  account     InvestmentAccount      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  asset       InvestmentAsset?       @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  importBatch InvestmentImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
 
   @@unique([accountId, externalId])
   @@index([accountId, occurredAt])
@@ -1002,13 +1248,13 @@ model InvestmentTransaction {
 }
 
 model InvestmentPriceHistory {
-  id        String   @id @default(cuid())
-  assetId   String
-  priceDate DateTime @db.Date
-  price     Decimal  @db.Decimal(20, 8)
-  currency  CurrencyType
-  source    String
-  isEstimated Boolean @default(false)
+  id          String       @id @default(cuid())
+  assetId     String
+  priceDate   DateTime     @db.Date
+  price       Decimal      @db.Decimal(20, 8)
+  currency    CurrencyType
+  source      String
+  isEstimated Boolean      @default(false)
 
   createdAt DateTime @default(now())
 
@@ -1020,13 +1266,13 @@ model InvestmentPriceHistory {
 }
 
 model InvestmentExchangeRate {
-  id           String       @id @default(cuid())
-  baseCurrency CurrencyType
+  id            String       @id @default(cuid())
+  baseCurrency  CurrencyType
   quoteCurrency CurrencyType
-  rateDate     DateTime     @db.Date
-  rate         Decimal      @db.Decimal(20, 10)
-  source       String
-  createdAt    DateTime     @default(now())
+  rateDate      DateTime     @db.Date
+  rate          Decimal      @db.Decimal(20, 10)
+  source        String
+  createdAt     DateTime     @default(now())
 
   @@unique([baseCurrency, quoteCurrency, rateDate, source])
   @@index([rateDate])
@@ -1034,19 +1280,19 @@ model InvestmentExchangeRate {
 }
 
 model InvestmentTreasuryBill {
-  id           String             @id @default(cuid())
-  assetId      String             @unique
-  purchaseDate DateTime           @db.Date
-  maturityDate DateTime           @db.Date
+  id           String   @id @default(cuid())
+  assetId      String   @unique
+  purchaseDate DateTime @db.Date
+  maturityDate DateTime @db.Date
 
-  purchasePrice Decimal           @db.Decimal(20, 8)
-  faceValue     Decimal           @db.Decimal(20, 8)
-  annualizedYield Decimal?        @db.Decimal(12, 8)
+  purchasePrice   Decimal  @db.Decimal(20, 8)
+  faceValue       Decimal  @db.Decimal(20, 8)
+  annualizedYield Decimal? @db.Decimal(12, 8)
 
-  status        TreasuryBillStatus @default(ACTIVE)
-  redeemedAt    DateTime?
-  actualProceeds Decimal?          @db.Decimal(20, 8)
-  notes         String?            @db.Text
+  status         TreasuryBillStatus @default(ACTIVE)
+  redeemedAt     DateTime?
+  actualProceeds Decimal?           @db.Decimal(20, 8)
+  notes          String?            @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1078,20 +1324,20 @@ model InvestmentPortfolioSnapshot {
 }
 
 model InvestmentImportBatch {
-  id          String                @id @default(cuid())
-  profileId   String
-  accountId   String?
-  fileName    String?
-  source      String
-  status      InvestmentImportStatus @default(PROCESSING)
+  id        String                 @id @default(cuid())
+  profileId String
+  accountId String?
+  fileName  String?
+  source    String
+  status    InvestmentImportStatus @default(PROCESSING)
 
-  totalRows   Int                   @default(0)
-  importedRows Int                  @default(0)
-  skippedRows Int                   @default(0)
-  failedRows  Int                   @default(0)
+  totalRows    Int   @default(0)
+  importedRows Int   @default(0)
+  skippedRows  Int   @default(0)
+  failedRows   Int   @default(0)
   errorDetails Json?
 
-  createdAt   DateTime              @default(now())
+  createdAt   DateTime  @default(now())
   completedAt DateTime?
 
   profile      InvestmentProfile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
@@ -1101,4 +1347,116 @@ model InvestmentImportBatch {
   @@index([profileId, createdAt])
   @@index([status])
   @@map("investment_import_batch")
+}
+
+enum SocialAgeBand {
+  UNKNOWN
+  UNDER_13
+  AGE_13_17
+  ADULT
+}
+
+enum AgeAssuranceStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum SocialAccountStatus {
+  ACTIVE
+  RESTRICTED
+  SUSPENDED
+}
+
+enum SocialPostVisibility {
+  PUBLIC
+  FOLLOWERS
+  ONLY_ME
+}
+
+enum SocialPostStatus {
+  DRAFT
+  PUBLISHED
+  HIDDEN
+  REMOVED
+}
+
+enum UploadedMediaType {
+  IMAGE
+  VIDEO
+  FILE
+}
+
+enum UploadedMediaPurpose {
+  GENERAL
+  PROFILE_IMAGE
+  SOCIAL_POST
+  EDUCATIONAL_RESOURCE
+  DELIVERABLE
+}
+
+enum UploadedMediaStatus {
+  UPLOADED
+  ATTACHED
+  REJECTED
+  DELETING
+  DELETED
+}
+
+enum SocialFollowStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum SocialReactionType {
+  LIKE
+  LOVE
+  INSIGHTFUL
+  CELEBRATE
+}
+
+enum SocialCommentStatus {
+  VISIBLE
+  HIDDEN
+  REMOVED
+}
+
+enum SocialReportTargetType {
+  PROFILE
+  POST
+  COMMENT
+}
+
+enum SocialReportReason {
+  SPAM
+  HARASSMENT
+  CHILD_SAFETY
+  INAPPROPRIATE_CONTENT
+  MISINFORMATION
+  OTHER
+}
+
+enum SocialReportStatus {
+  OPEN
+  UNDER_REVIEW
+  ACTIONED
+  DISMISSED
+}
+
+enum SocialModerationActionType {
+  WARNING
+  CONTENT_REMOVED
+  CONTENT_RESTORED
+  ACCOUNT_RESTRICTED
+  ACCOUNT_SUSPENDED
+  ACCOUNT_RESTORED
+}
+
+enum GuardianLinkStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  REVOKED
 }
