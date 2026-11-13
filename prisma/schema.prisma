@@ -21,6 +21,7 @@ model User {
   onboardingCompleted                 Boolean                     @default(false)
   status                              UserStatus                  @default(Active)
   lastLoginAt                         DateTime?
+  lastSeenAt                          DateTime?
   verificationStatus                  VerificationStatus          @default(Pending)
   educatorAppointments                Appointment[]               @relation("EducatorAppointments")
   learnerAppointments                 Appointment[]               @relation("LearnerAppointments")
@@ -75,6 +76,7 @@ model User {
   guardianshipsInitiated GuardianLink[] @relation("GuardianLinkGuardian")
   guardianshipsReceived  GuardianLink[] @relation("GuardianLinkLearner")
 
+  @@index([status, lastSeenAt])
   @@map("user")
 }
 
@@ -883,18 +885,18 @@ model SocialProfile {
 }
 
 model UploadedMedia {
-  id             String               @id @default(cuid())
-  uploaderId     String
-  uploadThingKey String               @unique
-  url            String               @db.Text
-  fileName       String
-  mimeType       String
-  type           UploadedMediaType
-  purpose        UploadedMediaPurpose @default(GENERAL)
-  sizeBytes      BigInt
-  status         UploadedMediaStatus  @default(UPLOADED)
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  id         String               @id @default(cuid())
+  uploaderId String
+  storageKey String               @unique @map("uploadThingKey")
+  url        String               @db.Text
+  fileName   String
+  mimeType   String
+  type       UploadedMediaType
+  purpose    UploadedMediaPurpose @default(GENERAL)
+  sizeBytes  BigInt
+  status     UploadedMediaStatus  @default(UPLOADED)
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
 
   uploader User              @relation("UploadedMediaUploader", fields: [uploaderId], references: [id], onDelete: Cascade)
   posts    SocialPostMedia[]
@@ -910,6 +912,7 @@ model SocialPost {
   authorId        String
   content         String?              @db.Text
   visibility      SocialPostVisibility @default(FOLLOWERS)
+  layout          SocialPostLayout      @default(TEXT_TOP)
   status          SocialPostStatus     @default(DRAFT)
   commentsEnabled Boolean              @default(true)
   publishedAt     DateTime?
@@ -1369,6 +1372,13 @@ enum SocialAccountStatus {
   SUSPENDED
 }
 
+enum SocialPostLayout {
+  IMAGE_LEFT
+  TEXT_LEFT
+  IMAGE_TOP
+  TEXT_TOP
+}
+
 enum SocialPostVisibility {
   PUBLIC
   FOLLOWERS
@@ -1412,9 +1422,12 @@ enum SocialFollowStatus {
 
 enum SocialReactionType {
   LIKE
-  LOVE
+  DISLIKE
+  HELPFUL
   INSIGHTFUL
   CELEBRATE
+  CURIOUS
+  LOVE
 }
 
 enum SocialCommentStatus {

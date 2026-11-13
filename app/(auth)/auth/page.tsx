@@ -7,8 +7,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import LogoImg from "@/public/images/logo.png";
 
-import { SigninPage } from "../../_components/Signin";
-import { SignupPage } from "@/app/_components/Signup";
+import { SigninPage } from "@/app/_components/auth/Signin";
+import { SignupPage } from "@/app/_components/auth/Signup";
 
 type AuthMode = "signin" | "signup";
 

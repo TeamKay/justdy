@@ -88,6 +88,7 @@ export default function InvestmentAccountForm() {
               Select account type
             </option>
             <option value="ROTH_IRA">Roth IRA</option>
+            <option value="TAXABLE_BROKERAGE">Taxable brokerage</option>
             <option value="TREASURY_BILLS">Treasury bills</option>
             <option value="STOCKS">Stocks</option>
             <option value="MUTUAL_FUND">Mutual fund</option>

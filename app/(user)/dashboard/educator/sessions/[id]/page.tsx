@@ -11,7 +11,7 @@ import {
 
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import EducatorSessionFeedbackForm from "@/app/_components/EducatorSessionFeedbackForm";
+import EducatorSessionFeedbackForm from "@/app/_components/tutoring/EducatorSessionFeedbackForm";
 
 export const dynamic = "force-dynamic";
 

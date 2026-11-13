@@ -212,6 +212,10 @@ function StatTile({
 }
 
 export default function GamesPage() {
+  useEffect(() => {
+    document.title = "Educational Games | Justdy";
+  }, []);
+
   const progressSnapshot = useSyncExternalStore(
     subscribeToGameProgress,
     getGameProgressSnapshot,

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { WalletCards } from "lucide-react";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import AdminPayoutActions from "@/app/_components/AdminPayoutActions";
+import AdminPayoutActions from "@/app/_components/admin/AdminPayoutActions";
 
 export default async function AdminPayoutsPage() {
   const session = await auth.api.getSession({ headers: await headers() });

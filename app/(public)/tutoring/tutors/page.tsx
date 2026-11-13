@@ -1,4 +1,4 @@
-import BookingPageClient from "@/app/_components/BookingPageClient";
+import BookingPageClient from "@/app/_components/tutoring/BookingPageClient";
 import { Suspense } from "react";
 
 function BookingPageLoading() {

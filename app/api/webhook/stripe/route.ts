@@ -4,6 +4,7 @@ import Stripe from "stripe";
 import prisma from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import { auth } from "@/lib/auth";
+import { ensureSocialProfileForUser } from "@/lib/social/ensure-profile";
 import {
   CAPABILITIES,
   ensureCapabilities,
@@ -86,9 +87,7 @@ function parseDateTime(dateStr: string, timeStr: string): Date {
   }
 
   const timeParts = timeStr.trim().split(/\s+/);
-
   const clock = timeParts[0];
-
   const modifier = timeParts[1]?.toUpperCase();
 
   if (!clock) {
@@ -167,6 +166,8 @@ async function findOrCreateLearner({
         data: updateData,
       });
     }
+
+   await ensureSocialProfileForUser(user.id);
 
     await ensureCapabilities(user.id, [
       CAPABILITIES.LEARN,
@@ -247,6 +248,8 @@ async function findOrCreateLearner({
       },
     });
 
+    await ensureSocialProfileForUser(user.id);
+
     await ensureCapabilities(user.id, [
       CAPABILITIES.LEARN,
       CAPABILITIES.BOOK_TUTORING,
@@ -278,14 +281,15 @@ async function findOrCreateLearner({
       },
     });
 
-    if (existing) {
-      return {
-        user: existing,
+  if (existing) {
+  await ensureSocialProfileForUser(existing.id);
 
-        isNewAccount: false,
-      };
-    }
+  return {
+    user: existing,
 
+    isNewAccount: false,
+  };
+}
     throw error;
   }
 }
@@ -614,16 +618,16 @@ export async function POST(req: Request) {
     });
 
     console.log("ONBOARDING PAYMENT EMAIL LOOKUP:", {
-  paymentId: payment.id,
-  paymentFound: Boolean(refreshedPayment),
-  onboardingFound: Boolean(refreshedOnboarding),
-  learnerEmailAvailable: Boolean(
-    refreshedPayment?.learnerEmail || refreshedOnboarding?.learnerEmail
-  ),
-  adminEmailConfigured: Boolean(
-    process.env.ADMIN_EMAIL?.trim()
-  ),
-});
+      paymentId: payment.id,
+      paymentFound: Boolean(refreshedPayment),
+      onboardingFound: Boolean(refreshedOnboarding),
+      learnerEmailAvailable: Boolean(
+        refreshedPayment?.learnerEmail || refreshedOnboarding?.learnerEmail
+      ),
+      adminEmailConfigured: Boolean(
+        process.env.ADMIN_EMAIL?.trim()
+      ),
+    });
 
     if (refreshedPayment && refreshedOnboarding) {
       // A learner confirmation must only go to the learner's own address.

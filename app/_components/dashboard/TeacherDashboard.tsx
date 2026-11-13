@@ -8,7 +8,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-import ClientGrowthChart from "@/app/_components/ClientGrowthChart";
+import ClientGrowthChart from "@/app/_components/dashboard/ClientGrowthChart";
 
 import {
   type DashboardAccount,

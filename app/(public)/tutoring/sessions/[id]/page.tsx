@@ -1,4 +1,4 @@
-import TutoringSessionRoom from "@/app/_components/TutoringSessionRoom";
+import TutoringSessionRoom from "@/app/_components/tutoring/TutoringSessionRoom";
 
 type SessionPageProps = {
   params: Promise<{ id: string }>;

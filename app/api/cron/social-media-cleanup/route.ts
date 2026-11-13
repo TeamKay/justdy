@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { UTApi } from "uploadthing/server";
-
+import { r2Storage } from "@/lib/storage/r2";
 import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -18,15 +17,22 @@ export async function GET(request: Request) {
   ) {
     return NextResponse.json(
       { error: "Unauthorized" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
   const cutoff = new Date(
-    Date.now() - RETENTION_HOURS * 60 * 60 * 1000
+    Date.now() - RETENTION_HOURS * 60 * 60 * 1000,
   );
 
   try {
+    const pendingBefore = await prisma.uploadedMedia.count({
+      where: {
+        purpose: "SOCIAL_POST",
+        status: "DELETING",
+      },
+    });
+
     const reservedMedia = await prisma.$transaction(async (tx) => {
       const eligible = await tx.uploadedMedia.findMany({
         where: {
@@ -39,7 +45,7 @@ export async function GET(request: Request) {
         take: BATCH_SIZE,
         select: {
           id: true,
-          uploadThingKey: true,
+          storageKey: true,
         },
       });
 
@@ -65,56 +71,100 @@ export async function GET(request: Request) {
       return eligible;
     });
 
-    if (reservedMedia.length === 0) {
-      return NextResponse.json({
-        ok: true,
-        processed: 0,
-        message: "No stale uploads found.",
-      });
-    }
+    let processed = 0;
+    let deletionConfirmed = true;
 
-    const utapi = new UTApi();
-
-    const deletion = await utapi.deleteFiles(
-      reservedMedia.map((media) => media.uploadThingKey)
-    );
-
-    if (
-      !deletion.success ||
-      deletion.deletedCount !== reservedMedia.length
-    ) {
-      console.error("Social media storage deletion incomplete", {
-        expected: reservedMedia.length,
-        deleted: deletion.deletedCount,
-      });
-
-      // Keep uncertain records in DELETING for reconciliation.
-      return NextResponse.json(
-        {
-          ok: false,
-          processed: 0,
-          reserved: reservedMedia.length,
-          error: "Storage deletion could not be fully confirmed.",
-        },
-        { status: 207 }
+    if (reservedMedia.length > 0) {
+      const deletionResults = await Promise.allSettled(
+        reservedMedia.map((media) =>
+          r2Storage.delete(media.storageKey),
+        ),
       );
+
+      const failedDeletions = deletionResults
+        .map((result, index) => ({
+          result,
+          mediaId: reservedMedia[index].id,
+        }))
+        .filter((item) => item.result.status === "rejected");
+
+      deletionConfirmed = failedDeletions.length === 0;
+
+      if (deletionConfirmed) {
+        const removed = await prisma.uploadedMedia.deleteMany({
+          where: {
+            id: { in: reservedMedia.map((media) => media.id) },
+            purpose: "SOCIAL_POST",
+            status: "DELETING",
+            posts: { none: {} },
+          },
+        });
+
+        processed = removed.count;
+
+        if (removed.count !== reservedMedia.length) {
+          console.error(
+            "Some media records remain after confirmed R2 deletion.",
+            {
+              expected: reservedMedia.length,
+              removed: removed.count,
+            },
+          );
+        }
+      } else {
+        console.error("R2 social media deletion incomplete.", {
+          expected: reservedMedia.length,
+          failed: failedDeletions.map((item) => ({
+            mediaId: item.mediaId,
+            error:
+              item.result.status === "rejected"
+                ? String(item.result.reason)
+                : undefined,
+          })),
+        });
+      }
     }
 
-    const removed = await prisma.uploadedMedia.deleteMany({
+    const pendingAfter = await prisma.uploadedMedia.count({
       where: {
-        id: { in: reservedMedia.map((media) => media.id) },
         purpose: "SOCIAL_POST",
         status: "DELETING",
-        posts: { none: {} },
       },
     });
 
-    return NextResponse.json({
-      ok: removed.count === reservedMedia.length,
-      processed: removed.count,
-      expected: reservedMedia.length,
-      checkedAt: new Date().toISOString(),
+    const oldestPending = await prisma.uploadedMedia.findFirst({
+      where: {
+        purpose: "SOCIAL_POST",
+        status: "DELETING",
+      },
+      orderBy: { createdAt: "asc" },
+      select: { createdAt: true },
     });
+
+    const ok =
+      deletionConfirmed &&
+      processed === reservedMedia.length;
+
+    if (pendingAfter > 0) {
+      console.warn("Social media cleanup has unresolved records.", {
+        pendingBefore,
+        pendingAfter,
+        oldestPendingCreatedAt: oldestPending?.createdAt ?? null,
+      });
+    }
+
+    return NextResponse.json(
+      {
+        ok,
+        processed,
+        expected: reservedMedia.length,
+        pendingBefore,
+        pendingAfter,
+        oldestPendingCreatedAt: oldestPending?.createdAt ?? null,
+        checkedAt: new Date().toISOString(),
+      },
+      { status: ok ? 200 : 207 },
+    );
   } catch (error) {
     console.error("Social media cleanup cron failed:", error);
 
@@ -123,7 +173,7 @@ export async function GET(request: Request) {
         ok: false,
         error: "Social media cleanup failed.",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

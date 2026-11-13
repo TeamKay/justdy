@@ -1,7 +1,7 @@
 import Link from "next/link";
 import prisma from "@/lib/prisma";
-import TutoringPaymentDetailsModal from "@/app/_components/TutoringPaymentDetailsModal";
-import SendTutoringPaymentLink from "@/app/_components/send-tutoring-payment-link";
+import TutoringPaymentDetailsModal from "@/app/_components/tutoring/TutoringPaymentDetailsModal";
+import SendTutoringPaymentLink from "@/app/_components/tutoring/send-tutoring-payment-link";
 
 export const dynamic = "force-dynamic";
 

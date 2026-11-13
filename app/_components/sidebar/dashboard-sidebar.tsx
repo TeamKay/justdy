@@ -49,8 +49,9 @@ import {
 } from "../ui/dropdown-menu";
 
 import { authClient } from "@/lib/auth-client";
-import MyLogo from "../Logo";
+import MyLogo from "../navigation/Logo";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { clearCommunityPresence } from "@/lib/clear-community-presence";
 
 export interface NavItem {
   title: string;
@@ -695,15 +696,17 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
       </SidebarGroup>
     ));
 
-  async function handleSignOut() {
-    try {
-      await authClient.signOut();
-      router.push("/login");
-      router.refresh();
-    } catch (error) {
-      console.error("Failed to sign out:", error);
-    }
+async function handleSignOut() {
+  try {
+    await clearCommunityPresence();
+    await authClient.signOut();
+
+    router.push("/login");
+    router.refresh();
+  } catch (error) {
+    console.error("Failed to sign out:", error);
   }
+}
 
   return (
     <Sidebar

@@ -18,6 +18,7 @@ const providers = [
 
 const accountTypes = [
   "ROTH_IRA",
+  "TAXABLE_BROKERAGE",
   "TREASURY_BILLS",
   "STOCKS",
   "MUTUAL_FUND",

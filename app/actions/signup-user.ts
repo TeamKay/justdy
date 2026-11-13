@@ -1,3 +1,4 @@
+
 "use server";
 
 import { z } from "zod";
@@ -5,6 +6,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { CAPABILITIES, ensureCapabilities } from "@/lib/auth/capabilities";
 import prisma from "@/lib/prisma";
+import { ensureSocialProfileForUser } from "@/lib/social/ensure-profile";
 import { signupSchema } from "@/lib/zodSchemas";
 
 type SignupResult =
@@ -73,17 +75,6 @@ export async function signupUser(values: SignupValues): Promise<SignupResult> {
   // CREATE NORMAL USER
   // ============================================================
 
-  /*
-   * Normal signup never accepts or assigns a platform role.
-   *
-   * Better Auth / Prisma creates the account using the schema's
-   * default platform role:
-   *
-   *     USER
-   *
-   * There is no Learner/Educator/Tutor role selection during
-   * account creation.
-   */
   await auth.api.signUpEmail({
     body: {
       name,
@@ -112,35 +103,20 @@ export async function signupUser(values: SignupValues): Promise<SignupResult> {
     );
   }
 
-  /*
-   * A normal signup must produce a LEARNER account.
-   *
-   * ADMIN accounts are provisioned separately and should never
-   * be created through the public signup flow.
-   */
   if (user.role !== "LEARNER") {
     throw new Error("Account creation produced an unexpected platform role.");
   }
 
   // ============================================================
+  // AUTOMATIC SOCIAL PROFILE
+  // ============================================================
+
+  await ensureSocialProfileForUser(user.id);
+
+  // ============================================================
   // INITIAL USER CAPABILITIES
   // ============================================================
 
-  /*
-   * Every normal Justdy account starts as a learner.
-   *
-   * CAN_BOOK_TUTORING allows the learner to initiate tutoring
-   * bookings.
-   *
-   * Teaching capabilities are intentionally NOT granted here.
-   *
-   * A user must first submit a tutor application and receive
-   * administrator approval before receiving:
-   *
-   *     CAN_TEACH
-   *     CAN_TUTOR
-   *     CAN_RECEIVE_PAYOUTS
-   */
   await ensureCapabilities(user.id, [
     CAPABILITIES.LEARN,
     CAPABILITIES.BOOK_TUTORING,

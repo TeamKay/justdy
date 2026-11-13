@@ -1,5 +1,10 @@
-import VideoList from "@/app/_components/VideoList";
+import VideoList from "@/app/_components/videos/VideoList";
 import { getYoutubeVideos } from "@/lib/youtube";
+
+export const metadata = {
+  title: "Learning Videos | Justdy",
+  description: "Explore educational videos and learn with the Justdy community.",
+};
 
 export const dynamic = "force-dynamic";
 

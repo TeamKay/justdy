@@ -188,10 +188,10 @@ export const auth = betterAuth({
   // USER
   // ==========================================================
 
-  user: {
-    fields: {
-      image: "image",
-    },
+ user: {
+  fields: {
+    image: "imageUrl",
+  },
     additionalFields: {
       role: {
         type: "string",
@@ -421,7 +421,7 @@ export const auth = betterAuth({
         const { render } = await import("@react-email/render");
 
         const ForgotPasswordEmail = (
-          await import("@/app/_components/ForgotPasswordEmail")
+          await import("@/app/_components/emails/ForgotPasswordEmail")
         ).default;
 
         const emailHtml = await render(
@@ -486,7 +486,7 @@ export const auth = betterAuth({
         // signup flow.
         // ====================================================
 
-        const VerifyEmail = (await import("@/app/_components/VerifyEmail"))
+        const VerifyEmail = (await import("@/app/_components/emails/VerifyEmail"))
           .default;
 
         const result = await resend.emails.send({

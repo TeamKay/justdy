@@ -1,380 +1,972 @@
 
 "use server";
 
-import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import * as XLSX from "xlsx";
-
+import { z } from "zod";
+import { createHash } from "crypto";
+import { PDFParse } from "pdf-parse";
+import { createRequire } from "node:module";
 import prisma from "@/lib/prisma";
 import { authorizeInvestmentOwner } from "@/lib/investments/authorize-investment-owner";
-import {
-  CurrencyType,
-  InvestmentAssetType,
-  InvestmentImportStatus,
-  InvestmentTransactionType,
-} from "@/lib/generated/prisma/client";
 
-function parseMoney(value: unknown): number | null {
-  if (value === null || value === undefined || value === "") {
-    return null;
-  }
+const importSchema = z.object({
+  accountId: z.string().min(1),
+  fileName: z.string().min(1).max(255),
+  rows: z
+    .array(
+      z.object({
+        accountName: z.string().trim().min(1),
+        date: z.string(),
+        action: z.string(),
+        symbol: z.string().optional().default(""),
+        description: z.string().optional().default(""),
+        quantity: z.number().optional().nullable(),
+        unitPrice: z.number().optional().nullable(),
+        amount: z.number(),
+        fees: z.number().optional().default(0),
+      })
+    )
+    .min(1)
+    .max(2000),
+});
 
-  const parsed = Number(
-    String(value).replace(/[$,\s]/g, "").replace(/^\((.*)\)$/, "-$1"),
-  );
+function assetType(symbol: string) {
+  if (symbol === "SPAXX") return "CASH" as const;
 
-  return Number.isFinite(parsed) ? parsed : null;
+  // Do not assume every new Fidelity security is an ETF.
+  // Existing assets retain their previously assigned type.
+  return "OTHER" as const;
 }
 
-function parseDate(value: unknown): Date | null {
-  if (!value) return null;
+function transactionType(action: string) {
+  const value = action.trim().toUpperCase();
 
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value;
+  if (value.startsWith("YOU BOUGHT")) return "BUY" as const;
+  if (value.startsWith("YOU SOLD")) return "SELL" as const;
+
+  if (value.startsWith("CASH CONTRIBUTION")) {
+    return "CONTRIBUTION" as const;
   }
 
-  const text = String(value).trim();
-  const match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-
-  if (match) {
-    const [, month, day, year] = match;
-    const date = new Date(
-      Number(year),
-      Number(month) - 1,
-      Number(day),
-    );
-
-    if (
-      date.getFullYear() !== Number(year) ||
-      date.getMonth() !== Number(month) - 1 ||
-      date.getDate() !== Number(day)
-    ) {
-      return null;
-    }
-
-    return date;
+  if (value.startsWith("DIVIDEND RECEIVED")) {
+    return "DIVIDEND" as const;
   }
 
-  const parsed = new Date(text);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
+  if (value.startsWith("REINVESTMENT")) {
+    return "REINVESTMENT" as const;
+  }
 
-function classifyTransaction(action: string):
-  | InvestmentTransactionType
-  | null {
-  const normalized = action.toUpperCase();
+  if (value.startsWith("ELECTRONIC FUNDS TRANSFER RECEIVED")) {
+    return "TRANSFER_IN" as const;
+  }
 
-  if (normalized.includes("YOU BOUGHT")) return "BUY";
-  if (normalized.includes("YOU SOLD")) return "SELL";
-  if (normalized.includes("CASH CONTRIBUTION")) return "CONTRIBUTION";
-  if (normalized.includes("DIVIDEND RECEIVED")) return "DIVIDEND";
-  if (normalized.includes("REINVESTMENT")) return "REINVESTMENT";
-  if (normalized.includes("INTEREST")) return "INTEREST";
-  if (normalized.includes("FEE")) return "FEE";
-  if (normalized.includes("WITHDRAWAL")) return "WITHDRAWAL";
+  if (value.startsWith("ELECTRONIC FUNDS TRANSFER PAID")) {
+    return "TRANSFER_OUT" as const;
+  }
 
   return null;
 }
 
-function classifyAsset(
-  symbol: string,
-  description: string,
-): InvestmentAssetType {
-  const normalized = `${symbol} ${description}`.toUpperCase();
+function parseDate(value: string) {
+  const match = value
+    .trim()
+    .match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  let year = Number(match[3]);
+
+  if (year < 100) year += 2000;
+
+  const date = new Date(Date.UTC(year, month - 1, day));
 
   if (
-    normalized.includes("MONEY MARKET") ||
-    symbol.toUpperCase().startsWith("SPAXX")
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
   ) {
-    return "CASH";
+    return null;
   }
 
-  if (normalized.includes("ETF")) return "ETF";
-
-  return "STOCK";
+  return date;
 }
 
-function fingerprint(values: unknown[]) {
-  return createHash("sha256")
-    .update(values.map((value) => String(value ?? "")).join("|"))
-    .digest("hex");
-}
-
-export async function importFidelityTransactions(formData: FormData) {
+export async function importFidelityTransactions(input: unknown) {
   let owner;
 
   try {
     owner = await authorizeInvestmentOwner();
-  } catch (error) {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") {
-      redirect("/login");
-    }
-
-    redirect("/admin");
+  } catch {
+    return {
+      success: false,
+      error: "You are not authorized to import transactions.",
+    };
   }
 
-  const accountId = String(formData.get("accountId") ?? "");
-  const file = formData.get("file");
+  const parsed = importSchema.safeParse(input);
 
-  if (!(file instanceof File) || file.size === 0) {
-    redirect("/admin/investments/imports/new?error=file");
+  if (!parsed.success) {
+    return {
+      success: false,
+      error:
+        parsed.error.issues[0]?.message ?? "Invalid import data.",
+    };
+  }
+
+  const { accountId, fileName, rows } = parsed.data;
+
+  try {
+    const profile = await prisma.investmentProfile.upsert({
+      where: { userId: owner.id },
+      update: {},
+      create: { userId: owner.id },
+      select: { id: true },
+    });
+
+    const account = await prisma.investmentAccount.findFirst({
+      where: {
+        id: accountId,
+        profileId: profile.id,
+        provider: "FIDELITY",
+        isActive: true,
+      },
+      select: {
+        id: true,
+        currency: true,
+      },
+    });
+
+    if (!account) {
+      return {
+        success: false,
+        error:
+          "Select an active Fidelity account belonging to your profile.",
+      };
+    }
+
+    const fidelityAccounts = await prisma.investmentAccount.findMany({
+      where: {
+        profileId: profile.id,
+        provider: "FIDELITY",
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        currency: true,
+      },
+    });
+
+    const normalizeAccountName = (value: string) =>
+      value
+        .toUpperCase()
+        .replace(/^FIDELITY\s+/, "")
+        .replace(/[^A-Z0-9]/g, "");
+
+    const accountByCsvName = new Map(
+      fidelityAccounts.map((item) => [
+        normalizeAccountName(item.name),
+        item,
+      ])
+    );
+
+    const prepared = rows.map((row, index) => {
+      const symbol = row.symbol.trim().toUpperCase();
+      const action = row.action.trim();
+      const normalizedAction = action.toUpperCase();
+
+      const type = transactionType(action);
+      const date = parseDate(row.date);
+
+      // Fidelity SPAXX core cash movements are not imported.
+      // They are already represented by the cash movements
+      // generated by the associated security transactions.
+      const isSkipped =
+        symbol === "SPAXX" &&
+        (
+          normalizedAction.startsWith("YOU BOUGHT") ||
+          normalizedAction.startsWith("YOU SOLD") ||
+          normalizedAction.startsWith("REINVESTMENT")
+        );
+
+      if (isSkipped) {
+        return {
+          index,
+          skipped: true as const,
+        };
+      }
+
+      const rowAccount = accountByCsvName.get(
+        normalizeAccountName(row.accountName)
+      );
+
+      if (!rowAccount) {
+        return {
+          index,
+          error: `No matching Fidelity account found for "${row.accountName}".`,
+        };
+      }
+
+      if (!type || !date || !Number.isFinite(row.amount)) {
+        return {
+          index,
+          error: "Unrecognized action, date, or amount.",
+        };
+      }
+
+      if (
+        (type === "BUY" ||
+          type === "SELL" ||
+          type === "REINVESTMENT") &&
+        !symbol
+      ) {
+        return {
+          index,
+          error: "A security ticker is required for this transaction.",
+        };
+      }
+
+      const amount =
+        type === "CONTRIBUTION"
+          ? row.amount
+          : Math.abs(row.amount);
+
+      const quantity =
+        row.quantity == null ? null : Math.abs(row.quantity);
+
+      const unitPrice =
+        row.unitPrice == null ? null : Math.abs(row.unitPrice);
+
+      const fees = Math.abs(row.fees);
+
+      if (
+        (type === "BUY" || type === "SELL") &&
+        (!quantity || quantity <= 0)
+      ) {
+        return {
+          index,
+          error: "Trade quantity must be greater than zero.",
+        };
+      }
+
+      if (
+        type === "REINVESTMENT" &&
+        (!quantity || quantity <= 0)
+      ) {
+        return {
+          index,
+          error: "Reinvestment quantity must be greater than zero.",
+        };
+      }
+
+      const fingerprint = createHash("sha256")
+        .update(
+          JSON.stringify({
+            date: date.toISOString().slice(0, 10),
+            action: normalizedAction,
+            symbol,
+            description: row.description.trim(),
+            quantity,
+            unitPrice,
+            amount,
+            fees,
+          })
+        )
+        .digest("hex");
+
+      return {
+        index,
+        skipped: false as const,
+        account: rowAccount,
+        type,
+        date,
+        symbol,
+        description: row.description.trim() || action,
+        quantity,
+        unitPrice,
+        amount,
+        fees,
+        fingerprint,
+      };
+    });
+
+    // Keep only successfully prepared Fidelity rows.
+    // This preserves the account, type, date and other fields.
+    const validRows = prepared.filter(
+      (row) => "skipped" in row && row.skipped === false
+    );
+
+    const invalidRows = prepared.filter(
+      (row) => "error" in row
+    );
+
+    const skippedRows = prepared.filter(
+      (row) => "skipped" in row && row.skipped
+    ).length;
+
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const batch = await tx.investmentImportBatch.create({
+          data: {
+            profileId: profile.id,
+            accountId: null,
+            fileName,
+            source: "FIDELITY_CSV",
+            status: "PROCESSING",
+            totalRows: rows.length,
+            skippedRows,
+            failedRows: invalidRows.length,
+          },
+        });
+
+        const existing = await tx.investmentTransaction.findMany({
+          where: {
+            account: {
+              profileId: profile.id,
+              provider: "FIDELITY",
+            },
+            externalId: { not: null },
+          },
+          select: {
+            accountId: true,
+            externalId: true,
+          },
+        });
+
+        const existingFingerprints = new Set(
+          existing.map(
+            (item) => `${item.accountId}:${item.externalId}`
+          )
+        );
+
+        const occurrences = new Map<string, number>();
+
+        let importedRows = 0;
+        let duplicateRows = 0;
+
+        const failures: { row: number; reason: string }[] =
+          invalidRows.map((row) => ({
+            row: row.index + 2,
+            reason:
+              "error" in row && typeof row.error === "string"
+                ? row.error
+                : "Invalid row",
+          }));
+
+        for (const row of validRows) {
+          const fingerprintKey =
+            `${row.account.id}:${row.fingerprint}`;
+
+          const occurrence =
+            (occurrences.get(fingerprintKey) ?? 0) + 1;
+
+          occurrences.set(fingerprintKey, occurrence);
+
+          const externalId = `${row.fingerprint}-${occurrence}`;
+          const existingKey =
+            `${row.account.id}:${externalId}`;
+
+          if (existingFingerprints.has(existingKey)) {
+            duplicateRows++;
+            continue;
+          }
+
+          let assetId: string | null = null;
+
+          if (row.symbol) {
+            let asset = await tx.investmentAsset.findFirst({
+              where: {
+                profileId: profile.id,
+                symbol: row.symbol,
+              },
+              select: {
+                id: true,
+              },
+            });
+
+            if (!asset) {
+              asset = await tx.investmentAsset.create({
+                data: {
+                  profileId: profile.id,
+                  name: row.description || row.symbol,
+                  symbol: row.symbol,
+                  assetType: assetType(row.symbol),
+                  currency: row.account.currency,
+                },
+                select: {
+                  id: true,
+                },
+              });
+            }
+
+            assetId = asset.id;
+          }
+
+          await tx.investmentTransaction.create({
+            data: {
+              accountId: row.account.id,
+              assetId,
+              importBatchId: batch.id,
+              type: row.type,
+              occurredAt: row.date,
+              currency: row.account.currency,
+              amount: row.amount,
+              quantity: row.quantity,
+              unitPrice: row.unitPrice,
+              fees: row.fees,
+              externalId,
+              description: row.description,
+            },
+          });
+
+          existingFingerprints.add(existingKey);
+          importedRows++;
+        }
+
+        const failedRows = failures.length;
+
+        await tx.investmentImportBatch.update({
+          where: { id: batch.id },
+          data: {
+            importedRows,
+            skippedRows: skippedRows + duplicateRows,
+            failedRows,
+            status:
+              failedRows === 0
+                ? "COMPLETED"
+                : importedRows > 0
+                  ? "PARTIAL"
+                  : "FAILED",
+            completedAt: new Date(),
+            errorDetails: failures.length
+              ? failures
+              : undefined,
+          },
+        });
+
+        return {
+          importedRows,
+          skippedRows: skippedRows + duplicateRows,
+          failedRows,
+        };
+      },
+      {
+        maxWait: 10_000,
+        timeout: 30_000,
+      }
+    );
+
+    revalidatePath("/admin/investments");
+    revalidatePath("/admin/investments/imports");
+
+    return {
+      success: true,
+      ...result,
+    };
+  } catch (error) {
+    console.error("Fidelity import failed:", error);
+
+    return {
+      success: false,
+      error:
+        "The import failed. No partial transactions were saved.",
+    };
+  }
+}
+
+const icSecuritiesImportSchema = z.object({
+  accountId: z.string().min(1),
+  fileName: z.string().min(1).max(255),
+  rows: z
+    .array(
+      z.object({
+        date: z.string(),
+        action: z.string(),
+        symbol: z.string().optional().default(""),
+        description: z.string().optional().default(""),
+        quantity: z.number().nullable().optional(),
+        unitPrice: z.number().nullable().optional(),
+        amount: z.number(),
+        fees: z.number().optional().default(0),
+      })
+    )
+    .min(1)
+    .max(2000),
+});
+
+export async function importIcSecuritiesTransactions(input: unknown) {
+  let owner;
+
+  try {
+    owner = await authorizeInvestmentOwner();
+  } catch {
+    return {
+      success: false,
+      error: "You are not authorized to import transactions.",
+    };
+  }
+
+  const parsed = icSecuritiesImportSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      error:
+        parsed.error.issues[0]?.message ?? "Invalid import data.",
+    };
+  }
+
+  const { accountId, fileName, rows } = parsed.data;
+
+  try {
+    const profile = await prisma.investmentProfile.findUnique({
+      where: { userId: owner.id },
+      select: { id: true },
+    });
+
+    if (!profile) {
+      return {
+        success: false,
+        error: "Investment profile not found.",
+      };
+    }
+
+    const account = await prisma.investmentAccount.findFirst({
+      where: {
+        id: accountId,
+        profileId: profile.id,
+        provider: "GHANA_STOCK_EXCHANGE",
+        currency: "GHS",
+        isActive: true,
+      },
+      select: {
+        id: true,
+        currency: true,
+      },
+    });
+
+    if (!account) {
+      return {
+        success: false,
+        error:
+          "Select your active Ghana Stock Exchange account in GHS.",
+      };
+    }
+
+    const prepared = rows.map((row, index) => {
+      const action = row.action.trim().toUpperCase();
+      const symbol = row.symbol.trim().toUpperCase();
+      const date = parseDate(row.date);
+
+      let type:
+        | "DEPOSIT"
+        | "WITHDRAWAL"
+        | "BUY"
+        | "SELL"
+        | "TRANSFER_IN"
+        | "TRANSFER_OUT"
+        | null = null;
+
+      if (
+        action.includes("FUNDING FOR PURCHASE") ||
+        action === "DEPOSIT"
+      ) {
+        type = "DEPOSIT";
+      } else if (
+        action.includes("TRANSFER/PAYOUT") ||
+        action.includes("PAYOUT TO CLIENT") ||
+        action === "WITHDRAWAL"
+      ) {
+        type = "WITHDRAWAL";
+      } else if (
+        action.startsWith("DEPOSITED") ||
+        action.startsWith("REFUND FOR") &&
+          action.includes("IPO SUBSCRIPTION")
+      ) {
+        type = "TRANSFER_IN";
+      } else if (
+        action.startsWith("DEBIT FOR") &&
+        action.includes("IPO SUBSCRIPTION")
+      ) {
+        type = "TRANSFER_OUT";
+      } else if (action.startsWith("SOLD") || action.startsWith("SELL")) {
+        type = "SELL";
+      } else if (
+        action.startsWith("BOUGHT") ||
+        action.startsWith("BUY") ||
+        action.startsWith("NEW ISSUE / IPO")
+      ) {
+        type = "BUY";
+      } else if (
+        action.startsWith("PURCHASE OF SHARES (IPO)")
+      ) {
+        type = "TRANSFER_IN";
+      }
+
+      if (!type || !date || !Number.isFinite(row.amount)) {
+        return {
+          index,
+          error: "Unrecognized action, date, or amount.",
+        };
+      }
+
+      // Purchases, sales and in-kind transfers need a symbol
+      // and a positive share quantity.
+     const isShareTransfer =
+        type === "TRANSFER_IN" &&
+        (Boolean(symbol) || row.quantity != null);
+
+      if (
+        (type === "BUY" ||
+          type === "SELL" ||
+          isShareTransfer) &&
+        (!symbol || !row.quantity || row.quantity <= 0)
+      ) {
+        return {
+          index,
+          error:
+            "A share purchase, sale or transfer needs a symbol and positive quantity.",
+        };
+      }
+
+      if (row.amount < 0 || row.fees < 0) {
+        return {
+          index,
+          error: "Amounts and fees must be non-negative.",
+        };
+      }
+
+      const quantity =
+        row.quantity == null ? null : Math.abs(row.quantity);
+
+      const unitPrice =
+        row.unitPrice == null ? null : Math.abs(row.unitPrice);
+
+      const fees = Math.abs(row.fees);
+
+      const description =
+        row.description.trim() || row.action.trim();
+
+      const fingerprint = createHash("sha256")
+        .update(
+          JSON.stringify({
+            date: date.toISOString().slice(0, 10),
+            action,
+            symbol,
+            description,
+            quantity,
+            unitPrice,
+            amount: row.amount,
+            fees,
+          })
+        )
+        .digest("hex");
+
+      return {
+        index,
+        type,
+        date,
+        symbol,
+        description,
+        quantity,
+        unitPrice,
+        amount: row.amount,
+        fees,
+        fingerprint,
+      };
+    });
+
+    const invalidRows = prepared.filter(
+      (row) => "error" in row
+    );
+
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const batch = await tx.investmentImportBatch.create({
+          data: {
+            profileId: profile.id,
+            accountId: account.id,
+            fileName,
+            source: "IC_SECURITIES",
+            status: "PROCESSING",
+            totalRows: rows.length,
+            failedRows: invalidRows.length,
+          },
+        });
+
+        const existing = await tx.investmentTransaction.findMany({
+          where: {
+            accountId: account.id,
+            externalId: { not: null },
+          },
+          select: {
+            externalId: true,
+          },
+        });
+
+        // Filter out null values so the set contains only strings.
+        const existingIds = new Set(
+          existing
+            .map((item) => item.externalId)
+            .filter(
+              (id): id is string => id !== null
+            )
+        );
+
+        let importedRows = 0;
+        let duplicateRows = 0;
+        const failures: { row: number; reason: string }[] =
+          invalidRows.map((row) => ({
+            row: row.index + 2,
+            reason:
+              "error" in row && typeof row.error === "string"
+                ? row.error
+                : "Invalid row",
+          }));
+
+        for (const candidate of prepared) {
+          if (
+            "error" in candidate ||
+            typeof candidate.fingerprint !== "string" ||
+            !candidate.type ||
+            !(candidate.date instanceof Date) ||
+            typeof candidate.amount !== "number"
+          ) {
+            continue;
+          }
+
+          const row = candidate;
+          const externalId = row.fingerprint;
+
+          if (existingIds.has(externalId)) {
+            duplicateRows++;
+            continue;
+          }
+
+          let assetId: string | null = null;
+
+          // A sale must match an existing asset.
+          // Never create a new asset for a SELL transaction.
+          if (row.type === "SELL") {
+            const asset = await tx.investmentAsset.findFirst({
+              where: {
+                profileId: profile.id,
+                symbol: row.symbol,
+              },
+              select: {
+                id: true,
+              },
+            });
+
+            if (!asset) {
+              failures.push({
+                row: row.index + 2,
+                reason: `Cannot import sale: investment asset ${row.symbol} was not found.`,
+              });
+
+              continue;
+            }
+
+            assetId = asset.id;
+         } else if (
+            row.type === "BUY" ||
+            (row.type === "TRANSFER_IN" &&
+              Boolean(row.symbol) &&
+              row.quantity != null &&
+              row.quantity > 0)
+          ) {
+            let asset = await tx.investmentAsset.findFirst({
+              where: {
+                profileId: profile.id,
+                symbol: row.symbol,
+              },
+              select: {
+                id: true,
+              },
+            });
+
+            if (!asset) {
+              asset = await tx.investmentAsset.create({
+                data: {
+                  profileId: profile.id,
+                  name: row.description || row.symbol,
+                  symbol: row.symbol,
+                  assetType: "STOCK",
+                  currency: account.currency,
+                },
+                select: {
+                  id: true,
+                },
+              });
+            }
+
+            assetId = asset.id;
+          }
+
+          await tx.investmentTransaction.create({
+            data: {
+              accountId: account.id,
+              assetId,
+              importBatchId: batch.id,
+              type: row.type,
+              occurredAt: row.date,
+              currency: account.currency,
+              amount: row.amount,
+              quantity: row.quantity,
+              unitPrice: row.unitPrice,
+              fees: row.fees,
+              externalId,
+              description: row.description,
+            },
+          });
+
+          existingIds.add(externalId);
+          importedRows++;
+        }
+
+        const failedRows = failures.length;
+        const skippedRows = duplicateRows;
+
+        await tx.investmentImportBatch.update({
+          where: { id: batch.id },
+          data: {
+            importedRows,
+            skippedRows,
+            failedRows,
+            status:
+              failedRows === 0
+                ? "COMPLETED"
+                : importedRows > 0
+                  ? "PARTIAL"
+                  : "FAILED",
+            completedAt: new Date(),
+            errorDetails: failures.length
+              ? failures
+              : undefined,
+          },
+        });
+
+        return {
+          importedRows,
+          skippedRows,
+          failedRows,
+        };
+      },
+      {
+        maxWait: 10_000,
+        timeout: 30_000,
+      }
+    );
+
+    revalidatePath("/admin/investments");
+    revalidatePath("/admin/investments/imports");
+
+    return {
+      success: true,
+      ...result,
+    };
+  } catch (error) {
+    console.error("IC Securities import failed:", error);
+
+    return {
+      success: false,
+      error:
+        "The IC Securities import failed. No partial transactions were saved.",
+    };
+  }
+}
+
+export async function extractIcSecuritiesPdf(file: File) {
+  if (!(file instanceof File)) {
+    return {
+      success: false,
+      error: "Please select a PDF file.",
+    };
+  }
+
+  if (file.size === 0 || file.size > 15 * 1024 * 1024) {
+    return {
+      success: false,
+      error: "The PDF must be non-empty and no larger than 15 MB.",
+    };
   }
 
   if (
-    !file.name.toLowerCase().endsWith(".csv") ||
-    file.size > 5 * 1024 * 1024
+    file.type !== "application/pdf" &&
+    !file.name.toLowerCase().endsWith(".pdf")
   ) {
-    redirect("/admin/investments/imports/new?error=format");
-  }
-
-  const profile = await prisma.investmentProfile.findUnique({
-    where: { userId: owner.id },
-    select: { id: true },
-  });
-
-  if (!profile) {
-    redirect("/admin/investments?error=profile");
-  }
-
-  const account = await prisma.investmentAccount.findFirst({
-    where: {
-      id: accountId,
-      profileId: profile.id,
-    },
-    select: {
-      id: true,
-      currency: true,
-      provider: true,
-    },
-  });
-
-  if (!account) {
-    redirect("/admin/investments/imports/new?error=account");
-  }
-
-  if (account.provider !== "FIDELITY") {
-    redirect("/admin/investments/imports/new?error=provider");
-  }
-
-  const workbook = XLSX.read(await file.arrayBuffer(), {
-    type: "array",
-    raw: false,
-  });
-
-  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-
-  if (!firstSheet) {
-    redirect("/admin/investments/imports/new?error=csv");
-  }
-
-  const matrix = XLSX.utils.sheet_to_json<unknown[]>(firstSheet, {
-    header: 1,
-    defval: "",
-    raw: false,
-  });
-
-  const headerIndex = matrix.findIndex((row) =>
-    row.some((cell) => String(cell).trim() === "Run Date"),
-  );
-
-  if (headerIndex < 0) {
-    redirect("/admin/investments/imports/new?error=columns");
-  }
-
-  const headers = matrix[headerIndex].map((value) =>
-    String(value).trim(),
-  );
-
-  const column = (name: string) => headers.indexOf(name);
-
-  const requiredColumns = [
-    "Run Date",
-    "Action",
-    "Symbol",
-    "Description",
-    "Price ($)",
-    "Quantity",
-    "Commission ($)",
-    "Fees ($)",
-    "Amount ($)",
-  ];
-
-  if (requiredColumns.some((name) => column(name) < 0)) {
-    redirect("/admin/investments/imports/new?error=columns");
-  }
-
-  const rows = matrix.slice(headerIndex + 1);
-
-  const batch = await prisma.investmentImportBatch.create({
-    data: {
-      profileId: profile.id,
-      accountId: account.id,
-      fileName: file.name,
-      source: "FIDELITY_CSV",
-      status: InvestmentImportStatus.PROCESSING,
-    },
-  });
-
-  let importedRows = 0;
-  let skippedRows = 0;
-  let failedRows = 0;
-
-  const errors: string[] = [];
-
-  for (let index = 0; index < rows.length; index++) {
-    const row = rows[index];
-
-    const get = (name: string) => {
-      const position = column(name);
-      return position >= 0 ? row[position] : "";
+    return {
+      success: false,
+      error: "Please upload a PDF file.",
     };
-
-    const action = String(get("Action")).trim();
-
-    // Ignore blank lines and Fidelity's legal/footer text.
-    if (!action || !get("Run Date")) {
-      continue;
-    }
-
-    const type = classifyTransaction(action);
-
-    if (!type) {
-      skippedRows++;
-      continue;
-    }
-
-    const occurredAt = parseDate(get("Run Date"));
-    const rawAmount = parseMoney(get("Amount ($)"));
-    const quantity = parseMoney(get("Quantity"));
-    const unitPrice = parseMoney(get("Price ($)"));
-    const commission = parseMoney(get("Commission ($)")) ?? 0;
-    const otherFees = parseMoney(get("Fees ($)")) ?? 0;
-
-    if (
-      !occurredAt ||
-      rawAmount === null ||
-      rawAmount === 0 ||
-      commission < 0 ||
-      otherFees < 0 ||
-      (quantity !== null && quantity < 0) ||
-      (unitPrice !== null && unitPrice < 0)
-    ) {
-      failedRows++;
-      errors.push(`Row ${index + headerIndex + 2}: Invalid date or amount.`);
-      continue;
-    }
-
-    const symbol = String(get("Symbol")).trim();
-    const description = String(get("Description")).trim();
-    const settlementDate = parseDate(get("Settlement Date"));
-
-    const rowFingerprint = fingerprint([
-      occurredAt.toISOString(),
-      action,
-      symbol,
-      description,
-      quantity,
-      unitPrice,
-      rawAmount,
-      settlementDate?.toISOString(),
-    ]);
-
-    try {
-      let assetId: string | undefined;
-
-      if (symbol) {
-        let asset = await prisma.investmentAsset.findFirst({
-          where: {
-            profileId: profile.id,
-            symbol,
-          },
-          select: { id: true },
-        });
-
-        if (!asset) {
-          asset = await prisma.investmentAsset.create({
-            data: {
-              profileId: profile.id,
-              name: description || symbol,
-              symbol,
-              assetType: classifyAsset(symbol, description),
-              currency: CurrencyType.USD,
-              isActive: true,
-            },
-            select: { id: true },
-          });
-        }
-
-        assetId = asset.id;
-      }
-
-      await prisma.investmentTransaction.create({
-        data: {
-          accountId: account.id,
-          assetId,
-          importBatchId: batch.id,
-          type,
-          occurredAt,
-          currency: account.currency,
-          amount: Math.abs(rawAmount).toString(),
-          quantity:
-            quantity !== null && quantity > 0
-              ? quantity.toString()
-              : undefined,
-          unitPrice:
-            unitPrice !== null && unitPrice > 0
-              ? unitPrice.toString()
-              : undefined,
-          fees: (commission + otherFees).toString(),
-          externalId: rowFingerprint,
-          description: action,
-        },
-      });
-
-      importedRows++;
-    } catch (error) {
-      if (
-        typeof error === "object" &&
-        error !== null &&
-        "code" in error &&
-        error.code === "P2002"
-      ) {
-        skippedRows++;
-        continue;
-      }
-
-      failedRows++;
-      errors.push(`Row ${index + headerIndex + 2}: Import failed.`);
-    }
   }
 
-  const status =
-    failedRows > 0 && importedRows > 0
-      ? InvestmentImportStatus.PARTIAL
-      : failedRows > 0
-        ? InvestmentImportStatus.FAILED
-        : InvestmentImportStatus.COMPLETED;
+  let parser: PDFParse | undefined;
 
-  await prisma.investmentImportBatch.update({
-    where: { id: batch.id },
-    data: {
-      totalRows: importedRows + skippedRows + failedRows,
-      importedRows,
-      skippedRows,
-      failedRows,
-      status,
-      completedAt: new Date(),
-      errorDetails: errors.length
-        ? JSON.parse(JSON.stringify(errors))
-        : undefined,
-    },
-  });
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
 
-  revalidatePath("/admin/investments");
-  revalidatePath("/admin/investments/assets");
-  revalidatePath("/admin/investments/transactions");
-  revalidatePath("/admin/investments/imports");
+    // Check the PDF file signature.
+    if (
+      bytes.length < 5 ||
+      String.fromCharCode(...bytes.slice(0, 5)) !== "%PDF-"
+    ) {
+      return {
+        success: false,
+        error: "This file is not a valid PDF.",
+      };
+    }
 
-  redirect(`/admin/investments/imports?imported=${importedRows}&skipped=${skippedRows}&failed=${failedRows}`);
+    const require = createRequire(
+      `${process.cwd()}/package.json`
+    );
+
+    PDFParse.setWorker(
+      require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs")
+    );
+
+    parser = new PDFParse({ data: bytes });
+
+    const result = await parser.getText();
+    const extractedText = result.text?.trim() ?? "";
+
+    if (!extractedText) {
+      return {
+        success: false,
+        error:
+          "No readable text was found. This PDF may be scanned or image-only.",
+      };
+    }
+
+    if (!/IC\s+SECURITIES/i.test(extractedText)) {
+      return {
+        success: false,
+        error:
+          "This document does not appear to be an IC Securities statement.",
+      };
+    }
+
+    return {
+      success: true,
+      text: extractedText,
+      pageCount: result.total,
+    };
+  } catch (error) {
+    console.error(
+      "IC Securities PDF extraction failed:",
+      error
+    );
+
+    return {
+      success: false,
+      error:
+        "Could not read this PDF. Check that it is not password-protected.",
+    };
+  } finally {
+    if (parser) {
+      await parser.destroy().catch(() => undefined);
+    }
+  }
 }

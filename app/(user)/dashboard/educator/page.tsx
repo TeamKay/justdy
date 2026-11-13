@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
-import EducatorTutoringTabs from "@/app/_components/EducatorTutoringTabs";
+import EducatorTutoringTabs from "@/app/_components/tutoring/EducatorTutoringTabs";
 
 export const dynamic = "force-dynamic";
 

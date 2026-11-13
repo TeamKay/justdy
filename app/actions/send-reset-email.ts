@@ -3,7 +3,7 @@
 import { render } from "@react-email/render";
 
 import { Resend } from "resend";
-import ForgotPasswordEmail from "../_components/ForgotPasswordEmail";
+import ForgotPasswordEmail from "../_components/emails/ForgotPasswordEmail";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 

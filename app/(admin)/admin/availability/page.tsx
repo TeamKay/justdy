@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import { hasCapability, CAPABILITIES } from "@/lib/auth/capabilities";
 import prisma from "@/lib/prisma";
 
-import EducatorAvailabilityStudio from "@/app/_components/EducatorAvailablityStudio";
+import EducatorAvailabilityStudio from "@/app/_components/tutoring/EducatorAvailablityStudio";
 
 import { materializeRecurringAvailability } from "@/lib/tutoring/recurring-availability";
 

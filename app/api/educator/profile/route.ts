@@ -1,3 +1,4 @@
+
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -14,13 +15,20 @@ type ProfileBody = {
   currency?: unknown;
   subjects?: unknown;
   gradeLevels?: unknown;
-  imageUrl?: unknown;
+  imageMediaId?: unknown;
 };
 
 type CurrentUser = {
   id: string;
   role?: string | null;
 };
+
+class InvalidProfileImageError extends Error {
+  constructor() {
+    super("The uploaded profile image could not be verified.");
+    this.name = "InvalidProfileImageError";
+  }
+}
 
 async function getCurrentUser(): Promise<CurrentUser | null> {
   const session = await auth.api.getSession({
@@ -37,7 +45,9 @@ async function getCurrentUser(): Promise<CurrentUser | null> {
   };
 }
 
-async function canManageTeachingProfile(user: CurrentUser): Promise<boolean> {
+async function canManageTeachingProfile(
+  user: CurrentUser,
+): Promise<boolean> {
   if (String(user.role ?? "").toUpperCase() === "ADMIN") {
     return true;
   }
@@ -51,7 +61,6 @@ function cleanString(value: unknown): string | null {
   }
 
   const trimmed = value.trim();
-
   return trimmed || null;
 }
 
@@ -83,15 +92,6 @@ function parseExperience(value: unknown): number | null {
 
 /*
  * TeachingProfile.hourlyRate is stored in cents.
- *
- * Examples:
- *
- *     25     -> $0.25
- *     2500   -> $25.00
- *     5000   -> $50.00
- *
- * The tutor application endpoint converts the public
- * dollar amount into cents before saving it.
  */
 function parseHourlyRateInCents(value: unknown): number | null {
   if (value === null || value === undefined || value === "") {
@@ -111,39 +111,43 @@ function parseCurrency(value: unknown): "USD" | "GHS" {
   return value === "GHS" ? "GHS" : "USD";
 }
 
-/**
- * Profile photos are uploaded by UploadThing in the client.
- * This route only stores the returned permanent HTTPS URL.
- */
-function parseImageUrl(value: unknown): {
-  valid: boolean;
-  imageUrl: string | null;
-} {
-  if (value === null || value === undefined || value === "") {
-    return { valid: true, imageUrl: null };
+function parseImageMediaId(value: unknown): string | null {
+  if (value === undefined) {
+    return null;
   }
 
-  if (typeof value !== "string" || value.length > 2048) {
-    return { valid: false, imageUrl: null };
+  if (
+    typeof value !== "string" ||
+    !value.trim() ||
+    value.length > 128
+  ) {
+    throw new InvalidProfileImageError();
   }
 
-  const imageUrl = value.trim();
+  return value.trim();
+}
 
-  if (!imageUrl) {
-    return { valid: true, imageUrl: null };
+function validateImageMediaId(value: unknown): void {
+  if (value === undefined) {
+    return;
   }
 
-  try {
-    const parsed = new URL(imageUrl);
-
-    if (parsed.protocol !== "https:") {
-      return { valid: false, imageUrl: null };
-    }
-
-    return { valid: true, imageUrl };
-  } catch {
-    return { valid: false, imageUrl: null };
+  if (
+    typeof value !== "string" ||
+    !value.trim() ||
+    value.length > 128
+  ) {
+    throw new InvalidProfileImageError();
   }
+}
+
+function invalidImageResponse() {
+  return NextResponse.json(
+    {
+      error: "The uploaded profile image could not be verified.",
+    },
+    { status: 400 },
+  );
 }
 
 /*
@@ -152,19 +156,7 @@ function parseImageUrl(value: unknown): {
  * ============================================================
  *
  * Any authenticated user can read their own teaching profile.
- *
- * This is important for the tutor application flow:
- *
- *     Learner
- *        ↓
- *     /tutoring/apply
- *        ↓
- *     GET /api/educator/profile
- *
- * The learner does NOT need CAN_TEACH merely to view an
- * existing application/profile.
- *
- * No teaching capability is granted by this request.
+ * Viewing an existing profile does not grant teaching access.
  */
 export async function GET() {
   try {
@@ -172,9 +164,7 @@ export async function GET() {
 
     if (!user) {
       return NextResponse.json(
-        {
-          error: "Authentication required.",
-        },
+        { error: "Authentication required." },
         { status: 401 },
       );
     }
@@ -192,9 +182,7 @@ export async function GET() {
     console.error("Get teaching profile error:", error);
 
     return NextResponse.json(
-      {
-        error: "Unable to load teaching profile.",
-      },
+      { error: "Unable to load teaching profile." },
       { status: 500 },
     );
   }
@@ -208,11 +196,7 @@ export async function GET() {
  * Direct teaching-profile creation is restricted to users who
  * already have teaching access.
  *
- * Normal learners should use:
- *
- *     POST /api/educator/apply
- *
- * to submit a tutor application.
+ * Normal learners should use POST /api/educator/apply.
  */
 export async function POST(req: Request) {
   try {
@@ -220,9 +204,7 @@ export async function POST(req: Request) {
 
     if (!user) {
       return NextResponse.json(
-        {
-          error: "Authentication required.",
-        },
+        { error: "Authentication required." },
         { status: 401 },
       );
     }
@@ -230,7 +212,8 @@ export async function POST(req: Request) {
     if (!(await canManageTeachingProfile(user))) {
       return NextResponse.json(
         {
-          error: "Teaching access is required to create a teaching profile.",
+          error:
+            "Teaching access is required to create a teaching profile.",
         },
         { status: 403 },
       );
@@ -254,19 +237,11 @@ export async function POST(req: Request) {
 
     const body = (await req.json().catch(() => ({}))) as ProfileBody;
 
-    const parsedImage = body.imageUrl === undefined
-      ? null
-      : parseImageUrl(body.imageUrl);
+    validateImageMediaId(body.imageMediaId);
 
-    if (parsedImage && !parsedImage.valid) {
-      return NextResponse.json(
-        { error: "Profile image URL must be a valid HTTPS URL." },
-        { status: 400 },
-      );
-    }
+    const imageMediaId = parseImageMediaId(body.imageMediaId);
 
     const experience = parseExperience(body.experience);
-
     const hourlyRate = parseHourlyRateInCents(body.hourlyRate);
 
     if (
@@ -277,7 +252,8 @@ export async function POST(req: Request) {
     ) {
       return NextResponse.json(
         {
-          error: "Years of experience must be a valid non-negative number.",
+          error:
+            "Years of experience must be a valid non-negative number.",
         },
         { status: 400 },
       );
@@ -297,52 +273,86 @@ export async function POST(req: Request) {
       );
     }
 
-    const profile = await prisma.teachingProfile.create({
-      data: {
-        userId: user.id,
-        headline: cleanString(body.headline),
-        specialty: cleanString(body.specialty),
-        experience,
-        description: cleanString(body.description),
-        hourlyRate,
-        currency: parseCurrency(body.currency),
-        subjects: cleanStringArray(body.subjects),
-        gradeLevels: cleanStringArray(body.gradeLevels),
+    const result = await prisma.$transaction(async (tx) => {
+      let imageUrl: string | undefined;
 
-        /*
-         * Direct profile creation is only available to
-         * users who already have teaching access.
-         *
-         * The normal tutor application flow is responsible
-         * for creating/updating pending applications.
-         */
-        verificationStatus: "Pending",
-      },
-    });
+      if (imageMediaId) {
+        const media = await tx.uploadedMedia.findFirst({
+          where: {
+            id: imageMediaId,
+            uploaderId: user.id,
+            purpose: "PROFILE_IMAGE",
+            type: "IMAGE",
+            status: "UPLOADED",
+          },
+          select: {
+            id: true,
+          },
+        });
 
-    // Save the uploaded profile photo on User, not TeachingProfile.
-    if (parsedImage) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { imageUrl: parsedImage.imageUrl },
+        if (!media) {
+          throw new InvalidProfileImageError();
+        }
+
+        imageUrl = `/api/storage/profile-image/${user.id}`;
+
+        await tx.uploadedMedia.update({
+          where: {
+            id: media.id,
+          },
+          data: {
+            status: "ATTACHED",
+          },
+        });
+
+        await tx.user.update({
+          where: {
+            id: user.id,
+          },
+          data: {
+            imageUrl,
+          },
+        });
+      }
+
+      const profile = await tx.teachingProfile.create({
+        data: {
+          userId: user.id,
+          headline: cleanString(body.headline),
+          specialty: cleanString(body.specialty),
+          experience,
+          description: cleanString(body.description),
+          hourlyRate,
+          currency: parseCurrency(body.currency),
+          subjects: cleanStringArray(body.subjects),
+          gradeLevels: cleanStringArray(body.gradeLevels),
+          verificationStatus: "Pending",
+        },
       });
-    }
+
+      return {
+        profile,
+        imageUrl,
+      };
+    });
 
     return NextResponse.json(
       {
         success: true,
-        profile,
-        imageUrl: parsedImage?.imageUrl,
+        profile: result.profile,
+        imageUrl: result.imageUrl,
       },
       { status: 201 },
     );
   } catch (error) {
+    if (error instanceof InvalidProfileImageError) {
+      return invalidImageResponse();
+    }
+
     console.error("Create teaching profile error:", error);
 
     return NextResponse.json(
-      {
-        error: "Unable to create teaching profile.",
-      },
+      { error: "Unable to create teaching profile." },
       { status: 500 },
     );
   }
@@ -356,12 +366,8 @@ export async function POST(req: Request) {
  * Updating an active teaching profile requires teaching
  * capability.
  *
- * Tutor application updates should continue to go through:
- *
- *     POST /api/educator/apply
- *
- * so that the application workflow controls the verification
- * status correctly.
+ * Tutor application updates should continue to go through
+ * POST /api/educator/apply.
  */
 export async function PATCH(req: Request) {
   try {
@@ -369,9 +375,7 @@ export async function PATCH(req: Request) {
 
     if (!user) {
       return NextResponse.json(
-        {
-          error: "Authentication required.",
-        },
+        { error: "Authentication required." },
         { status: 401 },
       );
     }
@@ -379,7 +383,8 @@ export async function PATCH(req: Request) {
     if (!(await canManageTeachingProfile(user))) {
       return NextResponse.json(
         {
-          error: "Teaching access is required to update a teaching profile.",
+          error:
+            "Teaching access is required to update a teaching profile.",
         },
         { status: 403 },
       );
@@ -403,16 +408,9 @@ export async function PATCH(req: Request) {
 
     const body = (await req.json().catch(() => ({}))) as ProfileBody;
 
-    const parsedImage = body.imageUrl === undefined
-      ? null
-      : parseImageUrl(body.imageUrl);
+    validateImageMediaId(body.imageMediaId);
 
-    if (parsedImage && !parsedImage.valid) {
-      return NextResponse.json(
-        { error: "Profile image URL must be a valid HTTPS URL." },
-        { status: 400 },
-      );
-    }
+    const imageMediaId = parseImageMediaId(body.imageMediaId);
 
     const data: {
       headline?: string | null;
@@ -446,7 +444,8 @@ export async function PATCH(req: Request) {
         if (experience === null) {
           return NextResponse.json(
             {
-              error: "Years of experience must be a valid non-negative number.",
+              error:
+                "Years of experience must be a valid non-negative number.",
             },
             { status: 400 },
           );
@@ -487,33 +486,75 @@ export async function PATCH(req: Request) {
       data.gradeLevels = cleanStringArray(body.gradeLevels);
     }
 
-    const updatedProfile = await prisma.teachingProfile.update({
-      where: {
-        id: profile.id,
-      },
-      data,
-    });
+    const result = await prisma.$transaction(async (tx) => {
+      let imageUrl: string | undefined;
 
-    // Keep the profile photo on the User record used by public tutor APIs.
-    if (parsedImage) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { imageUrl: parsedImage.imageUrl },
+      if (imageMediaId) {
+        const media = await tx.uploadedMedia.findFirst({
+          where: {
+            id: imageMediaId,
+            uploaderId: user.id,
+            purpose: "PROFILE_IMAGE",
+            type: "IMAGE",
+            status: "UPLOADED",
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        if (!media) {
+          throw new InvalidProfileImageError();
+        }
+
+        imageUrl = `/api/storage/profile-image/${user.id}`;
+
+        await tx.uploadedMedia.update({
+          where: {
+            id: media.id,
+          },
+          data: {
+            status: "ATTACHED",
+          },
+        });
+
+        await tx.user.update({
+          where: {
+            id: user.id,
+          },
+          data: {
+            imageUrl,
+          },
+        });
+      }
+
+      const updatedProfile = await tx.teachingProfile.update({
+        where: {
+          id: profile.id,
+        },
+        data,
       });
-    }
+
+      return {
+        profile: updatedProfile,
+        imageUrl,
+      };
+    });
 
     return NextResponse.json({
       success: true,
-      profile: updatedProfile,
-      imageUrl: parsedImage?.imageUrl,
+      profile: result.profile,
+      imageUrl: result.imageUrl,
     });
   } catch (error) {
+    if (error instanceof InvalidProfileImageError) {
+      return invalidImageResponse();
+    }
+
     console.error("Update teaching profile error:", error);
 
     return NextResponse.json(
-      {
-        error: "Unable to update teaching profile.",
-      },
+      { error: "Unable to update teaching profile." },
       { status: 500 },
     );
   }

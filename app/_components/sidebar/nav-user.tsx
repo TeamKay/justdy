@@ -10,6 +10,7 @@ import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
 import { HomeIcon, Tv2 } from "lucide-react";
 import { useSignOut } from "@/hooks/use-signout";
+import { clearCommunityPresence } from "@/lib/clear-community-presence";
 import {
   SidebarMenu,
   SidebarMenuButton,

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { ensureSocialProfileForUser } from "@/lib/social/ensure-profile";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -223,6 +224,10 @@ export async function POST(
         { status: 409 },
       );
     }
+
+    // Ensure every eligible learner linked through this workflow has a social profile.
+    // Existing profiles are preserved by the helper.
+    await ensureSocialProfileForUser(learner.id);
 
     await prisma.studentProfile.upsert({
       where: { userId: learner.id },

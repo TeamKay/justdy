@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import LearnerSessionsTable from "@/app/_components/LearnerSessionsTable";
+import LearnerSessionsTable from "@/app/_components/tutoring/LearnerSessionsTable";
 
 export const dynamic = "force-dynamic";
 

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
-import SettingsClient from "@/app/_components/SettingsClient";
+import SettingsClient from "@/app/_components/settings/SettingsClient";
 
 export const dynamic = "force-dynamic";
 

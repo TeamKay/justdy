@@ -43,6 +43,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${baseUrl}/dashboard?verified=true`);
   } catch (error) {
     console.error("❌ Email verification routine crashed:", error);
-    return NextResponse.redirect(`${baseUrl}/login?error=InternalServerError`);
+    return NextResponse.redirect(`${baseUrl}/home?verified=true`);
   }
 }

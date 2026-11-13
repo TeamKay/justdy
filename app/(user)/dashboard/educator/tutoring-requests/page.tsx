@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import TutoringPlanEditor from "@/app/_components/Tutoring-plan-editor";
+import TutoringPlanEditor from "@/app/_components/tutoring/Tutoring-plan-editor";
 
 export const dynamic = "force-dynamic";
 

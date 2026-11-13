@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { CAPABILITIES, hasCapability } from "@/lib/auth/capabilities";
 
-import EducatorProfileForm from "@/app/_components/EducatorProfileForm";
+import EducatorProfileForm from "@/app/_components/tutoring/EducatorProfileForm";
 
 export const dynamic = "force-dynamic";
 

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import TutoringRequestTable from "@/app/_components/TutoringRequestTable";
+import TutoringRequestTable from "@/app/_components/tutoring/TutoringRequestTable";
 
 export const dynamic = "force-dynamic";
 
