@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import prisma from "@/lib/prisma";
+import { captureMarketingContactSafely } from "@/lib/marketing/contact-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -320,6 +321,32 @@ export async function POST(request: Request) {
       },
       select: { id: true },
     });
+
+    // Capture the primary contact email without granting marketing consent.
+await captureMarketingContactSafely(
+  {
+    email,
+    name: guardianName,
+    sourceType: "ONBOARDING_REQUEST",
+    sourceRecordId: intake.id,
+    sourceRole: "CONTACT_EMAIL",
+  },
+  "tutoring onboarding contact",
+);
+
+// Capture the learner email separately when one was provided.
+if (learnerEmail?.trim()) {
+  await captureMarketingContactSafely(
+    {
+      email: learnerEmail,
+      name: studentName,
+      sourceType: "ONBOARDING_REQUEST",
+      sourceRecordId: intake.id,
+      sourceRole: "LEARNER_EMAIL",
+    },
+    "tutoring onboarding learner",
+  );
+}
 
     const adminEmail = process.env.ADMIN_EMAIL?.trim();
 

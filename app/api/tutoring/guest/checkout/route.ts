@@ -6,6 +6,7 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { stripe } from "@/lib/stripe";
 import { CAPABILITIES, hasCapability } from "@/lib/auth/capabilities";
+import { captureMarketingContactSafely } from "@/lib/marketing/contact-service";
 
 const DEFAULT_CURRENCY = "usd";
 
@@ -1267,6 +1268,19 @@ export async function POST(request: Request) {
         { status: 500 },
       );
     }
+
+    // Capture the checkout email after the booking and Stripe session
+// have both been successfully saved.
+await captureMarketingContactSafely(
+  {
+    email: guestCheckout.email,
+    name: guestCheckout.name,
+    sourceType: "GUEST_CHECKOUT",
+    sourceRecordId: guestCheckout.id,
+    sourceRole: "CHECKOUT_EMAIL",
+  },
+  "guest tutoring checkout",
+);
 
     // ============================================================
     // 14. RETURN EMBEDDED CHECKOUT CLIENT SECRET

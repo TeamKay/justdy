@@ -24,6 +24,7 @@ import {
   Megaphone,
   PencilRuler,
   Trophy,
+  Mail,
 } from "lucide-react";
 
 import {
@@ -92,21 +93,14 @@ const adminNavigation: NavigationGroup = {
       url: "/admin/whiteboard",
       icon: PencilRuler,
     },
-    {
-      title: "Official Posts",
-      url: "/admin/official-posts",
-      icon: Megaphone,
-    },
-    {
-      title: "Challenge Submissions",
-      url: "/admin/challenge-submissions",
-      icon: Trophy,
-    },
-    {
-      title: "Daily Challenges",
-      url: "/admin/daily-challenges",
-      icon: CalendarDays,
-    },
+
+  {
+    title: "Email Marketing",
+    url: "/admin/marketing",
+    icon: Mail,
+  },
+
+   
     {
       title: "Educators",
       url: "/admin/educators",
@@ -216,16 +210,7 @@ const userNavigation: NavigationGroup[] = [
     ],
   },
 
-    {
-    title: "Creator",
-    items: [
-      {
-        title: "Video Analytics",
-        url: "/dashboard/creator-analytics",
-        icon: BarChart3,
-      },
-    ],
-  },
+    
 
   {
     title: "Account",

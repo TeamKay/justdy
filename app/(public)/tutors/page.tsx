@@ -11,6 +11,7 @@ import {
   Search,
   Sparkles,
   Users,
+  X,
 } from "lucide-react";
 
 type TutorProfile = {
@@ -87,6 +88,7 @@ export default function TutorsPage() {
   const [grade, setGrade] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedTutor, setSelectedTutor] = useState<Tutor | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -123,6 +125,26 @@ export default function TutorsPage() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+      if (!selectedTutor) return;
+
+      function handleKeyDown(event: KeyboardEvent) {
+        if (event.key === "Escape") {
+          setSelectedTutor(null);
+        }
+      }
+
+      document.addEventListener("keydown", handleKeyDown);
+
+      const previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+
+      return () => {
+        document.removeEventListener("keydown", handleKeyDown);
+        document.body.style.overflow = previousOverflow;
+      };
+    }, [selectedTutor]);
 
   const subjects = useMemo(
     () =>
@@ -179,26 +201,26 @@ export default function TutorsPage() {
               "linear-gradient(to bottom, black, transparent 85%)",
           }}
         />
-        <div className="relative mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:px-10 lg:py-20">
+        <div className="relative mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:px-10 lg:py-15">
           <Link
             href="/"
             className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-lg border border-[#e8c99f] bg-white/85 px-4 py-2 text-sm font-semibold text-[#173B2F] shadow-sm transition hover:bg-white hover:text-[#9A642F] focus:outline-none focus:ring-2 focus:ring-[#B97832] focus:ring-offset-2 sm:left-8 lg:left-10"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back
+            Back to home
           </Link>
 
-          <div className="mx-auto max-w-3xl pt-8 text-center">
+          <div className="mx-auto max-w-3xl pt-2 text-center">
             <div className="mx-auto inline-flex items-center gap-2 rounded-lg border border-[#e8c99f] bg-white/75 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-[#9A642F]">
               <Sparkles className="h-3.5 w-3.5" />
-              Learn with confidence
+              Top 1% Expert at your service
             </div>
-            <h1 className="mx-auto mt-5 max-w-3xl text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
+            <h1 className="mx-auto mt-5 max-w-3xl text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl lg:text-4xl">
               Meet your next
               <span className="text-[#B97832]"> great tutor.</span>
             </h1>
-            <p className="mx-auto mt-3 max-w-2xl text-base leading-7 text-[#5E6D61] sm:text-lg">
-              Explore verified educators, discover the subjects they teach, and
+            <p className="mx-auto mt-3 max-w-7xl text-base leading-7 text-[#5E6D61] sm:text-[16px]">
+              Verified educators, discover the subjects they teach, and
               find the right support for your learning goals.
             </p>
           </div>
@@ -208,7 +230,7 @@ export default function TutorsPage() {
       <section className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-10 lg:py-5">
         <div className="mb-7 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="grid w-full gap-3 sm:grid-cols-3 lg:max-w-3xl">
-            <label className="relative sm:col-span-1">
+            <label className="relative sm:col-span-2">
               <span className="sr-only">Search tutors</span>
               <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A968C]" />
               <input
@@ -218,36 +240,7 @@ export default function TutorsPage() {
                 className="h-12 w-full rounded-xl border border-[#e6ddcf] bg-white pl-10 pr-4 text-sm text-[#173B2F] outline-none transition placeholder:text-[#9AA39B] focus:border-[#B97832] focus:ring-2 focus:ring-[#B97832]/15"
               />
             </label>
-            <label>
-              <span className="sr-only">Filter by subject</span>
-              <select
-                value={subject}
-                onChange={(event) => setSubject(event.target.value)}
-                className="h-12 w-full rounded-lg border border-[#e6ddcf] bg-white px-3.5 text-sm text-[#526458] outline-none focus:border-[#B97832] focus:ring-2 focus:ring-[#B97832]/15"
-              >
-                <option value="all">All subjects</option>
-                {subjects.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span className="sr-only">Filter by grade level</span>
-              <select
-                value={grade}
-                onChange={(event) => setGrade(event.target.value)}
-                className="h-12 w-full rounded-lg border border-[#e6ddcf] bg-white px-3.5 text-sm text-[#526458] outline-none focus:border-[#B97832] focus:ring-2 focus:ring-[#B97832]/15"
-              >
-                <option value="all">All grade levels</option>
-                {grades.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </label>
+           
           </div>
           <div>
             <p className="mt-2 text-sm text-[#718075]">
@@ -330,13 +323,14 @@ export default function TutorsPage() {
                     </div>
 
                     <div className="mt-auto pt-6">
-                      <Link
-                        href="/tutoring"
+                     <button
+                        type="button"
+                        onClick={() => setSelectedTutor(tutor)}
                         className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#173B2F] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#24523F] focus:outline-none focus:ring-2 focus:ring-[#B97832] focus:ring-offset-2"
                       >
-                        Explore tutoring
+                        View tutor profile
                         <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                      </Link>
+                      </button>
                     </div>
                   </div>
                 </article>
@@ -345,6 +339,201 @@ export default function TutorsPage() {
           </div>
         )}
       </section>
+            {selectedTutor && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#10291F]/65 p-4 backdrop-blur-sm sm:p-6"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setSelectedTutor(null);
+            }
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tutor-modal-title"
+            className="relative my-auto w-full max-w-2xl overflow-hidden rounded-lg bg-[#FBF9F2] shadow-2xl"
+          >
+            <button
+              type="button"
+              onClick={() => setSelectedTutor(null)}
+              aria-label="Close tutor profile"
+              className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/95 text-[#173B2F] shadow-md transition hover:bg-[#FAD6AC]"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Tutor profile header */}
+            <div className="relative bg-[#173B2F] px-6 pb-7 pt-8 text-white sm:px-9">
+              <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
+                <div className="h-28 w-28 shrink-0 overflow-hidden rounded-2xl border-4 border-white/20 bg-[#FAD6AC] shadow-lg">
+                  <TutorAvatar tutor={selectedTutor} />
+                </div>
+
+                <div className="min-w-0">
+                  <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-[#FAD6AC]">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Verified tutor
+                  </div>
+
+                  <h2
+                    id="tutor-modal-title"
+                    className="text-2xl font-bold tracking-tight sm:text-3xl"
+                  >
+                    {selectedTutor.name}
+                  </h2>
+
+                  <p className="mt-1 text-sm font-medium text-[#FAD6AC]">
+                    {selectedTutor.teachingProfile.headline ||
+                      selectedTutor.teachingProfile.specialty ||
+                      "Verified educator"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Tutor profile details */}
+            <div className="max-h-[65vh] overflow-y-auto px-6 py-7 sm:px-9">
+              <div>
+                <div className="mb-3 flex items-center gap-2">
+                  <GraduationCap className="h-5 w-5 text-[#B97832]" />
+                  <h3 className="text-lg font-bold text-[#173B2F]">
+                    About this tutor
+                  </h3>
+                </div>
+
+                <p className="whitespace-pre-line text-sm leading-7 text-[#647267]">
+                  {selectedTutor.teachingProfile.description ||
+                    "This verified educator has not added a teaching biography yet."}
+                </p>
+              </div>
+
+              <div className="my-7 border-t border-[#E9E1D5]" />
+
+              <div>
+                <h3 className="mb-4 text-lg font-bold text-[#173B2F]">
+                  Teaching qualifications
+                </h3>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl border border-[#E9E1D5] bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[#89958B]">
+                      Specialty
+                    </p>
+                    <p className="mt-2 font-semibold text-[#173B2F]">
+                      {selectedTutor.teachingProfile.specialty || "Not specified"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-[#E9E1D5] bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[#89958B]">
+                      Teaching experience
+                    </p>
+                    <p className="mt-2 font-semibold text-[#173B2F]">
+                      {selectedTutor.teachingProfile.experience !== null
+                        ? `${selectedTutor.teachingProfile.experience} ${
+                            selectedTutor.teachingProfile.experience === 1
+                              ? "year"
+                              : "years"
+                          }`
+                        : "Not specified"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-[#E9E1D5] bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[#89958B]">
+                      Hourly rate
+                    </p>
+                    <p className="mt-2 font-semibold text-[#173B2F]">
+                      {formatRate(
+                        selectedTutor.teachingProfile.hourlyRate,
+                        selectedTutor.teachingProfile.currency,
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-[#E9E1D5] bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[#89958B]">
+                      Verification
+                    </p>
+                    <p className="mt-2 flex items-center gap-1.5 font-semibold text-[#24523F]">
+                      <CheckCircle2 className="h-4 w-4" />
+                      Verified educator
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="my-7 border-t border-[#E9E1D5]" />
+
+              <div className="space-y-5">
+                <div>
+                  <div className="mb-3 flex items-center gap-2">
+                    <BookOpen className="h-5 w-5 text-[#B97832]" />
+                    <h3 className="font-bold text-[#173B2F]">
+                      Subjects taught
+                    </h3>
+                  </div>
+
+                  {selectedTutor.teachingProfile.subjects.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedTutor.teachingProfile.subjects.map((item) => (
+                        <span
+                          key={item}
+                          className="rounded-full border border-[#E8C99F] bg-white px-3 py-1.5 text-sm font-medium text-[#805326]"
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[#89958B]">
+                      Subjects have not been added yet.
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <div className="mb-3 flex items-center gap-2">
+                    <Users className="h-5 w-5 text-[#B97832]" />
+                    <h3 className="font-bold text-[#173B2F]">
+                      Grade levels
+                    </h3>
+                  </div>
+
+                  {selectedTutor.teachingProfile.gradeLevels.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedTutor.teachingProfile.gradeLevels.map((item) => (
+                        <span
+                          key={item}
+                          className="rounded-full border border-[#D7E5D9] bg-[#EEF5EF] px-3 py-1.5 text-sm font-medium text-[#24523F]"
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[#89958B]">
+                      Grade levels have not been added yet.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal footer */}
+            <div className="border-t border-[#E9E1D5] bg-white px-6 py-4 sm:px-9">
+              <button
+                type="button"
+                onClick={() => setSelectedTutor(null)}
+                className="w-full rounded-lg bg-[#173B2F] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#24523F] focus:outline-none focus:ring-2 focus:ring-[#B97832] focus:ring-offset-2"
+              >
+                Close profile
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -3,6 +3,8 @@ import { headers } from "next/headers";
 import Stripe from "stripe";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { captureMarketingContactSafely } from "@/lib/marketing/contact-service";
+
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -515,6 +517,29 @@ export async function POST(
             paymentLinkEmailSentById: actor.id,
           },
         });
+        // Record the billing email against the tutoring request.
+          await captureMarketingContactSafely(
+            {
+              email: paymentRecipient,
+              name: requestRow.guardianName,
+              sourceType: "ONBOARDING_REQUEST",
+              sourceRecordId: id,
+              sourceRole: "BILLING_EMAIL",
+            },
+            "reused payment link billing email",
+          );
+
+          // Record the actual recipient against the payment record.
+          await captureMarketingContactSafely(
+            {
+              email: paymentRecipient,
+              name: requestRow.guardianName,
+              sourceType: "ONBOARDING_PAYMENT",
+              sourceRecordId: prior.id,
+              sourceRole: "PAYMENT_RECIPIENT_EMAIL",
+            },
+            "reused payment link recipient",
+          );
         return NextResponse.json({
           ok: true,
           message: `Payment link emailed to ${paymentRecipient}.`,
@@ -645,6 +670,29 @@ export async function POST(
         paymentLinkEmailSentById: actor.id,
       },
     });
+    // Record the billing email against the tutoring request.
+        await captureMarketingContactSafely(
+          {
+            email: paymentRecipient,
+            name: requestRow.guardianName,
+            sourceType: "ONBOARDING_REQUEST",
+            sourceRecordId: id,
+            sourceRole: "BILLING_EMAIL",
+          },
+          "new payment link billing email",
+        );
+
+        // Record the actual recipient against this payment installment.
+        await captureMarketingContactSafely(
+          {
+            email: paymentRecipient,
+            name: requestRow.guardianName,
+            sourceType: "ONBOARDING_PAYMENT",
+            sourceRecordId: payment.id,
+            sourceRole: "PAYMENT_RECIPIENT_EMAIL",
+          },
+          "new payment link recipient",
+        );
     return NextResponse.json({
       ok: true,
       message: `Payment link emailed to ${paymentRecipient}.`,

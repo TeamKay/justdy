@@ -1,8 +1,9 @@
+
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Github, MessageCircle, Sparkles, Youtube } from "lucide-react";
+import { useState, type FormEvent } from "react";
+import { Github, MessageCircle, Youtube } from "lucide-react";
 import LogoImg from "@/public/images/logo.png";
 import Image from "next/image";
 
@@ -15,15 +16,6 @@ const footerGroups = [
       { label: "Projects", href: "/projects" },
       { label: "Library", href: "/library" },
       { label: "Resources", href: "/products" },
-    ],
-  },
-  {
-    title: "Create with AI",
-    links: [
-      { label: "Worksheets", href: "/create/worksheet" },
-      { label: "Lessons", href: "/create/lesson" },
-      { label: "Quizzes", href: "/create/quiz" },
-      { label: "Video", href: "/create/video" },
     ],
   },
   {
@@ -52,6 +44,56 @@ export default function MarketingFooter() {
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
 
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterConsent, setNewsletterConsent] = useState(false);
+  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
+  const [newsletterMessage, setNewsletterMessage] = useState("");
+  const [newsletterError, setNewsletterError] = useState(false);
+
+  async function handleNewsletterSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    setNewsletterMessage("");
+    setNewsletterError(false);
+    setNewsletterSubmitting(true);
+
+    try {
+      const response = await fetch("/api/marketing/newsletter", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: newsletterEmail,
+          marketingConsent: newsletterConsent,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error || "Unable to complete your subscription."
+        );
+      }
+
+      setNewsletterMessage(result.message);
+      setNewsletterEmail("");
+      setNewsletterConsent(false);
+    } catch (error) {
+      setNewsletterError(true);
+      setNewsletterMessage(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again."
+      );
+    } finally {
+      setNewsletterSubmitting(false);
+    }
+  }
+
   const openSignin = () => {
     setAuthMode("signin");
     setAuthOpen(true);
@@ -63,8 +105,9 @@ export default function MarketingFooter() {
   };
 
   return (
-    <footer className="w-full  bg-background">
+    <footer className="w-full bg-white">
       <div className="mx-auto max-w-6xl px-6 sm:px-10 lg:px-8">
+
         {/* Brand and social links */}
         <div className="flex flex-col gap-7 pt-20 sm:flex-row sm:items-center sm:justify-between sm:py-5">
           <Link
@@ -72,14 +115,14 @@ export default function MarketingFooter() {
             aria-label="Justdy home"
             className="group inline-flex w-fit items-center gap-3"
           >
-             <Image
-               src={LogoImg}
-               alt="Justdy logo"
-               width={40}
-               height={40}
-               priority
-               className="h-6 w-6 shrink-0 object-contain transition-transform duration-200 group-hover:scale-105"
-             />
+            <Image
+              src={LogoImg}
+              alt="Justdy logo"
+              width={40}
+              height={40}
+              priority
+              className="h-6 w-6 shrink-0 object-contain transition-transform duration-200 group-hover:scale-105"
+            />
 
             <span className="text-[22px] font-semibold tracking-tight text-[#3f3830]">
               Justdy
@@ -123,8 +166,10 @@ export default function MarketingFooter() {
 
         <div className="border-t border-neutral-300" />
 
-        {/* Five-column navigation layout */}
-        <div className="grid grid-cols-2 gap-x-8 gap-y-10 py-10 sm:grid-cols-3 lg:grid-cols-[1fr_1fr_1fr_0.8fr_1.45fr] lg:gap-x-10 lg:py-10">
+        {/* Four-column navigation layout */}
+        <div className="grid grid-cols-2 gap-x-8 gap-y-10 py-10 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_0.8fr_1.45fr] lg:gap-x-10 lg:py-10">
+
+          {/* Platform and Tutoring */}
           {footerGroups.map((group) => (
             <div key={group.title}>
               <h3 className="text-base font-bold text-[#3f3830]">
@@ -152,7 +197,9 @@ export default function MarketingFooter() {
 
           {/* Company */}
           <div>
-            <h3 className="text-base font-bold text-[#3f3830]">Company</h3>
+            <h3 className="text-base font-bold text-[#3f3830]">
+              Company
+            </h3>
 
             <ul className="mt-6 space-y-4">
               {companyLinks.map((link) => (
@@ -166,32 +213,69 @@ export default function MarketingFooter() {
           </div>
 
           {/* Newsletter */}
-          <div className="col-span-2 sm:col-span-3 lg:col-span-1">
+          <div className="col-span-2 sm:col-span-2 lg:col-span-1">
             <h3 className="text-base font-bold text-[#3f3830]">
               Newsletter
             </h3>
 
             <form
-              className="mt-5 flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row"
-              onSubmit={(event) => event.preventDefault()}
+              className="mt-5 flex flex-col gap-3"
+              onSubmit={handleNewsletterSubmit}
             >
               <input
                 type="email"
                 required
+                maxLength={254}
+                value={newsletterEmail}
+                onChange={(event) =>
+                  setNewsletterEmail(event.target.value)
+                }
                 placeholder="Your email"
                 aria-label="Email address"
-                className="h-11 min-w-0 flex-1 rounded-lg border border-neutral-700 bg-[#ffffff] px-4 text-sm text-white outline-none transition placeholder:text-neutral-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+                autoComplete="email"
+                className="h-11 w-full min-w-0 rounded-lg border border-neutral-300 bg-white px-4 text-sm text-[#3f3830] outline-none transition placeholder:text-neutral-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
               />
+
+              <label className="flex cursor-pointer items-start gap-2 text-xs leading-5 text-neutral-600">
+                <input
+                  type="checkbox"
+                  required
+                  checked={newsletterConsent}
+                  onChange={(event) =>
+                    setNewsletterConsent(event.target.checked)
+                  }
+                  className="mt-1 h-4 w-4 shrink-0 accent-sky-600"
+                />
+
+                <span>
+                  I agree to receive educational updates, news, and
+                  promotional emails from Justdy. I can unsubscribe
+                  at any time.
+                </span>
+              </label>
 
               <button
                 type="submit"
-                className="h-11 shrink-0 rounded-lg bg-[#3f3830] px-5 text-sm font-semibold text-white transition-colors hover:bg-sky-500"
+                disabled={newsletterSubmitting}
+                className="h-11 w-full shrink-0 rounded-lg bg-[#3f3830] px-5 text-sm font-semibold text-white transition-colors hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Submit
+                {newsletterSubmitting ? "Submitting..." : "Subscribe"}
               </button>
+
+              {newsletterMessage && (
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className={`text-sm leading-5 ${
+                    newsletterError ? "text-red-600" : "text-green-700"
+                  }`}
+                >
+                  {newsletterMessage}
+                </p>
+              )}
             </form>
 
-            <p className="mt-6 text-sm leading-6 text-neutral-400">
+            <p className="mt-4 text-sm leading-6 text-neutral-500">
               Don&apos;t miss any update!
             </p>
           </div>

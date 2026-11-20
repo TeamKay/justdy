@@ -257,7 +257,7 @@ const safeRedirectTo =
 const destination =
   safeRedirectTo ??
   workspaceCallback ??
-  (role === "ADMIN" ? "/admin" : "/home");
+  (role === "ADMIN" ? "/admin" : "/dashboard");
       router.replace(destination);
       router.refresh();
     } catch (err) {

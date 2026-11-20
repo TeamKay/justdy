@@ -8,6 +8,7 @@ import { CAPABILITIES, ensureCapabilities } from "@/lib/auth/capabilities";
 import prisma from "@/lib/prisma";
 import { ensureSocialProfileForUser } from "@/lib/social/ensure-profile";
 import { signupSchema } from "@/lib/zodSchemas";
+import { captureMarketingContactSafely } from "@/lib/marketing/contact-service";
 
 type SignupResult =
   | {
@@ -106,6 +107,20 @@ export async function signupUser(values: SignupValues): Promise<SignupResult> {
   if (user.role !== "LEARNER") {
     throw new Error("Account creation produced an unexpected platform role.");
   }
+
+  // Record the account email for the Email Marketing Center.
+// This records the contact only; it does not grant marketing consent.
+await captureMarketingContactSafely(
+  {
+    email,
+    name,
+    sourceType: "USER_ACCOUNT",
+    sourceRecordId: user.id,
+    sourceRole: "ACCOUNT_EMAIL",
+    userId: user.id,
+  },
+  "learner account signup",
+);
 
   // ============================================================
   // AUTOMATIC SOCIAL PROFILE

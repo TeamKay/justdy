@@ -60,9 +60,9 @@ model User {
   investmentProfile                   InvestmentProfile?
 
   // Question Help
-  questionsSubmitted                  LearnerQuestion[]       @relation("LearnerQuestions")
-  questionTutorOffers                 QuestionTutorOffer[]    @relation("QuestionTutorOffers")
-  questionsAccepted                   LearnerQuestion[]       @relation("QuestionAcceptedTutor")
+  questionsSubmitted  LearnerQuestion[]    @relation("LearnerQuestions")
+  questionTutorOffers QuestionTutorOffer[] @relation("QuestionTutorOffers")
+  questionsAccepted   LearnerQuestion[]    @relation("QuestionAcceptedTutor")
 
   // Social identity and publishing
   socialProfile        SocialProfile?
@@ -94,6 +94,9 @@ model User {
   // Guardian relationships
   guardianshipsInitiated GuardianLink[] @relation("GuardianLinkGuardian")
   guardianshipsReceived  GuardianLink[] @relation("GuardianLinkLearner")
+
+  marketingContact          MarketingContact?
+  marketingCampaignsCreated MarketingCampaign[]
 
   @@index([status, lastSeenAt])
   @@map("user")
@@ -1818,6 +1821,141 @@ model VideoWatchEvent {
   @@map("video_watch_event")
 }
 
+model MarketingContact {
+  id                   String                      @id @default(cuid())
+  email                String
+  normalizedEmail      String                      @unique
+  name                 String?
+  userId               String?                     @unique
+  subscriptionStatus   MarketingSubscriptionStatus @default(NOT_SUBSCRIBED)
+  unsubscribeTokenHash String?                     @unique
+  subscribedAt         DateTime?
+  unsubscribedAt       DateTime?
+  suppressedAt         DateTime?
+  suppressionReason    String?
+  createdAt            DateTime                    @default(now())
+  updatedAt            DateTime                    @updatedAt
+
+  user               User?                        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sources            MarketingContactSource[]
+  consentEvents      MarketingConsentEvent[]
+  campaignRecipients MarketingCampaignRecipient[]
+
+  @@index([subscriptionStatus, createdAt])
+  @@index([email])
+  @@map("marketing_contact")
+}
+
+model MarketingContactSource {
+  id              String                     @id @default(cuid())
+  contactId       String
+  sourceType      MarketingContactSourceType
+  sourceRecordId  String
+  sourceRole      String
+  sourceEmail     String
+  sourceName      String?
+  sourceMetadata  Json?
+  sourceCreatedAt DateTime?
+  createdAt       DateTime                   @default(now())
+
+  contact MarketingContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, sourceType, sourceRecordId, sourceRole])
+  @@index([contactId, createdAt])
+  @@index([sourceType, sourceRecordId])
+  @@map("marketing_contact_source")
+}
+
+model MarketingConsentEvent {
+  id                   String                            @id @default(cuid())
+  contactId            String
+  action               MarketingConsentAction
+  authorizationType    MarketingConsentAuthorizationType
+  channel              String                            @default("EMAIL")
+  method               String
+  consentTextVersion   String?
+  consentGivenByEmail  String?
+  consentGivenByUserId String?
+  evidenceMetadata     Json?
+  occurredAt           DateTime                          @default(now())
+  createdAt            DateTime                          @default(now())
+
+  contact MarketingContact @relation(fields: [contactId], references: [id], onDelete: Restrict)
+
+  @@index([contactId, occurredAt])
+  @@index([action, occurredAt])
+  @@map("marketing_consent_event")
+}
+
+model MarketingCampaign {
+  id          String                  @id @default(cuid())
+  kind        MarketingCampaignKind
+  status      MarketingCampaignStatus @default(DRAFT)
+  name        String
+  subject     String
+  htmlContent String                  @db.Text
+  textContent String?                 @db.Text
+  fromName    String?
+  replyTo     String?
+  createdById String
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  sentAt      DateTime?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  createdBy  User                         @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  recipients MarketingCampaignRecipient[]
+
+  @@index([status, scheduledAt])
+  @@index([createdById, createdAt])
+  @@index([kind, createdAt])
+  @@map("marketing_campaign")
+}
+
+model MarketingCampaignRecipient {
+  id              String                   @id @default(cuid())
+  campaignId      String
+  contactId       String
+  emailSnapshot   String
+  nameSnapshot    String?
+  status          MarketingRecipientStatus @default(PENDING)
+  resendMessageId String?                  @unique
+  errorMessage    String?                  @db.Text
+  attemptedAt     DateTime?
+  sentAt          DateTime?
+  deliveredAt     DateTime?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  campaign MarketingCampaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact  MarketingContact      @relation(fields: [contactId], references: [id], onDelete: Restrict)
+  events   MarketingEmailEvent[]
+
+  @@unique([campaignId, contactId])
+  @@index([campaignId, status])
+  @@index([contactId, createdAt])
+  @@index([status, createdAt])
+  @@map("marketing_campaign_recipient")
+}
+
+model MarketingEmailEvent {
+  id              String   @id @default(cuid())
+  recipientId     String
+  provider        String   @default("RESEND")
+  providerEventId String?  @unique
+  eventType       String
+  occurredAt      DateTime
+  payload         Json?
+  createdAt       DateTime @default(now())
+
+  recipient MarketingCampaignRecipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, occurredAt])
+  @@index([eventType, occurredAt])
+  @@map("marketing_email_event")
+}
 
 enum LearnerQuestionStatus {
   SUBMITTED
@@ -1834,19 +1972,19 @@ enum QuestionTutorOfferStatus {
 }
 
 model LearnerQuestion {
-  id                    String                @id @default(cuid())
-  learnerId             String?
-  learnerEmail          String
-  questionText          String?               @db.Text
-  status                LearnerQuestionStatus @default(SUBMITTED)
-  acceptedTutorId       String?
-  guestAccessTokenHash  String?               @unique
-  guestAccessExpiresAt  DateTime?
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
+  id                   String                @id @default(cuid())
+  learnerId            String?
+  learnerEmail         String
+  questionText         String?               @db.Text
+  status               LearnerQuestionStatus @default(SUBMITTED)
+  acceptedTutorId      String?
+  guestAccessTokenHash String?               @unique
+  guestAccessExpiresAt DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 
-  learner       User?                 @relation("LearnerQuestions", fields: [learnerId], references: [id], onDelete: SetNull)
-  acceptedTutor User?                 @relation("QuestionAcceptedTutor", fields: [acceptedTutorId], references: [id], onDelete: SetNull)
+  learner       User?                @relation("LearnerQuestions", fields: [learnerId], references: [id], onDelete: SetNull)
+  acceptedTutor User?                @relation("QuestionAcceptedTutor", fields: [acceptedTutorId], references: [id], onDelete: SetNull)
   attachments   QuestionAttachment[]
   tutorOffers   QuestionTutorOffer[]
 
@@ -1858,13 +1996,13 @@ model LearnerQuestion {
 }
 
 model QuestionAttachment {
-  id           String         @id @default(cuid())
+  id           String   @id @default(cuid())
   questionId   String
-  storageKey   String         @unique
+  storageKey   String   @unique
   originalName String
   mimeType     String
   sizeBytes    Int
-  createdAt    DateTime       @default(now())
+  createdAt    DateTime @default(now())
 
   question LearnerQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
@@ -1883,10 +2021,63 @@ model QuestionTutorOffer {
   updatedAt  DateTime                 @updatedAt
 
   question LearnerQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  tutor    User             @relation("QuestionTutorOffers", fields: [tutorId], references: [id], onDelete: Cascade)
+  tutor    User            @relation("QuestionTutorOffers", fields: [tutorId], references: [id], onDelete: Cascade)
 
   @@unique([questionId, tutorId])
   @@index([tutorId, status, createdAt])
   @@index([questionId, status])
   @@map("question_tutor_offer")
+}
+
+enum MarketingSubscriptionStatus {
+  NOT_SUBSCRIBED
+  SUBSCRIBED
+  UNSUBSCRIBED
+  SUPPRESSED
+}
+
+enum MarketingContactSourceType {
+  USER_ACCOUNT
+  PENDING_ENROLLMENT
+  GUEST_CHECKOUT
+  ONBOARDING_REQUEST
+  ONBOARDING_PAYMENT
+  NEWSLETTER
+}
+
+enum MarketingConsentAction {
+  GRANTED
+  WITHDRAWN
+}
+
+enum MarketingConsentAuthorizationType {
+  SELF
+  GUARDIAN
+  OTHER
+}
+
+enum MarketingCampaignKind {
+  BULK
+  INDIVIDUAL
+}
+
+enum MarketingCampaignStatus {
+  DRAFT
+  QUEUED
+  SENDING
+  SENT
+  PARTIALLY_SENT
+  FAILED
+  CANCELLED
+}
+
+enum MarketingRecipientStatus {
+  PENDING
+  SENDING
+  SENT
+  DELIVERED
+  BOUNCED
+  COMPLAINED
+  FAILED
+  SKIPPED
 }

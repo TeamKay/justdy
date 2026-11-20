@@ -69,10 +69,15 @@ function getR2Client() {
       accessKeyId: config.accessKeyId,
       secretAccessKey: config.secretAccessKey,
     },
+
+    // Prevent automatic CRC32 checksum parameters from being
+    // added to presigned URLs when they are not required.
+    requestChecksumCalculation: "WHEN_REQUIRED",
   });
 
   return client;
 }
+
 
 function sanitizeFileName(name: string) {
   const baseName = path.basename(name);

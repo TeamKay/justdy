@@ -1,11 +1,15 @@
+
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import prisma from "@/lib/prisma";
+import { captureMarketingContactSafely } from "@/lib/marketing/contact-service";
 import { auth } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const validEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+const validEmail = (value: string) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 export async function PATCH(
   request: Request,
@@ -13,8 +17,14 @@ export async function PATCH(
 ) {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user)
-      return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "Sign in required." },
+        { status: 401 },
+      );
+    }
+
     const actor = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
@@ -22,44 +32,62 @@ export async function PATCH(
         role: true,
         status: true,
         emailVerified: true,
-        teachingProfile: { select: { verificationStatus: true } },
+        teachingProfile: {
+          select: { verificationStatus: true },
+        },
       },
     });
+
     const role = String(actor?.role ?? "").toUpperCase();
+
     const allowed =
       Boolean(actor?.emailVerified) &&
       (role === "ADMIN" ||
         (role === "TUTOR" &&
           actor?.status === "Active" &&
           actor.teachingProfile?.verificationStatus === "Verified"));
-    if (!actor || !allowed)
+
+    if (!actor || !allowed) {
       return NextResponse.json(
-        { error: "Administrator or verified active tutor access required." },
+        {
+          error:
+            "Administrator or verified active tutor access required.",
+        },
         { status: 403 },
       );
+    }
+
     const { id } = await context.params;
+
     const body = (await request.json().catch(() => ({}))) as {
       learnerEmail?: unknown;
       billingEmail?: unknown;
     };
+
     const learnerEmail =
       typeof body.learnerEmail === "string"
         ? body.learnerEmail.trim().toLowerCase()
         : "";
+
     const billingEmail =
       typeof body.billingEmail === "string"
         ? body.billingEmail.trim().toLowerCase()
         : "";
-    if (!validEmail(learnerEmail))
+
+    if (!validEmail(learnerEmail)) {
       return NextResponse.json(
         { error: "Enter a valid learner email address." },
         { status: 422 },
       );
-    if (!validEmail(billingEmail))
+    }
+
+    if (!validEmail(billingEmail)) {
       return NextResponse.json(
         { error: "Enter a valid payment recipient email address." },
         { status: 422 },
       );
+    }
+
     const row = await prisma.tutoringOnboardingRequest.findUnique({
       where: { id },
       select: {
@@ -72,20 +100,25 @@ export async function PATCH(
         billingEmail: true,
       },
     });
-    if (!row)
+
+    if (!row) {
       return NextResponse.json(
         { error: "Tutoring request not found." },
         { status: 404 },
       );
-    if (role !== "ADMIN" && row.assignedTutorId !== actor.id)
+    }
+
+    if (role !== "ADMIN" && row.assignedTutorId !== actor.id) {
       return NextResponse.json(
         { error: "You can only manage requests assigned to you." },
         { status: 403 },
       );
+    }
+
     if (
       row.learnerUserId &&
       row.learnerEmail?.trim().toLowerCase() !== learnerEmail
-    )
+    ) {
       return NextResponse.json(
         {
           error:
@@ -93,10 +126,12 @@ export async function PATCH(
         },
         { status: 409 },
       );
+    }
+
     if (
       row.paymentStatus !== "not_requested" &&
       row.billingEmail?.trim().toLowerCase() !== billingEmail
-    )
+    ) {
       return NextResponse.json(
         {
           error:
@@ -104,14 +139,57 @@ export async function PATCH(
         },
         { status: 409 },
       );
+    }
+
     const updated = await prisma.tutoringOnboardingRequest.update({
       where: { id },
-      data: { learnerEmail, billingEmail },
-      select: { learnerEmail: true, billingEmail: true },
+      data: {
+        learnerEmail,
+        billingEmail,
+      },
+      select: {
+        learnerEmail: true,
+        billingEmail: true,
+      },
     });
-    return NextResponse.json({ success: true, ...updated });
+
+    // Record the learner email separately.
+    // Do not grant marketing consent.
+    if (updated.learnerEmail) {
+      await captureMarketingContactSafely(
+        {
+          email: updated.learnerEmail,
+          name: null,
+          sourceType: "ONBOARDING_REQUEST",
+          sourceRecordId: id,
+          sourceRole: "LEARNER_EMAIL",
+        },
+        "admin tutoring request learner email",
+      );
+    }
+
+    // Record the payment recipient separately.
+    // Do not grant marketing consent.
+    if (updated.billingEmail) {
+      await captureMarketingContactSafely(
+        {
+          email: updated.billingEmail,
+          name: null,
+          sourceType: "ONBOARDING_REQUEST",
+          sourceRecordId: id,
+          sourceRole: "BILLING_EMAIL",
+        },
+        "admin tutoring request billing email",
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      ...updated,
+    });
   } catch (error) {
     console.error("[tutoring request email update]", error);
+
     return NextResponse.json(
       {
         error:

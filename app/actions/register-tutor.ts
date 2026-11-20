@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { ensureSocialProfileForUser } from "@/lib/social/ensure-profile";
 import { signupSchema } from "@/lib/zodSchemas";
+import { captureMarketingContactSafely } from "@/lib/marketing/contact-service";
 
 type RegisterTutorResult =
   | { type: "created" }
@@ -115,6 +116,19 @@ export async function registerTutor(
       },
     });
   });
+
+    // Record the tutor's account email without granting marketing consent.
+  await captureMarketingContactSafely(
+    {
+      email,
+      name,
+      sourceType: "USER_ACCOUNT",
+      sourceRecordId: user.id,
+      sourceRole: "ACCOUNT_EMAIL",
+      userId: user.id,
+    },
+    "tutor account registration",
+  );
 
   try {
     await ensureSocialProfileForUser(user.id);

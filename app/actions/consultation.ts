@@ -8,6 +8,7 @@ import prisma from "@/lib/prisma";
 import { CAPABILITIES, ensureCapabilities } from "@/lib/auth/capabilities";
 import { Resend } from "resend";
 import FreeConsultationEmail from "../_components/emails/ConsultationEmail";
+import { captureMarketingContactSafely } from "@/lib/marketing/contact-service";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -58,6 +59,18 @@ export async function createFreeConsultation(data: FreeConsultationInput) {
       },
     });
 
+    // Record the consultation email as a contact, not as marketing consent.
+await captureMarketingContactSafely(
+  {
+    email: data.email,
+    name: data.name,
+    sourceType: "PENDING_ENROLLMENT",
+    sourceRecordId: pendingEnrollment.id,
+    sourceRole: "CONSULTATION_EMAIL",
+  },
+  "free consultation request",
+);
+
     // 2. Create or sync User record
     await prisma.user.upsert({
       where: { email: data.email.toLowerCase().trim() },
@@ -73,10 +86,27 @@ export async function createFreeConsultation(data: FreeConsultationInput) {
       },
     });
 
-    const consultationUser = await prisma.user.findUnique({
-      where: { email: data.email.toLowerCase().trim() },
-      select: { id: true },
-    });
+    // Record the account email separately from the consultation source.
+const consultationUser = await prisma.user.findUnique({
+  where: { email: data.email.toLowerCase().trim() },
+  select: { id: true, email: true },
+});
+
+if (consultationUser) {
+  await captureMarketingContactSafely(
+    {
+      email: consultationUser.email,
+      name: data.name,
+      sourceType: "USER_ACCOUNT",
+      sourceRecordId: consultationUser.id,
+      sourceRole: "ACCOUNT_EMAIL",
+      userId: consultationUser.id,
+    },
+    "consultation account email",
+  );
+}
+
+   
 
     if (consultationUser) {
       await ensureCapabilities(consultationUser.id, [
