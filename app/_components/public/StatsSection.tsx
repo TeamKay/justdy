@@ -22,17 +22,12 @@ export default function StatsSection() {
   return (
     <section
       id="platform-stats"
-      className="relative overflow-hidden bg-white px-5 py-10 sm:px-12"
+      className="relative overflow-hidden px-5 py-10 sm:px-12"
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-12">
 
         {/* Section heading */}
-        <div className="mx-auto max-w-2xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-lg bg-[#F0F7ED] px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#55984A]">
-            <span className="h-2 w-2 rounded-full bg-[#55984A]" />
-            The Justdy Community
-          </span>
-        </div>
+       
 
         {/* Statistics strip */}
         <div className="mx-auto mt-5 max-w-6xl border-y border-[#55984A]/20">

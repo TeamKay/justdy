@@ -10,11 +10,15 @@ import LogoImg from "@/public/images/logo.png";
 import Image from "next/image";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
-const tutoringItems = [{ label: "Start Learning", href: "/tutoring" }];
+const tutoringItems = [
+  { label: "Free Assessment", href: "/tutoring" },
+  { label: "My Journey", href: "/" },
+  { label: "Homework Guide", href: "/" }
+];
 
 const resourceItems = [
-  { label: "Free resources", href: "/" },
-  { label: "Shop now", href: "/" },
+  { label: "Math Worksheets", href: "/" },
+  { label: "Coloring pages", href: "/" },
   { label: "Video lessons", href: "/videos" },
   { label: "Games & puzzles", href: "/games" },
   { label: "Create with AI", href: "/" },
@@ -201,7 +205,7 @@ export default function MarketingNavbar() {
             ) : showUnauthenticatedUI ? (
               <Link
                 href="/auth?mode=signin"
-                className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-lg bg-[#55984A] px-7 text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-[#427D3A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#147D72]"
+                className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-lg bg-[#147D72] px-7 text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-[#0F625A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#147D72]"
               >
                 Sign in
               </Link>
