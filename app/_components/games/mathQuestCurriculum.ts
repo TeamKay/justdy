@@ -135,10 +135,18 @@ export function makeAdaptiveQuestion(
   topicOffset: number,
   topicStats: Record<string, TopicPerformance>,
   previousTopic?: string,
+  focusedTopic?: string,
 ): AdaptiveQuestionResult {
-  const candidates = Array.from({ length: 6 }, (_, index) =>
-    makeCurriculumQuestion(grade, difficulty, topicOffset + index),
-  );
+  const allCandidates = Array.from({ length: 6 }, (_, index) =>
+  makeCurriculumQuestion(grade, difficulty, topicOffset + index)
+);
+
+const focusedCandidates = focusedTopic
+  ? allCandidates.filter((question) => question.topic === focusedTopic)
+  : [];
+
+const candidates =
+  focusedCandidates.length > 0 ? focusedCandidates : allCandidates;
   const ranked = candidates.map((question, index) => {
     const stat = topicStats[question.topic] ?? { right: 0, total: 0 };
     const accuracy = stat.total ? stat.right / stat.total : 0.5;

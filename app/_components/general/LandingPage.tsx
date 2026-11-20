@@ -13,8 +13,8 @@ import {
   Video,
 } from "lucide-react";
 import { Inter, Instrument_Serif } from "next/font/google";
-import MarketingNavbar from "@/app/_components/navigation/MarketingNavbar";
-import MarketingFooter from "@/app/_components/navigation/MarketingFooter";
+import MarketingNavbar from "@/app/_components/public/MarketingNavbar";
+import MarketingFooter from "@/app/_components/public/MarketingFooter";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const instrumentSerif = Instrument_Serif({

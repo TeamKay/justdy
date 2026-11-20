@@ -135,13 +135,13 @@ function renderNode(
       if (!src) return null;
 
       return (
-        <figure key={key} className={`flex w-full justify-center ${preview ? "my-2 max-h-[180px] overflow-hidden rounded-lg bg-[#F4F7F3]" : "my-5"}`}>
+        <figure key={key} className={`flex w-full justify-center ${preview ? "my-2 max-h-45 overflow-hidden rounded-lg bg-[#F4F7F3]" : "my-5"}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={src}
             alt={typeof node.attrs?.alt === "string" ? node.attrs.alt : ""}
             loading="lazy"
-            className={`h-auto max-w-full rounded-xl object-contain ${preview ? "max-h-[170px]" : "max-h-[560px]"}`}
+            className={`h-auto max-w-full rounded-lg object-contain ${preview ? "max-h-42.5" : "max-h-140"}`}
           />
         </figure>
       );
@@ -158,7 +158,7 @@ function renderNode(
         return (
           <div
             key={key}
-            className="my-4 rounded-xl border border-[#DCE8F1] bg-[#F2F7FC] px-4 py-3.5 first:mt-0 last:mb-0"
+            className="my-4 rounded-lg border border-[#DCE8F1] bg-[#F2F7FC] px-4 py-3.5 first:mt-0 last:mb-0"
             style={{ textAlign: alignment }}
           >
             <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#52789C]">
@@ -175,7 +175,7 @@ function renderNode(
         return (
           <div
             key={key}
-            className="my-4 rounded-xl border border-[#D9E8DC] bg-[#F2F8F2] px-4 py-3.5 first:mt-0 last:mb-0"
+            className="my-4 rounded-lg border border-[#D9E8DC] bg-[#F2F8F2] px-4 py-3.5 first:mt-0 last:mb-0"
             style={{ textAlign: alignment }}
           >
             <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#52745D]">
@@ -190,7 +190,7 @@ function renderNode(
         return (
           <div
             key={key}
-            className="my-4 overflow-x-auto rounded-xl border border-[#E3E6EA] bg-[#F7F8FA] px-4 py-3.5 first:mt-0 last:mb-0"
+            className="my-4 overflow-x-auto rounded-lg border border-[#E3E6EA] bg-[#F7F8FA] px-4 py-3.5 first:mt-0 last:mb-0"
             style={{ textAlign: alignment }}
           >
             <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[#87938A]">
@@ -204,14 +204,14 @@ function renderNode(
       }
 
       return (
-        <p
-          key={key}
-          className={`my-3 leading-[1.85] first:mt-0 last:mb-0 sm:leading-[1.9] ${preview ? "line-clamp-4" : ""}`}
-          style={{ textAlign: alignment }}
-        >
-          {children}
-        </p>
-      );
+  <p
+    key={key}
+   className={`my-0 leading-normal first:mt-0 last:mb-0 sm:leading-[1.55] ${preview ? "line-clamp-4" : ""}`}
+    style={{ textAlign: alignment }}
+  >
+    {children}
+  </p>
+);
     }
 
     case "heading": {
@@ -316,7 +316,7 @@ function StructuredPostContent({ content, preview }: { content: string; preview:
   if (!document) return null;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       {document.blocks.map((block) => {
         if (block.type === "image") {
           return null;

@@ -452,6 +452,19 @@ export async function POST(
     const prior = requestRow.tutoringPayments.find(
       (p) => p.installmentNumber === nextNumber && p.status !== "paid",
     );
+    if (
+  prior &&
+  (prior.expectedAmountCents !== amountCents ||
+    prior.currency.toLowerCase() !== currency)
+) {
+  return NextResponse.json(
+    {
+      error:
+        "The existing payment record does not match the agreed amount. Review the payment record before retrying.",
+    },
+    { status: 409 },
+  );
+}
     if (prior?.stripeCheckoutSessionId) {
       const existingSession = await getStripe().checkout.sessions.retrieve(
         prior.stripeCheckoutSessionId,

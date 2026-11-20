@@ -119,13 +119,23 @@ export default async function TutoringPaymentsPage() {
         learner.status === "payment_received",
     );
 
-  const totalPaidCents = learners.reduce(
-    (sum, learner) => sum + learner.paidCents,
-    0,
-  );
-  const outstandingCents = learners.reduce(
-    (sum, learner) => sum + (learner.remainingCents ?? 0),
-    0,
+  const currencyTotals = learners.reduce(
+    (totals, learner) => {
+      const currency = learner.currency.toLowerCase();
+      const current = totals.get(currency) ?? {
+        paidCents: 0,
+        outstandingCents: 0,
+      };
+
+      totals.set(currency, {
+        paidCents: current.paidCents + learner.paidCents,
+        outstandingCents:
+          current.outstandingCents + (learner.remainingCents ?? 0),
+      });
+
+      return totals;
+    },
+    new Map<string, { paidCents: number; outstandingCents: number }>(),
   );
 
   return (
@@ -159,15 +169,23 @@ export default async function TutoringPaymentsPage() {
         </div>
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
           <p className="text-sm text-emerald-800">Total received</p>
-          <p className="mt-1 text-2xl font-bold text-emerald-900">
-            {money(totalPaidCents, "usd")}
-          </p>
+          <div className="mt-2 space-y-1">
+            {Array.from(currencyTotals.entries()).map(([currency, totals]) => (
+              <p key={currency} className="text-xl font-bold text-emerald-900">
+                {money(totals.paidCents, currency)}
+              </p>
+            ))}
+          </div>
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
           <p className="text-sm text-amber-800">Recorded outstanding balance</p>
-          <p className="mt-1 text-2xl font-bold text-amber-900">
-            {money(outstandingCents, "usd")}
-          </p>
+          <div className="mt-2 space-y-1">
+            {Array.from(currencyTotals.entries()).map(([currency, totals]) => (
+              <p key={currency} className="text-xl font-bold text-amber-900">
+                {money(totals.outstandingCents, currency)}
+              </p>
+            ))}
+          </div>
         </div>
       </div>
 

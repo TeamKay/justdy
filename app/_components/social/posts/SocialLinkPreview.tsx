@@ -1,10 +1,9 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
 import { ExternalLink, Link2, X } from "lucide-react";
-import { getYouTubeVideo } from "@/lib/social/youtube";
-import SocialYouTubeEmbed from "@/app/_components/social/posts/SocialYouTubeEmbed";
+import { getSocialMediaProvider } from "@/lib/social/media-providers";
+import SocialMediaEmbed from "./SocialMediaEmbed";
 
 type LinkPreviewMetadata = {
   url: string;
@@ -22,7 +21,6 @@ type CachedPreview = {
 // Shared browser cache: reused by the feed, create modal and edit modal.
 const previewCache = new Map<string, CachedPreview>();
 const pendingRequests = new Map<string, Promise<LinkPreviewMetadata>>();
-
 
 const CACHE_DURATION = 5 * 60 * 1000;
 
@@ -48,8 +46,7 @@ async function fetchPreview(url: string): Promise<LinkPreviewMetadata> {
       throw new Error("Preview unavailable");
     }
 
-    const metadata =
-      (await response.json()) as LinkPreviewMetadata;
+    const metadata = (await response.json()) as LinkPreviewMetadata;
 
     if (!metadata || !metadata.domain) {
       throw new Error("Invalid preview metadata");
@@ -77,27 +74,23 @@ type PreviewCardProps = {
   onRemove?: (url: string) => void;
 };
 
-
 function PreviewCard({ url, onRemove }: PreviewCardProps) {
-  const youtubeVideo = getYouTubeVideo(url);
-  const isYouTube = Boolean(youtubeVideo);
+  const socialVideo = getSocialMediaProvider(url);
+  const isSocialVideo = Boolean(socialVideo);
 
-  const [metadata, setMetadata] =
-    useState<LinkPreviewMetadata | null>(() => {
-      if (isYouTube) return null;
+  const [metadata, setMetadata] = useState<LinkPreviewMetadata | null>(() => {
+    if (isSocialVideo) return null;
 
-      const cached = previewCache.get(url);
+    const cached = previewCache.get(url);
 
-      return cached && cached.expiresAt > Date.now()
-        ? cached.metadata
-        : null;
-    });
+    return cached && cached.expiresAt > Date.now() ? cached.metadata : null;
+  });
 
-  const [loading, setLoading] = useState(!isYouTube && !metadata);
+  const [loading, setLoading] = useState(!isSocialVideo && !metadata);
   const [unavailable, setUnavailable] = useState(false);
 
   useEffect(() => {
-    if (isYouTube) return;
+    if (isSocialVideo) return;
 
     let cancelled = false;
 
@@ -127,15 +120,12 @@ function PreviewCard({ url, onRemove }: PreviewCardProps) {
     return () => {
       cancelled = true;
     };
-  }, [url, isYouTube]);
+  }, [url, isSocialVideo]);
 
   return (
     <div className="relative">
-      {youtubeVideo ? (
-        <SocialYouTubeEmbed
-          videoId={youtubeVideo.videoId}
-          isShort={youtubeVideo.isShort}
-        />
+      {socialVideo ? (
+        <SocialMediaEmbed url={url} />
       ) : loading ? (
         <div className="overflow-hidden rounded-xl border border-[#E5EAE3] bg-white">
           <div className="h-36 animate-pulse bg-[#EEF2ED] sm:h-48" />
@@ -206,18 +196,17 @@ function PreviewCard({ url, onRemove }: PreviewCardProps) {
         <button
           type="button"
           onClick={() => onRemove(url)}
-          aria-label={isYouTube ? "Remove YouTube video" : "Remove link preview"}
+          aria-label={isSocialVideo ? "Remove video" : "Remove link preview"}
           title="Remove preview"
           className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-[#87938A] transition hover:bg-[#F3F6F2] hover:text-[#315C43]"
         >
           <X className="h-3.5 w-3.5" />
-          {isYouTube ? "Remove video" : "Remove preview"}
+          {isSocialVideo ? "Remove video" : "Remove preview"}
         </button>
       )}
     </div>
   );
 }
-
 
 export default function SocialLinkPreview({
   urls,
@@ -233,11 +222,7 @@ export default function SocialLinkPreview({
   return (
     <div className="space-y-3">
       {uniqueUrls.map((url) => (
-        <PreviewCard
-          key={url}
-          url={url}
-          onRemove={onRemove}
-        />
+        <PreviewCard key={url} url={url} onRemove={onRemove} />
       ))}
     </div>
   );

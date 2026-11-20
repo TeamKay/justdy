@@ -14,16 +14,20 @@ async function LearnerDashboardContent() {
     );
   }
 
-  return (
-    <main className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+ 
+return (
+  <div className="min-h-full bg-[#F8FAF7] px-4 py-7 sm:px-6 lg:px-8 lg:py-10">
+    <div className="mx-auto w-full max-w-[1500px]">
       <LearnerDashboard
         account={data.account}
         upcoming={data.learnerUpcoming}
         activities={data.learningActivities}
         completedSessions={data.completedSessions}
       />
-    </main>
-  );
+    </div>
+  </div>
+);
+
 }
 
 export default function LearnerDashboardPage() {

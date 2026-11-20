@@ -1,11 +1,13 @@
 
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toggleSocialPostReaction } from "@/app/actions/social-reaction";
+import { setSocialPostBookmark } from "@/app/actions/social-bookmark";
 import SocialPostComments from "@/app/_components/social/posts/SocialPostComments";
 import { extractSocialPostUrls } from "@/lib/social/rich-text";
 import { getSocialVideoSource } from "@/lib/social/video-sources";
+import { useCommunityVideoWatchTracking } from "./useCommunityVideoWatchTracking";
 import Link from "next/link";
 import LogoImg from "@/public/images/logo.png";
 import Image from "next/image";
@@ -23,6 +25,11 @@ import {
   PartyPopper,
   CircleHelp,
   X,
+  LoaderCircle,
+  RefreshCw,
+  AlertCircle,
+  Bookmark,
+  BookmarkCheck,
 } from "lucide-react";
 type SocialReactionType =
   | "LIKE"
@@ -111,6 +118,8 @@ type Props = {
   currentDisplayName: string;
   currentUsername: string;
   currentImageUrl: string | null;
+  initialBookmarkedPostIds: string[];
+  closeHref?: string;
 };
 
 function buildCommunityVideoEmbedUrl(
@@ -178,11 +187,25 @@ export default function CommunityVideosViewer({
   currentUserId,
   currentDisplayName,
   currentUsername,
-  currentImageUrl,
+  initialBookmarkedPostIds,
+  closeHref = "/home",
 }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [muted, setMuted] = useState(true);
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const [playbackState, setPlaybackState] = useState<{
+    key: string;
+    status: "loading" | "buffering" | "ready" | "error";
+    message?: string;
+  } | null>(null);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [bookmarkedPostIds, setBookmarkedPostIds] = useState<Set<string>>(
+    () => new Set(initialBookmarkedPostIds),
+  );
+  const [bookmarkPendingPostIds, setBookmarkPendingPostIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [bookmarkError, setBookmarkError] = useState<string | null>(null);
   const [videoDimensions, setVideoDimensions] = useState<{
     src: string;
     width: number;
@@ -260,12 +283,55 @@ export default function CommunityVideosViewer({
 
   const activeItem = items[activeIndex];
   const nextItem = items[activeIndex + 1];
+  const watchTracking = useCommunityVideoWatchTracking(
+    activeItem
+      ? {
+          postId: activeItem.post.id,
+          provider: activeItem.provider,
+        }
+      : null,
+  );
+  const activePlaybackKey = activeItem
+    ? `${activeItem.provider}:${activeItem.videoUrl}:${retryAttempt}`
+    : "empty";
+  const playbackStatus =
+    playbackState?.key === activePlaybackKey
+      ? playbackState.status
+      : "loading";
 
   // Keep the latest mute state available to asynchronous player messages
   // without reading or writing refs during render.
   useEffect(() => {
     mutedRef.current = muted;
   }, [muted]);
+
+  // Loading is derived from the active playback key during render, so changing
+  // reels never requires a synchronous state update inside an effect.
+  // This effect only manages the external timeout subscription.
+  useEffect(() => {
+    if (!activeItem) return;
+
+    const timeoutMs = activeItem.provider === "DIRECT" ? 25000 : 20000;
+    const timeout = window.setTimeout(() => {
+      setPlaybackState((current) =>
+        current?.key === activePlaybackKey && current.status !== "ready"
+          ? {
+              key: activePlaybackKey,
+              status: "error",
+              message: "This video is taking too long to load. Check your connection and try again.",
+            }
+          : current,
+      );
+    }, timeoutMs);
+
+    return () => window.clearTimeout(timeout);
+  }, [activePlaybackKey, activeItem]);
+
+  const retryActiveVideo = () => {
+    // Incrementing the attempt changes the playback key, which derives the
+    // loading state immediately and remounts the active player.
+    setRetryAttempt((attempt) => attempt + 1);
+  };
 
   const sendExternalMuteCommand = (shouldMute: boolean) => {
     const frame = externalVideoFrameRef.current;
@@ -294,13 +360,13 @@ export default function CommunityVideosViewer({
     }
   };
 
-  const goNext = () => {
+  const goNext = useCallback(() => {
     setActiveIndex((current) => Math.min(current + 1, items.length - 1));
-  };
+  }, [items.length]);
 
-  const goPrevious = () => {
+  const goPrevious = useCallback(() => {
     setActiveIndex((current) => Math.max(current - 1, 0));
-  };
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -322,7 +388,7 @@ export default function CommunityVideosViewer({
         // The browser may not have initialized the media timeline yet.
       }
     };
-  }, [activeIndex, activeItem]);
+  }, [activeIndex, activeItem, retryAttempt]);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -361,7 +427,7 @@ export default function CommunityVideosViewer({
         );
       }
     };
-  }, [activeIndex, activeItem?.provider, activeItem?.videoUrl]);
+  }, [activeIndex, activeItem?.provider, activeItem?.videoUrl, retryAttempt]);
 
  
   useEffect(() => {
@@ -399,7 +465,7 @@ export default function CommunityVideosViewer({
     window.addEventListener("keydown", handleKeyDown);
 
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [items.length, commentsOpen]);
+  }, [commentsOpen, goNext, goPrevious]);
 
 useEffect(() => {
   if (activeItem?.provider !== "TIKTOK") return;
@@ -613,6 +679,49 @@ useEffect(() => {
     });
   }
 
+  async function handleVideoBookmark() {
+    if (bookmarkPendingPostIds.has(post.id)) return;
+
+    const wasBookmarked = bookmarkedPostIds.has(post.id);
+    const nextBookmarked = !wasBookmarked;
+
+    setBookmarkError(null);
+    setBookmarkedPostIds((current) => {
+      const next = new Set(current);
+      if (nextBookmarked) next.add(post.id);
+      else next.delete(post.id);
+      return next;
+    });
+    setBookmarkPendingPostIds((current) => new Set(current).add(post.id));
+
+    try {
+      const result = await setSocialPostBookmark(post.id, nextBookmarked);
+      if (!result.success) {
+        setBookmarkedPostIds((current) => {
+          const next = new Set(current);
+          if (wasBookmarked) next.add(post.id);
+          else next.delete(post.id);
+          return next;
+        });
+        setBookmarkError(result.error || "Unable to update saved video.");
+      }
+    } catch {
+      setBookmarkedPostIds((current) => {
+        const next = new Set(current);
+        if (wasBookmarked) next.add(post.id);
+        else next.delete(post.id);
+        return next;
+      });
+      setBookmarkError("Unable to update saved video. Please try again.");
+    } finally {
+      setBookmarkPendingPostIds((current) => {
+        const next = new Set(current);
+        next.delete(post.id);
+        return next;
+      });
+    }
+  }
+
   function handleVideoComment() {
     setCommentsOpen((open) => !open);
   }
@@ -684,12 +793,30 @@ useEffect(() => {
 
      <div className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 flex items-center gap-0 sm:left-4">
         <Link
-          href="/home"
-          aria-label="Close Community Videos and return to Community"
+          href={closeHref}
+          aria-label="Close Community Videos and return to the previous page"
           className="rounded-full bg-[#f58750] p-2.5 text-white transition hover:bg-black/80"
         >
           <X className="h-4 w-4" />
         </Link>
+
+         <Link
+           href="/community-videos/discover"
+           aria-label="Discover community videos"
+           title="Discover videos"
+           className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white transition hover:bg-black/70"
+         >
+           <Video className="h-4 w-4" />
+         </Link>
+
+         <Link
+           href="/saved-videos"
+           aria-label="Open saved videos"
+           title="Saved videos"
+           className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white transition hover:bg-black/70"
+         >
+           <Bookmark className="h-4 w-4" />
+         </Link>
 
          <Link
              href="/"
@@ -744,7 +871,7 @@ useEffect(() => {
         <div className="relative flex h-full w-full max-w-7xl items-center justify-center">
           <div className="relative flex items-center justify-center">
           <div
-            className="relative flex h-[calc(100dvh-24px)] w-auto max-w-[calc(100vw-84px)] items-center justify-center overflow-hidden rounded-xl bg-black sm:max-w-[calc(100vw-120px)]"
+            className="relative flex h-[calc(100dvh-24px)] w-auto max-w-[calc(100vw-84px)] items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-[#17221b] via-[#080b09] to-[#17221b] sm:max-w-[calc(100vw-120px)]"
             style={{
               aspectRatio: videoAspectRatio,
               width: `min(calc((100dvh - 24px) * ${videoAspectRatio}), calc(100vw - 84px))`,
@@ -753,7 +880,7 @@ useEffect(() => {
           >
             {activeItem.provider === "DIRECT" ? (
               <video
-                key={activeItem.videoUrl}
+                key={`${activeItem.videoUrl}-${retryAttempt}`}
                 ref={videoRef}
                 src={activeItem.videoUrl}
                 autoPlay
@@ -761,6 +888,32 @@ useEffect(() => {
                 loop
                 playsInline
                 controls
+                onPlay={watchTracking.onPlay}
+                onTimeUpdate={watchTracking.onTimeUpdate}
+                onPause={watchTracking.onPause}
+                onEnded={watchTracking.onEnded}
+                onLoadStart={() =>
+                  setPlaybackState({ key: activePlaybackKey, status: "loading" })
+                }
+                onWaiting={() =>
+                  setPlaybackState({ key: activePlaybackKey, status: "buffering" })
+                }
+                onStalled={() =>
+                  setPlaybackState({ key: activePlaybackKey, status: "buffering" })
+                }
+                onPlaying={() =>
+                  setPlaybackState({ key: activePlaybackKey, status: "ready" })
+                }
+                onCanPlay={() =>
+                  setPlaybackState({ key: activePlaybackKey, status: "ready" })
+                }
+                onError={() =>
+                  setPlaybackState({
+                    key: activePlaybackKey,
+                    status: "error",
+                    message: "This uploaded video could not be played. It may have been removed or is temporarily unavailable.",
+                  })
+                }
                 onLoadedMetadata={(event) => {
                   const video = event.currentTarget;
                   if (video.videoWidth > 0 && video.videoHeight > 0) {
@@ -771,24 +924,74 @@ useEffect(() => {
                     });
                   }
                 }}
-                className="h-full w-full object-contain"
+                className={`h-full w-full object-contain transition-opacity duration-300 ease-out ${playbackStatus === "loading" ? "opacity-60" : "opacity-100"}`}
               />
             ) : (
               <iframe
-                key={`${activeItem.provider}-${activeItem.embedUrl}`}
+                key={`${activeItem.provider}-${activeItem.embedUrl}-${retryAttempt}`}
                 ref={externalVideoFrameRef}
                 src={embedUrl}
                 title={`${authorName}'s community video`}
                 allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
                 allowFullScreen
                 onLoad={() => {
+                  setPlaybackState({ key: activePlaybackKey, status: "ready" });
                   if (activeItem.provider === "YOUTUBE") {
                     sendExternalMuteCommand(mutedRef.current);
                   }
                 }}
-                className="h-full w-full border-0"
+                onError={() =>
+                  setPlaybackState({
+                    key: activePlaybackKey,
+                    status: "error",
+                    message: "This external video could not be loaded. The original video may be unavailable or embedding may be restricted.",
+                  })
+                }
+                className={`h-full w-full border-0 transition-opacity duration-300 ease-out ${playbackStatus === "loading" ? "opacity-60" : "opacity-100"}`}
               />
             )}
+
+            {playbackStatus === "loading" && (
+              <div
+                className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-black/35 text-center text-white transition-opacity duration-200"
+                role="status"
+                aria-live="polite"
+              >
+                <LoaderCircle className="h-9 w-9 animate-spin" />
+                <p className="text-sm font-medium">Loading video…</p>
+              </div>
+            )}
+
+            {playbackStatus === "buffering" && (
+              <div
+                className="pointer-events-none absolute bottom-24 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/65 px-3 py-2 text-xs font-medium text-white shadow-lg backdrop-blur-sm sm:bottom-6"
+                role="status"
+                aria-live="polite"
+              >
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+                Reconnecting…
+              </div>
+            )}
+
+            {playbackStatus === "error" && (
+              <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/85 px-6 text-center text-white">
+                <AlertCircle className="h-10 w-10 text-orange-300" />
+                <p className="max-w-xs text-sm leading-6">
+                  {playbackState?.key === activePlaybackKey
+                    ? playbackState.message
+                    : "This video could not be loaded."}
+                </p>
+                <button
+                  type="button"
+                  onClick={retryActiveVideo}
+                  className="inline-flex items-center gap-2 rounded-full bg-[#f58750] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#e8753f]"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Try again
+                </button>
+              </div>
+            )}
+
           <div className="absolute bottom-20 left-3 z-20 w-[min(420px,calc(100%-88px))] sm:bottom-6 sm:left-6 sm:w-[min(420px,calc(100%-104px))]">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#315B43] text-sm font-bold ring-1 ring-white/30">
@@ -853,6 +1056,30 @@ useEffect(() => {
                 </div>
               )}
             </div>
+            <button
+              type="button"
+              onClick={handleVideoBookmark}
+              disabled={bookmarkPendingPostIds.has(post.id)}
+              aria-label={bookmarkedPostIds.has(post.id) ? "Remove saved video" : "Save video"}
+              aria-pressed={bookmarkedPostIds.has(post.id)}
+              title={bookmarkedPostIds.has(post.id) ? "Remove from saved videos" : "Save video"}
+              className={`flex flex-col items-center gap-1 transition disabled:cursor-wait disabled:opacity-60 ${
+                bookmarkedPostIds.has(post.id) ? "text-amber-300" : "text-white hover:text-amber-200"
+              }`}
+            >
+              {bookmarkedPostIds.has(post.id) ? (
+                <BookmarkCheck className="h-6 w-6" />
+              ) : (
+                <Bookmark className="h-6 w-6" />
+              )}
+              <span className="text-xs font-semibold">
+                {bookmarkPendingPostIds.has(post.id)
+                  ? "Saving"
+                  : bookmarkedPostIds.has(post.id)
+                    ? "Saved"
+                    : "Save"}
+              </span>
+            </button>
             <button type="button" onClick={handleVideoComment} aria-label="View comments"
               className="flex flex-col items-center gap-1 text-white transition hover:text-emerald-200">
               <MessageCircle className="h-6 w-6" />
@@ -867,6 +1094,16 @@ useEffect(() => {
           </div>
         </div>
       </div>
+
+      {bookmarkError && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute bottom-5 left-1/2 z-[70] -translate-x-1/2 rounded-full bg-black/85 px-4 py-2 text-xs font-medium text-white shadow-lg"
+        >
+          {bookmarkError}
+        </div>
+      )}
 
       {commentsOpen && (
         <aside

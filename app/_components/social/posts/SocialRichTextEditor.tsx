@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -187,20 +186,30 @@ const SocialPostParagraph = Paragraph.extend({
     };
   },
 });
-function createSocialPostImageNodeView({ node, editor, getPos }: {
-  node: { attrs: Record<string, unknown>; nodeSize: number; type: { name: string } };
+
+
+function createSocialPostImageNodeView({
+  node,
+  editor,
+  getPos,
+}: {
+  node: {
+    attrs: Record<string, unknown>;
+    nodeSize: number;
+    type: { name: string };
+  };
   editor: Editor;
   getPos: () => number | undefined;
 }) {
   const figure = document.createElement("figure");
   figure.contentEditable = "false";
   figure.className =
-    "group relative my-4 flex w-full justify-center rounded-xl";
+    "social-post-inline-image-frame group relative my-4 block w-full min-w-0 overflow-hidden rounded-xl";
 
   const image = document.createElement("img");
   image.draggable = false;
   image.className =
-    "block h-auto max-h-[520px] max-w-full rounded-xl object-contain";
+    "social-post-inline-image block h-full w-full max-w-none rounded-none object-contain";
   image.alt = typeof node.attrs.alt === "string" ? node.attrs.alt : "";
 
   const emptyPreview = document.createElement("div");
@@ -214,36 +223,88 @@ function createSocialPostImageNodeView({ node, editor, getPos }: {
   removeButton.setAttribute("aria-label", "Remove image from post");
   removeButton.title = "Remove image";
   removeButton.className =
-    "absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-[#1C2420]/85 text-white opacity-100 shadow-md transition hover:bg-[#B42332] sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100";
-  removeButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+    "absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-[#1C2420]/85 text-white opacity-100 shadow-md transition hover:bg-[#B42332] sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100";
+
+  removeButton.innerHTML =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+
+  const updateImageOrientation = () => {
+    if (!image.naturalWidth || !image.naturalHeight) return;
+
+    const isPortrait = image.naturalHeight > image.naturalWidth;
+
+    figure.classList.toggle("is-portrait", isPortrait);
+    figure.classList.toggle("is-landscape", !isPortrait);
+
+    figure.dataset.imageOrientation = isPortrait
+      ? "portrait"
+      : "landscape";
+  };
 
   const updateImage = (currentNode: typeof node) => {
-    const src = typeof currentNode.attrs.src === "string"
-      ? currentNode.attrs.src
-      : "";
-    image.alt = typeof currentNode.attrs.alt === "string"
-      ? currentNode.attrs.alt
-      : "";
+    const src =
+      typeof currentNode.attrs.src === "string"
+        ? currentNode.attrs.src
+        : "";
 
-    if (src) {
-      image.src = src;
-      if (emptyPreview.parentNode === figure) figure.removeChild(emptyPreview);
-      if (image.parentNode !== figure) figure.insertBefore(image, removeButton);
-    } else {
+    image.alt =
+      typeof currentNode.attrs.alt === "string"
+        ? currentNode.attrs.alt
+        : "";
+
+    if (!src) {
+      image.onload = null;
+      image.onerror = null;
+
+      delete figure.dataset.imageOrientation;
+      figure.classList.remove("is-portrait", "is-landscape");
+
       image.removeAttribute("src");
       image.remove();
+
       if (emptyPreview.parentNode !== figure) {
         figure.insertBefore(emptyPreview, removeButton);
       }
+
+      return;
+    }
+
+    image.onload = updateImageOrientation;
+
+    image.onerror = () => {
+      delete figure.dataset.imageOrientation;
+      figure.classList.remove("is-portrait", "is-landscape");
+    };
+
+    if (image.src !== new URL(src, document.baseURI).href) {
+      image.src = src;
+    }
+
+    if (image.complete && image.naturalWidth > 0) {
+      updateImageOrientation();
+    }
+
+    if (emptyPreview.parentNode === figure) {
+      figure.removeChild(emptyPreview);
+    }
+
+    if (image.parentNode !== figure) {
+      figure.insertBefore(image, removeButton);
     }
   };
 
-  const handleMouseDown = (event: MouseEvent) => event.preventDefault();
+  const handleMouseDown = (event: MouseEvent) => {
+    event.preventDefault();
+  };
+
   const handleRemove = (event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
+
     const position = getPos();
+
     if (typeof position !== "number") return;
+
     editor.view.dispatch(
       editor.state.tr.delete(position, position + node.nodeSize),
     );
@@ -251,34 +312,51 @@ function createSocialPostImageNodeView({ node, editor, getPos }: {
 
   removeButton.addEventListener("mousedown", handleMouseDown);
   removeButton.addEventListener("click", handleRemove);
+
   figure.append(removeButton);
   updateImage(node);
 
   return {
     dom: figure,
+
     update(updatedNode: typeof node) {
-      if (updatedNode.type.name !== node.type.name) return false;
+      if (updatedNode.type.name !== node.type.name) {
+        return false;
+      }
+
       updateImage(updatedNode);
       return true;
     },
+
     selectNode() {
       figure.classList.add("ring-2", "ring-[#52745D]", "ring-offset-2");
     },
+
     deselectNode() {
       figure.classList.remove("ring-2", "ring-[#52745D]", "ring-offset-2");
     },
+
     stopEvent(event: Event) {
-      return event.target instanceof globalThis.Node && removeButton.contains(event.target);
+      return (
+        event.target instanceof globalThis.Node &&
+        removeButton.contains(event.target)
+      );
     },
+
     ignoreMutation() {
       return true;
     },
+
     destroy() {
+      image.onload = null;
+      image.onerror = null;
+
       removeButton.removeEventListener("mousedown", handleMouseDown);
       removeButton.removeEventListener("click", handleRemove);
     },
   };
 }
+
 
 const SocialPostImage = Node.create({
   name: "socialPostImage",
@@ -374,7 +452,7 @@ export default function SocialRichTextEditor({
     editorProps: {
       attributes: {
         class:
-          "social-rich-editor min-h-[112px] sm:min-h-[128px] px-4 py-4 text-[15px] leading-7 text-[#344D40] outline-none [&_p]:my-3 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_h2]:mb-3 [&_h2]:mt-5 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:leading-tight [&_h2]:text-[#173B2F] [&_h3]:mb-2 [&_h3]:mt-4 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:leading-snug [&_h3]:text-[#244B39] [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1 [&_blockquote]:my-4 [&_blockquote]:border-l-[3px] [&_blockquote]:border-[#A9C3AA] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-[#68796D] [&_[data-content-type=question]]:my-4 [&_[data-content-type=question]]:rounded-xl [&_[data-content-type=question]]:border [&_[data-content-type=question]]:border-[#DCE8F1] [&_[data-content-type=question]]:bg-[#F2F7FC] [&_[data-content-type=question]]:px-4 [&_[data-content-type=question]]:py-3 [&_[data-content-type=question]]:font-semibold [&_[data-content-type=question]]:text-[#294B68] [&_[data-content-type=answer]]:my-4 [&_[data-content-type=answer]]:rounded-xl [&_[data-content-type=answer]]:border [&_[data-content-type=answer]]:border-[#D9E8DC] [&_[data-content-type=answer]]:bg-[#F2F8F2] [&_[data-content-type=answer]]:px-4 [&_[data-content-type=answer]]:py-3 [&_[data-content-type=answer]]:text-[#294333] [&_[data-content-type=equation]]:my-4 [&_[data-content-type=equation]]:overflow-x-auto [&_[data-content-type=equation]]:rounded-xl [&_[data-content-type=equation]]:border [&_[data-content-type=equation]]:border-[#E3E6EA] [&_[data-content-type=equation]]:bg-[#F7F8FA] [&_[data-content-type=equation]]:px-4 [&_[data-content-type=equation]]:py-3 [&_[data-content-type=equation]]:font-mono [&_[data-content-type=equation]]:text-[#244B39] [&_.social-post-inline-image]:my-4 [&_.social-post-inline-image]:block [&_.social-post-inline-image]:h-auto [&_.social-post-inline-image]:max-h-[520px] [&_.social-post-inline-image]:max-w-full [&_.social-post-inline-image]:rounded-xl [&_.social-post-inline-image]:object-contain",
+          "social-rich-editor min-h-[112px] sm:min-h-[128px] px-4 py-4 text-[15px] leading-7 text-[#344D40] outline-none [&_p]:my-3 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_h2]:mb-3 [&_h2]:mt-5 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:leading-tight [&_h2]:text-[#173B2F] [&_h3]:mb-2 [&_h3]:mt-4 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:leading-snug [&_h3]:text-[#244B39] [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1 [&_blockquote]:my-4 [&_blockquote]:border-l-[3px] [&_blockquote]:border-[#A9C3AA] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-[#68796D] [&_[data-content-type=question]]:my-4 [&_[data-content-type=question]]:rounded-xl [&_[data-content-type=question]]:border [&_[data-content-type=question]]:border-[#DCE8F1] [&_[data-content-type=question]]:bg-[#F2F7FC] [&_[data-content-type=question]]:px-4 [&_[data-content-type=question]]:py-3 [&_[data-content-type=question]]:font-semibold [&_[data-content-type=question]]:text-[#294B68] [&_[data-content-type=answer]]:my-4 [&_[data-content-type=answer]]:rounded-xl [&_[data-content-type=answer]]:border [&_[data-content-type=answer]]:border-[#D9E8DC] [&_[data-content-type=answer]]:bg-[#F2F8F2] [&_[data-content-type=answer]]:px-4 [&_[data-content-type=answer]]:py-3 [&_[data-content-type=answer]]:text-[#294333] [&_[data-content-type=equation]]:my-4 [&_[data-content-type=equation]]:overflow-x-auto [&_[data-content-type=equation]]:rounded-xl [&_[data-content-type=equation]]:border [&_[data-content-type=equation]]:border-[#E3E6EA] [&_[data-content-type=equation]]:bg-[#F7F8FA] [&_[data-content-type=equation]]:px-4 [&_[data-content-type=equation]]:py-3 [&_[data-content-type=equation]]:font-mono [&_[data-content-type=equation]]:text-[#244B39] [&_.social-post-inline-image]:my-4 [&_.social-post-inline-image]:block [&_.social-post-inline-image]:h-auto [&_.social-post-inline-image]:w-full [&_.social-post-inline-image]:max-w-full [&_.social-post-inline-image]:rounded-xl [&_.social-post-inline-image]:object-contain",
         "aria-label": "Post content",
       },
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, Save } from "lucide-react";
+import { Save } from "lucide-react";
 
 export type ScheduledTutoringSession = {
   id: string;
@@ -167,9 +167,9 @@ export default function TutoringSessionScheduler({
   }
 
   return (
-    <section className="overflow-hidden rounded-lg border border-slate-200 bg-blue-200">
+   <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
       {/* Compact header */}
-      <div className="flex flex-col gap-3 border-b border-slate-300 bg-slate-50/80 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/50 sm:flex-row sm:items-center sm:justify-between">
+     <div className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/60 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
             <svg
@@ -246,14 +246,14 @@ export default function TutoringSessionScheduler({
       )}
 
       {/* Session rows */}
-      <div className="divide-y divide-slate-300">
+     <div className="divide-y divide-slate-200 dark:divide-slate-800">
         {sessions.map((session) => {
           const draft = draftFor(session);
 
           return (
             <article
               key={session.id}
-              className="px-3 py-3 transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-900/40"
+             className="bg-white px-4 py-4 transition-colors hover:bg-slate-50 dark:bg-slate-950 dark:hover:bg-slate-900/50"
             >
               <div className="grid grid-cols-1 items-end gap-2.5 sm:grid-cols-[minmax(100px,0.7fr)_minmax(190px,1.5fr)_110px_40px]">
                 {/* Session identity */}
@@ -333,7 +333,7 @@ export default function TutoringSessionScheduler({
                     title={
                       savingId === session.id ? "Saving..." : "Save session"
                     }
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-indigo-600 bg-indigo-600 text-white shadow-sm transition hover:border-indigo-700 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 dark:focus:ring-offset-slate-950"
+                   className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-indigo-600 bg-indigo-600 px-3 text-xs font-semibold text-white shadow-sm transition hover:border-indigo-700 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 dark:focus:ring-offset-slate-950"
                   >
                     {savingId === session.id ? (
                       <svg
@@ -357,21 +357,9 @@ export default function TutoringSessionScheduler({
                         />
                       </svg>
                     ) : (
-                      <svg
-                        className="h-4 w-4"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
-                      >
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
-                        <path d="M17 21v-8H7v8" />
-                        <path d="M7 3v5h8" />
-                      </svg>
+                      <Save className="h-4 w-4" />
                     )}
+                    <span>{savingId === session.id ? "Saving..." : "Save"}</span>
                   </button>
                 </div>
               </div>

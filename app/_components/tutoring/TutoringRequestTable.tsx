@@ -483,16 +483,7 @@ export default function TutoringRequestTable({
                 />
               </section>
             </div>
-            <footer className="sticky bottom-0 flex justify-end border-t border-slate-100 bg-white/95 p-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
-              <button
-                type="button"
-                onClick={() => setSelected(null)}
-                className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"
-              >
-                <X className="h-4 w-4" />
-                Close
-              </button>
-            </footer>
+           
           </section>
         </div>
       ) : null}

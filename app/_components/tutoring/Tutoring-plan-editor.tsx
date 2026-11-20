@@ -45,9 +45,12 @@ type TutoringPlanEditorProps = {
 };
 
 const inputClass =
-  "mt-1.5 block w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 disabled:cursor-not-allowed disabled:bg-slate-50";
-const labelClass = "block text-sm font-medium text-slate-700";
-const cardClass = "rounded-lg border border-slate-200 bg-white shadow-sm";
+  "mt-1.5 block w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 disabled:cursor-not-allowed disabled:bg-slate-50";
+const labelClass =
+  "block text-sm font-semibold leading-5 text-slate-700";
+
+const cardClass =
+  "rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-900/[0.03]";
 
 function formatMoney(amount: number, currency: string) {
   try {
@@ -245,9 +248,9 @@ export default function TutoringPlanEditor({
       <div className="border-b border-slate-200 bg-linear-to-r from-emerald-50 via-white to-white px-5 py-2 sm:px-5">
         <div className="flex items-center gap-3">
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-slate-950 sm:text-sm">
-              Tutoring Plan
-            </h2>
+           <h2 className="text-lg font-bold tracking-tight text-slate-950 sm:text-xl">
+  Tutoring Plan
+</h2>
           </div>
         </div>
       </div>

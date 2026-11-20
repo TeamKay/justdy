@@ -57,7 +57,7 @@ import {
   EyeOff,
   Play,
 } from "lucide-react";
-import MyLogo from "@/app/_components/navigation/Logo";
+import MyLogo from "@/app/_components/public/Logo";
 import type {
   Tool,
   Point,

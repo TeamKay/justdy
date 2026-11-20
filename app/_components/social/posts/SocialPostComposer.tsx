@@ -83,16 +83,22 @@ const POST_LAYOUT_LABELS: Record<PostLayout, string> = {
   TEXT_LEFT: "Text left",
 };
 
+
+
+
+
 function MediaPreview({
   file,
   index,
   onRemove,
   disabled,
+  single = false,
 }: {
   file: File;
   index: number;
   onRemove: () => void;
   disabled: boolean;
+  single?: boolean;
 }) {
   const isVideo = file.type.startsWith("video/");
   const imageRef = useRef<HTMLImageElement>(null);
@@ -111,7 +117,13 @@ function MediaPreview({
   }, [file, isVideo]);
 
   return (
-    <div className="group relative aspect-square overflow-hidden rounded-xl border border-[#E8E9E2] bg-[#FAFBF9]">
+    <div
+      className={`group relative flex w-full min-w-0 items-center justify-center overflow-hidden bg-[#F1F4F0] ${
+        single
+          ? "min-h-[180px] max-h-[min(42dvh,420px)] sm:min-h-[220px] sm:max-h-[min(62dvh,680px)]"
+          : "h-full min-h-0"
+      }`}
+    >
       {isVideo ? (
         <video
           ref={videoRef}
@@ -120,29 +132,46 @@ function MediaPreview({
           playsInline
           preload="metadata"
           aria-label={`Selected video ${index + 1}`}
-          className="h-full w-full object-cover"
+          className={`bg-black object-contain ${
+            single
+              ? "h-auto max-h-[min(42dvh,420px)] w-full sm:max-h-[min(62dvh,680px)]"
+              : "h-full w-full"
+          }`}
         />
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           ref={imageRef}
           alt={`Selected image ${index + 1}`}
-          className="h-full w-full object-cover"
+          className={
+            single
+              ? "block h-auto max-h-[min(42dvh,420px)] w-auto max-w-full object-contain sm:max-h-[min(62dvh,680px)]"
+              : "block h-full w-full object-contain"
+          }
         />
+      )}
+
+      {isVideo && (
+        <span className="absolute bottom-2 left-2 z-10 rounded-full bg-black/75 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
+          Video
+        </span>
       )}
 
       <button
         type="button"
         onClick={onRemove}
         disabled={disabled}
-        aria-label={`Remove media ${index + 1}`}
-        className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/65 text-white transition hover:bg-black disabled:opacity-50"
+        aria-label={`Remove ${isVideo ? "video" : "photo"} ${index + 1}: ${file.name}`}
+        className="absolute right-2 top-2 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-white/60 bg-black/70 text-white shadow-md transition hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-50"
       >
         <X className="h-4 w-4" />
       </button>
     </div>
   );
 }
+
+
+
 
 export default function SocialPostComposer({
   displayName,
@@ -499,18 +528,18 @@ const visibilityButtonRef = useRef<HTMLButtonElement>(null);
       {/* Create post modal */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-[150] flex items-center justify-center overflow-y-auto bg-black/45 px-3 py-5 backdrop-blur-[2px] sm:px-5"
+       className="fixed inset-0 z-[150] flex items-stretch justify-center overflow-hidden bg-black/45 p-0 backdrop-blur-[2px] sm:items-center sm:overflow-y-auto sm:px-5 sm:py-5"
           onClick={closeComposer}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="create-post-title"
-            className="my-auto flex max-h-[min(84dvh,760px)] w-full max-w-[520px] flex-col overflow-hidden rounded-xl border border-[#E4E6EB] bg-white shadow-[0_18px_60px_rgba(0,0,0,0.22)]"
+            className="flex h-dvh max-h-dvh w-full max-w-none flex-col overflow-hidden bg-white shadow-[0_18px_60px_rgba(0,0,0,0.22)] sm:my-auto sm:h-auto sm:max-h-[min(84dvh,760px)] sm:max-w-130 sm:rounded-xl sm:border sm:border-[#E4E6EB]"
             onClick={(event) => event.stopPropagation()}
           >
             {/* Modal heading */}
-            <div className="relative flex min-h-[58px] items-center justify-center border-b border-[#E4E6EB] bg-white px-5">
+            <div className="relative flex min-h-14.5 items-center justify-center border-b border-[#E4E6EB] bg-white px-5">
               <h2
                 id="create-post-title"
                 className="text-[17px] font-bold text-[#1C1E21]"
@@ -529,10 +558,12 @@ const visibilityButtonRef = useRef<HTMLButtonElement>(null);
               </button>
             </div>
 
-            <form
-              onSubmit={handleSubmit}
-              className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-4 sm:px-5"
-            >
+           <form
+  onSubmit={handleSubmit}
+  className="flex min-h-0 flex-1 flex-col overflow-hidden"
+>
+  {/* Independently scrollable composer content */}
+  <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4 pb-6 pt-4 sm:px-5 sm:pb-6">
               {/* Profile and audience */}
             
 <div className="mb-4 flex items-center justify-between gap-3">
@@ -785,20 +816,77 @@ const visibilityButtonRef = useRef<HTMLButtonElement>(null);
                 showPlaceholder
               />
 
-              {/* Selected media previews */}
-              {selectedMedia.length > 0 && (
-                <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {selectedMedia.map((file, index) => (
-                    <MediaPreview
-                      key={`${file.name}-${file.size}-${index}`}
-                      file={file}
-                      index={index}
-                      onRemove={() => removeMedia(index)}
-                      disabled={isBusy}
-                    />
-                  ))}
-                </div>
-              )}
+ {/* Selected media previews - Responsive collage */}
+
+      {/* Responsive attachment collage */}
+      {selectedMedia.length === 1 ? (
+        <div className="flex w-full min-w-0 items-center justify-center overflow-hidden rounded-xl border border-[#D5E2D5] bg-[#F1F4F0]">
+          <MediaPreview
+            file={selectedMedia[0]}
+            index={0}
+            onRemove={() => removeMedia(0)}
+            disabled={isBusy}
+            single
+          />
+        </div>
+      ) : (
+        <div
+          className={`grid w-full min-w-0 gap-2 ${
+            selectedMedia.length === 2
+              ? "grid-cols-2"
+              : selectedMedia.length === 3
+                ? "grid-cols-2"
+                : selectedMedia.length === 5
+                  ? "grid-cols-4"
+                  : "grid-cols-2 sm:grid-cols-3"
+          }`}
+        >
+          {selectedMedia.map((file, index) => {
+            const count = selectedMedia.length;
+
+            let tileClass =
+              "relative min-w-0 overflow-hidden rounded-xl border border-[#E1E9E0] bg-[#F1F4F0]";
+
+            if (count === 2) {
+              // Two portrait-friendly tiles; no forced landscape layout.
+              tileClass += " aspect-[3/4]";
+            } else if (count === 3) {
+              // Give portrait photos enough room on phones; use a wide feature tile on desktop.
+              tileClass +=
+                index === 0
+                  ? " col-span-2 aspect-[4/5] sm:aspect-[16/9]"
+                  : " aspect-[4/3]";
+            } else if (count === 4) {
+              // Balanced two-by-two collage.
+              tileClass += " aspect-[4/3]";
+            } else if (count === 5) {
+              // Portrait-friendly featured image on phones; wide feature tile on desktop.
+              tileClass +=
+                index === 0
+                  ? " col-span-4 aspect-[4/5] sm:aspect-[16/9]"
+                  : " col-span-2 aspect-[4/3]";
+            } else {
+              // Six attachments: two columns on mobile, three on larger screens.
+              tileClass += " aspect-[4/3]";
+            }
+
+            return (
+              <div
+                key={`${file.name}-${file.size}-${index}`}
+                className={tileClass}
+              >
+                <MediaPreview
+                  file={file}
+                  index={index}
+                  onRemove={() => removeMedia(index)}
+                  disabled={isBusy}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
 
               <div className="mt-2 flex justify-end">
                 <span
@@ -849,9 +937,10 @@ const visibilityButtonRef = useRef<HTMLButtonElement>(null);
                   {error}
                 </p>
               )}
+              </div>
 
               {/* Fixed action footer */}
-              <div className="sticky bottom-0 z-20 -mx-4 mt-4 border-t border-[#E4E6EB] bg-white px-4 pb-4 pt-3 sm:-mx-5 sm:px-5">
+            <div className="relative z-20 mt-0 shrink-0 border-t border-[#E4E6EB] bg-white px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 sm:px-5 sm:pb-4">
                 <p className="mx-auto mb-2 max-w-[34rem] text-center text-[11px] leading-5 text-[#718078]">
                   Up to 6 attachments, including 1 video. Images: max 4MB each.
                   Videos: max 256MB.

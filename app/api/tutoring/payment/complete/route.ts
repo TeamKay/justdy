@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { processUniversalTutoringBooking } from "@/lib/tutoring-payment-finalization";
+import { processGuestTutoringBooking } from "@/lib/tutoring-guest-payment-finalization";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,8 @@ export async function GET(request: Request) {
   try {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    if (session.metadata?.checkoutType !== "TUTORING") {
+    const checkoutType = session.metadata?.checkoutType;
+    if (checkoutType !== "TUTORING" && checkoutType !== "TUTORING_GUEST") {
       successUrl.searchParams.set("payment", "invalid_session");
       return NextResponse.redirect(successUrl);
     }
@@ -37,7 +39,14 @@ export async function GET(request: Request) {
       return NextResponse.redirect(successUrl);
     }
 
-    await processUniversalTutoringBooking(session);
+    if (checkoutType === "TUTORING_GUEST") {
+      const result = await processGuestTutoringBooking(session);
+      if (!result.processed || !result.bookingId) {
+        throw new Error("Guest tutoring payment could not be finalized.");
+      }
+    } else {
+      await processUniversalTutoringBooking(session);
+    }
 
     successUrl.searchParams.set("payment", "confirmed");
     return NextResponse.redirect(successUrl);

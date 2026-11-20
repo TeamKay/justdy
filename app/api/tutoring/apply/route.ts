@@ -11,10 +11,29 @@ export async function POST(req: Request) {
       headers: await headers(),
     });
 
-    if (!session?.user) {
+    if (!session?.user?.id) {
       return NextResponse.json(
         { error: "You must be signed in to apply as an educator." },
         { status: 401 },
+      );
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true, status: true },
+    });
+
+    if (!user || user.status !== "Active") {
+      return NextResponse.json(
+        { error: "Your account is not currently eligible to manage a teaching profile." },
+        { status: 403 },
+      );
+    }
+
+    if (user.role !== "TUTOR" && user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Only registered tutor accounts and administrators can manage teaching profiles." },
+        { status: 403 },
       );
     }
 

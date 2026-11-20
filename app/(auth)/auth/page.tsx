@@ -46,48 +46,6 @@ function AuthContent() {
 
           <div className="absolute bottom-[-250px] left-[15%] h-[500px] w-[500px] rounded-full bg-[#E8C49A]/25 blur-[120px]" />
 
-          {/* Decorative math symbols */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 overflow-hidden"
-          >
-            <span className="absolute left-[8%] top-[22%] -rotate-12 font-serif text-5xl text-[#B97832]/20 sm:text-7xl">
-              ∑
-            </span>
-
-            <span className="absolute right-[12%] top-[25%] rotate-[9deg] font-serif text-4xl text-[#B97832]/25 sm:text-6xl">
-              π
-            </span>
-
-            <span className="absolute left-[28%] top-[12%] rotate-12 font-serif text-4xl text-[#9A642F]/20 sm:text-6xl">
-              ∫
-            </span>
-
-            <span className="absolute right-[30%] top-[16%] -rotate-6 font-serif text-4xl text-[#B97832]/20 sm:text-5xl">
-              √
-            </span>
-
-            <span className="absolute left-[45%] bottom-[15%] rotate-12 font-serif text-5xl text-[#B97832]/20 sm:text-6xl">
-              ∞
-            </span>
-
-            <span className="absolute right-[22%] bottom-[12%] -rotate-12 font-serif text-4xl text-[#9A642F]/25 sm:text-5xl">
-              Δ
-            </span>
-
-            <span className="absolute left-[5%] top-[65%] rotate-6 font-serif text-4xl text-[#B97832]/20 sm:text-5xl">
-              θ
-            </span>
-
-            <span className="absolute bottom-[20%] left-[15%] font-mono text-sm text-[#9A642F]/30 sm:text-base">
-              x² + y² = z²
-            </span>
-
-            <span className="absolute bottom-[26%] right-[9%] font-mono text-sm text-[#9A642F]/35 sm:text-base">
-              f(x) = mx + b
-            </span>
-          </div>
-
           {/* Content */}
           <div className="relative z-10 flex min-h-screen w-full flex-col justify-between p-10 xl:p-14">
             {/* Logo */}

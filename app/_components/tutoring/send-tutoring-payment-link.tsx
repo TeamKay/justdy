@@ -315,7 +315,7 @@ export default function SendTutoringPaymentLink({
                     Send payment link?
                   </h2>
                   <p className="mt-0 text-[13px] leading-5 text-slate-600 dark:text-slate-400">
-                    Ready to send ecure Stripe payment link?
+                    Ready to send secure Stripe payment link?
                   </p>
                 </div>
 

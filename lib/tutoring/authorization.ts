@@ -1,11 +1,14 @@
 import prisma from "@/lib/prisma";
 
+const ELIGIBLE_TEACHING_ROLES = ["TUTOR", "ADMIN"] as const;
+
 export async function getVerifiedTutor(userId: string) {
   if (!userId) return null;
 
   return prisma.user.findFirst({
     where: {
       id: userId,
+      role: { in: [...ELIGIBLE_TEACHING_ROLES] },
       status: "Active",
       teachingProfile: {
         is: {
@@ -58,6 +61,7 @@ export async function getVerifiedTutorByTeachingProfileId(
       verificationStatus: "Verified",
       user: {
         is: {
+          role: { in: [...ELIGIBLE_TEACHING_ROLES] },
           status: "Active",
         },
       },

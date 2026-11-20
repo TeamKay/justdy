@@ -16,8 +16,8 @@ import { headers } from "next/headers";
 
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import MarketingFooter from "@/app/_components/navigation/MarketingFooter";
-import MarketingNavbar from "@/app/_components/navigation/MarketingNavbar";
+import MarketingFooter from "@/app/_components/public/MarketingFooter";
+import MarketingNavbar from "@/app/_components/public/MarketingNavbar";
 
 const inter = Inter({
   subsets: ["latin"],

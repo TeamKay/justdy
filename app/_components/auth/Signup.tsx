@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader, UserPlus } from "lucide-react";
+import { Eye, EyeOff, Loader, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { signupSchema } from "@/lib/zodSchemas";
@@ -49,6 +49,8 @@ export function SignupModal({
   const [isPending, startTransition] = useTransition();
 
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [internalOpen, setInternalOpen] = useState(false);
 
@@ -317,8 +319,9 @@ export function SignupModal({
                       <FormItem>
                         <FormControl>
                           <div className="space-y-1">
-                            <Input
-                              type="password"
+                            <div className="relative">
+<Input
+                              type={showPassword ? "text" : "password"}
                               placeholder="Password"
                               autoComplete="new-password"
                               {...field}
@@ -327,7 +330,7 @@ export function SignupModal({
 
                                 setPassword(event.target.value);
                               }}
-                              className="
+                              className="pr-11 
                                 h-10
                                 bg-white
                                 border-gray-200
@@ -338,6 +341,17 @@ export function SignupModal({
                                 focus:ring-[#857938]/20
                               "
                             />
+
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      aria-label={showPassword ? "Hide password" : "Show password"}
+      aria-pressed={showPassword}
+      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#857938]/40 rounded"
+    >
+      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+    </button>
+    </div>
 
                             <div
                               className="
@@ -382,12 +396,13 @@ export function SignupModal({
                     render={({ field }) => (
                       <FormItem>
                         <FormControl>
-                          <Input
-                            type="password"
+                          <div className="relative">
+<Input
+                            type={showConfirmPassword ? "text" : "password"}
                             placeholder="Confirm Password"
                             autoComplete="new-password"
                             {...field}
-                            className="
+                            className="pr-11 
                               h-10
                               bg-white
                               border-gray-200
@@ -398,6 +413,17 @@ export function SignupModal({
                               focus:ring-[#857938]/20
                             "
                           />
+
+    <button
+      type="button"
+      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+      aria-pressed={showConfirmPassword}
+      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#857938]/40 rounded"
+    >
+      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+    </button>
+    </div>
                         </FormControl>
 
                         <FormMessage />
@@ -504,6 +530,8 @@ export function SignupPage({ onSwitchToSignin }: SignupPageProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [password, setPassword] = useState("");
+  const [showPagePassword, setShowPagePassword] = useState(false);
+  const [showPageConfirmPassword, setShowPageConfirmPassword] = useState(false);
 
   const form = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
@@ -630,8 +658,9 @@ export function SignupPage({ onSwitchToSignin }: SignupPageProps) {
               <FormItem>
                 <FormControl>
                   <div className="space-y-2">
-                    <Input
-                      type="password"
+                    <div className="relative">
+<Input
+                      type={showPagePassword ? "text" : "password"}
                       placeholder="Password"
                       autoComplete="new-password"
                       {...field}
@@ -639,8 +668,19 @@ export function SignupPage({ onSwitchToSignin }: SignupPageProps) {
                         field.onChange(event);
                         setPassword(event.target.value);
                       }}
-                      className="h-11 rounded-lg border-border bg-background text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                      className="pr-11 h-11 rounded-lg border-border bg-background text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
                    />
+
+    <button
+      type="button"
+      onClick={() => setShowPagePassword(!showPagePassword)}
+      aria-label={showPagePassword ? "Hide password" : "Show password"}
+      aria-pressed={showPagePassword}
+      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#857938]/40 rounded"
+    >
+      {showPagePassword ? <EyeOff size={16} /> : <Eye size={16} />}
+    </button>
+    </div>
                     <div className="flex h-1 gap-1 px-0.5">
                       {[1, 2, 3, 4].map((step) => (
                         <div
@@ -666,13 +706,25 @@ export function SignupPage({ onSwitchToSignin }: SignupPageProps) {
             render={({ field }) => (
               <FormItem>
                 <FormControl>
-                  <Input
-                    type="password"
+                  <div className="relative">
+<Input
+                    type={showPageConfirmPassword ? "text" : "password"}
                     placeholder="Confirm Password"
                     autoComplete="new-password"
                     {...field}
-                     className="h-11 rounded-lg border-border bg-background text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                     className="pr-11 h-11 rounded-lg border-border bg-background text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
                    />
+
+    <button
+      type="button"
+      onClick={() => setShowPageConfirmPassword(!showPageConfirmPassword)}
+      aria-label={showPageConfirmPassword ? "Hide password" : "Show password"}
+      aria-pressed={showPageConfirmPassword}
+      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#857938]/40 rounded"
+    >
+      {showPageConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+    </button>
+    </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>

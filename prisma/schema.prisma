@@ -38,28 +38,47 @@ model User {
   services                            Service[]
   studentProfile                      StudentProfile?
   transaction                         Transaction[]
+  paymentPurchases                    PaymentPurchase[]
+  memberships                         Membership[]
+  sessionCreditGrants                 SessionCreditGrant[]
   tutoringBookingsAsCustomer          TutoringBooking[]           @relation("TutoringBookingCustomer")
   tutoringBookingsAsTutor             TutoringBooking[]           @relation("TutoringBookingTutor")
   tutoringSlots                       TutoringSlot[]
   whitrboard                          Whiteboard[]
   accounts                            Account[]
   sessions                            Session[]
+  videoWatchSessions                  VideoWatchSession[]
   teachingProfile                     TeachingProfile?
   notifications                       Notification[]
   learningActivities                  LearningActivity[]
+  dailyChallengesCreated              DailyChallenge[]            @relation("DailyChallengeCreator")
+  dailyChallengeAttempts              DailyChallengeAttempt[]     @relation("DailyChallengeAttemptLearner")
   learnerTutoringSessions             TutoringSession[]           @relation("LearnerTutoringSessions")
   educatorTutoringSessions            TutoringSession[]           @relation("EducatorTutoringSessions")
   reviewsWritten                      TutorReview[]               @relation("TutorReviewLearner")
   reviewsReceived                     TutorReview[]               @relation("TutorReviewEducator")
   investmentProfile                   InvestmentProfile?
 
+  // Question Help
+  questionsSubmitted                  LearnerQuestion[]       @relation("LearnerQuestions")
+  questionTutorOffers                 QuestionTutorOffer[]    @relation("QuestionTutorOffers")
+  questionsAccepted                   LearnerQuestion[]       @relation("QuestionAcceptedTutor")
+
   // Social identity and publishing
-  socialProfile   SocialProfile?
-  uploadedMedia   UploadedMedia[]  @relation("UploadedMediaUploader")
-  socialPosts     SocialPost[]     @relation("SocialPostAuthor")
-  socialComments  SocialComment[]  @relation("SocialCommentAuthor")
-  socialReactions SocialReaction[]
-  socialBookmarks SocialBookmark[]
+  socialProfile        SocialProfile?
+  uploadedMedia        UploadedMedia[]       @relation("UploadedMediaUploader")
+  socialPosts          SocialPost[]          @relation("SocialPostAuthor")
+  socialComments       SocialComment[]       @relation("SocialCommentAuthor")
+  socialReactions      SocialReaction[]
+  socialBookmarks      SocialBookmark[]
+  socialPostDismissals SocialPostDismissal[]
+  socialPostShares     SocialPostShare[]
+
+  // Mathematics challenges
+  socialChallengeParticipations    SocialChallengeParticipant[]
+  socialChallengeSubmissions       SocialChallengeSubmission[]  @relation("SocialChallengeSubmissionLearner")
+  socialChallengesCreated          SocialChallenge[]            @relation("SocialChallengeCreator")
+  socialChallengeSubmissionsGraded SocialChallengeSubmission[]  @relation("SocialChallengeSubmissionGrader")
 
   // Following
   socialFollowsInitiated SocialFollow[] @relation("SocialFollowFollower")
@@ -371,6 +390,7 @@ model Booking {
   reminders         TutoringReminder[]
   tutorReview       TutorReview?
   onboardingSession TutoringOnboardingSession?
+  creditRedemption  SessionCreditRedemption?
 
   @@index([studentId, startTime])
   @@index([educatorId, startTime])
@@ -613,6 +633,121 @@ model TutoringSession {
   @@index([status, scheduledStart])
 }
 
+model DailyChallenge {
+  id String @id @default(cuid())
+
+  // A challenge is assigned to a specific calendar date.
+  challengeDate DateTime @db.Date
+  gradeLevel    String
+  subject       String   @default("Mathematics")
+  topic         String
+  difficulty    String   @default("MEDIUM")
+
+  // Question content
+  title         String
+  question      String  @db.Text
+  options       Json
+  correctAnswer String
+  hint          String? @db.Text
+  explanation   String  @db.Text
+
+  // Scoring and publication
+  points      Int       @default(100)
+  status      String    @default("DRAFT")
+  publishedAt DateTime?
+
+  createdById String?
+  createdBy   User?                   @relation("DailyChallengeCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  attempts    DailyChallengeAttempt[]
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  // One challenge per grade, subject and date.
+  @@unique([challengeDate, gradeLevel, subject])
+  @@index([status, challengeDate])
+  @@index([gradeLevel, challengeDate])
+  @@index([subject, challengeDate])
+}
+
+model DailyChallengeAttempt {
+  id String @id @default(cuid())
+
+  challengeId String
+  userId      String
+  answer      String         @db.Text
+  isCorrect   Boolean
+  score       Int            @default(0)
+  submittedAt DateTime       @default(now())
+  challenge   DailyChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  learner     User           @relation("DailyChallengeAttemptLearner", fields: [userId], references: [id], onDelete: Cascade)
+
+  // One submission per learner per challenge.
+  @@unique([challengeId, userId])
+  @@index([challengeId, score, submittedAt])
+  @@index([userId, submittedAt])
+}
+
+enum PaymentProductType {
+  FLEXPAY_30_MIN
+  FLEXPAY_45_MIN
+  FLEXPAY_60_MIN
+  MONTHLY_PREMIUM
+}
+
+enum PaymentPurchaseStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+model PaymentPurchase {
+  id                      String                @id @default(cuid())
+  userId                  String
+  productType             PaymentProductType
+  status                  PaymentPurchaseStatus @default(PENDING)
+  amount                  Int
+  currency                String                @default("usd")
+  sessionMinutes          Int?
+  sessionsIncluded        Int                   @default(0)
+  stripeCheckoutSessionId String?               @unique
+  stripePaymentIntentId   String?
+  stripeSubscriptionId    String?
+  stripeInvoiceId         String?               @unique
+  paidAt                  DateTime?
+  metadata                Json?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  creditGrant             SessionCreditGrant?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([stripeSubscriptionId])
+}
+
+model Membership {
+  id                   String               @id @default(cuid())
+  userId               String
+  stripeSubscriptionId String               @unique
+  stripePriceId        String?
+  status               String
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean              @default(false)
+  canceledAt           DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  creditGrants         SessionCreditGrant[]
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([currentPeriodEnd])
+}
+
 enum TutoringSessionStatus {
   SCHEDULED
   IN_PROGRESS
@@ -737,6 +872,60 @@ enum PlatformRole {
   ADMIN
   TUTOR
   LEARNER
+}
+
+enum SessionCreditGrantStatus {
+  ACTIVE
+  EXHAUSTED
+  EXPIRED
+  REVOKED
+}
+
+model SessionCreditGrant {
+  id                String                    @id @default(cuid())
+  userId            String
+  paymentPurchaseId String?                   @unique
+  membershipId      String?
+  sourceKey         String                    @unique
+  sessionMinutes    Int
+  creditsGranted    Int
+  creditsRemaining  Int
+  status            SessionCreditGrantStatus  @default(ACTIVE)
+  periodStart       DateTime?
+  expiresAt         DateTime?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  redemptions       SessionCreditRedemption[]
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentPurchase PaymentPurchase? @relation(fields: [paymentPurchaseId], references: [id], onDelete: Restrict)
+  membership      Membership?      @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+
+  @@index([userId, status, expiresAt])
+  @@index([membershipId, periodStart])
+}
+
+enum SessionCreditRedemptionStatus {
+  CONSUMED
+  RESTORED
+}
+
+model SessionCreditRedemption {
+  id             String                        @id @default(cuid())
+  bookingId      String                        @unique
+  creditGrantId  String
+  creditsUsed    Int                           @default(1)
+  sessionMinutes Int
+  status         SessionCreditRedemptionStatus @default(CONSUMED)
+  consumedAt     DateTime                      @default(now())
+  restoredAt     DateTime?
+  createdAt      DateTime                      @default(now())
+  updatedAt      DateTime                      @updatedAt
+
+  booking     Booking            @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  creditGrant SessionCreditGrant @relation(fields: [creditGrantId], references: [id], onDelete: Restrict)
+
+  @@index([creditGrantId, status])
 }
 
 model TutoringOnboardingRequest {
@@ -912,22 +1101,88 @@ model SocialPost {
   authorId        String
   content         String?              @db.Text
   visibility      SocialPostVisibility @default(FOLLOWERS)
-  layout          SocialPostLayout      @default(TEXT_TOP)
+  layout          SocialPostLayout     @default(TEXT_TOP)
   status          SocialPostStatus     @default(DRAFT)
+  postType        SocialPostType       @default(GENERAL)
+  feedPriority    Int                  @default(0)
   commentsEnabled Boolean              @default(true)
   publishedAt     DateTime?
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
 
-  author    User              @relation("SocialPostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
-  media     SocialPostMedia[]
-  comments  SocialComment[]
-  reactions SocialReaction[]
-  bookmarks SocialBookmark[]
+  author             User                  @relation("SocialPostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  media              SocialPostMedia[]
+  comments           SocialComment[]
+  reactions          SocialReaction[]
+  bookmarks          SocialBookmark[]
+  videoWatchSessions VideoWatchSession[]
+  dismissals         SocialPostDismissal[]
+  shares             SocialPostShare[]
+  challenge          SocialChallenge?
 
   @@index([authorId, createdAt])
   @@index([status, visibility, publishedAt])
+  @@index([status, feedPriority, publishedAt])
   @@map("social_post")
+}
+
+model SocialChallenge {
+  id          String                @id @default(cuid())
+  postId      String                @unique
+  createdById String
+  opensAt     DateTime              @default(now())
+  closesAt    DateTime
+  maxScore    Int                   @default(100)
+  status      SocialChallengeStatus @default(OPEN)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  post         SocialPost                   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  creator      User                         @relation("SocialChallengeCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  participants SocialChallengeParticipant[]
+  submissions  SocialChallengeSubmission[]
+
+  @@index([status, opensAt, closesAt])
+  @@map("social_challenge")
+}
+
+model SocialChallengeParticipant {
+  id          String   @id @default(cuid())
+  challengeId String
+  userId      String
+  joinedAt    DateTime @default(now())
+
+  challenge SocialChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId])
+  @@index([userId, joinedAt])
+  @@index([challengeId, joinedAt])
+  @@map("social_challenge_participant")
+}
+
+model SocialChallengeSubmission {
+  id          String                          @id @default(cuid())
+  challengeId String
+  userId      String
+  answer      String                          @db.Text
+  status      SocialChallengeSubmissionStatus @default(PENDING)
+  score       Int?
+  feedback    String?                         @db.Text
+  gradedById  String?
+  submittedAt DateTime                        @default(now())
+  gradedAt    DateTime?
+  updatedAt   DateTime                        @updatedAt
+
+  challenge SocialChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  learner   User            @relation("SocialChallengeSubmissionLearner", fields: [userId], references: [id], onDelete: Cascade)
+  grader    User?           @relation("SocialChallengeSubmissionGrader", fields: [gradedById], references: [id], onDelete: SetNull)
+
+  @@unique([challengeId, userId])
+  @@index([challengeId, status, submittedAt])
+  @@index([userId, submittedAt])
+  @@index([gradedById, gradedAt])
+  @@map("social_challenge_submission")
 }
 
 model SocialPostMedia {
@@ -967,6 +1222,20 @@ model SocialComment {
   @@map("social_comment")
 }
 
+model SocialPostShare {
+  id       String   @id @default(cuid())
+  postId   String
+  userId   String
+  sharedAt DateTime @default(now())
+
+  post SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([postId, sharedAt])
+  @@index([userId, sharedAt])
+  @@map("social_post_share")
+}
+
 model SocialReaction {
   id        String             @id @default(cuid())
   postId    String
@@ -981,6 +1250,19 @@ model SocialReaction {
   @@unique([postId, userId])
   @@index([userId, createdAt])
   @@map("social_reaction")
+}
+
+model SocialPostDismissal {
+  userId      String
+  postId      String
+  dismissedAt DateTime @default(now())
+
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([postId])
+  @@map("social_post_dismissal")
 }
 
 model SocialFollow {
@@ -1392,6 +1674,23 @@ enum SocialPostStatus {
   REMOVED
 }
 
+enum SocialPostType {
+  GENERAL
+  WELCOME
+  CHALLENGE
+}
+
+enum SocialChallengeStatus {
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+enum SocialChallengeSubmissionStatus {
+  PENDING
+  GRADED
+}
+
 enum UploadedMediaType {
   IMAGE
   VIDEO
@@ -1472,4 +1771,122 @@ enum GuardianLinkStatus {
   VERIFIED
   REJECTED
   REVOKED
+}
+
+model VideoWatchSession {
+  id                 String            @id @default(cuid())
+  userId             String
+  postId             String
+  sessionKey         String            @db.VarChar(64)
+  provider           String            @db.VarChar(20)
+  watchedDurationMs  Int               @default(0)
+  maxProgressPercent Int               @default(0)
+  impressionAt       DateTime?
+  firstPlayedAt      DateTime?
+  completedAt        DateTime?
+  skippedAt          DateTime?
+  events             VideoWatchEvent[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sessionKey])
+  @@index([userId, createdAt])
+  @@index([postId, createdAt])
+  @@index([userId, postId, createdAt])
+  @@index([postId, impressionAt])
+  @@map("video_watch_session")
+}
+
+model VideoWatchEvent {
+  id                String   @id @default(cuid())
+  sessionId         String
+  userId            String
+  postId            String
+  eventType         String   @db.VarChar(20)
+  watchedDurationMs Int      @default(0)
+  progressPercent   Int      @default(0)
+  occurredAt        DateTime @default(now())
+
+  session VideoWatchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([postId, occurredAt])
+  @@index([userId, occurredAt])
+  @@index([sessionId, occurredAt])
+  @@map("video_watch_event")
+}
+
+
+enum LearnerQuestionStatus {
+  SUBMITTED
+  OFFERED
+  MATCHED
+  CLOSED
+}
+
+enum QuestionTutorOfferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  WITHDRAWN
+}
+
+model LearnerQuestion {
+  id                    String                @id @default(cuid())
+  learnerId             String?
+  learnerEmail          String
+  questionText          String?               @db.Text
+  status                LearnerQuestionStatus @default(SUBMITTED)
+  acceptedTutorId       String?
+  guestAccessTokenHash  String?               @unique
+  guestAccessExpiresAt  DateTime?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  learner       User?                 @relation("LearnerQuestions", fields: [learnerId], references: [id], onDelete: SetNull)
+  acceptedTutor User?                 @relation("QuestionAcceptedTutor", fields: [acceptedTutorId], references: [id], onDelete: SetNull)
+  attachments   QuestionAttachment[]
+  tutorOffers   QuestionTutorOffer[]
+
+  @@index([status, createdAt])
+  @@index([learnerId, createdAt])
+  @@index([learnerEmail])
+  @@index([acceptedTutorId])
+  @@map("learner_question")
+}
+
+model QuestionAttachment {
+  id           String         @id @default(cuid())
+  questionId   String
+  storageKey   String         @unique
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  createdAt    DateTime       @default(now())
+
+  question LearnerQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+  @@map("question_attachment")
+}
+
+model QuestionTutorOffer {
+  id         String                   @id @default(cuid())
+  questionId String
+  tutorId    String
+  status     QuestionTutorOfferStatus @default(PENDING)
+  message    String?                  @db.Text
+  acceptedAt DateTime?
+  createdAt  DateTime                 @default(now())
+  updatedAt  DateTime                 @updatedAt
+
+  question LearnerQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  tutor    User             @relation("QuestionTutorOffers", fields: [tutorId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, tutorId])
+  @@index([tutorId, status, createdAt])
+  @@index([questionId, status])
+  @@map("question_tutor_offer")
 }

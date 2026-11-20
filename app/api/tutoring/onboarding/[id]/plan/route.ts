@@ -44,12 +44,14 @@ export async function PATCH(
       },
     });
 
-    if (!actor || !actor.emailVerified) {
-      return NextResponse.json(
-        { error: "A verified signed-in account is required." },
-        { status: 403 },
-      );
-    }
+    if (!actor || actor.status !== "Active" || !actor.emailVerified) {
+  return NextResponse.json(
+    {
+      error: "An active, verified signed-in account is required.",
+    },
+    { status: 403 },
+  );
+}
 
     const role = String(actor.role ?? "").toUpperCase();
     const isAdmin = role === "ADMIN";

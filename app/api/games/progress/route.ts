@@ -9,6 +9,28 @@ export const dynamic = "force-dynamic";
 type Difficulty = "beginner" | "intermediate" | "advanced";
 type Mode = "practice" | "timed";
 
+type MissionReview = {
+  stage: number;
+  title: string;
+  status: "mastered-first-try" | "mastered-with-support" | "needs-practice";
+  attempts: number;
+  usedHint: boolean;
+};
+
+type MathLabSessionReport = {
+  grade: number;
+  topic: string;
+  selectedDifficulty: Difficulty;
+  bestStreak: number;
+  independentMastery: number;
+  supportedMastery: number;
+  needsPractice: number;
+  missions: MissionReview[];
+  starsEarned?: number;
+  adventureRank?: string;
+  rewards?: string[];
+};
+
 type GameAttempt = {
   id: string;
   gameId: string;
@@ -20,6 +42,7 @@ type GameAttempt = {
   xpEarned: number;
   streak: number;
   completedAt: string;
+  mathLabReport?: MathLabSessionReport;
 };
 
 type GameProgress = {
@@ -29,6 +52,17 @@ type GameProgress = {
   perfectGames: number;
   bestStreak: number;
   history: GameAttempt[];
+  mathLabJourney?: {
+    totalSessions: number;
+    totalStars: number;
+    adventureRank: string;
+    medals: string[];
+    independentMastery: number;
+    supportedMastery: number;
+    needsPractice: number;
+    bestStreak: number;
+    lastPlayedAt: string | null;
+  };
 };
 
 const EMPTY_PROGRESS: GameProgress = {
@@ -38,6 +72,10 @@ const EMPTY_PROGRESS: GameProgress = {
   perfectGames: 0,
   bestStreak: 0,
   history: [],
+  mathLabJourney: {
+    totalSessions: 0, totalStars: 0, adventureRank: "Brave Beginner", medals: [],
+    independentMastery: 0, supportedMastery: 0, needsPractice: 0, bestStreak: 0, lastPlayedAt: null,
+  },
 };
 
 function isDifficulty(value: unknown): value is Difficulty {
@@ -46,6 +84,50 @@ function isDifficulty(value: unknown): value is Difficulty {
 
 function isMode(value: unknown): value is Mode {
   return value === "practice" || value === "timed";
+}
+
+function isMathLabSessionReport(value: unknown): value is MathLabSessionReport {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const report = value as Partial<MathLabSessionReport>;
+  if (
+    typeof report.grade !== "number" || !Number.isInteger(report.grade) || report.grade < 1 || report.grade > 8 ||
+    typeof report.topic !== "string" || report.topic.trim().length === 0 || report.topic.length > 100 ||
+    !isDifficulty(report.selectedDifficulty) ||
+    typeof report.bestStreak !== "number" || !Number.isInteger(report.bestStreak) || report.bestStreak < 0 || report.bestStreak > 5 ||
+    typeof report.independentMastery !== "number" || !Number.isInteger(report.independentMastery) || report.independentMastery < 0 || report.independentMastery > 5 ||
+    typeof report.supportedMastery !== "number" || !Number.isInteger(report.supportedMastery) || report.supportedMastery < 0 || report.supportedMastery > 5 ||
+    typeof report.needsPractice !== "number" || !Number.isInteger(report.needsPractice) || report.needsPractice < 0 || report.needsPractice > 5 ||
+    !Array.isArray(report.missions) || report.missions.length !== 5
+  ) return false;
+
+  const validMissions = report.missions.every((mission, index) =>
+    Boolean(
+      mission &&
+      typeof mission === "object" &&
+      mission.stage === index + 1 &&
+      typeof mission.title === "string" &&
+      mission.title.trim().length > 0 &&
+      mission.title.length <= 120 &&
+      ["mastered-first-try", "mastered-with-support", "needs-practice"].includes(mission.status) &&
+      Number.isInteger(mission.attempts) &&
+      mission.attempts >= 1 &&
+      mission.attempts <= 20 &&
+      typeof mission.usedHint === "boolean"
+    )
+  );
+
+  const validRewards = report.rewards === undefined || (
+    Array.isArray(report.rewards) && report.rewards.length <= 8 &&
+    report.rewards.every((reward) => typeof reward === "string" && reward.length <= 80)
+  );
+  const validStars = report.starsEarned === undefined || (
+    Number.isInteger(report.starsEarned) && report.starsEarned >= 5 && report.starsEarned <= 15
+  );
+  const validRank = report.adventureRank === undefined || (
+    typeof report.adventureRank === "string" && report.adventureRank.length <= 60
+  );
+  return validMissions && validRewards && validStars && validRank &&
+    report.independentMastery! + report.supportedMastery! + report.needsPractice! === 5;
 }
 
 function safeLegacyProgress(value: unknown): GameProgress | null {
@@ -130,6 +212,9 @@ export async function GET() {
         xpEarned: Number(metadata.xpEarned ?? 0),
         streak: Number(metadata.streak ?? 0),
         completedAt: (record.completedAt ?? record.createdAt).toISOString(),
+        ...(isMathLabSessionReport(metadata.mathLabReport)
+          ? { mathLabReport: metadata.mathLabReport }
+          : {}),
       };
     });
 
@@ -138,6 +223,22 @@ export async function GET() {
   for (const attempt of attempts) {
     bestScores[attempt.gameId] = Math.max(bestScores[attempt.gameId] ?? 0, attempt.score);
   }
+
+  const mathLabAttempts = attempts.filter((attempt) => attempt.gameId === "math-lab" && attempt.mathLabReport);
+  const mathLabReports = mathLabAttempts.map((attempt) => ({ attempt, report: attempt.mathLabReport! }));
+  const totalStars = mathLabReports.reduce((sum, item) => sum + (item.report.starsEarned ?? item.report.missions.reduce((n, mission) => n + (mission.status === "mastered-first-try" ? 3 : mission.status === "mastered-with-support" ? 2 : 1), 0)), 0);
+  const medals = Array.from(new Set(mathLabReports.flatMap(({ report }) => report.rewards ?? []))).sort();
+  const mathLabJourney = {
+    totalSessions: mathLabReports.length,
+    totalStars,
+    adventureRank: totalStars >= 100 ? "Math Legend" : totalStars >= 70 ? "Master Explorer" : totalStars >= 40 ? "Bright Investigator" : totalStars >= 15 ? "Curious Discoverer" : "Brave Beginner",
+    medals,
+    independentMastery: mathLabReports.reduce((sum, item) => sum + item.report.independentMastery, 0),
+    supportedMastery: mathLabReports.reduce((sum, item) => sum + item.report.supportedMastery, 0),
+    needsPractice: mathLabReports.reduce((sum, item) => sum + item.report.needsPractice, 0),
+    bestStreak: Math.max(0, ...mathLabReports.map((item) => item.report.bestStreak)),
+    lastPlayedAt: mathLabReports[0]?.attempt.completedAt ?? null,
+  };
 
   const progress: GameProgress = {
     bestScores,
@@ -148,6 +249,7 @@ export async function GET() {
     history: [...attempts, ...base.history]
       .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
       .slice(0, 30),
+    mathLabJourney,
   };
 
   return NextResponse.json({ progress, profile });
@@ -262,6 +364,7 @@ export async function POST(request: Request) {
     difficulty,
     mode,
     streak,
+    mathLabReport,
   } = body;
 
   if (
@@ -271,7 +374,8 @@ export async function POST(request: Request) {
     totalQuestions < 1 || totalQuestions > 50 ||
     score < 0 || score > totalQuestions ||
     !isDifficulty(difficulty) || !isMode(mode) ||
-    !Number.isInteger(streak) || streak < 0 || streak > totalQuestions
+    !Number.isInteger(streak) || streak < 0 || streak > totalQuestions ||
+    (mathLabReport !== undefined && (gameId !== "math-lab" || !isMathLabSessionReport(mathLabReport)))
   ) {
     return NextResponse.json({ error: "Invalid game attempt." }, { status: 400 });
   }
@@ -303,6 +407,7 @@ export async function POST(request: Request) {
         mode,
         xpEarned,
         streak,
+        ...(mathLabReport ? { mathLabReport } : {}),
       } as Prisma.InputJsonValue,
       startedAt: completedAt,
       completedAt,

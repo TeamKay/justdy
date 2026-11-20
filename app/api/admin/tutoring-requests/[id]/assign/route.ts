@@ -143,7 +143,12 @@ export async function POST(
       { status: 403 },
     );
   }
-
+  if (actor.status !== "Active") {
+    return NextResponse.json(
+      { error: "Your account must be active before managing requests." },
+      { status: 403 },
+    );
+  }
   if (!actor.emailVerified) {
     return NextResponse.json(
       { error: "Verify your email before managing requests." },
@@ -199,22 +204,37 @@ export async function POST(
   let selectedTutor: { id: string; name: string; email: string } | null = null;
 
   if (tutorId !== null) {
-    const eligibleTutor = await prisma.user.findFirst({
-      where: {
-        id: tutorId as string,
-        role: { in: ["TUTOR", "ADMIN"] },
-        status: "Active",
-        emailVerified: true,
-        teachingProfile: { is: { verificationStatus: "Verified" } },
+   const eligibleTutor = await prisma.user.findFirst({
+  where: {
+    id: tutorId as string,
+    status: "Active",
+    emailVerified: true,
+    OR: [
+      {
+        role: "ADMIN",
       },
-      select: { id: true, name: true, email: true },
-    });
+      {
+        role: "TUTOR",
+        teachingProfile: {
+          is: {
+            verificationStatus: "Verified",
+          },
+        },
+      },
+    ],
+  },
+  select: {
+    id: true,
+    name: true,
+    email: true,
+  },
+});
 
     if (!eligibleTutor) {
       return NextResponse.json(
         {
           error:
-            "Choose an active, email-verified tutor or administrator with a verified teaching profile.",
+            "Choose an active, email-verified tutor or administrator. Tutors must have a verified teaching profile.",
         },
         { status: 400 },
       );

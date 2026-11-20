@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { CAPABILITIES, ensureCapabilities } from "@/lib/auth/capabilities";
 
 function cleanString(value: unknown, max = 2000) {
   if (typeof value !== "string") {
@@ -119,6 +118,16 @@ export async function POST(req: Request) {
       );
     }
 
+    if (user.role !== "TUTOR" && user.role !== "ADMIN") {
+      return NextResponse.json(
+        {
+          error:
+            "Only registered tutor accounts and administrators can manage teaching profiles. Learners cannot apply through this endpoint.",
+        },
+        { status: 403 },
+      );
+    }
+
     const body = (await req.json().catch(() => ({}))) as Record<
       string,
       unknown
@@ -187,39 +196,11 @@ export async function POST(req: Request) {
       );
     }
 
-    /*
-     * User.role is only the platform-level account role:
-     *
-     * USER  = normal account
-     * ADMIN = platform administrator
-     *
-     * Teaching access is NOT represented by a
-     * User.role value.
-     *
-     * Teaching access is represented by:
-     *
-     * TeachingProfile.verificationStatus
-     * +
-     * CAN_TEACH / CAN_TUTOR capabilities.
-     */
-    const isAdmin = user.role === "ADMIN";
-
+    // A new profile remains pending for independent administrator review.
+    // An already verified profile stays verified when its owner edits it.
     const currentStatus = user.teachingProfile?.verificationStatus ?? null;
-
-    /*
-     * A verified tutor remains verified when
-     * editing their teaching profile.
-     *
-     * A pending application remains pending.
-     *
-     * A rejected applicant may submit again,
-     * which moves the application back to Pending.
-     */
-    const nextVerificationStatus = isAdmin
-      ? "Verified"
-      : currentStatus === "Verified"
-        ? "Verified"
-        : "Pending";
+    const nextVerificationStatus =
+      currentStatus === "Verified" ? "Verified" : "Pending";
 
     const profile = await prisma.teachingProfile.upsert({
       where: {
@@ -260,26 +241,8 @@ export async function POST(req: Request) {
       },
     });
 
-    /*
-     * Every normal account remains a learner.
-     *
-     * Applying to teach NEVER changes User.role.
-     *
-     * Normal users only receive learner capability
-     * here. Teaching/tutor/payout capabilities are
-     * granted by the administrator approval flow.
-     */
-    await ensureCapabilities(user.id, [
-      CAPABILITIES.LEARN,
-
-      ...(isAdmin
-        ? [CAPABILITIES.TEACH, CAPABILITIES.TUTOR, CAPABILITIES.RECEIVE_PAYOUTS]
-        : []),
-    ]);
-
-    const message = isAdmin
-      ? "Your teaching profile is active."
-      : profile.verificationStatus === "Verified"
+    const message =
+      profile.verificationStatus === "Verified"
         ? "Your teaching profile has been updated."
         : "Your tutor application has been submitted for administrator review.";
 

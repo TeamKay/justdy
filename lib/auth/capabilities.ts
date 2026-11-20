@@ -43,7 +43,9 @@ async function getAuthorizationUser(
     status: String(user.status),
     teachingProfile: user.teachingProfile
       ? {
-          verificationStatus: String(user.teachingProfile.verificationStatus),
+          verificationStatus: String(
+            user.teachingProfile.verificationStatus,
+          ),
         }
       : null,
   };
@@ -77,12 +79,13 @@ export async function hasCapability(
   switch (key) {
     case CAPABILITIES.LEARN:
     case CAPABILITIES.BOOK_TUTORING:
-      return user.role === "LEARNER" || user.role === "TUTOR";
+      return user.role === "LEARNER";
 
     case CAPABILITIES.TEACH:
     case CAPABILITIES.TUTOR:
       return (
-        (user.role === "TUTOR" || user.role === "ADMIN") && isVerifiedTutor
+        (user.role === "TUTOR" || user.role === "ADMIN") &&
+        isVerifiedTutor
       );
 
     case CAPABILITIES.RECEIVE_PAYOUTS:

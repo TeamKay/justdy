@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { CAPABILITIES, hasCapability } from "@/lib/auth/capabilities";
 
 type ProfileBody = {
   headline?: unknown;
@@ -20,7 +19,8 @@ type ProfileBody = {
 
 type CurrentUser = {
   id: string;
-  role?: string | null;
+  role: string;
+  status: string;
 };
 
 class InvalidProfileImageError extends Error {
@@ -39,20 +39,34 @@ async function getCurrentUser(): Promise<CurrentUser | null> {
     return null;
   }
 
+  // Read the authoritative role and account status from the database.
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      id: true,
+      role: true,
+      status: true,
+    },
+  });
+
+  if (!user) {
+    return null;
+  }
+
   return {
-    id: session.user.id,
-    role: session.user.role,
+    id: user.id,
+    role: user.role,
+    status: user.status,
   };
 }
 
 async function canManageTeachingProfile(
   user: CurrentUser,
 ): Promise<boolean> {
-  if (String(user.role ?? "").toUpperCase() === "ADMIN") {
-    return true;
-  }
-
-  return hasCapability(user.id, CAPABILITIES.TEACH);
+  return (
+    user.status === "Active" &&
+    (user.role === "TUTOR" || user.role === "ADMIN")
+  );
 }
 
 function cleanString(value: unknown): string | null {
@@ -176,6 +190,10 @@ export async function GET() {
     });
 
     return NextResponse.json({
+      user: {
+        role: user.role,
+        status: user.status,
+      },
       profile,
     });
   } catch (error) {
@@ -193,10 +211,9 @@ export async function GET() {
  * POST
  * ============================================================
  *
- * Direct teaching-profile creation is restricted to users who
- * already have teaching access.
- *
- * Normal learners should use POST /api/educator/apply.
+ * TUTOR and ADMIN accounts may create their own teaching profile,
+ * including while it is awaiting administrator approval.
+ * This does not grant permission to teach.
  */
 export async function POST(req: Request) {
   try {
@@ -213,7 +230,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "Teaching access is required to create a teaching profile.",
+            "An active tutor or administrator account is required to create a teaching profile.",
         },
         { status: 403 },
       );
@@ -363,11 +380,9 @@ export async function POST(req: Request) {
  * PATCH
  * ============================================================
  *
- * Updating an active teaching profile requires teaching
- * capability.
- *
- * Tutor application updates should continue to go through
- * POST /api/educator/apply.
+ * Active and pending TUTOR/ADMIN accounts may update their own
+ * teaching profile. Teaching access remains separately controlled
+ * by the verified-profile authorization checks.
  */
 export async function PATCH(req: Request) {
   try {
@@ -384,7 +399,7 @@ export async function PATCH(req: Request) {
       return NextResponse.json(
         {
           error:
-            "Teaching access is required to update a teaching profile.",
+            "An active tutor or administrator account is required to update a teaching profile.",
         },
         { status: 403 },
       );

@@ -1,10 +1,14 @@
+
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { auth } from "@/lib/auth";
-import { SidebarInset, SidebarProvider } from "@/app/_components/ui/sidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+} from "@/app/_components/ui/sidebar";
 import { SidebarReopenTrigger } from "@/app/_components/sidebar/SidebarReopenTrigger";
 import { AppSidebar } from "@/app/_components/sidebar/dashboard-sidebar";
 
@@ -31,15 +35,36 @@ export default async function DashboardLayout({
   return (
     <SidebarProvider
       defaultOpen={true}
-      className="flex h-dvh min-h-0 bg-background text-foreground"
+      className="
+        flex h-dvh min-h-0 w-full
+        overflow-hidden
+        bg-[#F7FAF6] text-[#20372A]
+      "
     >
       <Suspense fallback={null}>
         <AppSidebar />
       </Suspense>
 
-      <SidebarInset className="relative flex min-h-0 flex-1 flex-col bg-background text-foreground">
+      <SidebarInset
+        className="
+          relative flex h-dvh min-h-0 min-w-0
+          flex-1 flex-col overflow-hidden
+          bg-[#F8FAF7]
+          shadow-none
+        "
+      >
         <SidebarReopenTrigger />
-        <main className="min-h-0 flex-1 bg-background">{children}</main>
+
+        <div
+          className="
+            min-h-0 min-w-0 flex-1
+            overflow-x-hidden overflow-y-auto
+            overscroll-y-contain
+            scroll-smooth
+          "
+        >
+          {children}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

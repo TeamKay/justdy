@@ -11,7 +11,6 @@ import {
   CalendarDays,
   CreditCard,
   HelpCircle,
-  History,
   LayoutDashboard,
   LogOut,
   Settings2,
@@ -22,9 +21,9 @@ import {
   UserRound,
   TrendingUp,
   PiggyBank,
-  Sparkles,
-  LibraryBig,
+  Megaphone,
   PencilRuler,
+  Trophy,
 } from "lucide-react";
 
 import {
@@ -49,7 +48,6 @@ import {
 } from "../ui/dropdown-menu";
 
 import { authClient } from "@/lib/auth-client";
-import MyLogo from "../navigation/Logo";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { clearCommunityPresence } from "@/lib/clear-community-presence";
 
@@ -93,6 +91,21 @@ const adminNavigation: NavigationGroup = {
       title: "Whiteboard Studio",
       url: "/admin/whiteboard",
       icon: PencilRuler,
+    },
+    {
+      title: "Official Posts",
+      url: "/admin/official-posts",
+      icon: Megaphone,
+    },
+    {
+      title: "Challenge Submissions",
+      url: "/admin/challenge-submissions",
+      icon: Trophy,
+    },
+    {
+      title: "Daily Challenges",
+      url: "/admin/daily-challenges",
+      icon: CalendarDays,
     },
     {
       title: "Educators",
@@ -199,6 +212,17 @@ const userNavigation: NavigationGroup[] = [
         title: "Earnings",
         url: "/earnings",
         icon: WalletCards,
+      },
+    ],
+  },
+
+    {
+    title: "Creator",
+    items: [
+      {
+        title: "Video Analytics",
+        url: "/dashboard/creator-analytics",
+        icon: BarChart3,
       },
     ],
   },
@@ -601,8 +625,11 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
   );
 
   const visibleNavigation: NavigationGroup[] = isAdmin
-    ? [adminNavigation]
-    : visibleUserNavigation;
+  ? [
+      adminNavigation,
+      ...userNavigation.filter((group) => group.title === "Creator"),
+    ]
+  : visibleUserNavigation;
 
   const userInitials =
     userName
@@ -710,24 +737,33 @@ async function handleSignOut() {
 
   return (
     <Sidebar
-      collapsible="offcanvas"
-      className="relative isolate overflow-hidden border-r border-[#E2B982] bg-[#FAD6AC] text-[#173B2F] [--sidebar-width:264px] shadow-[4px_0_24px_-24px_hsl(var(--foreground)/0.25)]"
-      {...props}
-    >
-      {/* Landing-page dotted background */}
-      <div
-        className="pointer-events-none absolute inset-0 z-0"
-        aria-hidden="true"
-        style={{
-          backgroundColor: "#FAD6AC",
-          backgroundImage:
-            "radial-gradient(circle, rgba(139,85,35,0.62) 1.15px, transparent 1.3px)",
-          backgroundSize: "25px 25px",
-        }}
-      />
+  collapsible="offcanvas"
+  className="
+    isolate h-dvh max-h-dvh overflow-hidden
+    border-r border-[#E8C49C]/80
+    bg-[#FFF8EF] text-[#173B2F]
+    [--sidebar-width:264px]
+    shadow-[8px_0_32px_-24px_rgba(23,59,47,0.18)]
+  "
+  {...props}
+>
+     {/* Refined sidebar background */}
+<div
+  className="pointer-events-none absolute inset-0 z-0"
+  aria-hidden="true"
+  style={{
+    background:
+      "linear-gradient(180deg, #FFF8EF 0%, #FFF3E5 55%, #FCEBD8 100%)",
+  }}
+/>
+
+<div
+  className="pointer-events-none absolute -right-20 top-32 z-0 size-64 rounded-full bg-[#E8B77F]/10 blur-3xl"
+  aria-hidden="true"
+/>
 
       {/* Sidebar Header */}
-      <SidebarHeader className="relative z-10 shrink-0 border-b border-[#E2B982] bg-transparent px-3.5 py-2.5">
+     <SidebarHeader className="relative z-10 shrink-0 border-b border-[#E8C49C]/60 bg-white/35 px-3.5 py-3 backdrop-blur-sm">
         <div className="flex h-8 min-w-0 items-center justify-between gap-2 overflow-hidden">
           <div>
              <Link
@@ -758,12 +794,12 @@ async function handleSignOut() {
       </SidebarHeader>
 
       {/* Sidebar Navigation */}
-      <SidebarContent className="relative z-10 min-h-0 bg-transparent px-2 py-2.5">
+     <SidebarContent className="relative z-10 min-h-0 flex-1 bg-transparent px-2.5 py-4">
         {renderNavigation(visibleNavigation)}
       </SidebarContent>
 
       {/* Sidebar Footer */}
-      <SidebarFooter className="relative z-10 border-t border-[#E2B982] bg-transparent p-2">
+     <SidebarFooter className="relative z-10 shrink-0 border-t border-[#E8C49C]/60 bg-white/40 p-2.5 backdrop-blur-sm">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button

@@ -15,19 +15,13 @@ export async function POST(
   },
 ) {
   try {
-    /*
-     * Only authenticated administrators may approve
-     * or reject tutor applications.
-     */
     const session = await auth.api.getSession({
       headers: await headers(),
     });
 
     if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json(
-        {
-          error: "Administrator access required.",
-        },
+        { error: "Administrator access required." },
         { status: 403 },
       );
     }
@@ -40,29 +34,19 @@ export async function POST(
 
     if (body.action !== "verify" && body.action !== "reject") {
       return NextResponse.json(
-        {
-          error: "Action must be verify or reject.",
-        },
+        { error: "Action must be verify or reject." },
         { status: 400 },
       );
     }
 
     const action = body.action as VerificationAction;
 
-    /*
-     * Load the teaching profile together with
-     * the associated account.
-     */
     const profile = await prisma.teachingProfile.findUnique({
-      where: {
-        id,
-      },
-
+      where: { id },
       select: {
         id: true,
         userId: true,
         verificationStatus: true,
-
         user: {
           select: {
             id: true,
@@ -75,127 +59,60 @@ export async function POST(
 
     if (!profile) {
       return NextResponse.json(
-        {
-          error: "Teaching application not found.",
-        },
+        { error: "Teaching profile not found." },
         { status: 404 },
       );
     }
 
-    /*
-     * Administrators are platform operators.
-     *
-     * They do not need to go through the normal
-     * tutor approval process.
-     */
-    if (profile.user.role === "ADMIN") {
+    // An administrator cannot review their own teaching profile.
+    if (profile.userId === session.user.id) {
       return NextResponse.json(
-        {
-          error: "Administrator teaching profiles do not require approval.",
-        },
-        { status: 400 },
+        { error: "You cannot review your own teaching profile." },
+        { status: 403 },
       );
     }
 
-    /*
-     * Only active learner accounts can be approved
-     * as tutors.
-     */
-    if (profile.user.status !== "Active") {
+    // Only actual tutor accounts and administrator teaching profiles
+    // are eligible for this approval workflow.
+    if (
+      profile.user.role !== "TUTOR" &&
+      profile.user.role !== "ADMIN"
+    ) {
       return NextResponse.json(
         {
           error:
-            "This user's account is not currently eligible for tutor approval.",
+            "Only tutor accounts and administrator teaching profiles can be reviewed.",
         },
         { status: 400 },
       );
     }
 
-    const verified = action === "verify";
-
-    /*
-     * ---------------------------------------------------------
-     * APPROVE
-     * ---------------------------------------------------------
-     *
-     * The account remains:
-     *
-     *   User.role = USER
-     *
-     * and gains:
-     *
-     *   CAN_LEARN
-     *   CAN_TEACH
-     *   CAN_TUTOR
-     *   CAN_RECEIVE_PAYOUTS
-     */
-    if (verified) {
-      await prisma.teachingProfile.update({
-  where: {
-    id: profile.id,
-  },
-  data: {
-    verificationStatus: "Verified",
-  },
-});
-
-      
-
-      return NextResponse.json({
-        success: true,
-        status: "Verified",
-        userId: profile.userId,
-      });
+    if (profile.user.status !== "Active") {
+      return NextResponse.json(
+        { error: "This account is not currently active." },
+        { status: 400 },
+      );
     }
 
-    /*
-     * ---------------------------------------------------------
-     * REJECT
-     * ---------------------------------------------------------
-     *
-     * The account remains:
-     *
-     *   User.role = USER
-     *
-     * and keeps:
-     *
-     *   CAN_LEARN
-     *
-     * but loses:
-     *
-     *   CAN_TEACH
-     *   CAN_TUTOR
-     *   CAN_RECEIVE_PAYOUTS
-     *
-     * The applicant may later submit a new application.
-     */
+    const verificationStatus =
+      action === "verify" ? "Verified" : "Rejected";
+
     await prisma.teachingProfile.update({
-      where: {
-        id: profile.id,
-      },
-
-      data: {
-        verificationStatus: "Rejected",
-      },
+      where: { id: profile.id },
+      data: { verificationStatus },
     });
-
-    /*
-     * Explicitly preserve learner access.
-     */
-  
 
     return NextResponse.json({
       success: true,
-      status: "Rejected",
+      status: verificationStatus,
       userId: profile.userId,
+      role: profile.user.role,
     });
   } catch (error) {
-    console.error("Tutor verification error:", error);
+    console.error("Teaching profile verification error:", error);
 
     return NextResponse.json(
-      {
-        error: "Unable to update tutor application.",
-      },
+      { error: "Unable to update teaching profile verification." },
       { status: 500 },
     );
   }

@@ -77,18 +77,38 @@ export default async function AdminLayout({ children }: LayoutProps) {
     redirect("/verify-email-notice");
   }
 
-  return (
+    return (
     <SidebarProvider
       defaultOpen={true}
-      className="flex h-dvh min-h-0 bg-background text-foreground"
+      className="
+        flex h-dvh min-h-0 w-full
+        overflow-hidden
+        bg-[#F7FAF6] text-[#20372A]
+      "
     >
       <AppSidebar />
 
-      <SidebarInset className="relative flex min-h-0 flex-1 flex-col bg-background text-foreground">
-        {/* Only appears when the sidebar is closed */}
+      <SidebarInset
+        className="
+          relative flex h-dvh min-h-0 min-w-0
+          flex-1 flex-col overflow-hidden
+          bg-[#F8FAF7]
+          shadow-none
+        "
+      >
         <SidebarReopenTrigger />
 
-        <main className="min-h-0 flex-1 bg-background">{children}</main>
+        <main
+          className="
+            min-h-0 min-w-0 flex-1
+            overflow-x-hidden overflow-y-auto
+            overscroll-y-contain
+            scroll-smooth
+            bg-[#F8FAF7]
+          "
+        >
+          {children}
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );

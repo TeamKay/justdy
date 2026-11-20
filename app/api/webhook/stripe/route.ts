@@ -14,6 +14,10 @@ import { env } from "@/lib/env";
 import { Resend } from "resend";
 import crypto from "crypto";
 import { processUniversalTutoringBooking } from "@/lib/tutoring-payment-finalization";
+import {
+  expireGuestTutoringCheckout,
+  processGuestTutoringBooking,
+} from "@/lib/tutoring-guest-payment-finalization";
 
 // ============================================================
 // RESEND
@@ -401,11 +405,30 @@ export async function POST(req: Request) {
   if (event.type === "checkout.session.expired") {
     if (session.metadata?.checkoutType === "TUTORING") {
       await expireUniversalTutoringBooking(session);
+    } else if (session.metadata?.checkoutType === "TUTORING_GUEST") {
+      await expireGuestTutoringCheckout(session);
     }
 
     return NextResponse.json({
       received: true,
       expired: true,
+    });
+  }
+
+  // ==========================================================
+  // GUEST TUTORING PAYMENT FINALIZATION
+  //
+  // Guest checkouts must enter the same canonical Booking lifecycle as
+  // registered learners. Handle them before generic transaction
+  // idempotency and legacy Appointment fulfillment.
+  // ==========================================================
+
+  if (session.metadata?.checkoutType === "TUTORING_GUEST") {
+    const result = await processGuestTutoringBooking(session);
+    return NextResponse.json({
+      received: true,
+      guestTutoringProcessed: result.processed,
+      bookingId: result.bookingId ?? null,
     });
   }
 

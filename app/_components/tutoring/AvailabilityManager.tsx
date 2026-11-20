@@ -79,8 +79,9 @@ export default function AvailabilityManager({ initialAvailability }: Props) {
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
 
-  const [saving, setSaving] = useState(false);
+ const [saving, setSaving] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const minimumDate = useMemo(() => getTodayDate(), []);
@@ -172,60 +173,68 @@ export default function AvailabilityManager({ initialAvailability }: Props) {
     }
   }
 
-  async function removeSlot(id: string) {
-    const slot = availability.find((item) => item.id === id);
+function removeSlot(id: string) {
+  const slot = availability.find((item) => item.id === id);
 
-    if (!slot) {
-      return;
-    }
+  if (!slot) return;
 
-    if (slot.status === "Booked") {
-      setError("A booked tutoring time cannot be removed.");
-      return;
-    }
-
-    if (slot.status !== "Available") {
-      setError("This availability is not currently available for removal.");
-      return;
-    }
-
-    if (
-      !window.confirm(
-        "Remove this availability slot? Learners will no longer be able to book this time.",
-      )
-    ) {
-      return;
-    }
-
-    setRemovingId(id);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/educator/availability", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id,
-        }),
-      });
-
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        throw new Error(data?.error || "Unable to remove availability.");
-      }
-
-      setAvailability((current) => current.filter((item) => item.id !== id));
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to remove availability.",
-      );
-    } finally {
-      setRemovingId(null);
-    }
+  if (slot.status === "Booked") {
+    setError("A booked tutoring time cannot be removed.");
+    return;
   }
+
+  if (slot.status !== "Available") {
+    setError("This availability is not currently available for removal.");
+    return;
+  }
+
+  setError(null);
+  setConfirmRemoveId(id);
+}
+
+async function confirmRemoveSlot() {
+  const id = confirmRemoveId;
+
+  if (!id) return;
+
+  const slot = availability.find((item) => item.id === id);
+
+  if (!slot || slot.status !== "Available") {
+    setConfirmRemoveId(null);
+    return;
+  }
+
+  setRemovingId(id);
+  setError(null);
+
+  try {
+    const response = await fetch("/api/educator/availability", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id }),
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(data?.error || "Unable to remove availability.");
+    }
+
+    setAvailability((current) =>
+      current.filter((item) => item.id !== id),
+    );
+
+    setConfirmRemoveId(null);
+  } catch (err) {
+    setError(
+      err instanceof Error ? err.message : "Unable to remove availability.",
+    );
+  } finally {
+    setRemovingId(null);
+  }
+}
 
   return (
     <div className="space-y-5">
@@ -237,6 +246,89 @@ export default function AvailabilityManager({ initialAvailability }: Props) {
           {error}
         </div>
       ) : null}
+
+      {confirmRemoveId && (
+  <div
+    className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+    onMouseDown={(event) => {
+      if (
+        event.target === event.currentTarget &&
+        !removingId
+      ) {
+        setConfirmRemoveId(null);
+      }
+    }}
+  >
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="remove-availability-title"
+      className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+    >
+      <div className="flex items-start gap-4">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
+          <Trash2 className="h-5 w-5" />
+        </div>
+
+        <div className="min-w-0">
+          <h3
+            id="remove-availability-title"
+            className="text-lg font-semibold text-slate-950"
+          >
+            Remove availability?
+          </h3>
+
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Are you sure you want to remove this bookable time?
+            Learners will no longer be able to book it.
+          </p>
+        </div>
+      </div>
+
+      {(() => {
+        const slot = availability.find(
+          (item) => item.id === confirmRemoveId,
+        );
+
+        return slot ? (
+          <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-semibold text-slate-900">
+              {formatDate(slot.startTime)}
+            </p>
+            <p className="mt-1 text-sm text-slate-600">
+              {formatTime(slot.startTime)} – {formatTime(slot.endTime)}
+            </p>
+          </div>
+        ) : null;
+      })()}
+
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          disabled={Boolean(removingId)}
+          onClick={() => setConfirmRemoveId(null)}
+          className="h-10 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          disabled={Boolean(removingId)}
+          onClick={confirmRemoveSlot}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {removingId ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4" />
+          )}
+          {removingId ? "Removing..." : "Remove availability"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* =========================================================
           CREATE AVAILABILITY

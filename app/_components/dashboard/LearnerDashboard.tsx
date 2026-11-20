@@ -49,26 +49,54 @@ function MetricCard({
   tone?: "blue" | "green" | "violet" | "amber";
 }) {
   const tones = {
-    blue: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300",
-    green: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
-    violet: "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300",
-    amber: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
+    blue: {
+      surface: "bg-[#E5F1FF]",
+      icon: "text-[#3475B9]",
+      accent: "bg-[#6FA8E8]",
+    },
+    green: {
+      surface: "bg-[#E5F4E6]",
+      icon: "text-[#39804A]",
+      accent: "bg-[#79B76C]",
+    },
+    violet: {
+      surface: "bg-[#F0EAFE]",
+      icon: "text-[#8062C4]",
+      accent: "bg-[#A18ADB]",
+    },
+    amber: {
+      surface: "bg-[#FFF2D9]",
+      icon: "text-[#B27B28]",
+      accent: "bg-[#E8BD63]",
+    },
   };
 
+  const selected = tones[tone];
+
   return (
-    <article className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <article className="group relative overflow-hidden rounded-[1.6rem] border border-[#E8EEE5] bg-white p-5 shadow-[0_5px_22px_rgba(35,70,40,0.035)] transition duration-300 hover:-translate-y-1 hover:border-[#C9DFC5] hover:shadow-[0_16px_35px_rgba(35,70,40,0.09)] sm:p-6">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">{label}</p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-foreground">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[#718273]">{label}</p>
+          <p className="mt-3 text-4xl font-black tracking-[-0.05em] text-[#20442C]">
             {value}
           </p>
         </div>
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${tones[tone]}`}>
+
+        <div
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${selected.surface} ${selected.icon}`}
+        >
           <Icon className="h-5 w-5" />
         </div>
       </div>
-      <p className="mt-3 text-xs leading-5 text-muted-foreground">{helper}</p>
+
+      <p className="mt-3 max-w-[15rem] text-xs leading-5 text-[#879487]">
+        {helper}
+      </p>
+
+      <div
+        className={`absolute bottom-0 left-0 h-1 w-0 ${selected.accent} transition-all duration-300 group-hover:w-full`}
+      />
     </article>
   );
 }
@@ -163,81 +191,108 @@ function NextLessonCard({
 }) {
   if (!lesson) {
     return (
-      <section className="rounded-2xl border border-dashed border-border bg-card p-6 sm:p-7">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
-          <CalendarDays className="h-6 w-6" />
+      <section className="relative overflow-hidden rounded-[1.8rem] border border-dashed border-[#C9DEC7] bg-[#F0F8ED] p-6 sm:p-8">
+        <div className="absolute -right-12 -top-16 h-48 w-48 rounded-full bg-[#DDEFD8]/70" />
+
+        <div className="relative">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-[#43844D] shadow-sm">
+            <CalendarDays className="h-6 w-6" />
+          </div>
+
+          <p className="mt-5 text-xs font-extrabold uppercase tracking-[0.16em] text-[#65916A]">
+            Your learning calendar
+          </p>
+
+          <h2 className="mt-2 text-2xl font-black tracking-tight text-[#214A30]">
+            Your next lesson is waiting.
+          </h2>
+
+          <p className="mt-2 max-w-lg text-sm leading-7 text-[#718473]">
+            No upcoming lessons yet. Find a tutor and schedule a session to
+            keep your learning journey moving.
+          </p>
+
+          <Link
+            href="/tutoring"
+            className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-xl bg-[#286C40] px-5 py-3 text-sm font-bold text-white shadow-[0_8px_18px_rgba(40,108,64,0.16)] transition hover:-translate-y-0.5 hover:bg-[#1D5733] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#A7D6A3]/50"
+          >
+            Find a tutor
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
-        <h2 className="mt-4 text-lg font-bold text-foreground">
-          No upcoming lessons
-        </h2>
-        <p className="mt-1 max-w-lg text-sm leading-6 text-muted-foreground">
-          Your next learning session will appear here after you book a lesson.
-          Keep building your skills at your own pace.
-        </p>
-        <Link
-          href="/tutoring"
-          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
-        >
-          Find a tutor
-          <ArrowRight className="h-4 w-4" />
-        </Link>
       </section>
     );
   }
 
   const readyToJoin = canJoinLesson(lesson);
   const sessionId = lesson.tutoringSessionId || lesson.id;
+
   const lessonHref = `/tutoring/sessions/${encodeURIComponent(
     readyToJoin ? lesson.id : sessionId,
   )}`;
 
   return (
-    <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#142F57] via-[#1d477c] to-[#2864F0] p-6 text-white shadow-lg sm:p-7">
-      <div className="pointer-events-none absolute -right-12 -top-16 h-52 w-52 rounded-full border-[28px] border-white/10" />
-      <div className="pointer-events-none absolute -bottom-24 right-24 h-48 w-48 rounded-full bg-white/5" />
+    <section className="relative isolate overflow-hidden rounded-[1.8rem] bg-[#214F34] p-6 text-white shadow-[0_18px_45px_rgba(32,79,52,0.16)] sm:p-8">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+      >
+        <div className="absolute -right-16 -top-24 h-80 w-80 rounded-full border-[45px] border-white/[0.06]" />
+        <div className="absolute -bottom-36 right-1/3 h-72 w-72 rounded-full bg-[#6C9F5A]/20 blur-2xl" />
+        <div className="absolute -left-16 -top-16 h-48 w-48 rounded-full bg-[#A8C96E]/10 blur-2xl" />
+      </div>
 
       <div className="relative">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90">
-            <CalendarDays className="h-3.5 w-3.5" />
-            Your next lesson
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-2 text-xs font-bold text-white/90">
+            <CalendarDays className="h-4 w-4 text-[#D7EBAF]" />
+            YOUR NEXT LESSON
           </span>
+
           {readyToJoin ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/20 px-3 py-1.5 text-xs font-semibold text-emerald-100">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300" />
+            <span className="inline-flex items-center gap-2 rounded-full bg-[#B8E6A6]/15 px-3.5 py-2 text-xs font-bold text-[#D9F5C9]">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-[#A9E58F]" />
               Ready to join
             </span>
           ) : (
-            <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90">
+            <span className="rounded-full bg-white/10 px-3.5 py-2 text-xs font-semibold text-white/85">
               Upcoming
             </span>
           )}
         </div>
 
-        <div className="mt-6 grid gap-6 md:grid-cols-[1fr_auto] md:items-end">
+        <div className="mt-8 grid gap-7 md:grid-cols-[1fr_auto] md:items-end">
           <div className="min-w-0">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            <p className="text-sm font-semibold text-[#C5DEB8]">
+              Keep your learning momentum going
+            </p>
+
+            <h2 className="mt-2 max-w-2xl text-2xl font-black tracking-[-0.035em] sm:text-3xl">
               {lesson.service?.title ?? "Tutoring lesson"}
             </h2>
-            <p className="mt-2 text-sm text-blue-100">
+
+            <p className="mt-2 text-sm text-white/75">
               {lesson.subject ?? "Learning session"} with{" "}
               {lesson.educator?.name ?? "your tutor"}
             </p>
-            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/90">
-              <span className="inline-flex items-center gap-2">
-                <CalendarDays className="h-4 w-4 text-blue-200" />
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.08] px-3.5 py-2.5 text-xs font-semibold text-white/90">
+                <CalendarDays className="h-4 w-4 text-[#D7EBAF]" />
                 {formatDate(lesson.startTime)}
               </span>
-              <span className="inline-flex items-center gap-2">
-                <Clock3 className="h-4 w-4 text-blue-200" />
-                {formatTime(lesson.startTime)} – {formatTime(lesson.endTime)}
+
+              <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.08] px-3.5 py-2.5 text-xs font-semibold text-white/90">
+                <Clock3 className="h-4 w-4 text-[#D7EBAF]" />
+                {formatTime(lesson.startTime)} –{" "}
+                {formatTime(lesson.endTime)}
               </span>
             </div>
           </div>
 
           <Link
             href={lessonHref}
-            className="inline-flex w-fit items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#142F57] shadow-sm transition hover:bg-blue-50"
+            className="inline-flex min-h-12 w-fit items-center justify-center gap-2 rounded-xl bg-[#E8F5D9] px-5 py-3 text-sm font-extrabold text-[#245333] shadow-sm transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30"
           >
             {readyToJoin ? (
               <>
@@ -288,7 +343,7 @@ function LearningProgress({
     : 0;
 
   return (
-    <section className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm sm:p-6">
+   <section className="rounded-[1.7rem] border border-[#E7EEE4] bg-white p-6 shadow-[0_5px_22px_rgba(35,70,40,0.035)] sm:p-8">
       <SectionHeading
         eyebrow="Your development"
         title="Learning progress"
@@ -526,39 +581,62 @@ export default function LearnerDashboard({
     : null;
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-7">
-      {showWelcome ? (
-        <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-              YOUR PERSONAL LEARNING SPACE
-            </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              Welcome back, {firstName}.
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-              Keep building your skills. Your lessons, learning activity, and
-              progress are all in one place.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href="/dashboard/progress"
-              className="inline-flex w-fit items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground shadow-sm transition hover:bg-muted"
-            >
-              <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              View learning progress
-            </Link>
-            <Link
-              href="/tutoring"
-              className="inline-flex w-fit items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
-            >
-              Find a tutor
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </section>
-      ) : null}
+   <div className="mx-auto w-full max-w-7xl space-y-7 pb-8">
+     {showWelcome ? (
+  <section className="relative isolate overflow-hidden rounded-[2rem] bg-[#F0F7E9] px-6 py-8 sm:px-9 sm:py-10 lg:px-11">
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+    >
+      <div className="absolute -right-20 -top-28 h-80 w-80 rounded-full bg-[#D7EBCB]/80 blur-2xl" />
+      <div className="absolute bottom-[-9rem] right-[28%] h-64 w-64 rounded-full bg-[#E4EED0] blur-2xl" />
+      <div className="absolute right-[16%] top-8 text-7xl font-black text-[#7EA66D]/10">
+        +
+      </div>
+      <div className="absolute bottom-2 right-8 rotate-12 text-8xl font-black text-[#7EA66D]/10">
+        ÷
+      </div>
+    </div>
+
+    <div className="relative flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
+      <div className="max-w-2xl">
+        <span className="inline-flex items-center gap-2 rounded-full border border-[#D6E7CF] bg-white/75 px-3.5 py-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#548052]">
+          <Sparkles className="h-3.5 w-3.5" />
+          Your personal learning space
+        </span>
+
+        <h1 className="mt-5 text-3xl font-black leading-tight tracking-[-0.045em] text-[#20452D] sm:text-4xl lg:text-5xl">
+          Welcome back, {firstName}.
+          <br />
+          <span className="text-[#5B9949]">Ready to grow today?</span>
+        </h1>
+
+        <p className="mt-4 max-w-xl text-sm leading-7 text-[#718273] sm:text-base">
+          Every question you ask and every skill you practise takes you one
+          step further. Your learning journey continues here.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-3 lg:max-w-[270px] lg:flex-col">
+        <Link
+          href="/dashboard/progress"
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#D7E5D1] bg-white/90 px-5 py-3 text-sm font-bold text-[#315B3A] shadow-sm transition hover:-translate-y-0.5 hover:bg-white"
+        >
+          <TrendingUp className="h-4 w-4 text-[#55924D]" />
+          View my progress
+        </Link>
+
+        <Link
+          href="/tutoring"
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#286C40] px-5 py-3 text-sm font-bold text-white shadow-[0_8px_18px_rgba(40,108,64,0.16)] transition hover:-translate-y-0.5 hover:bg-[#1D5733]"
+        >
+          Find a tutor
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
+    </div>
+  </section>
+) : null}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
@@ -608,7 +686,7 @@ export default function LearnerDashboard({
         completedSessions={completedSessions}
       />
 
-      <section className="rounded-2xl border border-border/70 bg-muted/30 p-5 sm:flex sm:items-center sm:justify-between sm:gap-5 sm:p-6">
+     <section className="rounded-[1.7rem] border border-[#E1EBDD] bg-[#F2F7ED] p-6 sm:flex sm:items-center sm:justify-between sm:gap-5 sm:p-8">
         <div className="flex items-start gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm dark:bg-card dark:text-blue-400">
             <BookOpen className="h-5 w-5" />
