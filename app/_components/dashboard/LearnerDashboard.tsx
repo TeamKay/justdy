@@ -9,7 +9,7 @@ import {
   formatTime,
   EmptyState,
 } from "@/app/_components/dashboard/DashboardShared";
-import GamePerformanceCard from "@/app/_components/dashboard/GamePerformanceCard";
+
 
 import {
   ArrowRight,
@@ -674,7 +674,7 @@ export default function LearnerDashboard({
       </section>
 
       <NextLessonCard lesson={upcoming[0]} />
-      <GamePerformanceCard />
+    
 
       <LearningProgress
         activities={activities}
