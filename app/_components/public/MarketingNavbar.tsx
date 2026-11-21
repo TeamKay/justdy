@@ -205,7 +205,7 @@ export default function MarketingNavbar() {
             ) : showUnauthenticatedUI ? (
               <Link
                 href="/auth?mode=signin"
-                className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-lg bg-[#147D72] px-7 text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-[#0F625A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#147D72]"
+                className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-lg bg-[#8c9112] px-7 text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-[#787a2c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#147D72]"
               >
                 Sign in
               </Link>

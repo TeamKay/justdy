@@ -88,7 +88,7 @@ function hasValidNewsletterConsent(
   );
 }
 
-function getExclusionReason(contact: {
+export function getExclusionReason(contact: {
   email: string;
   normalizedEmail: string;
   userId: string | null;
@@ -151,7 +151,145 @@ function getExclusionReason(contact: {
  *
  * This function does not create campaign recipients and never sends email.
  * Eligibility is recalculated from current contact, consent, and account data.
+ * 
+ * 
  */
+
+
+export interface EligibleMarketingContact {
+  id: string;
+  email: string;
+  normalizedEmail: string;
+  name: string | null;
+}
+
+/**
+ * Retrieves contacts currently eligible for marketing email.
+ *
+ * Uses exactly the same consent and account eligibility rules
+ * as the audience preview.
+ *
+ * This function does not create recipients or send email.
+ */
+export async function getEligibleMarketingContacts(): Promise<
+  EligibleMarketingContact[]
+> {
+  const contacts = await prisma.marketingContact.findMany({
+    where: {
+      subscriptionStatus: "SUBSCRIBED",
+    },
+    select: {
+      id: true,
+      email: true,
+      normalizedEmail: true,
+      name: true,
+      userId: true,
+      user: {
+        select: {
+          status: true,
+          emailVerified: true,
+        },
+      },
+      consentEvents: {
+        orderBy: [
+          { occurredAt: "desc" },
+          { createdAt: "desc" },
+        ],
+        take: 1,
+        select: {
+          action: true,
+          authorizationType: true,
+          channel: true,
+          method: true,
+          consentTextVersion: true,
+          consentGivenByEmail: true,
+          evidenceMetadata: true,
+        },
+      },
+    },
+  });
+
+  return contacts
+    .filter((contact) => getExclusionReason(contact) === null)
+    .map((contact) => ({
+      id: contact.id,
+      email: contact.email,
+      normalizedEmail: contact.normalizedEmail,
+      name: contact.name,
+    }));
+}
+
+
+/**
+ * Finds one marketing contact by email and verifies current eligibility.
+ *
+ * Individual campaigns may only target an existing subscribed contact
+ * with valid newsletter consent and an eligible account.
+ */
+export async function getEligibleMarketingContactByEmail(
+  email: string,
+): Promise<EligibleMarketingContact | null> {
+  let normalizedEmail: string;
+
+  try {
+    normalizedEmail = normalizeMarketingEmail(email);
+  } catch {
+    return null;
+  }
+
+  const contact = await prisma.marketingContact.findUnique({
+    where: {
+      normalizedEmail,
+    },
+    select: {
+      id: true,
+      email: true,
+      normalizedEmail: true,
+      name: true,
+      subscriptionStatus: true,
+      userId: true,
+      user: {
+        select: {
+          status: true,
+          emailVerified: true,
+        },
+      },
+      consentEvents: {
+        orderBy: [
+          { occurredAt: "desc" },
+          { createdAt: "desc" },
+        ],
+        take: 1,
+        select: {
+          action: true,
+          authorizationType: true,
+          channel: true,
+          method: true,
+          consentTextVersion: true,
+          consentGivenByEmail: true,
+          evidenceMetadata: true,
+        },
+      },
+    },
+  });
+
+  if (
+    !contact ||
+    contact.subscriptionStatus !== "SUBSCRIBED" ||
+    getExclusionReason(contact) !== null
+  ) {
+    return null;
+  }
+
+  return {
+    id: contact.id,
+    email: contact.email,
+    normalizedEmail: contact.normalizedEmail,
+    name: contact.name,
+  };
+}
+
+
 export async function previewMarketingAudience(): Promise<MarketingAudiencePreview> {
   const [statusCounts, subscribedContacts] = await Promise.all([
     prisma.marketingContact.groupBy({

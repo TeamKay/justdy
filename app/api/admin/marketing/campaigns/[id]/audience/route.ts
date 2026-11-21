@@ -1,7 +1,9 @@
-
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { previewMarketingAudience } from "@/lib/marketing/audience-service";
+import {
+  getEligibleMarketingContactByEmail,
+  previewMarketingAudience,
+} from "@/lib/marketing/audience-service";
 
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
@@ -58,6 +60,7 @@ export async function GET(
         name: true,
         kind: true,
         status: true,
+        individualRecipientEmail: true,
       },
     });
 
@@ -78,6 +81,88 @@ export async function GET(
       );
     }
 
+    if (campaign.kind === "INDIVIDUAL") {
+      const recipientEmail = campaign.individualRecipientEmail?.trim();
+
+      if (!recipientEmail) {
+        return NextResponse.json(
+          {
+            error:
+              "This Individual campaign does not have a recipient email address. Edit the campaign and add an eligible recipient.",
+          },
+          { status: 409 },
+        );
+      }
+
+      // Recheck current subscription and consent eligibility at preview time.
+      // This does not create a recipient record or send an email.
+      const eligibleContact =
+        await getEligibleMarketingContactByEmail(recipientEmail);
+
+      if (!eligibleContact) {
+        return NextResponse.json({
+          success: true,
+          campaign: {
+            id: campaign.id,
+            name: campaign.name,
+            kind: campaign.kind,
+          },
+          audience: {
+            totalContacts: 1,
+            eligibleCount: 0,
+            excludedCount: 1,
+            breakdown: {
+              notSubscribed: 0,
+              unsubscribed: 0,
+              suppressed: 0,
+              invalidEmail: 0,
+              missingOrWithdrawnConsent: 0,
+              accountNotEligible: 0,
+              individualRecipientIneligible: 1,
+            },
+            recipient: {
+              email: recipientEmail,
+              eligible: false,
+            },
+          },
+          previewOnly: true,
+          emailsSent: 0,
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        campaign: {
+          id: campaign.id,
+          name: campaign.name,
+          kind: campaign.kind,
+        },
+        audience: {
+          totalContacts: 1,
+          eligibleCount: 1,
+          excludedCount: 0,
+          breakdown: {
+            notSubscribed: 0,
+            unsubscribed: 0,
+            suppressed: 0,
+            invalidEmail: 0,
+            missingOrWithdrawnConsent: 0,
+            accountNotEligible: 0,
+            individualRecipientIneligible: 0,
+          },
+          recipient: {
+            id: eligibleContact.id,
+            email: eligibleContact.email,
+            name: eligibleContact.name,
+            eligible: true,
+          },
+        },
+        previewOnly: true,
+        emailsSent: 0,
+      });
+    }
+
+    // Bulk campaigns continue to use the complete eligible-audience preview.
     const audience = await previewMarketingAudience();
 
     return NextResponse.json({

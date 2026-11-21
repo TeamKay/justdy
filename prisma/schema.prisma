@@ -1890,6 +1890,7 @@ model MarketingConsentEvent {
 model MarketingCampaign {
   id          String                  @id @default(cuid())
   kind        MarketingCampaignKind
+   individualRecipientEmail String?
   status      MarketingCampaignStatus @default(DRAFT)
   name        String
   subject     String
@@ -1907,11 +1908,45 @@ model MarketingCampaign {
 
   createdBy  User                         @relation(fields: [createdById], references: [id], onDelete: Restrict)
   recipients MarketingCampaignRecipient[]
+  batches    MarketingCampaignBatch[]
 
   @@index([status, scheduledAt])
   @@index([createdById, createdAt])
   @@index([kind, createdAt])
   @@map("marketing_campaign")
+}
+
+model MarketingCampaignBatch {
+  id         String                       @id @default(cuid())
+  campaignId String
+  sequence   Int
+  status     MarketingCampaignBatchStatus @default(PENDING)
+
+  recipientCount Int @default(0)
+  processedCount Int @default(0)
+  sentCount      Int @default(0)
+  failedCount    Int @default(0)
+  skippedCount   Int @default(0)
+
+  attemptCount   Int     @default(0)
+  queueMessageId String? @unique
+
+  queuedAt       DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  leaseExpiresAt DateTime?
+  lastError      String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaign   MarketingCampaign            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  recipients MarketingCampaignRecipient[]
+
+  @@unique([campaignId, sequence])
+  @@index([campaignId, status])
+  @@index([status, leaseExpiresAt])
+  @@map("marketing_campaign_batch")
 }
 
 model MarketingCampaignRecipient {
@@ -1929,14 +1964,17 @@ model MarketingCampaignRecipient {
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
 
-  campaign MarketingCampaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contact  MarketingContact      @relation(fields: [contactId], references: [id], onDelete: Restrict)
+  campaign MarketingCampaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact  MarketingContact        @relation(fields: [contactId], references: [id], onDelete: Restrict)
   events   MarketingEmailEvent[]
+  batchId  String?
+  batch    MarketingCampaignBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
 
   @@unique([campaignId, contactId])
   @@index([campaignId, status])
   @@index([contactId, createdAt])
   @@index([status, createdAt])
+  @@index([batchId, status])
   @@map("marketing_campaign_recipient")
 }
 
@@ -2080,4 +2118,13 @@ enum MarketingRecipientStatus {
   COMPLAINED
   FAILED
   SKIPPED
+}
+
+enum MarketingCampaignBatchStatus {
+  PENDING
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
 }

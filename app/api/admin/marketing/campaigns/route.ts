@@ -4,11 +4,14 @@ import prisma from "@/lib/prisma";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { getEligibleMarketingContactByEmail } from "@/lib/marketing/audience-service";
+
 
 export const dynamic = "force-dynamic";
 
 const createCampaignSchema = z.object({
   kind: z.enum(["BULK", "INDIVIDUAL"]),
+  individualRecipientEmail: z.string().trim().email().max(254).optional(),
   name: z.string().trim().min(1).max(160),
   subject: z.string().trim().min(1).max(200),
   htmlContent: z.string().min(1).max(500_000),
@@ -146,6 +149,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
+
 export async function POST(request: NextRequest) {
   const authResult = await requireAdmin();
 
@@ -177,9 +181,48 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    let individualRecipientEmail: string | null = null;
+
+    if (parsed.data.kind === "INDIVIDUAL") {
+      const requestedEmail = parsed.data.individualRecipientEmail;
+
+      if (!requestedEmail) {
+        return NextResponse.json(
+          {
+            error: "An individual campaign requires a recipient email address.",
+          },
+          { status: 400 },
+        );
+      }
+
+      const eligibleContact =
+        await getEligibleMarketingContactByEmail(requestedEmail);
+
+      if (!eligibleContact) {
+        return NextResponse.json(
+          {
+            error:
+              "This email is not an eligible subscribed marketing contact with valid consent.",
+          },
+          { status: 400 },
+        );
+      }
+
+      individualRecipientEmail = eligibleContact.email;
+    }
+
     const campaign = await prisma.marketingCampaign.create({
       data: {
-        ...parsed.data,
+        kind: parsed.data.kind,
+        ...(parsed.data.kind === "INDIVIDUAL"
+          ? { individualRecipientEmail }
+          : {}),
+        name: parsed.data.name,
+        subject: parsed.data.subject,
+        htmlContent: parsed.data.htmlContent,
+        textContent: parsed.data.textContent,
+        fromName: parsed.data.fromName,
+        replyTo: parsed.data.replyTo,
         status: "DRAFT",
         createdById: authResult.userId,
       },
@@ -201,3 +244,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

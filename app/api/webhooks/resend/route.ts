@@ -21,6 +21,11 @@ type SupportedEmailEvent = Extract<
   }
 >;
 
+type CampaignRecipientMatch = {
+  id: string;
+  emailSnapshot: string;
+};
+
 function isSupportedEmailEvent(
   event: ResendWebhookEvent,
 ): event is SupportedEmailEvent {
@@ -33,11 +38,73 @@ function isSupportedEmailEvent(
 }
 
 function isPermanentBounce(event: SupportedEmailEvent): boolean {
-  if (event.type !== "email.bounced") {
-    return false;
+  return (
+    event.type === "email.bounced" &&
+    event.data.bounce.type.toLowerCase() === "permanent"
+  );
+}
+
+function getMarketingRecipientTag(
+  event: SupportedEmailEvent,
+): string | null {
+  const value = event.data.tags?.marketing_recipient_id;
+
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : null;
+}
+
+async function findCampaignRecipient(
+  tx: Pick<typeof prisma, "marketingCampaignRecipient">,
+  event: SupportedEmailEvent,
+  normalizedEmail: string,
+): Promise<CampaignRecipientMatch | null> {
+  const taggedRecipientId = getMarketingRecipientTag(event);
+
+  // Prefer the explicit recipient tag. When a tag exists but is invalid
+  // or does not match the recipient email, do not fall back to message ID.
+  const recipient = taggedRecipientId
+    ? await tx.marketingCampaignRecipient.findUnique({
+        where: {
+          id: taggedRecipientId,
+        },
+        select: {
+          id: true,
+          emailSnapshot: true,
+        },
+      })
+    : await tx.marketingCampaignRecipient.findUnique({
+        where: {
+          resendMessageId: event.data.email_id,
+        },
+        select: {
+          id: true,
+          emailSnapshot: true,
+        },
+      });
+
+  if (!recipient) {
+    return null;
   }
 
-  return event.data.bounce.type.toLowerCase() === "permanent";
+  let snapshotEmail: string;
+
+  try {
+    snapshotEmail = normalizeMarketingEmail(recipient.emailSnapshot);
+  } catch {
+    return null;
+  }
+
+  // A tag or message ID is only accepted when the address also matches.
+  if (snapshotEmail !== normalizedEmail) {
+    console.warn(
+      "[Resend webhook] Marketing recipient email did not match the event recipient.",
+    );
+
+    return null;
+  }
+
+  return recipient;
 }
 
 export async function POST(request: NextRequest) {
@@ -81,7 +148,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Ignore valid Resend events that are not relevant to marketing email.
   if (!isSupportedEmailEvent(event)) {
     return NextResponse.json({
       received: true,
@@ -100,8 +166,6 @@ export async function POST(request: NextRequest) {
 
   const permanentBounce = isPermanentBounce(event);
 
-  // Complaints and permanent bounces suppress marketing contacts.
-  // Temporary bounces and delivery delays do not.
   const shouldSuppress =
     event.type === "email.complained" || permanentBounce;
 
@@ -110,7 +174,6 @@ export async function POST(request: NextRequest) {
       ? "RESEND_SPAM_COMPLAINT"
       : "RESEND_HARD_BOUNCE";
 
-  // Normalize and deduplicate all valid recipient email addresses.
   const recipients: string[] = [];
 
   for (const email of event.data.to) {
@@ -128,8 +191,8 @@ export async function POST(request: NextRequest) {
   try {
     for (const normalizedEmail of recipients) {
       await prisma.$transaction(async (tx) => {
-        // A complaint or permanent bounce suppresses the contact,
-        // regardless of its previous subscription status.
+        // Suppression applies even when the email was not part of
+        // a campaign or could not be correlated to a campaign recipient.
         if (shouldSuppress) {
           await tx.marketingContact.updateMany({
             where: {
@@ -144,26 +207,20 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        // Match the campaign recipient using the Resend message ID.
-        // Do not associate transactional email events by email alone.
-        const recipient =
-          await tx.marketingCampaignRecipient.findUnique({
-            where: {
-              resendMessageId: event.data.email_id,
-            },
-            select: {
-              id: true,
-            },
-          });
+        // The tag handles the case where the webhook arrives before
+        // the worker has saved the Resend message ID.
+        // Without a tag, use the message ID as a fallback.
+        const recipient = await findCampaignRecipient(
+          tx,
+          event,
+          normalizedEmail,
+        );
 
-        // The event may belong to a transactional email rather than
-        // a marketing campaign. Contact suppression above still applies.
+        // Never correlate transactional email by address alone.
         if (!recipient) {
           return;
         }
 
-        // Store one event per provider event and recipient.
-        // skipDuplicates makes webhook retries idempotent.
         await tx.marketingEmailEvent.createMany({
           data: [
             {
@@ -189,8 +246,6 @@ export async function POST(request: NextRequest) {
           skipDuplicates: true,
         });
 
-        // A delivery delay or temporary bounce does not change
-        // the campaign recipient's final delivery status.
         if (event.type === "email.delivered") {
           await tx.marketingCampaignRecipient.updateMany({
             where: {

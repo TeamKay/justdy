@@ -9,6 +9,7 @@ import MathHero from "./_components/public/MathHero";
 import TestimonialsSection from "./_components/public/TestimonialsSection";
 import LearningPathwaysSection from "./_components/public/LearningPathwaysSection";
 import CallToActionSection from "./_components/public/CallToActionSection";
+import Announcements from "./_components/public/Announcements";
 
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -37,22 +38,11 @@ export default async function LandingPage() {
     .slice(0, 3);
   return (
     <div
-      className={`${inter.variable} ${instrumentSerif.variable} min-h-screen overflow-x-hidden bg-[#352715] text-[#302044]`}
+      className={`${inter.variable} ${instrumentSerif.variable} min-h-screen overflow-x-hidden bg-white text-[#302044]`}
       style={{ fontFamily: "var(--font-inter), sans-serif" }}
     >
-      <div className="relative isolate overflow-hidden bg-[#FFD6A5] text-[#171717]">
-        {/* Warm peach background with the fine orange dotted pattern from the reference. */}
-        <div
-          className="pointer-events-none absolute inset-0 -z-10"
-          aria-hidden="true"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle, rgba(244,171,82,0.72) 1.15px, transparent 1.3px)",
-            backgroundSize: "18px 18px",
-          }}
-        />
-     
         <MarketingNavbar />
+        <Announcements/>
         <MathHero/>
         <StatsSection />
         <TutoringSection />
@@ -61,7 +51,7 @@ export default async function LandingPage() {
         <TestimonialsSection />
         <CallToActionSection />
         <MarketingFooter />
-      </div>
+     
     </div>
   );
 }

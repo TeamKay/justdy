@@ -26,17 +26,9 @@ const { envMock, prismaMock, resendMock } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("@/lib/env", () => ({
-  env: envMock,
-}));
-
-vi.mock("@/lib/resend", () => ({
-  resend: resendMock,
-}));
-
-vi.mock("@/lib/prisma", () => ({
-  default: prismaMock,
-}));
+vi.mock("@/lib/env", () => ({ env: envMock }));
+vi.mock("@/lib/resend", () => ({ resend: resendMock }));
+vi.mock("@/lib/prisma", () => ({ default: prismaMock }));
 
 vi.mock("@/lib/marketing/contact-service", () => ({
   normalizeMarketingEmail: (email: string) => {
@@ -64,6 +56,11 @@ const emailData = {
 };
 
 const eventDate = "2026-11-20T15:00:00.000Z";
+
+const matchedRecipient = {
+  id: "recipient-123",
+  emailSnapshot: "Person@Example.com",
+};
 
 function makeEvent(
   type:
@@ -98,20 +95,15 @@ function makeBounceEvent(bounceType: string) {
   };
 }
 
-function makeRequest(
-  headers: Record<string, string> = webhookHeaders,
-) {
-  return new NextRequest(
-    "http://localhost/api/webhooks/resend",
-    {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...headers,
-      },
-      body: JSON.stringify({ test: true }),
+function makeRequest(headers: Record<string, string> = webhookHeaders) {
+  return new NextRequest("http://localhost/api/webhooks/resend", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...headers,
     },
-  );
+    body: JSON.stringify({ test: true }),
+  });
 }
 
 function setVerifiedEvent(event: unknown) {
@@ -128,26 +120,21 @@ describe("Resend webhook route", () => {
       makeEvent("email.delivered"),
     );
 
-    prismaMock.marketingContact.updateMany.mockResolvedValue({
-      count: 1,
-    });
+    prismaMock.marketingContact.updateMany.mockResolvedValue({ count: 1 });
 
-    prismaMock.marketingCampaignRecipient.findUnique.mockResolvedValue({
-      id: "recipient-123",
-    });
+    prismaMock.marketingCampaignRecipient.findUnique.mockResolvedValue(
+      matchedRecipient,
+    );
 
     prismaMock.marketingCampaignRecipient.updateMany.mockResolvedValue({
       count: 1,
     });
 
-    prismaMock.marketingEmailEvent.createMany.mockResolvedValue({
-      count: 1,
-    });
+    prismaMock.marketingEmailEvent.createMany.mockResolvedValue({ count: 1 });
 
     prismaMock.$transaction.mockImplementation(
-      async (
-        callback: (tx: typeof prismaMock) => Promise<unknown>,
-      ) => callback(prismaMock),
+      async (callback: (tx: typeof prismaMock) => Promise<unknown>) =>
+        callback(prismaMock),
     );
   });
 
@@ -160,25 +147,20 @@ describe("Resend webhook route", () => {
     expect(await response.json()).toEqual({
       error: "Webhook is not configured.",
     });
-
     expect(resendMock.webhooks.verify).not.toHaveBeenCalled();
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
 
   it("rejects requests missing Svix signature headers", async () => {
     const response = await POST(
-      makeRequest({
-        "svix-id": webhookHeaders["svix-id"],
-      }),
+      makeRequest({ "svix-id": webhookHeaders["svix-id"] }),
     );
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: "Missing webhook signature headers.",
     });
-
     expect(resendMock.webhooks.verify).not.toHaveBeenCalled();
-    expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
 
   it("rejects invalid webhook signatures", async () => {
@@ -192,11 +174,10 @@ describe("Resend webhook route", () => {
     expect(await response.json()).toEqual({
       error: "Invalid webhook signature.",
     });
-
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
 
-  it("records a delivered event and updates the campaign recipient", async () => {
+  it("records a delivered event using the Resend message ID fallback", async () => {
     setVerifiedEvent(makeEvent("email.delivered"));
 
     const response = await POST(makeRequest());
@@ -220,17 +201,14 @@ describe("Resend webhook route", () => {
     expect(
       prismaMock.marketingCampaignRecipient.findUnique,
     ).toHaveBeenCalledWith({
-      where: {
-        resendMessageId: "resend-email-123",
-      },
+      where: { resendMessageId: "resend-email-123" },
       select: {
         id: true,
+        emailSnapshot: true,
       },
     });
 
-    expect(
-      prismaMock.marketingEmailEvent.createMany,
-    ).toHaveBeenCalledWith({
+    expect(prismaMock.marketingEmailEvent.createMany).toHaveBeenCalledWith({
       data: [
         expect.objectContaining({
           recipientId: "recipient-123",
@@ -248,9 +226,7 @@ describe("Resend webhook route", () => {
     ).toHaveBeenCalledWith({
       where: {
         id: "recipient-123",
-        status: {
-          notIn: ["COMPLAINED", "BOUNCED"],
-        },
+        status: { notIn: ["COMPLAINED", "BOUNCED"] },
       },
       data: {
         status: "DELIVERED",
@@ -258,8 +234,112 @@ describe("Resend webhook route", () => {
       },
     });
 
+    expect(prismaMock.marketingContact.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("uses the marketing recipient tag as the primary correlation method", async () => {
+    setVerifiedEvent(
+      makeEvent("email.delivered", {
+        tags: {
+          marketing_recipient_id: "recipient-123",
+        },
+      }),
+    );
+
+    const response = await POST(makeRequest());
+
+    expect(response.status).toBe(200);
+
     expect(
-      prismaMock.marketingContact.updateMany,
+      prismaMock.marketingCampaignRecipient.findUnique,
+    ).toHaveBeenCalledWith({
+      where: { id: "recipient-123" },
+      select: {
+        id: true,
+        emailSnapshot: true,
+      },
+    });
+
+    expect(
+      prismaMock.marketingCampaignRecipient.findUnique,
+    ).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { resendMessageId: expect.any(String) },
+      }),
+    );
+
+    expect(prismaMock.marketingEmailEvent.createMany).toHaveBeenCalled();
+  });
+
+  it("correlates a tagged recipient even when the message ID has not been saved yet", async () => {
+    setVerifiedEvent(
+      makeEvent("email.delivered", {
+        tags: {
+          marketing_recipient_id: "recipient-123",
+        },
+      }),
+    );
+
+    // The recipient exists by its database ID, but has no saved
+    // Resend message ID yet. The tag still identifies it.
+    const response = await POST(makeRequest());
+
+    expect(response.status).toBe(200);
+    expect(
+      prismaMock.marketingCampaignRecipient.findUnique,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "recipient-123" },
+      }),
+    );
+    expect(prismaMock.marketingEmailEvent.createMany).toHaveBeenCalled();
+  });
+
+  it("does not associate a tagged recipient when its email snapshot does not match", async () => {
+    setVerifiedEvent(
+      makeEvent("email.delivered", {
+        tags: {
+          marketing_recipient_id: "recipient-123",
+        },
+      }),
+    );
+
+    prismaMock.marketingCampaignRecipient.findUnique.mockResolvedValue({
+      id: "recipient-123",
+      emailSnapshot: "someone-else@example.com",
+    });
+
+    const response = await POST(makeRequest());
+
+    expect(response.status).toBe(200);
+    expect(prismaMock.marketingEmailEvent.createMany).not.toHaveBeenCalled();
+    expect(
+      prismaMock.marketingCampaignRecipient.updateMany,
+    ).not.toHaveBeenCalled();
+
+    // A mismatched tag must not fall back to a different recipient.
+    expect(
+      prismaMock.marketingCampaignRecipient.findUnique,
+    ).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not associate a tagged event when the tagged recipient does not exist", async () => {
+    setVerifiedEvent(
+      makeEvent("email.delivered", {
+        tags: {
+          marketing_recipient_id: "missing-recipient",
+        },
+      }),
+    );
+
+    prismaMock.marketingCampaignRecipient.findUnique.mockResolvedValue(null);
+
+    const response = await POST(makeRequest());
+
+    expect(response.status).toBe(200);
+    expect(prismaMock.marketingEmailEvent.createMany).not.toHaveBeenCalled();
+    expect(
+      prismaMock.marketingCampaignRecipient.updateMany,
     ).not.toHaveBeenCalled();
   });
 
@@ -269,10 +349,7 @@ describe("Resend webhook route", () => {
     const response = await POST(makeRequest());
 
     expect(response.status).toBe(200);
-
-    expect(
-      prismaMock.marketingEmailEvent.createMany,
-    ).toHaveBeenCalledWith(
+    expect(prismaMock.marketingEmailEvent.createMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: [
           expect.objectContaining({
@@ -286,10 +363,7 @@ describe("Resend webhook route", () => {
     expect(
       prismaMock.marketingCampaignRecipient.updateMany,
     ).not.toHaveBeenCalled();
-
-    expect(
-      prismaMock.marketingContact.updateMany,
-    ).not.toHaveBeenCalled();
+    expect(prismaMock.marketingContact.updateMany).not.toHaveBeenCalled();
   });
 
   it("records temporary bounces without suppressing contacts", async () => {
@@ -298,10 +372,7 @@ describe("Resend webhook route", () => {
     const response = await POST(makeRequest());
 
     expect(response.status).toBe(200);
-
-    expect(
-      prismaMock.marketingEmailEvent.createMany,
-    ).toHaveBeenCalledWith(
+    expect(prismaMock.marketingEmailEvent.createMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: [
           expect.objectContaining({
@@ -319,10 +390,7 @@ describe("Resend webhook route", () => {
       }),
     );
 
-    expect(
-      prismaMock.marketingContact.updateMany,
-    ).not.toHaveBeenCalled();
-
+    expect(prismaMock.marketingContact.updateMany).not.toHaveBeenCalled();
     expect(
       prismaMock.marketingCampaignRecipient.updateMany,
     ).not.toHaveBeenCalled();
@@ -334,15 +402,10 @@ describe("Resend webhook route", () => {
     const response = await POST(makeRequest());
 
     expect(response.status).toBe(200);
-
-    expect(
-      prismaMock.marketingContact.updateMany,
-    ).toHaveBeenCalledWith({
+    expect(prismaMock.marketingContact.updateMany).toHaveBeenCalledWith({
       where: {
         normalizedEmail: "person@example.com",
-        subscriptionStatus: {
-          not: "SUPPRESSED",
-        },
+        subscriptionStatus: { not: "SUPPRESSED" },
       },
       data: {
         subscriptionStatus: "SUPPRESSED",
@@ -356,13 +419,9 @@ describe("Resend webhook route", () => {
     ).toHaveBeenCalledWith({
       where: {
         id: "recipient-123",
-        status: {
-          notIn: ["COMPLAINED", "BOUNCED"],
-        },
+        status: { notIn: ["COMPLAINED", "BOUNCED"] },
       },
-      data: {
-        status: "BOUNCED",
-      },
+      data: { status: "BOUNCED" },
     });
   });
 
@@ -372,15 +431,10 @@ describe("Resend webhook route", () => {
     const response = await POST(makeRequest());
 
     expect(response.status).toBe(200);
-
-    expect(
-      prismaMock.marketingContact.updateMany,
-    ).toHaveBeenCalledWith({
+    expect(prismaMock.marketingContact.updateMany).toHaveBeenCalledWith({
       where: {
         normalizedEmail: "person@example.com",
-        subscriptionStatus: {
-          not: "SUPPRESSED",
-        },
+        subscriptionStatus: { not: "SUPPRESSED" },
       },
       data: {
         subscriptionStatus: "SUPPRESSED",
@@ -394,44 +448,22 @@ describe("Resend webhook route", () => {
     ).toHaveBeenCalledWith({
       where: {
         id: "recipient-123",
-        status: {
-          not: "COMPLAINED",
-        },
+        status: { not: "COMPLAINED" },
       },
-      data: {
-        status: "COMPLAINED",
-      },
+      data: { status: "COMPLAINED" },
     });
   });
 
-  it("suppresses a contact even when the email is not linked to a marketing campaign", async () => {
+  it("suppresses a contact even when the email is not linked to a campaign", async () => {
     setVerifiedEvent(makeEvent("email.complained"));
 
-    prismaMock.marketingCampaignRecipient.findUnique.mockResolvedValue(
-      null,
-    );
+    prismaMock.marketingCampaignRecipient.findUnique.mockResolvedValue(null);
 
     const response = await POST(makeRequest());
 
     expect(response.status).toBe(200);
-
-    expect(
-      prismaMock.marketingContact.updateMany,
-    ).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: {
-          normalizedEmail: "person@example.com",
-          subscriptionStatus: {
-            not: "SUPPRESSED",
-          },
-        },
-      }),
-    );
-
-    expect(
-      prismaMock.marketingEmailEvent.createMany,
-    ).not.toHaveBeenCalled();
-
+    expect(prismaMock.marketingContact.updateMany).toHaveBeenCalled();
+    expect(prismaMock.marketingEmailEvent.createMany).not.toHaveBeenCalled();
     expect(
       prismaMock.marketingCampaignRecipient.updateMany,
     ).not.toHaveBeenCalled();
@@ -445,24 +477,18 @@ describe("Resend webhook route", () => {
 
     expect(firstResponse.status).toBe(200);
     expect(secondResponse.status).toBe(200);
-
-    expect(
-      prismaMock.marketingEmailEvent.createMany,
-    ).toHaveBeenCalledTimes(2);
+    expect(prismaMock.marketingEmailEvent.createMany).toHaveBeenCalledTimes(2);
 
     const firstCall =
       prismaMock.marketingEmailEvent.createMany.mock.calls[0][0];
-
     const secondCall =
       prismaMock.marketingEmailEvent.createMany.mock.calls[1][0];
 
     expect(firstCall.skipDuplicates).toBe(true);
     expect(secondCall.skipDuplicates).toBe(true);
-
     expect(firstCall.data[0].providerEventId).toBe(
       secondCall.data[0].providerEventId,
     );
-
     expect(firstCall.data[0].providerEventId).toBe(
       "msg_test_123:person@example.com",
     );
@@ -488,13 +514,6 @@ describe("Resend webhook route", () => {
       received: true,
       processed: 1,
     });
-
-    expect(
-      prismaMock.marketingContact.updateMany,
-    ).not.toHaveBeenCalled();
-
-    expect(
-      prismaMock.marketingEmailEvent.createMany,
-    ).toHaveBeenCalledTimes(1);
+    expect(prismaMock.marketingEmailEvent.createMany).toHaveBeenCalledTimes(1);
   });
 });

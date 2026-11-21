@@ -1,8 +1,21 @@
+
 {
   "crons": [
     {
       "path": "/api/cron/social-media-cleanup",
       "schedule": "0 3 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "app/api/queues/marketing-campaign-batches/route.ts": {
+      "experimentalTriggers": [
+        {
+          "type": "queue/v2beta",
+          "topic": "marketing-campaign-batches",
+          "retryAfterSeconds": 60,
+          "initialDelaySeconds": 0
+        }
+      ]
+    }
+  }
 }

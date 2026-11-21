@@ -1,15 +1,18 @@
-
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 const {
   authMock,
+  audienceMock,
   prismaMock,
 } = vi.hoisted(() => ({
   authMock: {
     api: {
       getSession: vi.fn(),
     },
+  },
+  audienceMock: {
+    getEligibleMarketingContactByEmail: vi.fn(),
   },
   prismaMock: {
     marketingCampaign: {
@@ -34,6 +37,11 @@ vi.mock("@/lib/prisma", () => ({
 
 vi.mock("next/headers", () => ({
   headers: vi.fn().mockResolvedValue(new Headers()),
+}));
+
+vi.mock("@/lib/marketing/audience-service", () => ({
+  getEligibleMarketingContactByEmail:
+    audienceMock.getEligibleMarketingContactByEmail,
 }));
 
 import {
@@ -78,13 +86,11 @@ const sampleCampaign = {
   updatedAt: new Date("2026-11-20T10:00:00.000Z"),
 };
 
-
 const serializedSampleCampaign = {
   ...sampleCampaign,
   createdAt: sampleCampaign.createdAt.toISOString(),
   updatedAt: sampleCampaign.updatedAt.toISOString(),
 };
-
 
 const validCampaignInput = {
   kind: "BULK",
@@ -94,6 +100,13 @@ const validCampaignInput = {
   textContent: "Welcome to Justdy",
   fromName: "Justdy",
   replyTo: "support@justdy.com",
+};
+
+const eligibleContact = {
+  id: "contact-123",
+  email: "learner@example.com",
+  normalizedEmail: "learner@example.com",
+  name: "Test Learner",
 };
 
 function makeRequest(
@@ -125,6 +138,10 @@ describe("Marketing campaign collection API", () => {
     vi.clearAllMocks();
 
     authMock.api.getSession.mockResolvedValue(adminSession);
+
+    audienceMock.getEligibleMarketingContactByEmail.mockResolvedValue(
+      eligibleContact,
+    );
 
     prismaMock.marketingCampaign.findMany.mockResolvedValue([
       {
@@ -197,13 +214,13 @@ describe("Marketing campaign collection API", () => {
 
     expect(await response.json()).toEqual({
       campaigns: [
-            {
-                ...serializedSampleCampaign,
-                _count: {
-                recipients: 0,
-                },
-            },
-            ],
+        {
+          ...serializedSampleCampaign,
+          _count: {
+            recipients: 0,
+          },
+        },
+      ],
       pagination: {
         page: 1,
         pageSize: 20,
@@ -271,6 +288,78 @@ describe("Marketing campaign collection API", () => {
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
 
+  it("creates an Individual campaign for an eligible recipient", async () => {
+    const response = await createCampaign(
+      makeRequest("/api/admin/marketing/campaigns", {
+        method: "POST",
+        body: {
+          ...validCampaignInput,
+          kind: "INDIVIDUAL",
+          individualRecipientEmail: "learner@example.com",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(201);
+
+    expect(
+      audienceMock.getEligibleMarketingContactByEmail,
+    ).toHaveBeenCalledWith("learner@example.com");
+
+    expect(prismaMock.marketingCampaign.create).toHaveBeenCalledWith({
+      data: {
+        ...validCampaignInput,
+        kind: "INDIVIDUAL",
+        individualRecipientEmail: "learner@example.com",
+        status: "DRAFT",
+        createdById: "admin-123",
+      },
+    });
+  });
+
+  it("rejects an Individual campaign for an ineligible recipient", async () => {
+    audienceMock.getEligibleMarketingContactByEmail.mockResolvedValue(null);
+
+    const response = await createCampaign(
+      makeRequest("/api/admin/marketing/campaigns", {
+        method: "POST",
+        body: {
+          ...validCampaignInput,
+          kind: "INDIVIDUAL",
+          individualRecipientEmail: "unknown@example.com",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(400);
+
+    expect(
+      prismaMock.marketingCampaign.create,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("rejects an Individual campaign when the recipient email is missing", async () => {
+    const response = await createCampaign(
+      makeRequest("/api/admin/marketing/campaigns", {
+        method: "POST",
+        body: {
+          ...validCampaignInput,
+          kind: "INDIVIDUAL",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(400);
+
+    expect(
+      audienceMock.getEligibleMarketingContactByEmail,
+    ).not.toHaveBeenCalled();
+
+    expect(
+      prismaMock.marketingCampaign.create,
+    ).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid campaign creation data", async () => {
     const response = await createCampaign(
       makeRequest("/api/admin/marketing/campaigns", {
@@ -312,6 +401,10 @@ describe("Individual marketing campaign API", () => {
     vi.clearAllMocks();
 
     authMock.api.getSession.mockResolvedValue(adminSession);
+
+    audienceMock.getEligibleMarketingContactByEmail.mockResolvedValue(
+      eligibleContact,
+    );
 
     prismaMock.marketingCampaign.findUnique.mockResolvedValue(
       sampleCampaign,
@@ -383,7 +476,7 @@ describe("Individual marketing campaign API", () => {
 
     expect(await response.json()).toEqual({
       success: true,
-     campaign: serializedSampleCampaign,
+      campaign: serializedSampleCampaign,
     });
 
     expect(
@@ -397,6 +490,104 @@ describe("Individual marketing campaign API", () => {
         name: "Updated Mathematics Newsletter",
       },
     });
+  });
+
+  it("updates an Individual campaign recipient after checking eligibility", async () => {
+    const response = await updateCampaign(
+      makeRequest("/api/admin/marketing/campaigns/campaign-123", {
+        method: "PATCH",
+        body: {
+          kind: "INDIVIDUAL",
+          individualRecipientEmail: "learner@example.com",
+        },
+      }),
+      makeContext(),
+    );
+
+    expect(response.status).toBe(200);
+
+    expect(
+      audienceMock.getEligibleMarketingContactByEmail,
+    ).toHaveBeenCalledWith("learner@example.com");
+
+    expect(prismaMock.marketingCampaign.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "campaign-123",
+        status: "DRAFT",
+      },
+      data: {
+        kind: "INDIVIDUAL",
+        individualRecipientEmail: "learner@example.com",
+      },
+    });
+  });
+
+  it("rejects an Individual campaign recipient who is not eligible", async () => {
+    audienceMock.getEligibleMarketingContactByEmail.mockResolvedValue(null);
+
+    const response = await updateCampaign(
+      makeRequest("/api/admin/marketing/campaigns/campaign-123", {
+        method: "PATCH",
+        body: {
+          kind: "INDIVIDUAL",
+          individualRecipientEmail: "unknown@example.com",
+        },
+      }),
+      makeContext(),
+    );
+
+    expect(response.status).toBe(400);
+
+    expect(
+      prismaMock.marketingCampaign.updateMany,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("rejects switching a campaign to Individual without a recipient email", async () => {
+    const response = await updateCampaign(
+      makeRequest("/api/admin/marketing/campaigns/campaign-123", {
+        method: "PATCH",
+        body: {
+          kind: "INDIVIDUAL",
+        },
+      }),
+      makeContext(),
+    );
+
+    expect(response.status).toBe(400);
+
+    expect(
+      prismaMock.marketingCampaign.updateMany,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("clears the individual recipient when switching a campaign to Bulk", async () => {
+    const response = await updateCampaign(
+      makeRequest("/api/admin/marketing/campaigns/campaign-123", {
+        method: "PATCH",
+        body: {
+          kind: "BULK",
+        },
+      }),
+      makeContext(),
+    );
+
+    expect(response.status).toBe(200);
+
+    expect(prismaMock.marketingCampaign.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "campaign-123",
+        status: "DRAFT",
+      },
+      data: {
+        kind: "BULK",
+        individualRecipientEmail: null,
+      },
+    });
+
+    expect(
+      audienceMock.getEligibleMarketingContactByEmail,
+    ).not.toHaveBeenCalled();
   });
 
   it("rejects updates with no campaign fields", async () => {

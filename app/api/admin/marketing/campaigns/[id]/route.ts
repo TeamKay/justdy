@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { getEligibleMarketingContactByEmail } from "@/lib/marketing/audience-service";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ type RouteContext = {
 const updateCampaignSchema = z
   .object({
     kind: z.enum(["BULK", "INDIVIDUAL"]).optional(),
+    individualRecipientEmail: z.string().trim().email().max(254).optional(),
     name: z.string().trim().min(1).max(160).optional(),
     subject: z.string().trim().min(1).max(200).optional(),
     htmlContent: z.string().min(1).max(500_000).optional(),
@@ -130,13 +132,56 @@ export async function PATCH(
   }
 
   try {
-    const result = await prisma.marketingCampaign.updateMany({
-      where: {
-        id,
-        status: "DRAFT",
+   const {
+  individualRecipientEmail: requestedRecipientEmail,
+  ...campaignFields
+} = parsed.data;
+
+const updateData: Record<string, unknown> = {
+  ...campaignFields,
+};
+
+if (parsed.data.kind === "BULK") {
+  updateData.individualRecipientEmail = null;
+} else if (
+  parsed.data.kind === "INDIVIDUAL" ||
+  requestedRecipientEmail !== undefined
+) {
+  if (!requestedRecipientEmail) {
+    return NextResponse.json(
+      {
+        error:
+          "An individual campaign requires a recipient email address.",
       },
-      data: parsed.data,
-    });
+      { status: 400 },
+    );
+  }
+
+  const eligibleContact =
+    await getEligibleMarketingContactByEmail(
+      requestedRecipientEmail,
+    );
+
+  if (!eligibleContact) {
+    return NextResponse.json(
+      {
+        error:
+          "This email is not an eligible subscribed marketing contact with valid consent.",
+      },
+      { status: 400 },
+    );
+  }
+
+  updateData.individualRecipientEmail = eligibleContact.email;
+}
+
+const result = await prisma.marketingCampaign.updateMany({
+  where: {
+    id,
+    status: "DRAFT",
+  },
+  data: updateData,
+});
 
     if (result.count === 0) {
       const existing = await prisma.marketingCampaign.findUnique({
