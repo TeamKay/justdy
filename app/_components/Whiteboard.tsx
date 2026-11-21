@@ -1,3 +1,9296 @@
+// "use client";
+
+// import {
+//   useCallback,
+//   useEffect,
+//   useRef,
+//   useState,
+//   useMemo,
+//   useId,
+// } from "react";
+// import { createPortal } from "react-dom";
+// import {
+//   CircleHelp,
+//   Copy,
+//   Hand,
+//   Home,
+//   MousePointer2,
+//   Eraser,
+//   Maximize2,
+//   Minimize2,
+//   PenLine,
+//   Redo2,
+//   Sigma,
+//   Type,
+//   Undo2,
+//   ChevronLeft,
+//   ChevronRight,
+//   ChevronDown,
+//   ChevronUp,
+//   Layers3,
+//   List,
+//   Plus,
+//   Ruler,
+//   BookOpen,
+//   X,
+//   PanelRight,
+//   PanelLeftOpen,
+//   Shapes,
+//   Crosshair,
+//   Crop,
+//   Trash2,
+//   FunctionSquare,
+//   Settings2,
+//   Image as ImageIcon,
+//   Upload,
+//   Eye,
+//   EyeOff,
+//   Play,
+//   Smartphone,
+//   Monitor,
+// } from "lucide-react";
+// import MyLogo from "@/app/_components/public/Logo";
+// import type {
+//   Tool,
+//   Point,
+//   StrokeElement,
+//   ShapeType,
+//   ShapeElement,
+//   ImageElement,
+//   TeachingTemplate,
+//   TeachingSection,
+//   TeachingSubtopic,
+//   TeachingLesson,
+//   TeachingLibraryItem,
+//   TextElement,
+//   WhiteboardElement,
+//   WhiteboardPage,
+//   FormulaCategory,
+//   WhiteboardRealtimeData,
+//   WhiteboardProps,
+// } from "./whiteboard/types/whiteboard";
+
+// export type {
+//   Tool,
+//   Point,
+//   StrokeElement,
+//   ShapeType,
+//   ShapeElement,
+//   ImageElement,
+//   TeachingTemplate,
+//   TeachingSection,
+//   TeachingSubtopic,
+//   TeachingLesson,
+//   TeachingLibraryItem,
+//   TextElement,
+//   WhiteboardElement,
+//   WhiteboardPage,
+//   FormulaCategory,
+//   WhiteboardMode,
+//   WhiteboardRealtimeData,
+//   WhiteboardProps,
+//   SavedWhiteboardData,
+// } from "./whiteboard/types/whiteboard";
+
+// import { renderLatexPreview, estimateMathMetrics, drawMathEquation } from "./whiteboard/utils/math-renderer";
+// import {
+//   getElementBounds,
+//   hitTestElement,
+//   translateElement,
+// } from "./whiteboard/utils/geometry";
+// import { parseSavedBoardData } from "./whiteboard/utils/whiteboard-storage";
+// import {
+//   DEFAULT_TEACHING_LESSON_ID,
+//   DEFAULT_TEACHING_SUBTOPIC_ID,
+//   TEACHING_SECTIONS,
+//   TEACHING_TEMPLATES,
+//   getDefaultTeachingSection,
+// } from "./whiteboard/config/teaching-config";
+
+// import {
+//   LATEX_SYMBOLS,
+//   LATEX_QUICK_STRUCTURES,
+//   LATEX_LETTER_LABELS,
+//   LATEX_ARROW_LABELS,
+//   LATEX_EDITOR_COLORS,
+// } from "./whiteboard/config/latex-config";
+
+// import {
+//   COLORS,
+//   PEN_POPUP_COLORS,
+//   PEN_SIZE_OPTIONS,
+//   BACKGROUND_IMAGE_OPTIONS,
+//   BACKGROUND_OPTIONS,
+//   GRID_COLOR_OPTIONS,
+// } from "./whiteboard/config/ui-config";
+
+// import ShapeToolIcon from "./whiteboard/components/ShapeToolIcon";
+
+// type DesmosGraphState = Record<string, unknown>;
+
+// type DesmosGraphingCalculator = {
+//   screenshot: (options?: { width?: number; height?: number }) => string;
+//   asyncScreenshot?: (
+//     options: { width?: number; height?: number },
+//     callback: (dataUri: string) => void,
+//   ) => void;
+//   getState?: () => DesmosGraphState;
+//   setState?: (state: DesmosGraphState) => void;
+//   setExpression?: (expression: {
+//     id: string;
+//     latex: string;
+//     color?: string;
+//     hidden?: boolean;
+//   }) => void;
+//   setExpressions?: (expressions: Array<{
+//     id: string;
+//     latex: string;
+//     color?: string;
+//     hidden?: boolean;
+//   }>) => void;
+//   destroy: () => void;
+//   resize?: () => void;
+// };
+
+// type DesmosNamespace = {
+//   GraphingCalculator: (
+//     element: HTMLElement,
+//     options?: Record<string, unknown>,
+//   ) => DesmosGraphingCalculator;
+// };
+
+// declare global {
+//   interface Window {
+//     Desmos?: DesmosNamespace;
+//     pdfjsLib?: {
+//       GlobalWorkerOptions: { workerSrc: string };
+//       getDocument: (source: { data: Uint8Array }) => {
+//         promise: Promise<{
+//           numPages: number;
+//           getPage: (pageNumber: number) => Promise<{
+//             getViewport: (options: { scale: number }) => {
+//               width: number;
+//               height: number;
+//             };
+//             render: (options: {
+//               canvasContext: CanvasRenderingContext2D;
+//               viewport: { width: number; height: number };
+//             }) => { promise: Promise<void> };
+//           }>;
+//         }>;
+//       };
+//     };
+//   }
+// }
+
+// type GraphStudioPreset = {
+//   id: string;
+//   label: string;
+//   description: string;
+//   expressions: Array<{ id: string; latex: string; color?: string }>;
+// };
+
+// const GRAPH_STUDIO_PRESETS: Record<"graphs" | "geometry", GraphStudioPreset[]> = {
+//   graphs: [
+//     {
+//       id: "linear",
+//       label: "Linear graph",
+//       description: "y = 2x + 1",
+//       expressions: [{ id: "justdy-linear", latex: "y=2x+1" }],
+//     },
+//     {
+//       id: "quadratic",
+//       label: "Quadratic",
+//       description: "y = x² − 4",
+//       expressions: [{ id: "justdy-quadratic", latex: "y=x^2-4" }],
+//     },
+//     {
+//       id: "absolute",
+//       label: "Absolute value",
+//       description: "y = |x|",
+//       expressions: [{ id: "justdy-absolute", latex: "y=\\left|x\\right|" }],
+//     },
+//     {
+//       id: "sine",
+//       label: "Sine curve",
+//       description: "y = sin(x)",
+//       expressions: [{ id: "justdy-sine", latex: "y=\\sin(x)" }],
+//     },
+//     {
+//       id: "circle-graph",
+//       label: "Circle equation",
+//       description: "x² + y² = 9",
+//       expressions: [{ id: "justdy-circle-equation", latex: "x^2+y^2=9" }],
+//     },
+//     {
+//       id: "slope",
+//       label: "Slope demonstration",
+//       description: "y = mx + c",
+//       expressions: [
+//         { id: "justdy-slope-m", latex: "m=2" },
+//         { id: "justdy-slope-c", latex: "c=1" },
+//         { id: "justdy-slope-line", latex: "y=m x+c" },
+//       ],
+//     },
+//   ],
+//   geometry: [
+//     {
+//       id: "points",
+//       label: "Plot points",
+//       description: "A(2, 3), B(−3, 1)",
+//       expressions: [
+//         { id: "justdy-point-a", latex: "A=(2,3)" },
+//         { id: "justdy-point-b", latex: "B=(-3,1)" },
+//       ],
+//     },
+//     {
+//       id: "triangle",
+//       label: "Triangle",
+//       description: "Plot and join three vertices",
+//       expressions: [
+//         { id: "justdy-triangle-a", latex: "A=(0,0)" },
+//         { id: "justdy-triangle-b", latex: "B=(4,0)" },
+//         { id: "justdy-triangle-c", latex: "C=(1,3)" },
+//         { id: "justdy-triangle-poly", latex: "polygon(A,B,C)" },
+//       ],
+//     },
+//     {
+//       id: "rectangle",
+//       label: "Rectangle",
+//       description: "Four plotted vertices",
+//       expressions: [
+//         { id: "justdy-rect-a", latex: "A=(-2,-1)" },
+//         { id: "justdy-rect-b", latex: "B=(3,-1)" },
+//         { id: "justdy-rect-c", latex: "C=(3,2)" },
+//         { id: "justdy-rect-d", latex: "D=(-2,2)" },
+//         { id: "justdy-rect-poly", latex: "polygon(A,B,C,D)" },
+//       ],
+//     },
+//     {
+//       id: "circle",
+//       label: "Circle",
+//       description: "Centre (1, 2), radius 3",
+//       expressions: [
+//         { id: "justdy-circle-center", latex: "(x-1)^2+(y-2)^2=9" },
+//         { id: "justdy-circle-point", latex: "C=(1,2)" },
+//       ],
+//     },
+//     {
+//       id: "right-triangle",
+//       label: "Right triangle",
+//       description: "Right angle at the origin",
+//       expressions: [
+//         { id: "justdy-right-a", latex: "A=(0,0)" },
+//         { id: "justdy-right-b", latex: "B=(4,0)" },
+//         { id: "justdy-right-c", latex: "C=(0,3)" },
+//         { id: "justdy-right-poly", latex: "polygon(A,B,C)" },
+//       ],
+//     },
+//     {
+//       id: "midpoint",
+//       label: "Midpoint",
+//       description: "A, B and their midpoint M",
+//       expressions: [
+//         { id: "justdy-mid-a", latex: "A=(-2,1)" },
+//         { id: "justdy-mid-b", latex: "B=(4,5)" },
+//         { id: "justdy-mid-m", latex: "M=(1,3)" },
+//       ],
+//     },
+//     {
+//       id: "perpendicular",
+//       label: "Perpendicular line",
+//       description: "Meet at 90° through A",
+//       expressions: [
+//         { id: "justdy-perp-a", latex: "A=(1,1)" },
+//         { id: "justdy-perp-base", latex: "y=2x-1" },
+//         { id: "justdy-perp-line", latex: "y=-\\frac{1}{2}(x-1)+1" },
+//       ],
+//     },
+//     {
+//       id: "parallel",
+//       label: "Parallel lines",
+//       description: "Same gradient, different intercepts",
+//       expressions: [
+//         { id: "justdy-parallel-one", latex: "y=2x-1" },
+//         { id: "justdy-parallel-two", latex: "y=2x+3" },
+//       ],
+//     },
+//     {
+//       id: "distance",
+//       label: "Distance formula",
+//       description: "Distance between A and B",
+//       expressions: [
+//         { id: "justdy-distance-a", latex: "A=(-2,1)" },
+//         { id: "justdy-distance-b", latex: "B=(4,5)" },
+//         { id: "justdy-distance-value", latex: "d=\\sqrt{(4-(-2))^2+(5-1)^2}" },
+//       ],
+//     },
+//     {
+//       id: "angle-bisector",
+//       label: "Angle bisector",
+//       description: "Bisect the angle at C",
+//       expressions: [
+//         { id: "justdy-bisect-a", latex: "A=(0,0)" },
+//         { id: "justdy-bisect-b", latex: "B=(4,0)" },
+//         { id: "justdy-bisect-c", latex: "C=(2,3)" },
+//         { id: "justdy-bisect-poly", latex: "polygon(A,B,C)" },
+//         { id: "justdy-bisect-line", latex: "x=2" },
+//       ],
+//     },
+//     {
+//       id: "reflection",
+//       label: "Reflection",
+//       description: "Reflect a triangle in the y-axis",
+//       expressions: [
+//         { id: "justdy-ref-a", latex: "A=(1,1)" },
+//         { id: "justdy-ref-b", latex: "B=(4,1)" },
+//         { id: "justdy-ref-c", latex: "C=(2,3)" },
+//         { id: "justdy-ref-poly", latex: "polygon(A,B,C)" },
+//         { id: "justdy-ref-ap", latex: "A'=(-1,1)" },
+//         { id: "justdy-ref-bp", latex: "B'=(-4,1)" },
+//         { id: "justdy-ref-cp", latex: "C'=(-2,3)" },
+//         { id: "justdy-ref-polyp", latex: "polygon(A',B',C')" },
+//       ],
+//     },
+//     {
+//       id: "rotation",
+//       label: "Rotation 90°",
+//       description: "Rotate a triangle about origin",
+//       expressions: [
+//         { id: "justdy-rot-a", latex: "A=(1,1)" },
+//         { id: "justdy-rot-b", latex: "B=(4,1)" },
+//         { id: "justdy-rot-c", latex: "C=(2,3)" },
+//         { id: "justdy-rot-poly", latex: "polygon(A,B,C)" },
+//         { id: "justdy-rot-ap", latex: "A'=(-1,1)" },
+//         { id: "justdy-rot-bp", latex: "B'=(-1,4)" },
+//         { id: "justdy-rot-cp", latex: "C'=(-3,2)" },
+//         { id: "justdy-rot-polyp", latex: "polygon(A',B',C')" },
+//       ],
+//     },
+//     {
+//       id: "translation",
+//       label: "Translation",
+//       description: "Move a triangle by (3, 2)",
+//       expressions: [
+//         { id: "justdy-trans-a", latex: "A=(0,0)" },
+//         { id: "justdy-trans-b", latex: "B=(2,0)" },
+//         { id: "justdy-trans-c", latex: "C=(1,2)" },
+//         { id: "justdy-trans-poly", latex: "polygon(A,B,C)" },
+//         { id: "justdy-trans-ap", latex: "A'=(3,2)" },
+//         { id: "justdy-trans-bp", latex: "B'=(5,2)" },
+//         { id: "justdy-trans-cp", latex: "C'=(4,4)" },
+//         { id: "justdy-trans-polyp", latex: "polygon(A',B',C')" },
+//       ],
+//     },
+//   ],
+// };
+
+// const DESMOS_API_SCRIPT_ID = "justdy-desmos-graphing-api";
+// const DESMOS_API_KEY =
+//   process.env.NEXT_PUBLIC_DESMOS_API_KEY ?? "dcb31709b452b1cf9dc26972add0fda6";
+
+// function loadDesmosApi(): Promise<DesmosNamespace> {
+//   if (typeof window === "undefined") {
+//     return Promise.reject(
+//       new Error("Desmos is only available in the browser."),
+//     );
+//   }
+
+//   if (window.Desmos) return Promise.resolve(window.Desmos);
+
+//   const existing = document.getElementById(
+//     DESMOS_API_SCRIPT_ID,
+//   ) as HTMLScriptElement | null;
+
+//   if (existing) {
+//     return new Promise((resolve, reject) => {
+//       const handleLoad = () => {
+//         if (window.Desmos) resolve(window.Desmos);
+//         else reject(new Error("Desmos loaded without exposing its API."));
+//       };
+//       const handleError = () =>
+//         reject(new Error("Unable to load the Desmos Graphing Calculator."));
+
+//       existing.addEventListener("load", handleLoad, { once: true });
+//       existing.addEventListener("error", handleError, { once: true });
+
+//       if (window.Desmos) handleLoad();
+//     });
+//   }
+
+//   return new Promise((resolve, reject) => {
+//     const script = document.createElement("script");
+//     script.id = DESMOS_API_SCRIPT_ID;
+//     script.src = `https://www.desmos.com/api/v1.13/calculator.js?apiKey=${encodeURIComponent(DESMOS_API_KEY)}`;
+//     script.async = true;
+//     script.onload = () => {
+//       if (window.Desmos) resolve(window.Desmos);
+//       else reject(new Error("Desmos loaded without exposing its API."));
+//     };
+//     script.onerror = () =>
+//       reject(new Error("Unable to load the Desmos Graphing Calculator."));
+//     document.head.appendChild(script);
+//   });
+// }
+
+// function createId(): string {
+//   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+// }
+
+// function createPage(name: string): WhiteboardPage {
+//   return {
+//     id: createId(),
+//     name,
+//     elements: [],
+//   };
+// }
+
+// let pdfJsLoadPromise: Promise<NonNullable<Window["pdfjsLib"]>> | null = null;
+
+// function loadPdfJs(): Promise<NonNullable<Window["pdfjsLib"]>> {
+//   if (typeof window === "undefined") {
+//     return Promise.reject(
+//       new Error("PDF rendering is only available in the browser."),
+//     );
+//   }
+//   if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+//   if (pdfJsLoadPromise) return pdfJsLoadPromise;
+
+//   pdfJsLoadPromise = new Promise<NonNullable<Window["pdfjsLib"]>>(
+//     (resolve, reject) => {
+//       const existing = document.querySelector<HTMLScriptElement>(
+//         'script[data-justdy-pdfjs="true"]',
+//       );
+//       if (existing) {
+//         existing.addEventListener("load", () => {
+//           if (window.pdfjsLib) resolve(window.pdfjsLib);
+//           else reject(new Error("PDF.js loaded without a usable API."));
+//         });
+//         existing.addEventListener("error", () =>
+//           reject(new Error("Unable to load the PDF renderer.")),
+//         );
+//         return;
+//       }
+
+//       const script = document.createElement("script");
+//       script.src =
+//         "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+//       script.async = true;
+//       script.dataset.justdyPdfjs = "true";
+//       script.onload = () => {
+//         if (!window.pdfjsLib) {
+//           reject(new Error("PDF.js loaded without a usable API."));
+//           return;
+//         }
+//         window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+//           "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+//         resolve(window.pdfjsLib);
+//       };
+//       script.onerror = () =>
+//         reject(new Error("Unable to load the PDF renderer."));
+//       document.head.appendChild(script);
+//     },
+//   );
+
+//   return pdfJsLoadPromise;
+// }
+
+// export default function Whiteboard({
+//   mode,
+//   appointmentId,
+//   bookingId,
+//   leftInset = 0,
+//   topInset = 0,
+//   onClose,
+//   onRealtimeChange,
+//   onReady,
+//   remoteData,
+// }: WhiteboardProps) {
+//   const [databaseWhiteboardId, setDatabaseWhiteboardId] = useState<
+//     string | null
+//   >(null);
+//   const [whiteboardReady, setWhiteboardReady] = useState(false);
+
+//   const rootRef = useRef<HTMLElement | null>(null);
+//   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+//   const containerRef = useRef<HTMLDivElement | null>(null);
+//   const mobileFrameRef = useRef<HTMLDivElement | null>(null);
+//   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
+//   const hasLoadedBoardRef = useRef(false);
+//   const realtimeReadyReportedRef = useRef(false);
+//   const realtimeOriginId = useId();
+//   const realtimeOriginIdRef = useRef<string>(realtimeOriginId);
+//   const realtimeRevisionRef = useRef(0);
+//   const lastAppliedRemoteSignatureRef = useRef<string | null>(null);
+//   const lastRemoteRevisionByOriginRef = useRef<Map<string, number>>(new Map());
+
+//   const storageKey = useMemo(() => {
+//     if (mode === "standalone") {
+//       return "justdy-lab-whiteboard:standalone";
+//     }
+
+//     if (mode === "booking") {
+//       return `justdy-lab-whiteboard:booking:${bookingId ?? "unknown"}`;
+//     }
+
+//     return `justdy-lab-whiteboard:appointment:${appointmentId ?? "unknown"}`;
+//   }, [mode, appointmentId, bookingId]);
+
+//   const [pages, setPages] = useState<WhiteboardPage[]>([createPage("Page 1")]);
+//   const [currentPageIndex, setCurrentPageIndex] = useState(0);
+//   const [tool, setTool] = useState<Tool>("pen");
+//   const textPlacementArmedRef = useRef(false);
+//   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+//   const panRef = useRef<{
+//     pointerId: number;
+//     startX: number;
+//     startY: number;
+//     originX: number;
+//     originY: number;
+//   } | null>(null);
+//   const [color, setColor] = useState("#2563eb");
+//   const [width, setWidth] = useState(4);
+//   const [eraserWidth, setEraserWidth] = useState(32);
+//   const [showEraserPopup, setShowEraserPopup] = useState(false);
+//   const [eraserPopupPosition, setEraserPopupPosition] = useState({
+//     top: 0,
+//     left: 0,
+//   });
+//   const eraserButtonRef = useRef<HTMLButtonElement | null>(null);
+//   const eraserPopupRef = useRef<HTMLDivElement | null>(null);
+//   const [fontSize] = useState(24);
+
+//   const [showGrid, setShowGrid] = useState(true);
+//   // Optional video-safe working areas: vertical 9:16 or standard 16:9.
+//   const [showMobileFrame, setShowMobileFrame] = useState(false);
+//   const [frameAspectRatio, setFrameAspectRatio] = useState<"9 / 16" | "16 / 9">("9 / 16");
+//   const [gridSize] = useState(32);
+//   const [backgroundColor, setBackgroundColor] = useState("#ffffff");
+//   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
+//   const backgroundImageRef = useRef<HTMLImageElement | null>(null);
+//   const [backgroundImageVersion, setBackgroundImageVersion] = useState(0);
+//   const [gridColor, setGridColor] = useState("#e2e8f0");
+
+//   const [showColorPopup, setShowColorPopup] = useState(false);
+//   const [colorPopupTarget, setColorPopupTarget] = useState<
+//     "pen" | "object" | null
+//   >("pen");
+//   const colorButtonRef = useRef<HTMLButtonElement | null>(null);
+//   const objectColorButtonRef = useRef<HTMLButtonElement | null>(null);
+//   const [colorPopupPosition, setColorPopupPosition] = useState({
+//     top: 0,
+//     left: 0,
+//   });
+
+//   const [showPenPopup, setShowPenPopup] = useState(false);
+//   const [penStyle, setPenStyle] = useState<"pen" | "marker">("pen");
+//   const penButtonRef = useRef<HTMLButtonElement | null>(null);
+//   const penPopupRef = useRef<HTMLDivElement | null>(null);
+//   const [penPopupPosition, setPenPopupPosition] = useState({
+//     top: 0,
+//     left: 0,
+//   });
+
+//   const [axisColor] = useState("#475569");
+//   const [snapToGrid, setSnapToGrid] = useState(false);
+//   const [showToolsPanel, setShowToolsPanel] = useState(false);
+//   const [showShapeToolsPopup, setShowShapeToolsPopup] = useState(false);
+//   const shapeToolsButtonRef = useRef<HTMLButtonElement | null>(null);
+//   const [showFormulaMenu, setShowFormulaMenu] = useState(false);
+//   const formulaToolsButtonRef = useRef<HTMLButtonElement | null>(null);
+//   const [formulaMenuPosition, setFormulaMenuPosition] = useState({
+//     top: 0,
+//     left: 0,
+//   });
+//   const [showUploadMenu, setShowUploadMenu] = useState(false);
+//   const uploadButtonRef = useRef<HTMLButtonElement | null>(null);
+//   const [uploadMenuPosition, setUploadMenuPosition] = useState({
+//     top: 0,
+//     left: 0,
+//   });
+//   const [cropEditor, setCropEditor] = useState<{
+//     open: boolean;
+//     elementId: string | null;
+//     left: number;
+//     top: number;
+//     right: number;
+//     bottom: number;
+//   }>({
+//     open: false,
+//     elementId: null,
+//     left: 0,
+//     top: 0,
+//     right: 0,
+//     bottom: 0,
+//   });
+//   const [showPagesPanel, setShowPagesPanel] = useState(false);
+//   const [pagePendingDelete, setPagePendingDelete] = useState<{ index: number; name: string } | null>(null);
+//   const [showToolbar, setShowToolbar] = useState(true);
+//   const pageThumbnailRefs = useRef<Record<string, HTMLCanvasElement | null>>(
+//     {},
+//   );
+//   const [showGraphSettings, setShowGraphSettings] = useState(false);
+//   const [showGraphEditor, setShowGraphEditor] = useState(false);
+//   const [graphStudioTab, setGraphStudioTab] = useState<"graphs" | "geometry">("graphs");
+//   const [showGraphStudioPresets, setShowGraphStudioPresets] = useState(true);
+//   const [graphConnectionPoints, setGraphConnectionPoints] = useState("A, B, C");
+//   const [graphConnectionMode, setGraphConnectionMode] = useState<"polygon" | "segments">("polygon");
+//   const [graphConnectionError, setGraphConnectionError] = useState<string | null>(null);
+//   const [graphConstructionType, setGraphConstructionType] = useState<"line" | "parallel" | "perpendicular" | "perp-bisector" | "angle-bisector" | "midpoint" | "distance" | "reflect-y" | "rotate-90" | "translate">("perpendicular");
+//   const [graphConstructionPoints, setGraphConstructionPoints] = useState({ a: "A", b: "B", c: "C", p: "P" });
+//   const [graphConstructionVector, setGraphConstructionVector] = useState({ x: "2", y: "1" });
+//   const [graphAvailablePointLabels, setGraphAvailablePointLabels] = useState<string[]>([]);
+//   const [graphConstructionError, setGraphConstructionError] = useState<string | null>(null);
+//   const [graphLoadError, setGraphLoadError] = useState<string | null>(null);
+//   const graphContainerRef = useRef<HTMLDivElement | null>(null);
+//   const graphCalculatorRef = useRef<DesmosGraphingCalculator | null>(null);
+//   const graphEditingElementIdRef = useRef<string | null>(null);
+//   useEffect(() => {
+//     if (!showGraphEditor) return;
+//     const frame = window.requestAnimationFrame(() => {
+//       graphCalculatorRef.current?.resize?.();
+//     });
+//     return () => window.cancelAnimationFrame(frame);
+//   }, [showGraphEditor, showGraphStudioPresets]);
+//   const [showCalculator, setShowCalculator] = useState(false);
+//   const [calculatorValue, setCalculatorValue] = useState("");
+//   const [calculatorResult, setCalculatorResult] = useState("");
+//   const [calculatorAngleMode, setCalculatorAngleMode] = useState<"DEG" | "RAD">(
+//     "DEG",
+//   );
+//   const [calculatorMemory, setCalculatorMemory] = useState(0);
+//   const [calculatorHistory, setCalculatorHistory] = useState<
+//     Array<{ expression: string; result: string }>
+//   >([]);
+//   const [calculatorPosition, setCalculatorPosition] = useState({ x: 0, y: 0 });
+//   const [popupPositions, setPopupPositions] = useState<
+//     Record<string, { x: number; y: number }>
+//   >({});
+//   const popupDragRef = useRef<{
+//     key: string;
+//     dx: number;
+//     dy: number;
+//     element: HTMLElement;
+//     captureTarget: HTMLElement;
+//   } | null>(null);
+
+//   const getPopupPosition = useCallback(
+//     (key: string, fallback: { x: number; y: number }) =>
+//       popupPositions[key] ?? fallback,
+//     [popupPositions],
+//   );
+
+//   useEffect(() => {
+//     if (!showGraphEditor) return;
+
+//     let cancelled = false;
+
+//     loadDesmosApi()
+//       .then((Desmos) => {
+//         if (
+//           cancelled ||
+//           !graphContainerRef.current ||
+//           graphCalculatorRef.current
+//         ) {
+//           return;
+//         }
+
+//         setGraphLoadError(null);
+//         graphCalculatorRef.current = Desmos.GraphingCalculator(
+//           graphContainerRef.current,
+//           {
+//             graphpaper: true,
+//             expressions: true,
+//             expressionsCollapsed: true,
+//             expressionsTopbar: true,
+//             settingsMenu: true,
+//             zoomButtons: true,
+//             keypad: true,
+//             keypadActivated: false,
+//             autosize: true,
+//             border: true,
+//             pointsOfInterest: true,
+//             trace: true,
+//           },
+//         );
+
+//         const editingId = graphEditingElementIdRef.current;
+//         if (editingId && graphCalculatorRef.current.setState) {
+//           const editingElement = pages
+//             .flatMap((page) => page.elements)
+//             .find(
+//               (element): element is ImageElement =>
+//                 element.id === editingId &&
+//                 element.type === "image" &&
+//                 element.name === "Desmos Graph" &&
+//                 Boolean(element.graphState),
+//             );
+
+//           if (editingElement?.graphState) {
+//             try {
+//               graphCalculatorRef.current.setState(
+//                 JSON.parse(editingElement.graphState) as DesmosGraphState,
+//               );
+//             } catch {
+//               // Keep the default calculator state if an older graph has no
+//               // valid serialized Desmos state.
+//             }
+//           }
+//         }
+//       })
+//       .catch((error) => {
+//         if (!cancelled) {
+//           setGraphLoadError(
+//             error instanceof Error
+//               ? error.message
+//               : "Unable to load the Desmos Graphing Calculator.",
+//           );
+//         }
+//       });
+
+//     return () => {
+//       cancelled = true;
+//       graphCalculatorRef.current?.destroy();
+//       graphCalculatorRef.current = null;
+//     };
+//   }, [showGraphEditor, pages]);
+
+//   const startPopupDrag = useCallback(
+//     (key: string, event: React.PointerEvent<HTMLElement>) => {
+//       const target = event.target as HTMLElement;
+//       if (target.closest("button, input, select, textarea, [data-no-drag]"))
+//         return;
+
+//       // Store the actual popup element. The popup's parent is often the
+//       // full-screen whiteboard wrapper, which was causing small popups to
+//       // clamp to the left edge.
+//       // Always resolve the actual popup dialog itself. When the drag starts
+//       // from a popup header, event.currentTarget is the header; when it starts
+//       // from the popup container, its parent is the full-screen board wrapper.
+//       // Using closest(dialog) fixes the left-edge clamping for every popup.
+//       const popup = event.currentTarget.closest(
+//         '[role="dialog"], aside',
+//       ) as HTMLElement | null;
+//       if (!popup) return;
+
+//       const rect = popup.getBoundingClientRect();
+
+//       popupDragRef.current = {
+//         key,
+//         dx: event.clientX - rect.left,
+//         dy: event.clientY - rect.top,
+//         element: popup,
+//         captureTarget: event.currentTarget,
+//       };
+
+//       event.currentTarget.setPointerCapture(event.pointerId);
+//       event.preventDefault();
+//     },
+//     [],
+//   );
+
+//   const movePopupDrag = useCallback(
+//     (event: React.PointerEvent<HTMLElement>) => {
+//       const drag = popupDragRef.current;
+//       if (!drag) return;
+
+//       const root = rootRef.current?.getBoundingClientRect();
+//       if (!root) return;
+
+//       // Always measure the popup itself, never event.currentTarget.parentElement.
+//       const popupRect = drag.element.getBoundingClientRect();
+//       const width = popupRect.width;
+//       const height = popupRect.height;
+
+//       const maxX = Math.max(8, root.width - width - 8);
+//       const maxY = Math.max(8, root.height - height - 8);
+
+//       const x = Math.max(
+//         8,
+//         Math.min(event.clientX - root.left - drag.dx, maxX),
+//       );
+//       const y = Math.max(8, Math.min(event.clientY - root.top - drag.dy, maxY));
+
+//       setPopupPositions((previous) => ({
+//         ...previous,
+//         [drag.key]: { x, y },
+//       }));
+//     },
+//     [],
+//   );
+
+//   const endPopupDrag = useCallback((event: React.PointerEvent<HTMLElement>) => {
+//     const drag = popupDragRef.current;
+//     popupDragRef.current = null;
+
+//     if (!drag) return;
+
+//     try {
+//       drag.captureTarget.releasePointerCapture(event.pointerId);
+//     } catch {}
+//   }, []);
+//   const calculatorDraggingRef = useRef(false);
+//   const calculatorDragOffsetRef = useRef({ x: 0, y: 0 });
+//   const [formulaCategory, setFormulaCategory] =
+//     useState<FormulaCategory>("algebra");
+
+//   const [isFullscreen, setIsFullscreen] = useState(false);
+//   const [showTeacherControls] = useState(true);
+//   const [toolbarHovered, setToolbarHovered] = useState(false);
+//   const [teacherControlDragging, setTeacherControlDragging] = useState(false);
+
+//   // Draggable teacher-control launcher position.
+//   // The default position is the bottom-right corner, but the teacher can
+//   // drag the logo anywhere on the whiteboard.
+//   const [teacherControlPosition, setTeacherControlPosition] = useState({
+//     left: 0,
+//     top: 0,
+//   });
+//   const teacherControlInitializedRef = useRef(false);
+//   const teacherControlDraggingRef = useRef(false);
+//   const teacherControlDidDragRef = useRef(false);
+//   const teacherControlDragOffsetRef = useRef({
+//     x: 0,
+//     y: 0,
+//   });
+
+//   const [renamePageState, setRenamePageState] = useState<{
+//     open: boolean;
+//     index: number | null;
+//     name: string;
+//   }>({
+//     open: false,
+//     index: null,
+//     name: "",
+//   });
+//   const [, setIsSaved] = useState(false);
+//   const [saveStatus, setSaveStatus] = useState<
+//     "idle" | "saving" | "saved" | "error"
+//   >("idle");
+//   const [selectedEquation, setSelectedEquation] = useState("");
+//   const [selectedElementId, setSelectedElementId] = useState<string | null>(
+//     null,
+//   );
+//   const [selectedElementIds, setSelectedElementIds] = useState<string[]>([]);
+//   const [textObjectDragging, setTextObjectDragging] = useState(false);
+//   const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
+//   const [, setImageVersion] = useState(0);
+//   const imageInputRef = useRef<HTMLInputElement | null>(null);
+//   const pdfInputRef = useRef<HTMLInputElement | null>(null);
+
+//   const [textEditor, setTextEditor] = useState<{
+//     open: boolean;
+//     type: "text" | "equation";
+//     x: number;
+//     y: number;
+//     text: string;
+//     fontSize: number;
+//     color: string;
+//     bold: boolean;
+//     italic: boolean;
+//     underline: boolean;
+//     editingElementId: string | null;
+//   }>({
+//     open: false,
+//     type: "text",
+//     x: 0,
+//     y: 0,
+//     text: "",
+//     fontSize: 24,
+//     color: "#2563eb",
+//     bold: false,
+//     italic: false,
+//     underline: false,
+//     editingElementId: null,
+//   });
+
+//   const textInputRef = useRef<HTMLTextAreaElement | null>(null);
+//   const latexInputRef = useRef<HTMLTextAreaElement | null>(null);
+//   const [latexEditor, setLatexEditor] = useState<{
+//     open: boolean;
+//     text: string;
+//     color: string;
+//     editingElementId: string | null;
+//     x: number;
+//     y: number;
+//   }>({
+//     open: false,
+//     text: "",
+//     color: "#0f172a",
+//     editingElementId: null,
+//     x: 0,
+//     y: 0,
+//   });
+//   const [latexTab, setLatexTab] = useState<"All" | "Math" | "Arrow" | "Letter">(
+//     "All",
+//   );
+//   const [activeTextPanel, setActiveTextPanel] = useState<
+//     "symbols" | "templates" | "formatting" | null
+//   >(null);
+//   const [showTextFormattingColors, setShowTextFormattingColors] =
+//     useState(false);
+//   const [teachingLibrary, setTeachingLibrary] = useState<TeachingLibraryItem[]>([]);
+//   const [teachingLessons, setTeachingLessons] = useState<TeachingLesson[]>([
+//     { id: DEFAULT_TEACHING_LESSON_ID, name: "General lesson", subtopics: [{ id: DEFAULT_TEACHING_SUBTOPIC_ID, name: "General", createdAt: new Date(0).toISOString(), updatedAt: new Date(0).toISOString() }], createdAt: new Date(0).toISOString(), updatedAt: new Date(0).toISOString() },
+//   ]);
+//   const [activeTeachingLessonId, setActiveTeachingLessonId] = useState(DEFAULT_TEACHING_LESSON_ID);
+//   const [activeTeachingSubtopicId, setActiveTeachingSubtopicId] = useState(DEFAULT_TEACHING_SUBTOPIC_ID);
+//   const [newTeachingSubtopicName, setNewTeachingSubtopicName] = useState("");
+//   const [isCreatingTeachingSubtopic, setIsCreatingTeachingSubtopic] = useState(false);
+//   const [showAllLessonMaterials, setShowAllLessonMaterials] = useState(false);
+//   const [isCreatingTeachingLesson, setIsCreatingTeachingLesson] = useState(false);
+//   const [newTeachingLessonName, setNewTeachingLessonName] = useState("");
+//   const [pendingTeachingDelete, setPendingTeachingDelete] = useState<{ type: "topic" | "subtopic"; id: string; name: string } | null>(null);
+//   const [teachingLibraryOpen, setTeachingLibraryOpen] = useState(false);
+//   const [openTeachingActionMenu, setOpenTeachingActionMenu] = useState<{ itemId: string; top: number; right: number } | null>(null);
+//   const [teachingPresentationOpen, setTeachingPresentationOpen] = useState(true);
+//   const [teachingPanelVisible, setTeachingPanelVisible] = useState(false);
+//   const [teachingPresentationIndex, setTeachingPresentationIndex] = useState(0);
+//   const [teachingRevealedStepCount, setTeachingRevealedStepCount] = useState(0);
+//   const [teachingLibrarySearch, setTeachingLibrarySearch] = useState("");
+//   const [teachingLibraryFilter, setTeachingLibraryFilter] = useState<"all" | TeachingTemplate>("all");
+//   const [teachingSectionFilter, setTeachingSectionFilter] = useState<"all" | TeachingSection>("all");
+//   const [teachingEditor, setTeachingEditor] = useState<{
+//     open: boolean;
+//     template: TeachingTemplate;
+//     heading: string;
+//     body: string;
+//     fontSize: number;
+//     stepsText: string;
+//     section: TeachingSection;
+//     subtopicId: string;
+//     editingElementId: string | null;
+//     editingLibraryItemId: string | null;
+//     returnToLibrary: boolean;
+//   }>({
+//     open: false,
+//     template: "definition",
+//     heading: TEACHING_TEMPLATES.definition.heading,
+//     body: "",
+//     fontSize: 18,
+//     stepsText: "",
+//     section: "definitions",
+//     subtopicId: DEFAULT_TEACHING_SUBTOPIC_ID,
+//     editingElementId: null,
+//     editingLibraryItemId: null,
+//     returnToLibrary: false,
+//   });
+
+//   // Teaching Mode behaves like an auto-hiding side panel: it is shown when
+//   // presentation starts, hides as the pointer leaves its area, and reappears
+//   // when the pointer approaches the right edge. The narrow edge handle keeps
+//   // the panel discoverable on touch devices as well.
+//   useEffect(() => {
+//     // This effect only synchronizes the panel with external pointer movement.
+//     // Visibility is also gated by teachingPresentationOpen in the rendered UI,
+//     // so no synchronous state update is needed when the mode closes.
+//     if (!teachingPresentationOpen) return;
+
+//     const handlePointerMove = (event: PointerEvent) => {
+//       // IMPORTANT: reveal from the browser viewport edge, not rootRef or the
+//       // whiteboard boundary. The user wants to move all the way to the far
+//       // right of the screen before Teaching Mode appears.
+//       const viewportRight = window.innerWidth;
+//       const revealThreshold = 1; // final 1 CSS pixel of the browser viewport
+//       const panelWidth = 280;
+
+//       const pointerInsideVisiblePanel =
+//         event.clientX >= viewportRight - panelWidth &&
+//         event.clientX <= viewportRight;
+
+//       const pointerAtFarRightScreenEdge =
+//         event.clientX >= viewportRight - revealThreshold &&
+//         event.clientX <= viewportRight;
+
+//       setTeachingPanelVisible((visible) =>
+//         visible ? pointerInsideVisiblePanel : pointerAtFarRightScreenEdge,
+//       );
+//     };
+
+//     window.addEventListener("pointermove", handlePointerMove, { passive: true });
+//     return () => window.removeEventListener("pointermove", handlePointerMove);
+//   }, [teachingPresentationOpen]);
+
+//   const activeTeachingLesson = teachingLessons.find((lesson) => lesson.id === activeTeachingLessonId);
+//   const activeTeachingSubtopics = activeTeachingLesson?.subtopics ?? [];
+//   const activeTeachingSubtopic = activeTeachingSubtopics.find((subtopic) => subtopic.id === activeTeachingSubtopicId) ?? activeTeachingSubtopics[0] ?? null;
+
+//   const activeLessonTeachingMaterials = useMemo(() => {
+//     const sectionOrder = Object.keys(TEACHING_SECTIONS) as TeachingSection[];
+//     return teachingLibrary
+//       .filter((item) => (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === activeTeachingLessonId)
+//       .filter((item) => !activeTeachingSubtopicId || (item.subtopicId ?? DEFAULT_TEACHING_SUBTOPIC_ID) === activeTeachingSubtopicId)
+//       .sort((a, b) => {
+//         const sectionA = sectionOrder.indexOf(a.section ?? getDefaultTeachingSection(a.template));
+//         const sectionB = sectionOrder.indexOf(b.section ?? getDefaultTeachingSection(b.template));
+//         return sectionA - sectionB || (a.order ?? 0) - (b.order ?? 0) || a.createdAt.localeCompare(b.createdAt);
+//       });
+//   }, [activeTeachingLessonId, activeTeachingSubtopicId, teachingLibrary]);
+
+//   const currentTeachingPresentationItem =
+//     activeLessonTeachingMaterials[teachingPresentationIndex] ?? null;
+
+//   const drawingRef = useRef(false);
+//   const startPointRef = useRef<Point | null>(null);
+//   const currentStrokeRef = useRef<StrokeElement | null>(null);
+//   const previewElementRef = useRef<ShapeElement | null>(null);
+
+//   const transformRef = useRef<{
+//     mode: "move" | "resize";
+//     ids: string[];
+//     elements: WhiteboardElement[];
+//     originalElements: WhiteboardElement[];
+//     startPoint: Point;
+//     anchor: Point;
+//     handle: "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | null;
+//     moved: boolean;
+//   } | null>(null);
+
+//   const marqueeRef = useRef<{
+//     start: Point;
+//     current: Point;
+//     moved: boolean;
+//   } | null>(null);
+
+//   const historyRef = useRef<WhiteboardPage[][]>([[createPage("Page 1")]]);
+//   const redoRef = useRef<WhiteboardPage[][]>([]);
+
+//   const currentPage = pages[currentPageIndex] ?? pages[0];
+//   const elements = useMemo(() => currentPage?.elements ?? [], [currentPage]);
+//   const positionColorPopup = useCallback((target: "pen" | "object") => {
+//     const button =
+//       target === "object"
+//         ? objectColorButtonRef.current
+//         : colorButtonRef.current;
+//     if (!button) return;
+
+//     const rect = button.getBoundingClientRect();
+//     const popupWidth = 220;
+//     const popupHeight = 190;
+//     const gap = 10;
+
+//     let left = rect.right + gap;
+//     if (left + popupWidth > window.innerWidth - 12) {
+//       left = Math.max(12, rect.left - popupWidth - gap);
+//     }
+
+//     let top = rect.top;
+//     if (top + popupHeight > window.innerHeight - 12) {
+//       top = Math.max(12, window.innerHeight - popupHeight - 12);
+//     }
+
+//     setColorPopupPosition({ top, left });
+//     setColorPopupTarget(target);
+//     setShowColorPopup(true);
+//   }, []);
+
+//   const positionPenPopup = useCallback(() => {
+//     const button = penButtonRef.current;
+//     if (!button) return;
+
+//     const rect = button.getBoundingClientRect();
+//     const popupWidth = 344;
+//     const popupHeight = 230;
+//     const gap = 10;
+
+//     let left = rect.left + rect.width / 2 - popupWidth / 2;
+//     let top = rect.bottom + gap;
+
+//     left = Math.max(
+//       leftInset + 12,
+//       Math.min(left, window.innerWidth - popupWidth - 12),
+//     );
+
+//     if (top + popupHeight > window.innerHeight - 12) {
+//       top = Math.max(12, rect.top - popupHeight - gap);
+//     }
+
+//     setPenPopupPosition({ top, left });
+//   }, []);
+
+//   useEffect(() => {
+//     if (!showEraserPopup) return;
+
+//     const handleOutsidePointerDown = (event: PointerEvent) => {
+//       const target = event.target as Node | null;
+//       if (
+//         target &&
+//         (eraserPopupRef.current?.contains(target) ||
+//           eraserButtonRef.current?.contains(target))
+//       ) {
+//         return;
+//       }
+//       setShowEraserPopup(false);
+//     };
+
+//     document.addEventListener("pointerdown", handleOutsidePointerDown);
+//     return () =>
+//       document.removeEventListener("pointerdown", handleOutsidePointerDown);
+//   }, [showEraserPopup]);
+
+//   useEffect(() => {
+//     if (!showPenPopup) return;
+
+//     const handleOutsidePointerDown = (event: PointerEvent) => {
+//       const target = event.target as Node | null;
+
+//       if (
+//         target &&
+//         (penPopupRef.current?.contains(target) ||
+//           penButtonRef.current?.contains(target))
+//       ) {
+//         return;
+//       }
+
+//       setShowPenPopup(false);
+//     };
+
+//     document.addEventListener("pointerdown", handleOutsidePointerDown);
+
+//     return () => {
+//       document.removeEventListener("pointerdown", handleOutsidePointerDown);
+//     };
+//   }, [showPenPopup]);
+
+//   const pushHistory = useCallback(() => {
+//     historyRef.current.push(JSON.parse(JSON.stringify(pages)));
+
+//     if (historyRef.current.length > 50) {
+//       historyRef.current.shift();
+//     }
+
+//     redoRef.current = [];
+//   }, [pages]);
+
+//   const updateCurrentPage = useCallback(
+//     (updater: (page: WhiteboardPage) => WhiteboardPage) => {
+//       setPages((previous) =>
+//         previous.map((page, index) =>
+//           index === currentPageIndex ? updater(page) : page,
+//         ),
+//       );
+
+//       setIsSaved(false);
+//     },
+//     [currentPageIndex],
+//   );
+
+//   const applySelectedElementColor = useCallback(
+//     (nextColor: string) => {
+//       if (!selectedElementId) return;
+
+//       const selected = elements.find(
+//         (element: WhiteboardElement) => element.id === selectedElementId,
+//       );
+//       if (!selected) return;
+
+//       if (!("color" in selected)) {
+//         setShowColorPopup(false);
+//         setColorPopupTarget(null);
+//         return;
+//       }
+
+//       if (selected.color === nextColor) {
+//         setShowColorPopup(false);
+//         return;
+//       }
+
+//       pushHistory();
+//       updateCurrentPage((page) => ({
+//         ...page,
+//         elements: page.elements.map((element: WhiteboardElement) =>
+//           element.id === selectedElementId
+//             ? { ...element, color: nextColor }
+//             : element,
+//         ),
+//       }));
+
+//       setShowColorPopup(false);
+//       setColorPopupTarget(null);
+//     },
+//     [elements, pushHistory, selectedElementId, updateCurrentPage],
+//   );
+
+//   const getPoint = useCallback(
+//     (event: Pick<MouseEvent, "clientX" | "clientY">): Point => {
+//       const canvas = canvasRef.current;
+//       if (!canvas) return { x: 0, y: 0 };
+//       const rect = canvas.getBoundingClientRect();
+//       let x = event.clientX - rect.left - panOffset.x;
+//       let y = event.clientY - rect.top - panOffset.y;
+
+//       // In vertical-video mode, keep every new point inside the visible
+//       // 9:16 frame, even when a pointer is dragged beyond its border.
+//       if (showMobileFrame && mobileFrameRef.current) {
+//         const frameRect = mobileFrameRef.current.getBoundingClientRect();
+//         const frameLeft = frameRect.left - rect.left - panOffset.x;
+//         const frameTop = frameRect.top - rect.top - panOffset.y;
+//         const frameRight = frameLeft + frameRect.width;
+//         const frameBottom = frameTop + frameRect.height;
+//         x = Math.max(frameLeft, Math.min(x, frameRight));
+//         y = Math.max(frameTop, Math.min(y, frameBottom));
+//       }
+
+//       if (snapToGrid) {
+//         x = Math.round(x / gridSize) * gridSize;
+//         y = Math.round(y / gridSize) * gridSize;
+//       }
+//       return { x, y };
+//     },
+//     [gridSize, panOffset.x, panOffset.y, snapToGrid, showMobileFrame],
+//   );
+
+//   const drawGrid = useCallback(
+//     (
+//       ctx: CanvasRenderingContext2D,
+//       canvasWidth: number,
+//       canvasHeight: number,
+//     ) => {
+//       if (!showGrid) return;
+
+//       // Default graph-paper background: subtle minor lines and slightly
+//       // stronger major lines every five cells for accurate math diagrams.
+//       ctx.save();
+//       const minor = gridSize;
+//       const major = gridSize * 5;
+//       ctx.lineWidth = 1;
+//       ctx.strokeStyle = gridColor;
+//       ctx.globalAlpha = 0.38;
+//       ctx.beginPath();
+//       for (let x = 0; x <= canvasWidth; x += minor) {
+//         ctx.moveTo(Math.round(x) + 0.5, 0);
+//         ctx.lineTo(Math.round(x) + 0.5, canvasHeight);
+//       }
+//       for (let y = 0; y <= canvasHeight; y += minor) {
+//         ctx.moveTo(0, Math.round(y) + 0.5);
+//         ctx.lineTo(canvasWidth, Math.round(y) + 0.5);
+//       }
+//       ctx.stroke();
+
+//       ctx.globalAlpha = 0.22;
+//       ctx.lineWidth = 1.25;
+//       ctx.beginPath();
+//       for (let x = 0; x <= canvasWidth; x += major) {
+//         ctx.moveTo(Math.round(x) + 0.5, 0);
+//         ctx.lineTo(Math.round(x) + 0.5, canvasHeight);
+//       }
+//       for (let y = 0; y <= canvasHeight; y += major) {
+//         ctx.moveTo(0, Math.round(y) + 0.5);
+//         ctx.lineTo(canvasWidth, Math.round(y) + 0.5);
+//       }
+//       ctx.stroke();
+//       ctx.restore();
+//     },
+//     [gridColor, gridSize, showGrid],
+//   );
+
+//   const drawStroke = useCallback(
+//     (ctx: CanvasRenderingContext2D, element: StrokeElement) => {
+//       if (element.points.length === 0) return;
+//       ctx.save();
+//       ctx.strokeStyle = element.color;
+//       ctx.lineCap = "round";
+//       ctx.lineJoin = "round";
+//       ctx.beginPath();
+//       const first = element.points[0];
+//       ctx.moveTo(first.x, first.y);
+
+//       for (let i = 1; i < element.points.length; i++) {
+//         const point = element.points[i];
+//         const previous = element.points[i - 1];
+//         const midpointX = (previous.x + point.x) / 2;
+//         const midpointY = (previous.y + point.y) / 2;
+//         ctx.lineWidth = element.width;
+//         ctx.quadraticCurveTo(previous.x, previous.y, midpointX, midpointY);
+//       }
+//       const last = element.points[element.points.length - 1];
+//       ctx.lineTo(last.x, last.y);
+//       ctx.stroke();
+//       ctx.restore();
+//     },
+//     [],
+//   );
+
+//   const drawShape = useCallback(
+//     (ctx: CanvasRenderingContext2D, element: ShapeElement) => {
+//       const { start, end } = element;
+//       ctx.save();
+//       ctx.strokeStyle = element.color || axisColor;
+//       ctx.lineWidth = element.width;
+//       ctx.lineCap = "round";
+//       ctx.lineJoin = "round";
+
+//       const centerX = (start.x + end.x) / 2;
+//       const centerY = (start.y + end.y) / 2;
+//       const width = Math.abs(end.x - start.x);
+//       const height = Math.abs(end.y - start.y);
+//       const drawRegularPolygon = (sides: number, radius: number) => {
+//         const points = Array.from({ length: sides }, (_, index) => {
+//           const angle = -Math.PI / 2 + (index * Math.PI * 2) / sides;
+//           return {
+//             x: centerX + Math.cos(angle) * radius,
+//             y: centerY + Math.sin(angle) * radius,
+//           };
+//         });
+//         ctx.moveTo(points[0].x, points[0].y);
+//         for (let index = 1; index < points.length; index++)
+//           ctx.lineTo(points[index].x, points[index].y);
+//         ctx.closePath();
+//       };
+
+//       ctx.beginPath();
+//       if (element.type === "arrow") {
+//         const angle = Math.atan2(end.y - start.y, end.x - start.x);
+//         const arrowSize = Math.max(
+//           10,
+//           Math.min(20, Math.hypot(end.x - start.x, end.y - start.y) * 0.12),
+//         );
+//         ctx.moveTo(start.x, start.y);
+//         ctx.lineTo(end.x, end.y);
+//         ctx.moveTo(end.x, end.y);
+//         ctx.lineTo(
+//           end.x - arrowSize * Math.cos(angle - Math.PI / 6),
+//           end.y - arrowSize * Math.sin(angle - Math.PI / 6),
+//         );
+//         ctx.moveTo(end.x, end.y);
+//         ctx.lineTo(
+//           end.x - arrowSize * Math.cos(angle + Math.PI / 6),
+//           end.y - arrowSize * Math.sin(angle + Math.PI / 6),
+//         );
+//       } else if (element.type === "line") {
+//         ctx.moveTo(start.x, start.y);
+//         ctx.lineTo(end.x, end.y);
+//       } else if (element.type === "ellipse") {
+//         ctx.ellipse(
+//           centerX,
+//           centerY,
+//           Math.max(1, width / 2),
+//           Math.max(1, height / 2),
+//           0,
+//           0,
+//           Math.PI * 2,
+//         );
+//       } else if (element.type === "rectangle") {
+//         ctx.rect(start.x, start.y, end.x - start.x, end.y - start.y);
+//       } else if (element.type === "circle") {
+//         ctx.arc(
+//           centerX,
+//           centerY,
+//           Math.max(1, Math.min(width, height) / 2),
+//           0,
+//           Math.PI * 2,
+//         );
+//       } else if (element.type === "triangle") {
+//         ctx.moveTo(centerX, start.y);
+//         ctx.lineTo(end.x, end.y);
+//         ctx.lineTo(start.x, end.y);
+//         ctx.closePath();
+//       } else if (element.type === "cube") {
+//         const offsetX = Math.max(10, width * 0.22);
+//         const offsetY = Math.max(8, height * 0.18);
+//         const backLeft = start.x + offsetX;
+//         const backTop = start.y - offsetY;
+//         const backRight = end.x + offsetX;
+//         const backBottom = end.y - offsetY;
+//         ctx.rect(start.x, start.y, end.x - start.x, end.y - start.y);
+//         ctx.moveTo(backLeft, backTop);
+//         ctx.lineTo(backRight, backTop);
+//         ctx.lineTo(backRight, backBottom);
+//         ctx.lineTo(backLeft, backBottom);
+//         ctx.closePath();
+//         ctx.moveTo(start.x, start.y);
+//         ctx.lineTo(backLeft, backTop);
+//         ctx.moveTo(end.x, start.y);
+//         ctx.lineTo(backRight, backTop);
+//         ctx.moveTo(end.x, end.y);
+//         ctx.lineTo(backRight, backBottom);
+//         ctx.moveTo(start.x, end.y);
+//         ctx.lineTo(backLeft, backBottom);
+//       } else if (element.type === "cylinder") {
+//         const radiusX = Math.max(1, width / 2);
+//         const radiusY = Math.max(3, Math.min(14, height * 0.16));
+//         ctx.ellipse(centerX, start.y, radiusX, radiusY, 0, 0, Math.PI * 2);
+//         ctx.moveTo(start.x, start.y);
+//         ctx.lineTo(start.x, end.y);
+//         ctx.moveTo(end.x, start.y);
+//         ctx.lineTo(end.x, end.y);
+//         ctx.ellipse(centerX, end.y, radiusX, radiusY, 0, 0, Math.PI);
+//       } else if (element.type === "diamond") {
+//         ctx.moveTo(centerX, start.y);
+//         ctx.lineTo(end.x, centerY);
+//         ctx.lineTo(centerX, end.y);
+//         ctx.lineTo(start.x, centerY);
+//         ctx.closePath();
+//       } else if (element.type === "pentagon") {
+//         drawRegularPolygon(5, Math.max(1, Math.min(width, height) / 2));
+//       } else if (element.type === "hexagon") {
+//         drawRegularPolygon(6, Math.max(1, Math.min(width, height) / 2));
+//       } else if (element.type === "heptagon") {
+//         drawRegularPolygon(7, Math.max(1, Math.min(width, height) / 2));
+//       } else if (element.type === "octagon") {
+//         drawRegularPolygon(8, Math.max(1, Math.min(width, height) / 2));
+//       } else if (element.type === "parallelogram") {
+//         const skew = Math.max(8, width * 0.2);
+//         ctx.moveTo(start.x + skew, start.y);
+//         ctx.lineTo(end.x, start.y);
+//         ctx.lineTo(end.x - skew, end.y);
+//         ctx.lineTo(start.x, end.y);
+//         ctx.closePath();
+//       } else if (element.type === "sphere") {
+//         const radius = Math.max(1, Math.min(width, height) / 2);
+//         ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+//         ctx.moveTo(centerX, centerY - radius);
+//         ctx.ellipse(centerX, centerY, radius * 0.42, radius, 0, 0, Math.PI * 2);
+//       } else if (element.type === "axes") {
+//         ctx.moveTo(start.x, centerY);
+//         ctx.lineTo(end.x, centerY);
+//         ctx.moveTo(centerX, start.y);
+//         ctx.lineTo(centerX, end.y);
+//       }
+//       ctx.stroke();
+//       ctx.restore();
+//     },
+//     [axisColor],
+//   );
+
+//   const drawText = useCallback(
+//     (ctx: CanvasRenderingContext2D, element: TextElement, showClose = false) => {
+//       if (element.type === "text" && element.teachingTemplate) {
+//         const style = TEACHING_TEMPLATES[element.teachingTemplate];
+//         const scaleX = Math.max(0.25, element.scaleX ?? 1);
+//         const scaleY = Math.max(0.25, element.scaleY ?? 1);
+//         const cardWidth = element.cardWidth ?? 360;
+//         const cardHeight = element.cardHeight ?? 190;
+//         const isLessonTitle = element.cardEyebrow === "";
+//         ctx.save();
+//         ctx.translate(element.x, element.y);
+//         ctx.scale(scaleX, scaleY);
+
+//         if (!isLessonTitle) {
+//           // Standard teaching cards retain their white card surface and accent.
+//           ctx.shadowColor = "rgba(15, 23, 42, 0.12)";
+//           ctx.shadowBlur = 16;
+//           ctx.shadowOffsetY = 5;
+//           ctx.fillStyle = "#ffffff";
+//           ctx.beginPath();
+//           ctx.roundRect(0, 0, cardWidth, cardHeight, 16);
+//           ctx.fill();
+//           ctx.shadowColor = "transparent";
+//           ctx.shadowBlur = 0;
+//           ctx.shadowOffsetY = 0;
+//           ctx.strokeStyle = "#e2e8f0";
+//           ctx.lineWidth = 1;
+//           ctx.stroke();
+//           ctx.save();
+//           ctx.beginPath();
+//           ctx.roundRect(0, 0, cardWidth, cardHeight, 16);
+//           ctx.clip();
+//           ctx.fillStyle = style.accent;
+//           ctx.fillRect(0, 0, 7, cardHeight);
+//           ctx.restore();
+
+//           // Card content starts directly with its heading; no eyebrow/tag label.
+//           ctx.fillStyle = "#0f172a";
+//           const headingFontSize = Math.max(18, Math.min(36, 21 + ((element.fontSize ?? 18) - 18) * 0.45));
+//           ctx.font = `700 ${headingFontSize}px Inter, sans-serif`;
+//           ctx.textBaseline = "top";
+//           ctx.fillText((element.heading ?? style.heading).slice(0, 42), 22, 22);
+//         } else {
+//           // Lesson title: a simple white, resizable card with centered bold text.
+//           ctx.fillStyle = "#ffffff";
+//           ctx.beginPath();
+//           ctx.roundRect(0, 0, cardWidth, cardHeight, 12);
+//           ctx.fill();
+//           ctx.strokeStyle = "#e2e8f0";
+//           ctx.lineWidth = 1;
+//           ctx.stroke();
+
+//           const title = element.heading ?? style.heading;
+//           const horizontalPadding = 28;
+//           const maxTextWidth = Math.max(40, cardWidth - horizontalPadding * 2);
+//           const fontSize = Math.min(34, Math.max(20, cardHeight * 0.42));
+//           ctx.fillStyle = "#000000";
+//           ctx.font = `800 ${fontSize}px Inter, sans-serif`;
+//           ctx.textAlign = "center";
+//           ctx.textBaseline = "middle";
+
+//           // Wrap long lesson names and center the complete title in the card.
+//           const words = title.split(/\s+/).filter(Boolean);
+//           const lines: string[] = [];
+//           let line = "";
+//           for (const word of words) {
+//             const candidate = line ? `${line} ${word}` : word;
+//             if (ctx.measureText(candidate).width > maxTextWidth && line) {
+//               lines.push(line);
+//               line = word;
+//             } else {
+//               line = candidate;
+//             }
+//           }
+//           if (line) lines.push(line);
+//           const lineHeight = fontSize * 1.18;
+//           const firstLineY = cardHeight / 2 - ((lines.length - 1) * lineHeight) / 2;
+//           lines.forEach((textLine, index) => {
+//             ctx.fillText(textLine, cardWidth / 2, firstLineY + index * lineHeight, maxTextWidth);
+//           });
+//         }
+
+//         // Close control is visible only for the currently selected card.
+//         const closeX = cardWidth - 20;
+//         const closeY = isLessonTitle ? 18 : 20;
+//         if (showClose) {
+//           ctx.save();
+//           ctx.beginPath();
+//           ctx.arc(closeX, closeY, 10, 0, Math.PI * 2);
+//           ctx.fillStyle = "#fff1f2";
+//           ctx.fill();
+//           ctx.strokeStyle = "#fecdd3";
+//           ctx.lineWidth = 1;
+//           ctx.stroke();
+//           ctx.strokeStyle = "#e11d48";
+//           ctx.lineWidth = 1.8;
+//           ctx.lineCap = "round";
+//           ctx.beginPath();
+//           ctx.moveTo(closeX - 3, closeY - 3);
+//           ctx.lineTo(closeX + 3, closeY + 3);
+//           ctx.moveTo(closeX + 3, closeY - 3);
+//           ctx.lineTo(closeX - 3, closeY + 3);
+//           ctx.stroke();
+//           ctx.restore();
+//         }
+
+//         if (isLessonTitle) {
+//           ctx.restore();
+//           return;
+//         }
+
+//         const bodyFontSize = Math.max(12, Math.min(36, element.fontSize || 18));
+//         const lineHeight = bodyFontSize * 1.4;
+//         ctx.fillStyle = "#334155";
+//         ctx.font = `400 ${bodyFontSize}px Inter, sans-serif`;
+//         ctx.textBaseline = "top";
+//         const body = element.body ?? element.text;
+//         const sourceLines = body.split(/\r?\n/);
+//         const lines: Array<{ text: string; bullet: boolean }> = [];
+//         const maxWidth = cardWidth - 44;
+
+//         sourceLines.forEach((sourceLine) => {
+//           const trimmedLine = sourceLine.trim();
+//           if (!trimmedLine) {
+//             lines.push({ text: "", bullet: false });
+//             return;
+//           }
+//           const bullet = /^(?:•|\*|-)\s+/.test(trimmedLine);
+//           const content = bullet ? trimmedLine.replace(/^(?:•|\*|-)\s+/, "") : trimmedLine;
+//           const bulletIndent = bullet ? bodyFontSize * 1.25 : 0;
+//           const availableWidth = maxWidth - bulletIndent;
+//           const words = content.split(/\s+/);
+//           let line = "";
+//           let firstWrappedLine = true;
+//           words.forEach((word) => {
+//             const candidate = line ? `${line} ${word}` : word;
+//             if (ctx.measureText(candidate).width > availableWidth && line) {
+//               lines.push({ text: line, bullet: bullet && firstWrappedLine });
+//               firstWrappedLine = false;
+//               line = word;
+//             } else {
+//               line = candidate;
+//             }
+//           });
+//           if (line) lines.push({ text: line, bullet: bullet && firstWrappedLine });
+//         });
+
+//         ctx.save();
+//         ctx.beginPath();
+//         ctx.rect(18, 52, cardWidth - 36, Math.max(20, cardHeight - 64));
+//         ctx.clip();
+//         lines.forEach((renderedLine, index) => {
+//           const lineY = 56 + index * lineHeight;
+//           if (renderedLine.bullet) {
+//             ctx.beginPath();
+//             ctx.arc(25, lineY + bodyFontSize * 0.48, Math.max(2, bodyFontSize * 0.12), 0, Math.PI * 2);
+//             ctx.fill();
+//           }
+//           ctx.fillText(renderedLine.text, renderedLine.bullet ? 22 + bodyFontSize * 1.25 : 22, lineY, maxWidth);
+//         });
+//         ctx.restore();
+//         ctx.restore();
+//         return;
+//       }
+
+//       if (element.type === "equation") {
+//         const scaleX = Math.max(0.2, element.scaleX ?? 1);
+//         const scaleY = Math.max(0.2, element.scaleY ?? 1);
+//         ctx.save();
+//         ctx.translate(element.x, element.y);
+//         ctx.scale(scaleX, scaleY);
+//         drawMathEquation(
+//           ctx,
+//           element.text,
+//           0,
+//           0,
+//           element.fontSize,
+//           element.color,
+//         );
+//         ctx.restore();
+//         return;
+//       }
+
+//       ctx.save();
+//       ctx.fillStyle = element.color;
+//       ctx.font = `${element.italic ? "italic " : ""}${element.bold ? "700 " : "400 "}${element.fontSize}px Inter, sans-serif`;
+//       ctx.textBaseline = "top";
+//       ctx.fillText(element.text, element.x, element.y);
+
+//       if (element.underline) {
+//         const textWidth = ctx.measureText(element.text).width;
+//         ctx.strokeStyle = element.color;
+//         ctx.lineWidth = Math.max(1, element.fontSize / 14);
+//         ctx.beginPath();
+//         ctx.moveTo(element.x, element.y + element.fontSize + 2);
+//         ctx.lineTo(element.x + textWidth, element.y + element.fontSize + 2);
+//         ctx.stroke();
+//       }
+
+//       ctx.restore();
+//     },
+//     [],
+//   );
+
+//   const drawSelection = useCallback(
+//     (ctx: CanvasRenderingContext2D, element: WhiteboardElement) => {
+//       const bounds = getElementBounds(element, ctx);
+//       const handleSize = 9;
+//       const half = handleSize / 2;
+//       const handles = [
+//         { name: "nw", x: bounds.left, y: bounds.top },
+//         { name: "n", x: (bounds.left + bounds.right) / 2, y: bounds.top },
+//         { name: "ne", x: bounds.right, y: bounds.top },
+//         { name: "e", x: bounds.right, y: (bounds.top + bounds.bottom) / 2 },
+//         { name: "se", x: bounds.right, y: bounds.bottom },
+//         { name: "s", x: (bounds.left + bounds.right) / 2, y: bounds.bottom },
+//         { name: "sw", x: bounds.left, y: bounds.bottom },
+//         { name: "w", x: bounds.left, y: (bounds.top + bounds.bottom) / 2 },
+//       ];
+
+//       ctx.save();
+//       ctx.strokeStyle = "#2563eb";
+//       ctx.lineWidth = 1.5;
+//       ctx.setLineDash([5, 4]);
+//       ctx.strokeRect(
+//         bounds.left,
+//         bounds.top,
+//         bounds.right - bounds.left,
+//         bounds.bottom - bounds.top,
+//       );
+//       ctx.setLineDash([]);
+
+//       handles.forEach(({ x, y }) => {
+//         ctx.fillStyle = "#ffffff";
+//         ctx.strokeStyle = "#2563eb";
+//         ctx.lineWidth = 1.5;
+//         ctx.beginPath();
+//         ctx.roundRect(x - half, y - half, handleSize, handleSize, 2);
+//         ctx.fill();
+//         ctx.stroke();
+//       });
+
+//       ctx.restore();
+//     },
+//     [],
+//   );
+
+//   const getUnionBounds = useCallback((items: WhiteboardElement[]) => {
+//     if (!items.length) return null;
+//     return items.reduce(
+//       (acc, item) => {
+//         const b = getElementBounds(item, contextRef.current);
+//         return {
+//           left: Math.min(acc.left, b.left),
+//           top: Math.min(acc.top, b.top),
+//           right: Math.max(acc.right, b.right),
+//           bottom: Math.max(acc.bottom, b.bottom),
+//         };
+//       },
+//       getElementBounds(items[0], contextRef.current),
+//     );
+//   }, []);
+
+//   const drawSelectionGroup = useCallback(
+//     (ctx: CanvasRenderingContext2D, items: WhiteboardElement[]) => {
+//       const bounds = getUnionBounds(items);
+//       if (!bounds) return;
+
+//       const handleSize = 9;
+//       const half = handleSize / 2;
+//       const handles = [
+//         { name: "nw", x: bounds.left, y: bounds.top },
+//         { name: "n", x: (bounds.left + bounds.right) / 2, y: bounds.top },
+//         { name: "ne", x: bounds.right, y: bounds.top },
+//         { name: "e", x: bounds.right, y: (bounds.top + bounds.bottom) / 2 },
+//         { name: "se", x: bounds.right, y: bounds.bottom },
+//         { name: "s", x: (bounds.left + bounds.right) / 2, y: bounds.bottom },
+//         { name: "sw", x: bounds.left, y: bounds.bottom },
+//         { name: "w", x: bounds.left, y: (bounds.top + bounds.bottom) / 2 },
+//       ];
+
+//       ctx.save();
+//       ctx.strokeStyle = "#2563eb";
+//       ctx.lineWidth = 1.5;
+//       ctx.setLineDash([6, 4]);
+//       ctx.strokeRect(
+//         bounds.left,
+//         bounds.top,
+//         bounds.right - bounds.left,
+//         bounds.bottom - bounds.top,
+//       );
+//       ctx.setLineDash([]);
+//       handles.forEach(({ x, y }) => {
+//         ctx.fillStyle = "#fff";
+//         ctx.strokeStyle = "#2563eb";
+//         ctx.beginPath();
+//         ctx.roundRect(x - half, y - half, handleSize, handleSize, 2);
+//         ctx.fill();
+//         ctx.stroke();
+//       });
+
+//       if (items.length > 1) {
+//         ctx.fillStyle = "#2563eb";
+//         ctx.font = "700 10px Inter, sans-serif";
+//         ctx.textBaseline = "bottom";
+//         ctx.fillText(
+//           `${items.length} objects selected`,
+//           bounds.left,
+//           Math.max(12, bounds.top - 8),
+//         );
+//       }
+//       ctx.restore();
+//     },
+//     [getUnionBounds],
+//   );
+
+//   const getSelectionHandle = useCallback(
+//     (element: WhiteboardElement, point: Point) => {
+//       const bounds = getElementBounds(element, contextRef.current);
+//       const tolerance = 12;
+//       const handles = [
+//         { name: "nw" as const, x: bounds.left, y: bounds.top },
+//         {
+//           name: "n" as const,
+//           x: (bounds.left + bounds.right) / 2,
+//           y: bounds.top,
+//         },
+//         { name: "ne" as const, x: bounds.right, y: bounds.top },
+//         {
+//           name: "e" as const,
+//           x: bounds.right,
+//           y: (bounds.top + bounds.bottom) / 2,
+//         },
+//         { name: "se" as const, x: bounds.right, y: bounds.bottom },
+//         {
+//           name: "s" as const,
+//           x: (bounds.left + bounds.right) / 2,
+//           y: bounds.bottom,
+//         },
+//         { name: "sw" as const, x: bounds.left, y: bounds.bottom },
+//         {
+//           name: "w" as const,
+//           x: bounds.left,
+//           y: (bounds.top + bounds.bottom) / 2,
+//         },
+//       ];
+//       return (
+//         handles.find(
+//           (handle) =>
+//             Math.abs(point.x - handle.x) <= tolerance &&
+//             Math.abs(point.y - handle.y) <= tolerance,
+//         )?.name ?? null
+//       );
+//     },
+//     [],
+//   );
+
+//   const resizeElement = useCallback(
+//     (
+//       original: WhiteboardElement,
+//       handle: "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w",
+//       point: Point,
+//     ) => {
+//       const bounds = getElementBounds(original, contextRef.current);
+//       const minSize = 12;
+//       let left = bounds.left;
+//       let right = bounds.right;
+//       let top = bounds.top;
+//       let bottom = bounds.bottom;
+
+//       if (handle.includes("w")) left = Math.min(point.x, right - minSize);
+//       if (handle.includes("e")) right = Math.max(point.x, left + minSize);
+//       if (handle.includes("n")) top = Math.min(point.y, bottom - minSize);
+//       if (handle.includes("s")) bottom = Math.max(point.y, top + minSize);
+
+//       const oldWidth = Math.max(bounds.right - bounds.left, minSize);
+//       const oldHeight = Math.max(bounds.bottom - bounds.top, minSize);
+//       const newWidth = Math.max(right - left, minSize);
+//       const newHeight = Math.max(bottom - top, minSize);
+//       const sx = newWidth / oldWidth;
+//       const sy = newHeight / oldHeight;
+
+//       if (original.type === "stroke") {
+//         return {
+//           ...original,
+//           width: Math.max(1, original.width * Math.sqrt(Math.abs(sx * sy))),
+//           points: original.points.map((p) => ({
+//             x: left + (p.x - bounds.left) * sx,
+//             y: top + (p.y - bounds.top) * sy,
+//           })),
+//         };
+//       }
+
+//       if (original.type === "image") {
+//         return {
+//           ...original,
+//           x: left,
+//           y: top,
+//           width: Math.max(minSize, right - left),
+//           height: Math.max(minSize, bottom - top),
+//         };
+//       }
+
+//       if ("start" in original && "end" in original) {
+//         return {
+//           ...original,
+//           start: { x: left, y: top },
+//           end: { x: right, y: bottom },
+//         };
+//       }
+
+//       if (original.type === "equation") {
+//         const metrics = estimateMathMetrics(
+//           original.text,
+//           original.fontSize,
+//           contextRef.current,
+//         );
+//         const padding = Math.max(7, original.fontSize * 0.14);
+//         const baseWidth = Math.max(metrics.width, original.fontSize * 0.8);
+//         const baseHeight = Math.max(metrics.height, original.fontSize);
+//         const targetWidth = Math.max(minSize, newWidth - padding * 2);
+//         const targetHeight = Math.max(minSize, newHeight - padding * 2);
+//         return {
+//           ...original,
+//           x: left + padding,
+//           y: top + padding,
+//           scaleX: Math.max(0.2, targetWidth / baseWidth),
+//           scaleY: Math.max(0.2, targetHeight / baseHeight),
+//         };
+//       }
+
+//       if (original.type === "text" && original.teachingTemplate) {
+//         const isLessonTitle = original.cardEyebrow === "";
+//         return {
+//           ...original,
+//           x: left,
+//           y: top,
+//           cardWidth: Math.max(isLessonTitle ? 180 : 240, newWidth),
+//           cardHeight: Math.max(isLessonTitle ? 64 : 140, newHeight),
+//         };
+//       }
+
+//       if (original.type === "text") {
+//         return {
+//           ...original,
+//           x: left + 4,
+//           y: top + 4,
+//           fontSize: Math.max(8, original.fontSize * Math.max(sx, sy)),
+//         };
+//       }
+
+//       return original;
+//     },
+//     [],
+//   );
+
+//   const getSelectedElement = useCallback(() => {
+//     if (!selectedElementId) return null;
+//     return (
+//       elements.find((el: WhiteboardElement) => el.id === selectedElementId) ??
+//       null
+//     );
+//   }, [elements, selectedElementId]);
+
+//   const getSelectedElements = useCallback(() => {
+//     const ids = selectedElementIds.length
+//       ? selectedElementIds
+//       : selectedElementId
+//         ? [selectedElementId]
+//         : [];
+//     return elements.filter((el) => ids.includes(el.id));
+//   }, [elements, selectedElementId, selectedElementIds]);
+
+//   const resizeCanvas = useCallback(() => {
+//     const canvas = canvasRef.current;
+//     const container = containerRef.current;
+//     if (!canvas || !container) return;
+//     const rect = container.getBoundingClientRect();
+//     const dpr = window.devicePixelRatio || 1;
+//     canvas.width = Math.round(rect.width * dpr);
+//     canvas.height = Math.round(rect.height * dpr);
+//     canvas.style.width = `${rect.width}px`;
+//     canvas.style.height = `${rect.height}px`;
+//     const ctx = canvas.getContext("2d");
+//     if (!ctx) return;
+//     contextRef.current = ctx;
+//     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+//   }, []);
+
+//   useEffect(() => {
+//     // Clear the previously loaded image immediately when the selected
+//     // background changes. The image is loaded asynchronously below.
+//     backgroundImageRef.current = null;
+
+//     if (!backgroundImage) return;
+
+//     const image = new Image();
+//     const requestedBackground = backgroundImage;
+
+//     image.onload = () => {
+//       // Ignore a late response from an image that is no longer selected.
+//       if (backgroundImage !== requestedBackground) return;
+
+//       backgroundImageRef.current = image;
+//       // This state update happens from the external image-load callback,
+//       // rather than synchronously inside the effect body.
+//       setBackgroundImageVersion((value) => value + 1);
+//     };
+
+//     image.onerror = () => {
+//       if (backgroundImage !== requestedBackground) return;
+
+//       console.error(
+//         `Failed to load whiteboard background image: ${requestedBackground}`,
+//       );
+//       backgroundImageRef.current = null;
+//       setBackgroundImageVersion((value) => value + 1);
+//     };
+
+//     image.src = requestedBackground;
+
+//     return () => {
+//       image.onload = null;
+//       image.onerror = null;
+//     };
+//   }, [backgroundImage]);
+
+//   // Load imported board images once and redraw when they become available.
+//   useEffect(() => {
+//     const imageElements = elements.filter(
+//       (element): element is ImageElement => element.type === "image",
+//     );
+//     imageElements.forEach((element) => {
+//       if (imageCacheRef.current.has(element.src)) return;
+//       const image = new Image();
+//       image.onload = () => {
+//         imageCacheRef.current.set(element.src, image);
+//         setImageVersion((value) => value + 1);
+//       };
+//       image.onerror = () => {
+//         imageCacheRef.current.delete(element.src);
+//       };
+//       image.src = element.src;
+//     });
+//   }, [elements]);
+
+//   const renderCanvas = useCallback(() => {
+//     const canvas = canvasRef.current;
+//     const container = containerRef.current;
+//     if (!canvas || !container) return;
+//     resizeCanvas();
+//     const ctx = canvas.getContext("2d");
+//     if (!ctx) return;
+//     const rect = container.getBoundingClientRect();
+
+//     if (backgroundImage && backgroundImageRef.current) {
+//       const image = backgroundImageRef.current;
+
+//       const scale = Math.max(
+//         rect.width / image.naturalWidth,
+//         rect.height / image.naturalHeight,
+//       );
+
+//       const imageWidth = image.naturalWidth * scale;
+//       const imageHeight = image.naturalHeight * scale;
+//       const imageX = (rect.width - imageWidth) / 2;
+//       const imageY = (rect.height - imageHeight) / 2;
+
+//       ctx.drawImage(image, imageX, imageY, imageWidth, imageHeight);
+//     } else {
+//       ctx.fillStyle = backgroundColor;
+//       ctx.fillRect(0, 0, rect.width, rect.height);
+//     }
+
+//     drawGrid(ctx, rect.width, rect.height);
+
+//     // Clip board content to the selected video-safe area.
+//     // The frame itself is a separate visual overlay, so it never enters exports.
+//     ctx.save();
+//     if (showMobileFrame && mobileFrameRef.current) {
+//       const frameRect = mobileFrameRef.current.getBoundingClientRect();
+//       const canvasRect = canvas.getBoundingClientRect();
+//       const clipLeft = frameRect.left - canvasRect.left - panOffset.x;
+//       const clipTop = frameRect.top - canvasRect.top - panOffset.y;
+//       ctx.beginPath();
+//       ctx.rect(clipLeft, clipTop, frameRect.width, frameRect.height);
+//       ctx.clip();
+//     }
+
+//     // Hand/pan mode moves the board content without moving the toolbar or grid.
+//     ctx.translate(panOffset.x, panOffset.y);
+
+//     // During move/resize, draw the live transformed element instead of waiting
+//     // for React state to update on pointer-up. This makes resizing feel
+//     // continuous and keeps the selection handles attached to the live object.
+//     const liveTransform = transformRef.current;
+//     const liveElementsById = new Map(
+//       (liveTransform?.elements ?? []).map((element) => [element.id, element]),
+//     );
+
+//     for (const element of elements) {
+//       // While editing an existing text element, the live textarea is the
+//       // source of truth. Hide the underlying canvas text so it does not
+//       // appear duplicated underneath the editor.
+//       if (
+//         textEditor.open &&
+//         textEditor.type === "text" &&
+//         textEditor.editingElementId === element.id
+//       ) {
+//         continue;
+//       }
+
+//       const elementToDraw = liveElementsById.get(element.id) ?? element;
+
+//       if (elementToDraw.type === "stroke") drawStroke(ctx, elementToDraw);
+//       else if (elementToDraw.type === "image") {
+//         const image = imageCacheRef.current.get(elementToDraw.src);
+//         if (image) {
+//           ctx.drawImage(
+//             image,
+//             elementToDraw.x,
+//             elementToDraw.y,
+//             elementToDraw.width,
+//             elementToDraw.height,
+//           );
+//         } else {
+//           ctx.save();
+//           ctx.fillStyle = "#e2e8f0";
+//           ctx.fillRect(
+//             elementToDraw.x,
+//             elementToDraw.y,
+//             elementToDraw.width,
+//             elementToDraw.height,
+//           );
+//           ctx.strokeStyle = "#94a3b8";
+//           ctx.strokeRect(
+//             elementToDraw.x,
+//             elementToDraw.y,
+//             elementToDraw.width,
+//             elementToDraw.height,
+//           );
+//           ctx.fillStyle = "#64748b";
+//           ctx.font = "12px Inter, sans-serif";
+//           ctx.textAlign = "center";
+//           ctx.textBaseline = "middle";
+//           ctx.fillText(
+//             "Loading image…",
+//             elementToDraw.x + elementToDraw.width / 2,
+//             elementToDraw.y + elementToDraw.height / 2,
+//           );
+//           ctx.restore();
+//         }
+//       } else if (
+//         [
+//           "arrow",
+//           "line",
+//           "ellipse",
+//           "rectangle",
+//           "circle",
+//           "triangle",
+//           "cube",
+//           "cylinder",
+//           "diamond",
+//           "pentagon",
+//           "hexagon",
+//           "heptagon",
+//           "octagon",
+//           "parallelogram",
+//           "sphere",
+//           "axes",
+//         ].includes(elementToDraw.type)
+//       )
+//         drawShape(ctx, elementToDraw as ShapeElement);
+//       else if (
+//         elementToDraw.type === "text" ||
+//         elementToDraw.type === "equation"
+//       )
+//         drawText(ctx, elementToDraw as TextElement, elementToDraw.id === selectedElementId);
+//     }
+
+//     if (currentStrokeRef.current) drawStroke(ctx, currentStrokeRef.current);
+//     if (previewElementRef.current) drawShape(ctx, previewElementRef.current);
+
+//     const selectedItems = liveTransform
+//       ? liveTransform.elements
+//       : getSelectedElements();
+
+//     // While a text object is being edited, the live textarea below is the
+//     // source of truth for its size. Do not draw the stale canvas selection
+//     // underneath it; the textarea itself renders the live blue dotted frame.
+//     if (!textEditor.open) {
+//       if (selectedItems.length === 1) {
+//         drawSelection(ctx, selectedItems[0]);
+//       } else if (selectedItems.length > 1) {
+//         drawSelectionGroup(ctx, selectedItems);
+//       }
+//     }
+
+//     const marquee = marqueeRef.current;
+//     if (marquee?.moved) {
+//       const left = Math.min(marquee.start.x, marquee.current.x);
+//       const top = Math.min(marquee.start.y, marquee.current.y);
+//       const width = Math.abs(marquee.current.x - marquee.start.x);
+//       const height = Math.abs(marquee.current.y - marquee.start.y);
+//       ctx.save();
+//       ctx.fillStyle = "rgba(37, 99, 235, 0.08)";
+//       ctx.fillRect(left, top, width, height);
+//       ctx.strokeStyle = "#2563eb";
+//       ctx.lineWidth = 1;
+//       ctx.setLineDash([5, 4]);
+//       ctx.strokeRect(left, top, width, height);
+//       ctx.restore();
+//     }
+
+//     ctx.restore();
+//   }, [
+//     backgroundColor,
+//     backgroundImage,
+//     drawGrid,
+//     drawShape,
+//     drawStroke,
+//     drawText,
+//     drawSelection,
+//     drawSelectionGroup,
+//     elements,
+//     getSelectedElements,
+//     panOffset.x,
+//     panOffset.y,
+//     resizeCanvas,
+//     selectedElementId,
+//     showMobileFrame,
+//     frameAspectRatio,
+//   ]);
+
+//   // backgroundImageVersion is intentionally a render trigger. The image is
+//   // loaded outside React, so redraw the canvas when that external image load
+//   // completes without making it an unnecessary renderCanvas dependency.
+//   useEffect(() => {
+//     if (backgroundImageVersion >= 0) {
+//       renderCanvas();
+//     }
+//   }, [backgroundImageVersion, renderCanvas]);
+
+//   useEffect(() => {
+//     const container = containerRef.current;
+//     if (!container) return;
+
+//     let resizeFrame = 0;
+
+//     const syncCanvasSize = () => {
+//       cancelAnimationFrame(resizeFrame);
+
+//       resizeFrame = requestAnimationFrame(() => {
+//         resizeCanvas();
+//         renderCanvas();
+
+//         // Run one more frame after browser layout settles.
+//         requestAnimationFrame(() => {
+//           resizeCanvas();
+//           renderCanvas();
+//         });
+//       });
+//     };
+
+//     // Initial render
+//     syncCanvasSize();
+
+//     // Detect normal browser/window resizing AND flex/container resizing.
+//     const resizeObserver = new ResizeObserver(() => {
+//       syncCanvasSize();
+//     });
+
+//     resizeObserver.observe(container);
+
+//     const handleResize = () => {
+//       syncCanvasSize();
+//     };
+
+//     const handleFullscreenChange = () => {
+//       setIsFullscreen(Boolean(document.fullscreenElement));
+
+//       // Fullscreen changes can happen across multiple layout frames.
+//       syncCanvasSize();
+
+//       requestAnimationFrame(() => {
+//         syncCanvasSize();
+//       });
+
+//       setTimeout(() => {
+//         syncCanvasSize();
+//       }, 100);
+//     };
+
+//     window.addEventListener("resize", handleResize);
+//     document.addEventListener("fullscreenchange", handleFullscreenChange);
+
+//     return () => {
+//       cancelAnimationFrame(resizeFrame);
+//       resizeObserver.disconnect();
+//       window.removeEventListener("resize", handleResize);
+//       document.removeEventListener("fullscreenchange", handleFullscreenChange);
+//     };
+//   }, [resizeCanvas, renderCanvas]);
+
+//   const openLatexEditor = useCallback(
+//     (
+//       initialText = "",
+//       editingElementId: string | null = null,
+//       existingColor?: string,
+//     ) => {
+//       setTextEditor((previous) => ({ ...previous, open: false }));
+//       setActiveTextPanel(null);
+//       setLatexTab("All");
+//       setLatexEditor({
+//         open: true,
+//         text: initialText,
+//         color: existingColor ?? color,
+//         editingElementId,
+//         x: Math.max(12, window.innerWidth / 2 - 390),
+//         y: Math.max(12, window.innerHeight / 2 - 300),
+//       });
+//       requestAnimationFrame(() => {
+//         latexInputRef.current?.focus();
+//         latexInputRef.current?.select();
+//       });
+//     },
+//     [color],
+//   );
+
+//   const openTextEditor = useCallback(
+//     (
+//       point: Point,
+//       type: "text" | "equation",
+//       initialText = "",
+//       editingElementId: string | null = null,
+//       existingFontSize?: number,
+//       existingColor?: string,
+//       existingBold?: boolean,
+//       existingItalic?: boolean,
+//       existingUnderline?: boolean,
+//     ) => {
+//       setActiveTextPanel(null);
+//       setTextEditor({
+//         open: true,
+//         type,
+//         x: point.x,
+//         y: point.y,
+//         text: initialText,
+//         fontSize:
+//           existingFontSize ??
+//           (type === "equation" ? Math.max(fontSize, 24) : fontSize),
+//         color: existingColor ?? color,
+//         bold: existingBold ?? false,
+//         italic: existingItalic ?? false,
+//         underline: existingUnderline ?? false,
+//         editingElementId,
+//       });
+
+//       requestAnimationFrame(() => {
+//         textInputRef.current?.focus();
+//         textInputRef.current?.select();
+//       });
+//     },
+//     [color, fontSize],
+//   );
+
+//   const handleTextEditorDrag = useCallback(
+//     (event: React.PointerEvent<HTMLDivElement>) => {
+//       const target = event.target as HTMLElement;
+//       if (target.closest("button, input, select, textarea, [data-no-drag]"))
+//         return;
+//       const rect = event.currentTarget.parentElement?.getBoundingClientRect();
+//       if (!rect) return;
+//       popupDragRef.current = {
+//         key: "textEditor",
+//         dx: event.clientX - rect.left,
+//         dy: event.clientY - rect.top,
+//         element: event.currentTarget.parentElement as HTMLElement,
+//         captureTarget: event.currentTarget,
+//       };
+//       event.currentTarget.setPointerCapture(event.pointerId);
+//       event.preventDefault();
+//     },
+//     [],
+//   );
+
+//   const handleTextEditorDragMove = useCallback(
+//     (event: React.PointerEvent<HTMLDivElement>) => {
+//       const drag = popupDragRef.current;
+//       if (!drag || drag.key !== "textEditor") return;
+//       const root = rootRef.current?.getBoundingClientRect();
+//       if (!root) return;
+
+//       const popup = drag.element;
+//       const width = popup.offsetWidth;
+//       const height = popup.offsetHeight;
+//       const maxX = Math.max(8, root.width - width - 8);
+//       const maxY = Math.max(8, root.height - height - 8);
+
+//       const x = Math.max(
+//         8,
+//         Math.min(event.clientX - root.left - drag.dx, maxX),
+//       );
+//       const y = Math.max(8, Math.min(event.clientY - root.top - drag.dy, maxY));
+
+//       setTextEditor((previous) => ({ ...previous, x, y }));
+//     },
+//     [],
+//   );
+
+//   const handleTextEditorDragEnd = useCallback(
+//     (event: React.PointerEvent<HTMLDivElement>) => {
+//       const drag = popupDragRef.current;
+//       popupDragRef.current = null;
+
+//       if (drag) {
+//         try {
+//           drag.captureTarget.releasePointerCapture(event.pointerId);
+//         } catch {}
+//       }
+//     },
+//     [],
+//   );
+
+//   const closeTextEditor = useCallback(() => {
+//     const editingId = textEditor.editingElementId;
+
+//     if (editingId && !textEditor.text.trim()) {
+//       updateCurrentPage((page) => ({
+//         ...page,
+//         elements: page.elements.filter(
+//           (element: WhiteboardElement) => element.id !== editingId,
+//         ),
+//       }));
+//       setSelectedElementId(null);
+//       setSelectedElementIds([]);
+//     }
+
+//     setTextEditor((previous) => ({
+//       ...previous,
+//       open: false,
+//       text: "",
+//       editingElementId: null,
+//     }));
+//     setActiveTextPanel(null);
+//     setShowTextFormattingColors(false);
+//     setTool("select");
+//   }, [textEditor.editingElementId, textEditor.text, updateCurrentPage]);
+
+//   const insertLatexAtCursor = useCallback(
+//     (value: string) => {
+//       const input = textInputRef.current;
+//       if (!input) {
+//         setTextEditor((previous) => ({
+//           ...previous,
+//           text: `${previous.text}${value}`,
+//         }));
+//         return;
+//       }
+
+//       const start = input.selectionStart ?? textEditor.text.length;
+//       const end = input.selectionEnd ?? start;
+//       const nextText =
+//         textEditor.text.slice(0, start) + value + textEditor.text.slice(end);
+//       const nextCursor = start + value.length;
+
+//       setTextEditor((previous) => ({ ...previous, text: nextText }));
+//       requestAnimationFrame(() => {
+//         input.focus();
+//         input.setSelectionRange(nextCursor, nextCursor);
+//       });
+//     },
+//     [textEditor.text],
+//   );
+
+//   const insertLatexModalAtCursor = useCallback(
+//     (value: string) => {
+//       const input = latexInputRef.current;
+//       if (!input) {
+//         setLatexEditor((previous) => ({
+//           ...previous,
+//           text: previous.text + value,
+//         }));
+//         return;
+//       }
+
+//       const start = input.selectionStart ?? latexEditor.text.length;
+//       const end = input.selectionEnd ?? start;
+//       const nextText =
+//         latexEditor.text.slice(0, start) + value + latexEditor.text.slice(end);
+//       const nextCursor = start + value.length;
+
+//       setLatexEditor((previous) => ({ ...previous, text: nextText }));
+//       requestAnimationFrame(() => {
+//         input.focus();
+//         input.setSelectionRange(nextCursor, nextCursor);
+//       });
+//     },
+//     [latexEditor.text],
+//   );
+
+//   const addLatexElement = useCallback(() => {
+//     const value = latexEditor.text.trim();
+//     if (!value) {
+//       latexInputRef.current?.focus();
+//       return;
+//     }
+
+//     pushHistory();
+
+//     if (latexEditor.editingElementId) {
+//       updateCurrentPage((page) => ({
+//         ...page,
+//         elements: page.elements.map((element: WhiteboardElement) =>
+//           element.id === latexEditor.editingElementId &&
+//           element.type === "equation"
+//             ? {
+//                 ...element,
+//                 text: value,
+//                 color: latexEditor.color,
+//                 fontSize: Math.max(element.fontSize, 24),
+//               }
+//             : element,
+//         ),
+//       }));
+//       setSelectedElementId(latexEditor.editingElementId);
+//       setSelectedElementIds([latexEditor.editingElementId]);
+//     } else {
+//       const canvas = canvasRef.current;
+//       const rect = canvas?.getBoundingClientRect();
+//       const x = rect ? Math.max(0, rect.width / 2 - 18) : 120;
+//       const y = rect ? Math.max(0, rect.height / 2 - 60) : 120;
+//       const el: TextElement = {
+//         id: createId(),
+//         type: "equation",
+//         x,
+//         y,
+//         text: value,
+//         color: latexEditor.color,
+//         fontSize: Math.max(fontSize, 24),
+//         bold: false,
+//         italic: false,
+//         underline: false,
+//       };
+//       updateCurrentPage((page) => ({
+//         ...page,
+//         elements: [...page.elements, el],
+//       }));
+//       setSelectedElementId(el.id);
+//       setSelectedElementIds([el.id]);
+//     }
+
+//     // Formula insertion is a one-shot action. Once the formula is committed,
+//     // leave the equation tool and return to normal object-selection mode.
+//     // This prevents the next click on the newly inserted equation from
+//     // starting the equation insertion flow again.
+//     setLatexEditor((previous) => ({
+//       ...previous,
+//       open: false,
+//       text: "",
+//       editingElementId: null,
+//     }));
+//     setSelectedEquation("");
+//     setActiveTextPanel(null);
+//     setShowTextFormattingColors(false);
+//     textPlacementArmedRef.current = false;
+//     setTool("select");
+//   }, [fontSize, latexEditor, pushHistory, updateCurrentPage]);
+
+//   const addTextElement = useCallback(() => {
+//     const value = textEditor.text.trim();
+
+//     if (!value) {
+//       if (textEditor.editingElementId) {
+//         updateCurrentPage((page) => ({
+//           ...page,
+//           elements: page.elements.filter(
+//             (element: WhiteboardElement) =>
+//               element.id !== textEditor.editingElementId,
+//           ),
+//         }));
+//         setSelectedElementId(null);
+//         setSelectedElementIds([]);
+//       }
+
+//       setTextEditor((previous) => ({
+//         ...previous,
+//         open: false,
+//         text: "",
+//         editingElementId: null,
+//       }));
+//       setActiveTextPanel(null);
+//       textPlacementArmedRef.current = false;
+//       setTool("select");
+//       return;
+//     }
+
+//     pushHistory();
+
+//     if (textEditor.editingElementId) {
+//       updateCurrentPage((page) => ({
+//         ...page,
+//         elements: page.elements.map((element: WhiteboardElement) => {
+//           if (element.id !== textEditor.editingElementId) return element;
+//           if (element.type !== "text" && element.type !== "equation")
+//             return element;
+
+//           return {
+//             ...element,
+//             type: "text",
+//             text: value,
+//             color: textEditor.color,
+//             fontSize: textEditor.fontSize,
+//             bold: textEditor.bold,
+//             italic: textEditor.italic,
+//             underline: textEditor.underline,
+//           };
+//         }),
+//       }));
+
+//       setSelectedElementId(textEditor.editingElementId);
+//       setSelectedElementIds([textEditor.editingElementId]);
+//       setTextEditor((previous) => ({
+//         ...previous,
+//         open: false,
+//         text: "",
+//         editingElementId: null,
+//       }));
+//       setActiveTextPanel(null);
+//       textPlacementArmedRef.current = false;
+//       setTool("select");
+//       return;
+//     }
+
+//     const el: TextElement = {
+//       id: createId(),
+//       type: textEditor.type,
+//       x: textEditor.x,
+//       y: textEditor.y,
+//       text: value,
+//       color: textEditor.color,
+//       fontSize:
+//         textEditor.type === "equation"
+//           ? Math.max(textEditor.fontSize, 24)
+//           : textEditor.fontSize,
+//       bold: textEditor.type === "text" ? textEditor.bold : false,
+//       italic: textEditor.type === "text" ? textEditor.italic : false,
+//       underline: textEditor.type === "text" ? textEditor.underline : false,
+//     };
+
+//     const canvas = canvasRef.current;
+//     if (canvas) {
+//       const rect = canvas.getBoundingClientRect();
+//       el.x = Math.max(0, textEditor.x - rect.left - 18);
+//       el.y = Math.max(0, textEditor.y - rect.top - 18);
+//     }
+
+//     updateCurrentPage((page) => ({
+//       ...page,
+//       elements: [...page.elements, el],
+//     }));
+
+//     setSelectedElementId(el.id);
+//     setSelectedElementIds([el.id]);
+//     setTextEditor((previous) => ({
+//       ...previous,
+//       open: false,
+//       text: "",
+//       editingElementId: null,
+//     }));
+//     setActiveTextPanel(null);
+//     textPlacementArmedRef.current = false;
+//     setTool("select");
+//   }, [pushHistory, textEditor, updateCurrentPage]);
+
+//   useEffect(() => {
+//     if (!textEditor.open || textEditor.type !== "text") return;
+
+//     const handleOutsidePointerDown = (event: PointerEvent) => {
+//       const target = event.target as HTMLElement | null;
+//       if (target?.closest("[data-text-editor-ui]")) return;
+//       addTextElement();
+//     };
+
+//     document.addEventListener("pointerdown", handleOutsidePointerDown, true);
+//     return () => {
+//       document.removeEventListener(
+//         "pointerdown",
+//         handleOutsidePointerDown,
+//         true,
+//       );
+//     };
+//   }, [addTextElement, textEditor.open, textEditor.type]);
+
+//   // Duplicate the currently selected object using the latest React state.
+//   // This avoids stale `elements` when the board is updating at the same time.
+//   const duplicateSelectedElement = useCallback(() => {
+//     if (!selectedElementId) return;
+
+//     pushHistory();
+
+//     let duplicatedId: string | null = null;
+
+//     setPages((previous) =>
+//       previous.map((page, index) => {
+//         if (index !== currentPageIndex) return page;
+
+//         const selected = page.elements.find(
+//           (element: WhiteboardElement) => element.id === selectedElementId,
+//         );
+//         if (!selected) return page;
+
+//         const duplicate = structuredClone(selected) as WhiteboardElement;
+//         duplicate.id = createId();
+//         duplicatedId = duplicate.id;
+
+//         const offset = 24;
+
+//         if (duplicate.type === "stroke") {
+//           duplicate.points = duplicate.points.map((point) => ({
+//             x: point.x + offset,
+//             y: point.y + offset,
+//           }));
+//         } else if ("start" in duplicate && "end" in duplicate) {
+//           duplicate.start = {
+//             x: duplicate.start.x + offset,
+//             y: duplicate.start.y + offset,
+//           };
+//           duplicate.end = {
+//             x: duplicate.end.x + offset,
+//             y: duplicate.end.y + offset,
+//           };
+//         } else {
+//           duplicate.x += offset;
+//           duplicate.y += offset;
+//         }
+
+//         return {
+//           ...page,
+//           elements: [...page.elements, duplicate],
+//         };
+//       }),
+//     );
+
+//     if (duplicatedId) {
+//       setSelectedElementId(duplicatedId);
+//       setSelectedElementIds([duplicatedId]);
+//       setIsSaved(false);
+//     }
+//   }, [currentPageIndex, pushHistory, selectedElementId]);
+
+//   const handleTextEditorKeyDown = (
+//     event: React.KeyboardEvent<HTMLTextAreaElement>,
+//   ) => {
+//     if (event.key === "Escape") {
+//       event.preventDefault();
+//       closeTextEditor();
+//       return;
+//     }
+
+//     if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+//       event.preventDefault();
+//       addTextElement();
+//     }
+//   };
+
+//   const applyGraphStudioPreset = useCallback((preset: GraphStudioPreset) => {
+//     const calculator = graphCalculatorRef.current;
+//     if (!calculator) {
+//       setGraphLoadError("The graphing calculator is still loading. Please try again in a moment.");
+//       return;
+//     }
+//     if (calculator.setExpressions) {
+//       calculator.setExpressions(preset.expressions);
+//     } else if (calculator.setExpression) {
+//       preset.expressions.forEach((expression) => calculator.setExpression?.(expression));
+//     } else {
+//       setGraphLoadError("This graphing calculator session does not support quick presets. Enter the expression directly instead.");
+//     }
+//   }, []);
+
+//   const connectGraphPoints = useCallback(() => {
+//     const calculator = graphCalculatorRef.current;
+//     if (!calculator) {
+//       setGraphConnectionError("The graphing calculator is still loading. Please try again in a moment.");
+//       return;
+//     }
+
+//     const labels = graphConnectionPoints
+//       .split(/[;,\s]+/)
+//       .map((label) => label.trim())
+//       .filter(Boolean);
+//     const validLabel = /^[A-Za-z][A-Za-z0-9_']*$/;
+//     if (labels.length < 2 || labels.some((label) => !validLabel.test(label))) {
+//       setGraphConnectionError("Enter at least two valid point names, separated by commas (for example: A, B, C).");
+//       return;
+//     }
+//     if (new Set(labels).size !== labels.length) {
+//       setGraphConnectionError("Each point name should appear only once.");
+//       return;
+//     }
+
+//     const expressions = graphConnectionMode === "polygon"
+//       ? [{ id: "justdy-user-connection-polygon", latex: `polygon(${labels.join(",")})` }]
+//       : labels.slice(0, -1).map((label, index) => ({
+//           id: `justdy-user-connection-segment-${index + 1}`,
+//           latex: `segment(${label},${labels[index + 1]})`,
+//         }));
+
+//     if (calculator.setExpressions) {
+//       calculator.setExpressions(expressions);
+//       setGraphConnectionError(null);
+//     } else if (calculator.setExpression) {
+//       expressions.forEach((expression) => calculator.setExpression?.(expression));
+//       setGraphConnectionError(null);
+//     } else {
+//       setGraphConnectionError("This calculator session cannot create connections. Enter the expressions directly instead.");
+//     }
+//   }, [graphConnectionMode, graphConnectionPoints]);
+
+//   const refreshGraphPointSuggestions = useCallback(() => {
+//     const calculator = graphCalculatorRef.current;
+//     if (!calculator?.getState) {
+//       setGraphConstructionError("The graphing calculator is not ready to read its plotted points yet.");
+//       return;
+//     }
+//     const state = calculator.getState();
+//     const expressionState = state.expressions as { list?: Array<{ latex?: string }> } | undefined;
+//     const labels = (expressionState?.list ?? [])
+//       .map((expression) => expression.latex?.match(/^\s*([A-WZ])(?:_\{?[^}]+\}?|_[A-Za-z0-9]+)?\s*=/)?.[1])
+//       .filter((label): label is string => Boolean(label));
+//     const uniqueLabels = Array.from(new Set(labels));
+//     setGraphAvailablePointLabels(uniqueLabels);
+//     setGraphConstructionError(uniqueLabels.length
+//       ? null
+//       : "No named points found yet. Add points such as A=(0,0), then refresh suggestions.");
+//   }, []);
+
+//   const applyGraphConstruction = useCallback(() => {
+//     const calculator = graphCalculatorRef.current;
+//     if (!calculator) {
+//       setGraphConstructionError("The graphing calculator is still loading. Please try again in a moment.");
+//       return;
+//     }
+
+//     const { a, b, c, p } = graphConstructionPoints;
+//     const pointNameIsValid = (name: string) => /^[A-WZ]$/.test(name.trim());
+//     const requiredNames: string[] = graphConstructionType === "line" || graphConstructionType === "midpoint" || graphConstructionType === "distance" || graphConstructionType === "perp-bisector"
+//       ? [a, b]
+//       : graphConstructionType === "parallel" || graphConstructionType === "perpendicular"
+//         ? [a, b, p]
+//         : graphConstructionType === "angle-bisector"
+//           ? [a, b, c]
+//           : [a, b, c];
+
+//     if (requiredNames.some((name) => !pointNameIsValid(name))) {
+//       setGraphConstructionError("Use single capital-letter point names A–W or Z. Avoid X and Y because they are graph coordinates.");
+//       return;
+//     }
+//     if (new Set(requiredNames).size !== requiredNames.length) {
+//       setGraphConstructionError("The points used by this construction must have different names.");
+//       return;
+//     }
+
+//     const dx = `(${b}.x-${a}.x)`;
+//     const dy = `(${b}.y-${a}.y)`;
+//     let expressions: Array<{ id: string; latex: string }> = [];
+
+//     switch (graphConstructionType) {
+//       case "line":
+//         expressions = [{ id: "justdy-construction-line-ab", latex: `${dy}(x-${a}.x)-${dx}(y-${a}.y)=0` }];
+//         break;
+//       case "parallel":
+//         expressions = [{ id: "justdy-construction-parallel", latex: `${dy}(x-${p}.x)-${dx}(y-${p}.y)=0` }];
+//         break;
+//       case "perpendicular":
+//         expressions = [{ id: "justdy-construction-perpendicular", latex: `${dx}(x-${p}.x)+${dy}(y-${p}.y)=0` }];
+//         break;
+//       case "perp-bisector":
+//         expressions = [
+//           { id: "justdy-construction-midpoint", latex: `M_{jd}=midpoint(${a},${b})` },
+//           { id: "justdy-construction-perp-bisector", latex: `${dx}(x-M_{jd}.x)+${dy}(y-M_{jd}.y)=0` },
+//         ];
+//         break;
+//       case "angle-bisector": {
+//         const distanceAB = `distance(${a},${b})`;
+//         const distanceAC = `distance(${a},${c})`;
+//         const unitX = `((${b}.x-${a}.x)/${distanceAB}+(${c}.x-${a}.x)/${distanceAC})`;
+//         const unitY = `((${b}.y-${a}.y)/${distanceAB}+(${c}.y-${a}.y)/${distanceAC})`;
+//         expressions = [{ id: "justdy-construction-angle-bisector", latex: `${unitY}(x-${a}.x)-${unitX}(y-${a}.y)=0` }];
+//         break;
+//       }
+//       case "midpoint":
+//         expressions = [
+//           { id: "justdy-construction-midpoint-point", latex: `M_{jd}=midpoint(${a},${b})` },
+//           { id: "justdy-construction-midpoint-segment", latex: `segment(${a},${b})` },
+//         ];
+//         break;
+//       case "distance":
+//         expressions = [{ id: "justdy-construction-distance", latex: `d_{jd}=distance(${a},${b})` }];
+//         break;
+//       case "reflect-y":
+//         expressions = [
+//           { id: "justdy-construction-reflect-a", latex: `${a}_1=(-${a}.x,${a}.y)` },
+//           { id: "justdy-construction-reflect-b", latex: `${b}_1=(-${b}.x,${b}.y)` },
+//           { id: "justdy-construction-reflect-c", latex: `${c}_1=(-${c}.x,${c}.y)` },
+//           { id: "justdy-construction-reflect-polygon", latex: `polygon(${a}_1,${b}_1,${c}_1)` },
+//         ];
+//         break;
+//       case "rotate-90":
+//         expressions = [
+//           { id: "justdy-construction-rotate-a", latex: `${a}_1=(-${a}.y,${a}.x)` },
+//           { id: "justdy-construction-rotate-b", latex: `${b}_1=(-${b}.y,${b}.x)` },
+//           { id: "justdy-construction-rotate-c", latex: `${c}_1=(-${c}.y,${c}.x)` },
+//           { id: "justdy-construction-rotate-polygon", latex: `polygon(${a}_1,${b}_1,${c}_1)` },
+//         ];
+//         break;
+//       case "translate": {
+//         const tx = Number(graphConstructionVector.x);
+//         const ty = Number(graphConstructionVector.y);
+//         if (!Number.isFinite(tx) || !Number.isFinite(ty)) {
+//           setGraphConstructionError("Enter valid numeric values for the horizontal and vertical translation.");
+//           return;
+//         }
+//         expressions = [
+//           { id: "justdy-construction-translate-a", latex: `${a}_1=(${a}.x+(${tx}),${a}.y+(${ty}))` },
+//           { id: "justdy-construction-translate-b", latex: `${b}_1=(${b}.x+(${tx}),${b}.y+(${ty}))` },
+//           { id: "justdy-construction-translate-c", latex: `${c}_1=(${c}.x+(${tx}),${c}.y+(${ty}))` },
+//           { id: "justdy-construction-translate-polygon", latex: `polygon(${a}_1,${b}_1,${c}_1)` },
+//         ];
+//         break;
+//       }
+//     }
+
+//     if (calculator.setExpressions) {
+//       calculator.setExpressions(expressions);
+//       setGraphConstructionError(null);
+//       setShowGraphStudioPresets(false);
+//     } else if (calculator.setExpression) {
+//       expressions.forEach((expression) => calculator.setExpression?.(expression));
+//       setGraphConstructionError(null);
+//       setShowGraphStudioPresets(false);
+//     } else {
+//       setGraphConstructionError("This calculator session cannot create constructions. Enter the expressions directly instead.");
+//     }
+//   }, [graphConstructionPoints, graphConstructionType, graphConstructionVector]);
+
+//   const insertGraphFromDesmos = useCallback(() => {
+//     const calculator = graphCalculatorRef.current;
+//     const canvas = canvasRef.current;
+//     if (!calculator || !canvas) return;
+
+//     const rect = canvas.getBoundingClientRect();
+//     const width = Math.min(640, Math.max(320, rect.width * 0.52));
+//     const height = Math.min(480, Math.max(240, width * 0.68));
+
+//     const addGraphImage = (src: string) => {
+//       const graphState = calculator.getState
+//         ? JSON.stringify(calculator.getState())
+//         : undefined;
+//       const editingId = graphEditingElementIdRef.current;
+//       const existingGraph = editingId
+//         ? elements.find(
+//             (element): element is ImageElement =>
+//               element.id === editingId &&
+//               element.type === "image" &&
+//               element.name === "Desmos Graph",
+//           )
+//         : null;
+
+//       const element: ImageElement = existingGraph
+//         ? {
+//             ...existingGraph,
+//             src,
+//             graphState,
+//           }
+//         : {
+//             id: createId(),
+//             type: "image",
+//             x: Math.max(12, (rect.width - width) / 2),
+//             y: Math.max(72, (rect.height - height) / 2),
+//             width,
+//             height,
+//             src,
+//             name: "Desmos Graph",
+//             graphState,
+//           };
+
+//       const image = new Image();
+//       image.onload = () => {
+//         imageCacheRef.current.set(src, image);
+//         setImageVersion((value) => value + 1);
+//       };
+//       image.src = src;
+
+//       pushHistory();
+//       updateCurrentPage((page) => ({
+//         ...page,
+//         elements: existingGraph
+//           ? page.elements.map((item) =>
+//               item.id === existingGraph.id ? element : item,
+//             )
+//           : [...page.elements, element],
+//       }));
+//       setTool("select");
+//       setSelectedElementId(element.id);
+//       setSelectedElementIds([element.id]);
+//       setShowGraphEditor(false);
+//       graphEditingElementIdRef.current = null;
+//     };
+
+//     if (calculator.asyncScreenshot) {
+//       calculator.asyncScreenshot(
+//         { width: Math.round(width), height: Math.round(height) },
+//         addGraphImage,
+//       );
+//     } else {
+//       addGraphImage(
+//         calculator.screenshot({
+//           width: Math.round(width),
+//           height: Math.round(height),
+//         }),
+//       );
+//     }
+//   }, [pushHistory, updateCurrentPage]);
+
+//   const addImportedImage = useCallback(
+//     (
+//       src: string,
+//       width: number,
+//       height: number,
+//       name: string,
+//       sourceType: "image" | "pdf" = "image",
+//     ) => {
+//       const canvas = canvasRef.current;
+//       const rect = canvas?.getBoundingClientRect();
+//       if (!rect) return;
+
+//       const maxWidth = Math.min(520, rect.width * 0.48);
+//       const maxHeight = Math.min(420, rect.height * 0.48);
+//       const scale = Math.min(1, maxWidth / width, maxHeight / height);
+//       const finalWidth = Math.max(80, width * scale);
+//       const finalHeight = Math.max(80, height * scale);
+//       const element: ImageElement = {
+//         id: createId(),
+//         type: "image",
+//         x: Math.max(12, (rect.width - finalWidth) / 2),
+//         y: Math.max(12, (rect.height - finalHeight) / 2),
+//         width: finalWidth,
+//         height: finalHeight,
+//         src,
+//         name,
+//         sourceType,
+//       };
+
+//       pushHistory();
+//       updateCurrentPage((page) => ({
+//         ...page,
+//         elements: [...page.elements, element],
+//       }));
+//       const image = new Image();
+//       image.onload = () => {
+//         imageCacheRef.current.set(src, image);
+//         setImageVersion((value) => value + 1);
+//       };
+//       image.src = src;
+//       setTool("select");
+//       setSelectedElementId(element.id);
+//       setSelectedElementIds([element.id]);
+//     },
+//     [pushHistory, updateCurrentPage],
+//   );
+
+//   const importImage = useCallback(
+//     (event: React.ChangeEvent<HTMLInputElement>) => {
+//       const file = event.target.files?.[0];
+//       event.target.value = "";
+//       if (!file || !file.type.startsWith("image/")) return;
+
+//       const reader = new FileReader();
+//       reader.onload = () => {
+//         const src = String(reader.result);
+//         const image = new Image();
+//         image.onload = () => {
+//           addImportedImage(
+//             image.src,
+//             image.naturalWidth,
+//             image.naturalHeight,
+//             file.name,
+//             "image",
+//           );
+//         };
+//         image.src = src;
+//       };
+//       reader.readAsDataURL(file);
+//     },
+//     [addImportedImage],
+//   );
+
+//   const importPdf = useCallback(
+//     async (event: React.ChangeEvent<HTMLInputElement>) => {
+//       const file = event.target.files?.[0];
+//       event.target.value = "";
+//       if (!file || file.type !== "application/pdf") return;
+
+//       try {
+//         const pdfjs = await loadPdfJs();
+//         const data = new Uint8Array(await file.arrayBuffer());
+//         const pdf = await pdfjs.getDocument({ data }).promise;
+//         const pageCount = Math.min(pdf.numPages, 20);
+//         const canvas = canvasRef.current;
+//         const rect = canvas?.getBoundingClientRect();
+//         if (!rect) return;
+
+//         pushHistory();
+//         const newElements: ImageElement[] = [];
+//         let y = Math.max(
+//           24,
+//           (rect.height - Math.min(720, rect.height * 0.8)) / 2,
+//         );
+
+//         for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+//           const page = await pdf.getPage(pageNumber);
+//           const baseViewport = page.getViewport({ scale: 1.25 });
+//           const maxWidth = Math.min(620, rect.width * 0.58);
+//           const scale = Math.min(1, maxWidth / baseViewport.width);
+//           const viewport = page.getViewport({ scale: 1.25 * scale });
+//           const renderCanvas = document.createElement("canvas");
+//           renderCanvas.width = Math.ceil(viewport.width);
+//           renderCanvas.height = Math.ceil(viewport.height);
+//           const renderContext = renderCanvas.getContext("2d");
+//           if (!renderContext) continue;
+
+//           await page.render({
+//             canvasContext: renderContext,
+//             viewport,
+//           }).promise;
+
+//           const src = renderCanvas.toDataURL("image/png");
+//           const element: ImageElement = {
+//             id: createId(),
+//             type: "image",
+//             x: Math.max(12, (rect.width - viewport.width) / 2),
+//             y,
+//             width: viewport.width,
+//             height: viewport.height,
+//             src,
+//             name: `${file.name} — Page ${pageNumber}`,
+//             sourceType: "pdf",
+//           };
+//           newElements.push(element);
+//           const pdfImage = new Image();
+//           pdfImage.onload = () => {
+//             imageCacheRef.current.set(src, pdfImage);
+//             setImageVersion((value) => value + 1);
+//           };
+//           pdfImage.src = src;
+//           y += viewport.height + 24;
+//         }
+
+//         if (newElements.length === 0) return;
+//         updateCurrentPage((page) => ({
+//           ...page,
+//           elements: [...page.elements, ...newElements],
+//         }));
+//         setImageVersion((value) => value + 1);
+//         const first = newElements[0];
+//         setTool("select");
+//         setSelectedElementId(first.id);
+//         setSelectedElementIds([first.id]);
+//       } catch (error) {
+//         console.error("Failed to import PDF", error);
+//         window.alert("Unable to import this PDF. Please try again.");
+//       }
+//     },
+//     [pushHistory, updateCurrentPage],
+//   );
+
+//   const cropSelectedImage = useCallback(async () => {
+//     const target = elements.find(
+//       (element): element is ImageElement =>
+//         element.id === cropEditor.elementId && element.type === "image",
+//     );
+//     if (!target) return;
+
+//     const image = imageCacheRef.current.get(target.src);
+//     if (!image) return;
+
+//     const naturalWidth = image.naturalWidth || image.width;
+//     const naturalHeight = image.naturalHeight || image.height;
+//     const left = Math.max(0, Math.min(100, cropEditor.left));
+//     const top = Math.max(0, Math.min(100, cropEditor.top));
+//     const right = Math.max(left + 1, Math.min(100, cropEditor.right));
+//     const bottom = Math.max(top + 1, Math.min(100, cropEditor.bottom));
+//     const sx = Math.round((left / 100) * naturalWidth);
+//     const sy = Math.round((top / 100) * naturalHeight);
+//     const sw = Math.max(1, Math.round(((right - left) / 100) * naturalWidth));
+//     const sh = Math.max(1, Math.round(((bottom - top) / 100) * naturalHeight));
+//     const cropCanvas = document.createElement("canvas");
+//     cropCanvas.width = sw;
+//     cropCanvas.height = sh;
+//     const ctx = cropCanvas.getContext("2d");
+//     if (!ctx) return;
+
+//     ctx.drawImage(image, sx, sy, sw, sh, 0, 0, sw, sh);
+//     const src = cropCanvas.toDataURL("image/png");
+//     const nextWidth = target.width * ((right - left) / 100);
+//     const nextHeight = target.height * ((bottom - top) / 100);
+
+//     pushHistory();
+//     updateCurrentPage((page) => ({
+//       ...page,
+//       elements: page.elements.map((element) =>
+//         element.id === target.id
+//           ? {
+//               ...element,
+//               src,
+//               width: Math.max(40, nextWidth),
+//               height: Math.max(40, nextHeight),
+//             }
+//           : element,
+//       ),
+//     }));
+//     const croppedImage = new Image();
+//     croppedImage.onload = () => {
+//       imageCacheRef.current.set(src, croppedImage);
+//       setImageVersion((value) => value + 1);
+//     };
+//     croppedImage.src = src;
+//     setCropEditor((previous) => ({
+//       ...previous,
+//       open: false,
+//       elementId: null,
+//     }));
+//   }, [cropEditor, elements, pushHistory, updateCurrentPage]);
+
+//   const handleCanvasContextMenu = useCallback(
+//     (event: React.MouseEvent<HTMLCanvasElement>) => {
+//       if (tool !== "select" || !selectedElementId) return;
+
+//       const point = getPoint(event.nativeEvent);
+//       const selected = elements.find(
+//         (element: WhiteboardElement) => element.id === selectedElementId,
+//       );
+
+//       if (selected && hitTestElement(selected, point, contextRef.current)) {
+//         event.preventDefault();
+//         duplicateSelectedElement();
+//       }
+//     },
+//     [duplicateSelectedElement, elements, getPoint, selectedElementId, tool],
+//   );
+
+//   const openTeachingEditor = useCallback(
+//     (
+//       template: TeachingTemplate = "definition",
+//       element?: TextElement,
+//       libraryItem?: TeachingLibraryItem,
+//     ) => {
+//       setTeachingEditor({
+//         open: true,
+//         template: libraryItem?.template ?? element?.teachingTemplate ?? template,
+//         heading:
+//           libraryItem?.heading ??
+//           element?.heading ??
+//           TEACHING_TEMPLATES[template].heading,
+//         body: libraryItem?.body ?? element?.body ?? "",
+//         fontSize: libraryItem?.fontSize ?? element?.fontSize ?? 18,
+//         stepsText: libraryItem?.steps?.join("\n") ?? "",
+//         section: libraryItem?.section ?? getDefaultTeachingSection(libraryItem?.template ?? element?.teachingTemplate ?? template),
+//         subtopicId: libraryItem?.subtopicId ?? activeTeachingSubtopicId ?? DEFAULT_TEACHING_SUBTOPIC_ID,
+//         editingElementId: element?.id ?? null,
+//         editingLibraryItemId: libraryItem?.id ?? null,
+//         returnToLibrary: !element,
+//       });
+//       setTeachingLibraryOpen(false);
+//     },
+//     [activeTeachingSubtopicId],
+//   );
+
+//   const createTeachingLesson = useCallback(() => {
+//     const name = newTeachingLessonName.trim();
+//     if (!name) return;
+//     const now = new Date().toISOString();
+//     const firstSubtopic: TeachingSubtopic = { id: createId(), name: "Overview", createdAt: now, updatedAt: now };
+//     const lesson: TeachingLesson = { id: createId(), name, subtopics: [firstSubtopic], createdAt: now, updatedAt: now };
+//     setTeachingLessons((previous) => [...previous, lesson]);
+//     setActiveTeachingLessonId(lesson.id);
+//     setActiveTeachingSubtopicId(firstSubtopic.id);
+//     setShowAllLessonMaterials(false);
+//     setNewTeachingLessonName("");
+//     setIsCreatingTeachingLesson(false);
+//   }, [newTeachingLessonName]);
+
+//   const createTeachingSubtopic = useCallback(() => {
+//     const name = newTeachingSubtopicName.trim();
+//     if (!name) return;
+//     const now = new Date().toISOString();
+//     const subtopic: TeachingSubtopic = { id: createId(), name, createdAt: now, updatedAt: now };
+//     setTeachingLessons((previous) => previous.map((lesson) =>
+//       lesson.id === activeTeachingLessonId
+//         ? { ...lesson, subtopics: [...(lesson.subtopics ?? []), subtopic], updatedAt: now }
+//         : lesson,
+//     ));
+//     setActiveTeachingSubtopicId(subtopic.id);
+//     setNewTeachingSubtopicName("");
+//     setIsCreatingTeachingSubtopic(false);
+//     setTeachingPresentationIndex(0);
+//   }, [activeTeachingLessonId, newTeachingSubtopicName]);
+
+//   const confirmDeleteTeachingGroup = useCallback(() => {
+//     if (!pendingTeachingDelete) return;
+//     const now = new Date().toISOString();
+//     if (pendingTeachingDelete.type === "topic") {
+//       const remaining = teachingLessons.filter((lesson) => lesson.id !== pendingTeachingDelete.id);
+//       const nextLessons = remaining.length > 0 ? remaining : [{
+//         id: DEFAULT_TEACHING_LESSON_ID,
+//         name: "General lesson",
+//         subtopics: [{ id: DEFAULT_TEACHING_SUBTOPIC_ID, name: "General", createdAt: now, updatedAt: now }],
+//         createdAt: now,
+//         updatedAt: now,
+//       }];
+//       setTeachingLessons(nextLessons);
+//       setTeachingLibrary((previous) => previous.filter((item) => (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) !== pendingTeachingDelete.id));
+//       if (activeTeachingLessonId === pendingTeachingDelete.id) {
+//         const nextLesson = nextLessons[0];
+//         setActiveTeachingLessonId(nextLesson.id);
+//         setActiveTeachingSubtopicId(nextLesson.subtopics[0]?.id ?? DEFAULT_TEACHING_SUBTOPIC_ID);
+//       }
+//       setShowAllLessonMaterials(false);
+//     } else {
+//       const lesson = teachingLessons.find((entry) => entry.id === activeTeachingLessonId);
+//       if (lesson) {
+//         const remaining = lesson.subtopics.filter((subtopic) => subtopic.id !== pendingTeachingDelete.id);
+//         const nextSubtopics = remaining.length > 0 ? remaining : [{
+//           id: DEFAULT_TEACHING_SUBTOPIC_ID,
+//           name: "General",
+//           createdAt: now,
+//           updatedAt: now,
+//         }];
+//         setTeachingLessons((previous) => previous.map((entry) => entry.id === lesson.id
+//           ? { ...entry, subtopics: nextSubtopics, updatedAt: now }
+//           : entry));
+//         setTeachingLibrary((previous) => previous.filter((item) =>
+//           !((item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === lesson.id && (item.subtopicId ?? DEFAULT_TEACHING_SUBTOPIC_ID) === pendingTeachingDelete.id)
+//         ));
+//         if (activeTeachingSubtopicId === pendingTeachingDelete.id) setActiveTeachingSubtopicId(nextSubtopics[0].id);
+//       }
+//     }
+//     setPendingTeachingDelete(null);
+//   }, [pendingTeachingDelete, teachingLessons, activeTeachingLessonId, activeTeachingSubtopicId]);
+
+//   const startTeachingPresentation = useCallback(() => {
+//     setTeachingPresentationIndex(0);
+//     setTeachingRevealedStepCount(0);
+//     setTeachingLibraryOpen(false);
+//     setTeachingPresentationOpen(true);
+//   }, []);
+
+//   const copyTeachingMaterialToActiveLesson = useCallback((item: TeachingLibraryItem) => {
+//     const now = new Date().toISOString();
+//     setTeachingLibrary((previous) => [
+//       {
+//         ...item,
+//         id: createId(),
+//         lessonId: activeTeachingLessonId,
+//         subtopicId: activeTeachingSubtopicId,
+//         order: previous.filter(
+//           (entry) =>
+//             (entry.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === activeTeachingLessonId &&
+//             (entry.section ?? getDefaultTeachingSection(entry.template)) ===
+//               (item.section ?? getDefaultTeachingSection(item.template)),
+//         ).length,
+//         heading: `${item.heading} (copy)`,
+//         createdAt: now,
+//         updatedAt: now,
+//       },
+//       ...previous,
+//     ]);
+//   }, [activeTeachingLessonId, activeTeachingSubtopicId]);
+
+//   const moveTeachingLibraryItem = useCallback((itemId: string, direction: -1 | 1) => {
+//     setTeachingLibrary((previous) => {
+//       const current = previous.find((item) => item.id === itemId);
+//       if (!current) return previous;
+//       const lessonId = current.lessonId ?? DEFAULT_TEACHING_LESSON_ID;
+//       const section = current.section ?? getDefaultTeachingSection(current.template);
+//       const group = previous
+//         .filter(
+//           (item) =>
+//             (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === lessonId &&
+//             (item.section ?? getDefaultTeachingSection(item.template)) === section,
+//         )
+//         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+//       const index = group.findIndex((item) => item.id === itemId);
+//       const targetIndex = index + direction;
+//       if (index < 0 || targetIndex < 0 || targetIndex >= group.length) return previous;
+//       const reordered = [...group];
+//       [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+//       const orderById = new Map(reordered.map((item, order) => [item.id, order]));
+//       return previous.map((item) =>
+//         orderById.has(item.id)
+//           ? { ...item, order: orderById.get(item.id)!, updatedAt: new Date().toISOString() }
+//           : item,
+//       );
+//     });
+//   }, []);
+
+//   const insertTeachingLibraryItem = useCallback(
+//     (item: TeachingLibraryItem, dropPosition?: Point) => {
+//       const canvas = canvasRef.current;
+//       const cardWidth = 360;
+//       const cardHeight = Math.max(
+//         190,
+//         Math.min(360, 110 + Math.ceil(item.body.length / 42) * 20),
+//       );
+//       const element: TextElement = {
+//         id: createId(),
+//         type: "text",
+//         x: dropPosition
+//           ? Math.max(16, Math.min((canvas?.width ?? 900) - cardWidth - 16, dropPosition.x - cardWidth / 2))
+//           : Math.max(16, (canvas?.width ?? 900) / 2 - cardWidth / 2),
+//         y: dropPosition
+//           ? Math.max(16, Math.min((canvas?.height ?? 600) - cardHeight - 16, dropPosition.y - cardHeight / 2))
+//           : Math.max(16, (canvas?.height ?? 600) / 2 - cardHeight / 2),
+//         text: item.body,
+//         color: "#0f172a",
+//         fontSize: item.fontSize ?? 18,
+//         bold: false,
+//         italic: false,
+//         underline: false,
+//         teachingTemplate: item.template,
+//         heading: item.heading,
+//         body: item.body,
+//         cardWidth,
+//         cardHeight,
+//       };
+
+//       pushHistory();
+//       updateCurrentPage((page) => ({
+//         ...page,
+//         elements: [...page.elements, element],
+//       }));
+//       setSelectedElementId(element.id);
+//       setSelectedElementIds([element.id]);
+//       setTool("select");
+//       setTeachingLibraryOpen(false);
+//       textPlacementArmedRef.current = false;
+//     },
+//     [pushHistory, updateCurrentPage],
+//   );
+
+//   const insertTeachingLessonTitle = useCallback(
+//     (lesson: TeachingLesson, dropPosition?: Point) => {
+//       const canvas = canvasRef.current;
+//       const titleText = lesson.name.trim();
+//       if (!titleText) return;
+
+//       const cardWidth = Math.min(900, Math.max(320, titleText.length * 22 + 56));
+//       const cardHeight = 64;
+//       const element: TextElement = {
+//         id: createId(),
+//         type: "text",
+//         x: dropPosition
+//           ? Math.max(16, Math.min((canvas?.width ?? 900) - cardWidth - 16, dropPosition.x - cardWidth / 2))
+//           : Math.max(16, (canvas?.width ?? 900) / 2 - cardWidth / 2),
+//         y: dropPosition
+//           ? Math.max(16, Math.min((canvas?.height ?? 600) - cardHeight - 16, dropPosition.y - cardHeight / 2))
+//           : Math.max(16, (canvas?.height ?? 600) / 2 - cardHeight / 2),
+//         text: "",
+//         color: "#0f172a",
+//         fontSize: 21,
+//         bold: true,
+//         italic: false,
+//         underline: false,
+//         teachingTemplate: "key-concept",
+//         cardEyebrow: "",
+//         heading: titleText,
+//         body: "",
+//         cardWidth,
+//         cardHeight,
+//       };
+
+//       pushHistory();
+//       updateCurrentPage((page) => ({
+//         ...page,
+//         elements: [...page.elements, element],
+//       }));
+//       setSelectedElementId(element.id);
+//       setSelectedElementIds([element.id]);
+//       setTool("select");
+//       setTeachingLibraryOpen(false);
+//       textPlacementArmedRef.current = false;
+//     },
+//     [pushHistory, updateCurrentPage],
+//   );
+
+//   const saveTeachingElement = useCallback(() => {
+//     const heading = teachingEditor.heading.trim();
+//     const body = teachingEditor.body.trim();
+//     if (!heading && !body) return;
+
+//     const normalizedHeading =
+//       heading || TEACHING_TEMPLATES[teachingEditor.template].heading;
+
+//     if (teachingEditor.editingElementId) {
+//       pushHistory();
+//       updateCurrentPage((page) => ({
+//         ...page,
+//         elements: page.elements.map((element: WhiteboardElement) => {
+//           if (element.id !== teachingEditor.editingElementId) return element;
+//           if (element.type !== "text") return element;
+//           return {
+//             ...element,
+//             teachingTemplate: teachingEditor.template,
+//             heading: normalizedHeading,
+//             body,
+//             text: body,
+//             fontSize: teachingEditor.fontSize,
+//             cardHeight: Math.max(
+//               element.cardHeight ?? 190,
+//               Math.min(520, 110 + Math.ceil(body.length / 42) * teachingEditor.fontSize * 1.2),
+//             ),
+//           };
+//         }),
+//       }));
+//       setSelectedElementId(teachingEditor.editingElementId);
+//       setSelectedElementIds([teachingEditor.editingElementId]);
+//     } else if (teachingEditor.editingLibraryItemId) {
+//       const now = new Date().toISOString();
+//       setTeachingLibrary((previous) =>
+//         previous.map((item) =>
+//           item.id === teachingEditor.editingLibraryItemId
+//             ? {
+//                 ...item,
+//                 template: teachingEditor.template,
+//                 heading: normalizedHeading,
+//                 body,
+//                 fontSize: teachingEditor.fontSize,
+//                 steps:
+//                   teachingEditor.template === "worked-example"
+//                     ? teachingEditor.stepsText.split(/\r?\n/).map((step) => step.trim()).filter(Boolean)
+//                     : [],
+//                 section: teachingEditor.section,
+//                 subtopicId: teachingEditor.subtopicId,
+//                 updatedAt: now,
+//               }
+//             : item,
+//         ),
+//       );
+//     } else {
+//       const now = new Date().toISOString();
+//       const item: TeachingLibraryItem = {
+//         id: createId(),
+//         template: teachingEditor.template,
+//         heading: normalizedHeading,
+//         body,
+//         fontSize: teachingEditor.fontSize,
+//         steps:
+//           teachingEditor.template === "worked-example"
+//             ? teachingEditor.stepsText.split(/\r?\n/).map((step) => step.trim()).filter(Boolean)
+//             : [],
+//         lessonId: activeTeachingLessonId,
+//         subtopicId: teachingEditor.subtopicId,
+//         section: teachingEditor.section,
+//         order: teachingLibrary.filter(
+//           (entry) =>
+//             (entry.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === activeTeachingLessonId &&
+//             (entry.section ?? getDefaultTeachingSection(entry.template)) === teachingEditor.section,
+//         ).length,
+//         createdAt: now,
+//         updatedAt: now,
+//       };
+//       setTeachingLibrary((previous) => [item, ...previous]);
+//     }
+
+//     const returnToLibrary = teachingEditor.returnToLibrary || !teachingEditor.editingElementId;
+//     setTeachingEditor((previous) => ({
+//       ...previous,
+//       open: false,
+//       editingElementId: null,
+//       editingLibraryItemId: null,
+//       stepsText: "",
+//     }));
+//     if (returnToLibrary) setTeachingLibraryOpen(true);
+//     setTool("select");
+//     textPlacementArmedRef.current = false;
+//   }, [activeTeachingLessonId, pushHistory, teachingEditor, teachingLibrary, updateCurrentPage]);
+
+//   const deleteTeachingLibraryItem = useCallback((id: string) => {
+//     setTeachingLibrary((previous) => previous.filter((item) => item.id !== id));
+//   }, []);
+
+//   const handleCanvasDoubleClick = useCallback(
+//     (event: React.MouseEvent<HTMLCanvasElement>) => {
+//       if (tool !== "select") return;
+
+//       const canvas = canvasRef.current;
+//       if (!canvas) return;
+
+//       const rect = canvas.getBoundingClientRect();
+
+//       let x = event.clientX - rect.left;
+//       let y = event.clientY - rect.top;
+
+//       if (snapToGrid) {
+//         x = Math.round(x / gridSize) * gridSize;
+//         y = Math.round(y / gridSize) * gridSize;
+//       }
+
+//       const point: Point = { x, y };
+
+//       const hit = [...elements]
+//         .reverse()
+//         .find((element: WhiteboardElement) =>
+//           hitTestElement(element, point, contextRef.current),
+//         );
+
+//       if (!hit || (hit.type !== "text" && hit.type !== "equation")) {
+//         return;
+//       }
+
+//       setSelectedElementId(hit.id);
+//       setSelectedElementIds([hit.id]);
+
+//       if (hit.type === "equation") {
+//         openLatexEditor(hit.text, hit.id, hit.color);
+//       } else if (hit.teachingTemplate) {
+//         openTeachingEditor(hit.teachingTemplate, hit);
+//       } else {
+//         setShowTextFormattingColors(false);
+//         openTextEditor(
+//           { x: hit.x, y: hit.y },
+//           "text",
+//           hit.text,
+//           hit.id,
+//           hit.fontSize,
+//           hit.color,
+//           hit.bold ?? false,
+//           hit.italic ?? false,
+//           hit.underline ?? false,
+//         );
+//       }
+//     },
+//     [
+//       elements,
+//       gridSize,
+//       openLatexEditor,
+//       openTeachingEditor,
+//       openTextEditor,
+//       snapToGrid,
+//       tool,
+//     ],
+//   );
+
+//   const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
+//     event.preventDefault();
+
+//     // The portrait guide is also an interaction boundary: do not start a new
+//     // stroke, shape, selection, or text placement outside the 9:16 area.
+//     if (showMobileFrame && mobileFrameRef.current) {
+//       const frameRect = mobileFrameRef.current.getBoundingClientRect();
+//       const insideFrame =
+//         event.clientX >= frameRect.left &&
+//         event.clientX <= frameRect.right &&
+//         event.clientY >= frameRect.top &&
+//         event.clientY <= frameRect.bottom;
+//       if (!insideFrame) return;
+//     }
+
+//     // Clicking the whiteboard outside the live text editor commits the text
+//     // and exits editing mode before the board handles the new pointer action.
+//     if (textEditor.open && textEditor.type === "text") {
+//       addTextElement();
+//     }
+
+//     const canvas = canvasRef.current;
+//     if (!canvas) return;
+//     canvas.setPointerCapture(event.pointerId);
+
+//     const point = getPoint(event.nativeEvent);
+//     startPointRef.current = point;
+
+//     // Teaching cards have a visible close icon in their top-right corner.
+//     // In Select mode, handle that hit target before resize handles or dragging.
+//     if (tool === "select") {
+//       const teachingCardToClose = [...elements].reverse().find((element) => {
+//         if (element.type !== "text" || !element.teachingTemplate || element.id !== selectedElementId) return false;
+//         const scaleX = Math.max(0.25, element.scaleX ?? 1);
+//         const scaleY = Math.max(0.25, element.scaleY ?? 1);
+//         const cardWidth = element.cardWidth ?? 360;
+//         const centerX = element.x + (cardWidth - 20) * scaleX;
+//         const closeY = element.cardEyebrow === "" ? 18 : 20;
+//         const centerY = element.y + closeY * scaleY;
+//         return (
+//           Math.abs(point.x - centerX) <= 13 * scaleX &&
+//           Math.abs(point.y - centerY) <= 13 * scaleY
+//         );
+//       });
+
+//       if (teachingCardToClose) {
+//         pushHistory();
+//         updateCurrentPage((page) => ({
+//           ...page,
+//           elements: page.elements.filter(
+//             (element) => element.id !== teachingCardToClose.id,
+//           ),
+//         }));
+//         setSelectedElementId((current) =>
+//           current === teachingCardToClose.id ? null : current,
+//         );
+//         setSelectedElementIds((current) =>
+//           current.filter((id) => id !== teachingCardToClose.id),
+//         );
+//         drawingRef.current = false;
+//         transformRef.current = null;
+//         return;
+//       }
+//     }
+
+//     if (tool === "hand") {
+//       drawingRef.current = true;
+//       panRef.current = {
+//         pointerId: event.pointerId,
+//         startX: event.clientX,
+//         startY: event.clientY,
+//         originX: panOffset.x,
+//         originY: panOffset.y,
+//       };
+//       return;
+//     }
+
+//     if (tool === "select") {
+//       const selected = getSelectedElement();
+//       const isMulti = selectedElementIds.length > 1;
+
+//       if (selected && !isMulti) {
+//         const handle = getSelectionHandle(selected, point);
+//         if (handle) {
+//           pushHistory();
+//           drawingRef.current = true;
+//           transformRef.current = {
+//             mode: "resize",
+//             ids: [selected.id],
+//             elements: [structuredClone(selected)],
+//             originalElements: [structuredClone(selected)],
+//             startPoint: point,
+//             anchor: point,
+//             handle,
+//             moved: false,
+//           };
+//           return;
+//         }
+//       }
+
+//       const hit = [...elements]
+//         .reverse()
+//         .find((el) => hitTestElement(el, point, contextRef.current));
+
+//       if (hit) {
+//         const alreadySelected = selectedElementIds.includes(hit.id);
+//         let nextIds = selectedElementIds;
+
+//         if (event.shiftKey) {
+//           nextIds = alreadySelected
+//             ? selectedElementIds.filter((id) => id !== hit.id)
+//             : [...selectedElementIds, hit.id];
+//           setSelectedElementIds(nextIds);
+//           setSelectedElementId(nextIds[0] ?? null);
+
+//           if (!nextIds.length) {
+//             drawingRef.current = false;
+//             return;
+//           }
+//         } else if (!alreadySelected || !selectedElementIds.length) {
+//           nextIds = [hit.id];
+//           setSelectedElementIds(nextIds);
+//           setSelectedElementId(hit.id);
+//         }
+
+//         // A single click in Select mode only selects/moves the object.
+//         // Text enters editing mode exclusively through the double-click
+//         // handler below. While the text object is being dragged, keep the
+//         // editing toolbar hidden; it reappears when the drag is released.
+//         if (hit.type === "text" || hit.type === "equation") {
+//           setActiveTextPanel(null);
+//           setShowTextFormattingColors(false);
+//           if (hit.type === "text") {
+//             setTextObjectDragging(true);
+//           }
+//         }
+
+//         const movingElements = elements.filter((el) => nextIds.includes(el.id));
+//         pushHistory();
+//         drawingRef.current = true;
+//         transformRef.current = {
+//           mode: "move",
+//           ids: nextIds,
+//           elements: structuredClone(movingElements),
+//           originalElements: structuredClone(movingElements),
+//           startPoint: point,
+//           anchor: point,
+//           handle: null,
+//           moved: false,
+//         };
+//       } else {
+//         setSelectedElementId(null);
+//         if (!event.shiftKey) setSelectedElementIds([]);
+//         marqueeRef.current = {
+//           start: point,
+//           current: point,
+//           moved: false,
+//         };
+//         drawingRef.current = true;
+//       }
+//       return;
+//     }
+
+//     if (tool === "pen" || tool === "eraser") {
+//       pushHistory();
+//       drawingRef.current = true;
+//       currentStrokeRef.current = {
+//         id: createId(),
+//         type: "stroke",
+//         points: [point],
+//         color: tool === "eraser" ? backgroundColor : color,
+//         width: tool === "eraser" ? eraserWidth : width,
+//         pressureSensitive: true,
+//       };
+//       return;
+//     }
+
+//     if (
+//       [
+//         "arrow",
+//         "line",
+//         "ellipse",
+//         "rectangle",
+//         "circle",
+//         "triangle",
+//         "cube",
+//         "cylinder",
+//         "diamond",
+//         "pentagon",
+//         "hexagon",
+//         "heptagon",
+//         "octagon",
+//         "parallelogram",
+//         "sphere",
+//         "axes",
+//         "ruler",
+//       ].includes(tool)
+//     ) {
+//       pushHistory();
+//       drawingRef.current = true;
+//       const shapeType: ShapeType =
+//         tool === "ruler" ? "line" : (tool as ShapeType);
+//       previewElementRef.current = {
+//         id: createId(),
+//         type: shapeType,
+//         start: point,
+//         end: point,
+//         color,
+//         width,
+//       };
+//       renderCanvas();
+//       return;
+//     }
+
+//     if (tool === "text") {
+//       if (!textPlacementArmedRef.current) {
+//         return;
+//       }
+
+//       textPlacementArmedRef.current = false;
+//       const id = createId();
+//       const starter: TextElement = {
+//         id,
+//         type: "text",
+//         x: point.x,
+//         y: point.y,
+//         text: "",
+//         color,
+//         fontSize,
+//         bold: false,
+//         italic: false,
+//         underline: false,
+//       };
+
+//       updateCurrentPage((page) => ({
+//         ...page,
+//         elements: [...page.elements, starter],
+//       }));
+
+//       setSelectedElementId(id);
+//       setSelectedElementIds([id]);
+//       setShowTextFormattingColors(false);
+
+//       openTextEditor(
+//         point,
+//         "text",
+//         "",
+//         id,
+//         fontSize,
+//         color,
+//         false,
+//         false,
+//         false,
+//       );
+//       return;
+//     }
+
+//     if (tool === "equation") {
+//       openLatexEditor(selectedEquation);
+//       setSelectedEquation("");
+//       return;
+//     }
+//   };
+
+//   const handlePointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
+//     if (!drawingRef.current) return;
+//     event.preventDefault();
+//     const point = getPoint(event.nativeEvent);
+
+//     if (tool === "hand" && panRef.current) {
+//       const pan = panRef.current;
+//       if (pan.pointerId !== event.pointerId) return;
+//       setPanOffset({
+//         x: pan.originX + event.clientX - pan.startX,
+//         y: pan.originY + event.clientY - pan.startY,
+//       });
+//       renderCanvas();
+//       return;
+//     }
+
+//     if (panRef.current?.pointerId === event.pointerId) {
+//       panRef.current = null;
+//       startPointRef.current = null;
+//       renderCanvas();
+//       return;
+//     }
+
+//     if (transformRef.current) {
+//       const tr = transformRef.current;
+
+//       if (
+//         tr.mode === "resize" &&
+//         tr.handle &&
+//         tr.originalElements.length === 1
+//       ) {
+//         tr.elements = [resizeElement(tr.originalElements[0], tr.handle, point)];
+//       } else {
+//         const dx = point.x - tr.startPoint.x;
+//         const dy = point.y - tr.startPoint.y;
+//         tr.elements = tr.originalElements.map((element) =>
+//           translateElement(element, dx, dy),
+//         );
+//       }
+
+//       tr.moved = true;
+//       renderCanvas();
+//       return;
+//     }
+
+//     if (marqueeRef.current) {
+//       marqueeRef.current.current = point;
+//       marqueeRef.current.moved =
+//         Math.abs(point.x - marqueeRef.current.start.x) > 4 ||
+//         Math.abs(point.y - marqueeRef.current.start.y) > 4;
+//       renderCanvas();
+//       return;
+//     }
+
+//     if (currentStrokeRef.current) {
+//       currentStrokeRef.current.points.push(point);
+//       renderCanvas();
+//       return;
+//     }
+
+//     if (previewElementRef.current) {
+//       previewElementRef.current.end = point;
+//       renderCanvas();
+//     }
+//   };
+
+//   const handlePointerUp = (event: React.PointerEvent<HTMLCanvasElement>) => {
+//     if (!drawingRef.current) return;
+//     drawingRef.current = false;
+
+//     const canvas = canvasRef.current;
+//     if (canvas) {
+//       try {
+//         canvas.releasePointerCapture(event.pointerId);
+//       } catch {}
+//     }
+
+//     if (transformRef.current) {
+//       const tr = transformRef.current;
+//       if (tr.moved) {
+//         const finalElements = tr.elements;
+//         updateCurrentPage((page) => ({
+//           ...page,
+//           elements: page.elements.map((el) => {
+//             const final = finalElements.find((item) => item.id === el.id);
+//             return final ?? el;
+//           }),
+//         }));
+//       }
+//       const wasTextDrag = tr.ids.some((id) =>
+//         elements.some(
+//           (element) => element.id === id && element.type === "text",
+//         ),
+//       );
+//       transformRef.current = null;
+//       if (wasTextDrag) {
+//         setTextObjectDragging(false);
+//       }
+//       renderCanvas();
+//       return;
+//     }
+
+//     if (marqueeRef.current) {
+//       const marquee = marqueeRef.current;
+//       const left = Math.min(marquee.start.x, marquee.current.x);
+//       const right = Math.max(marquee.start.x, marquee.current.x);
+//       const top = Math.min(marquee.start.y, marquee.current.y);
+//       const bottom = Math.max(marquee.start.y, marquee.current.y);
+
+//       if (marquee.moved) {
+//         const ids = elements
+//           .filter((element) => {
+//             const b = getElementBounds(element, contextRef.current);
+//             return (
+//               b.left >= left &&
+//               b.right <= right &&
+//               b.top >= top &&
+//               b.bottom <= bottom
+//             );
+//           })
+//           .map((element) => element.id);
+
+//         const nextIds = event.shiftKey
+//           ? Array.from(new Set([...selectedElementIds, ...ids]))
+//           : ids;
+
+//         setSelectedElementIds(nextIds);
+//         setSelectedElementId(nextIds[0] ?? null);
+//       } else if (!event.shiftKey) {
+//         setSelectedElementIds([]);
+//         setSelectedElementId(null);
+//       }
+
+//       marqueeRef.current = null;
+//       renderCanvas();
+//       return;
+//     }
+
+//     if (currentStrokeRef.current) {
+//       const stroke = currentStrokeRef.current;
+//       if (stroke.points.length > 0) {
+//         updateCurrentPage((p) => ({
+//           ...p,
+//           elements: [...p.elements, stroke],
+//         }));
+//       }
+//       currentStrokeRef.current = null;
+//     }
+
+//     if (previewElementRef.current) {
+//       const el = previewElementRef.current;
+//       updateCurrentPage((p) => ({
+//         ...p,
+//         elements: [...p.elements, el],
+//       }));
+//       previewElementRef.current = null;
+//       renderCanvas();
+//     }
+//   };
+
+//   const undo = () => {
+//     const prev = historyRef.current.pop();
+//     if (!prev) return;
+//     redoRef.current.push(JSON.parse(JSON.stringify(pages)));
+//     setPages(prev);
+//     setCurrentPageIndex((i) => Math.min(i, prev.length - 1));
+//   };
+
+//   const redo = () => {
+//     const next = redoRef.current.pop();
+//     if (!next) return;
+//     historyRef.current.push(JSON.parse(JSON.stringify(pages)));
+//     setPages(next);
+//     setCurrentPageIndex((i) => Math.min(i, next.length - 1));
+//   };
+
+//   const clearPage = () => {
+//     if (!currentPage || currentPage.elements.length === 0) return;
+//     pushHistory();
+//     updateCurrentPage((p) => ({ ...p, elements: [] }));
+//   };
+
+//   const addPage = () => {
+//     pushHistory();
+//     const newPage = createPage(`Page ${pages.length + 1}`);
+//     setPages((p) => [...p, newPage]);
+//     setCurrentPageIndex(pages.length);
+//   };
+
+//   const duplicatePage = useCallback(
+//     (index: number) => {
+//       pushHistory();
+
+//       let duplicatedIndex = index;
+
+//       setPages((previous) => {
+//         const sourcePage = previous[index];
+//         if (!sourcePage) return previous;
+
+//         const duplicatedPage: WhiteboardPage = {
+//           ...structuredClone(sourcePage),
+//           id: createId(),
+//           name: `${sourcePage.name} (Copy)`,
+//           elements: sourcePage.elements.map((element: WhiteboardElement) => ({
+//             ...structuredClone(element),
+//             id: createId(),
+//           })),
+//         };
+
+//         duplicatedIndex = index + 1;
+
+//         return [
+//           ...previous.slice(0, duplicatedIndex),
+//           duplicatedPage,
+//           ...previous.slice(duplicatedIndex),
+//         ];
+//       });
+
+//       setCurrentPageIndex(duplicatedIndex);
+//       setSelectedElementId(null);
+//       setSelectedElementIds([]);
+//       setIsSaved(false);
+//     },
+//     [pushHistory],
+//   );
+
+//   const duplicateCurrentPage = useCallback(() => {
+//     duplicatePage(currentPageIndex);
+//   }, [currentPageIndex, duplicatePage]);
+
+//   const requestPageDelete = (index: number) => {
+//     if (pages.length <= 1) return;
+//     const page = pages[index];
+//     if (!page) return;
+//     setPagePendingDelete({ index, name: page.name });
+//   };
+
+//   const confirmPageDelete = () => {
+//     if (!pagePendingDelete) return;
+//     deletePage(pagePendingDelete.index);
+//     setPagePendingDelete(null);
+//   };
+
+//   const deletePage = (index: number) => {
+//     if (pages.length <= 1) return;
+//     if (!pages[index]) return;
+
+//     pushHistory();
+
+//     const nextPages = pages.filter((_, idx) => idx !== index);
+//     const nextIndex =
+//       index < currentPageIndex
+//         ? currentPageIndex - 1
+//         : index === currentPageIndex
+//           ? Math.min(currentPageIndex, nextPages.length - 1)
+//           : currentPageIndex;
+
+//     setPages(nextPages);
+//     setCurrentPageIndex(Math.max(0, nextIndex));
+//     setSelectedElementId(null);
+//     setSelectedElementIds([]);
+//     setIsSaved(false);
+//   };
+
+//   const goToPreviousPage = useCallback(() => {
+//     setCurrentPageIndex((current) => {
+//       const next = Math.max(0, current - 1);
+//       if (next !== current) {
+//         setSelectedElementId(null);
+//         setSelectedElementIds([]);
+//       }
+//       return next;
+//     });
+//   }, []);
+
+//   const goToNextPage = useCallback(() => {
+//     setCurrentPageIndex((current) => {
+//       const next = Math.min(pages.length - 1, current + 1);
+//       if (next !== current) {
+//         setSelectedElementId(null);
+//         setSelectedElementIds([]);
+//       }
+//       return next;
+//     });
+//   }, [pages.length]);
+
+//   const renamePage = (index: number) => {
+//     const page = pages[index];
+//     if (!page) return;
+
+//     setRenamePageState({
+//       open: true,
+//       index,
+//       name: page.name,
+//     });
+//   };
+
+//   const closeRenamePage = () => {
+//     setRenamePageState({
+//       open: false,
+//       index: null,
+//       name: "",
+//     });
+//   };
+
+//   const saveRenamedPage = () => {
+//     const index = renamePageState.index;
+//     const name = renamePageState.name.trim();
+
+//     if (index === null || !name) return;
+
+//     const page = pages[index];
+//     if (!page || page.name === name) {
+//       closeRenamePage();
+//       return;
+//     }
+
+//     pushHistory();
+//     setPages((previous) =>
+//       previous.map((item, idx) => (idx === index ? { ...item, name } : item)),
+//     );
+//     closeRenamePage();
+//   };
+
+//   const resolveWhiteboard = useCallback(async () => {
+//     try {
+//       setWhiteboardReady(false);
+
+//       if (mode === "appointment" && !appointmentId) {
+//         throw new Error("Appointment ID is required");
+//       }
+
+//       if (mode === "booking" && !bookingId) {
+//         throw new Error("Booking ID is required");
+//       }
+
+//       const response = await fetch("/api/whiteboards/resolve", {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({
+//           mode,
+//           appointmentId: mode === "appointment" ? appointmentId : undefined,
+//           bookingId: mode === "booking" ? bookingId : undefined,
+//         }),
+//       });
+
+//       const result = await response.json().catch(() => null);
+
+//       if (!response.ok) {
+//         throw new Error(result?.error || "Failed to resolve whiteboard");
+//       }
+
+//       const id = result?.whiteboard?.id;
+//       if (!id) throw new Error("Whiteboard ID was not returned");
+
+//       setDatabaseWhiteboardId(id);
+//       return id as string;
+//     } catch (error) {
+//       console.error("Failed to resolve whiteboard:", error);
+//       setSaveStatus("error");
+//       setWhiteboardReady(false);
+//       return null;
+//     }
+//   }, [mode, appointmentId, bookingId]);
+
+//   const applyBoardData = useCallback((input: unknown) => {
+//     const boardData = parseSavedBoardData(input);
+//     if (!boardData) return;
+
+//     const defaultLesson: TeachingLesson = {
+//       id: DEFAULT_TEACHING_LESSON_ID,
+//       name: "General lesson",
+//       subtopics: [{ id: DEFAULT_TEACHING_SUBTOPIC_ID, name: "General", createdAt: new Date(0).toISOString(), updatedAt: new Date(0).toISOString() }],
+//       createdAt: new Date(0).toISOString(),
+//       updatedAt: new Date(0).toISOString(),
+//     };
+//     const loadedLessons = Array.isArray(boardData.teachingLessons)
+//       ? boardData.teachingLessons.filter(
+//           (lesson) => lesson && typeof lesson.id === "string" && typeof lesson.name === "string",
+//         )
+//       : [];
+//     const rawTeachingLibrary = Array.isArray(boardData.teachingLibrary)
+//       ? boardData.teachingLibrary
+//       : [];
+//     const needsLegacyLesson = rawTeachingLibrary.some((item) => !item.lessonId);
+//     const normalizedLessons = (loadedLessons.length > 0 ? [...loadedLessons] : [defaultLesson]).map((lesson) => ({
+//       ...lesson,
+//       subtopics: Array.isArray(lesson.subtopics) && lesson.subtopics.length > 0
+//         ? lesson.subtopics
+//         : [{ id: `${lesson.id}-general`, name: "General", createdAt: lesson.createdAt, updatedAt: lesson.updatedAt }],
+//     }));
+//     if (needsLegacyLesson && !normalizedLessons.some((lesson) => lesson.id === DEFAULT_TEACHING_LESSON_ID)) {
+//       normalizedLessons.unshift(defaultLesson);
+//     }
+//     setTeachingLessons(normalizedLessons);
+//     const requestedActiveLessonId = boardData.activeTeachingLessonId;
+//     const resolvedLessonId = requestedActiveLessonId && normalizedLessons.some((lesson) => lesson.id === requestedActiveLessonId)
+//       ? requestedActiveLessonId
+//       : normalizedLessons[0]?.id ?? DEFAULT_TEACHING_LESSON_ID;
+//     setActiveTeachingLessonId(resolvedLessonId);
+//     const resolvedSubtopics = normalizedLessons.find((lesson) => lesson.id === resolvedLessonId)?.subtopics ?? [];
+//     setActiveTeachingSubtopicId(
+//       boardData.activeTeachingSubtopicId && resolvedSubtopics.some((subtopic) => subtopic.id === boardData.activeTeachingSubtopicId)
+//         ? boardData.activeTeachingSubtopicId
+//         : resolvedSubtopics[0]?.id ?? DEFAULT_TEACHING_SUBTOPIC_ID,
+//     );
+//     setTeachingLibrary(
+//       rawTeachingLibrary.map((item, index) => ({
+//         ...item,
+//         lessonId: item.lessonId ?? DEFAULT_TEACHING_LESSON_ID,
+//         subtopicId: item.subtopicId ?? normalizedLessons.find((lesson) => lesson.id === (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID))?.subtopics?.[0]?.id ?? DEFAULT_TEACHING_SUBTOPIC_ID,
+//         section: item.section ?? getDefaultTeachingSection(item.template),
+//         order: typeof item.order === "number" ? item.order : index,
+//       })),
+//     );
+
+//     if (Array.isArray(boardData.pages) && boardData.pages.length > 0) {
+//       setPages(boardData.pages);
+//       const nextPageIndex = Math.min(
+//         Math.max(boardData.currentPageIndex ?? 0, 0),
+//         boardData.pages.length - 1,
+//       );
+//       setCurrentPageIndex(nextPageIndex);
+//       historyRef.current = [structuredClone(boardData.pages)];
+//       redoRef.current = [];
+//     }
+
+//     // Keep the tutoring whiteboard on the clean reference canvas. Older
+//     // saved sessions may contain the previous chalkboard/line-grid settings,
+//     // so migrate those legacy visual settings without touching board content.
+//     if (mode === "booking") {
+//       setShowGrid(true);
+//       setBackgroundColor("#ffffff");
+//       setBackgroundImage(null);
+//       setGridColor("#e2e8f0");
+//     } else {
+//       if (typeof boardData.showGrid === "boolean")
+//         setShowGrid(boardData.showGrid);
+//       if (typeof boardData.backgroundColor === "string")
+//         setBackgroundColor(boardData.backgroundColor);
+//       if (typeof boardData.backgroundImage === "string")
+//         setBackgroundImage(boardData.backgroundImage);
+//       else if (boardData.backgroundImage === null) setBackgroundImage(null);
+//       if (typeof boardData.gridColor === "string")
+//         setGridColor(boardData.gridColor);
+//     }
+//     if (typeof boardData.snapToGrid === "boolean")
+//       setSnapToGrid(boardData.snapToGrid);
+//     if (typeof boardData.color === "string") setColor(boardData.color);
+//     if (typeof boardData.width === "number") setWidth(boardData.width);
+//     if (boardData.tool) setTool(boardData.tool);
+//     if (boardData.formulaCategory)
+//       setFormulaCategory(boardData.formulaCategory);
+
+//     setSelectedElementId(null);
+//     setSelectedElementIds([]);
+//   }, []);
+
+//   // localStorage is only a convenience cache. Uploaded PDFs/images can contain
+//   // large base64 payloads that exceed the browser's storage quota even though
+//   // the database save succeeds. Never let that optional cache failure break
+//   // whiteboard saving.
+//   const saveLocalBoardCache = useCallback(
+//     (data: unknown) => {
+//       try {
+//         localStorage.setItem(storageKey, JSON.stringify(data));
+//       } catch (error) {
+//         if (
+//           error instanceof DOMException &&
+//           error.name === "QuotaExceededError"
+//         ) {
+//           try {
+//             localStorage.removeItem(storageKey);
+//           } catch {
+//             // Ignore cache cleanup failures; the database remains authoritative.
+//           }
+//           return;
+//         }
+//         console.warn("Unable to update the whiteboard local cache:", error);
+//       }
+//     },
+//     [storageKey],
+//   );
+
+//   const saveBoard = useCallback(
+//     async (showFeedback = true) => {
+//       if (!databaseWhiteboardId || !whiteboardReady) return;
+
+//       if (showFeedback) {
+//         setSaveStatus("saving");
+//         setIsSaved(false);
+//       }
+
+//       const boardData = {
+//         version: 1,
+//         whiteboardId: databaseWhiteboardId,
+//         mode,
+//         appointmentId,
+//         bookingId,
+//         pages,
+//         currentPageIndex,
+//         teachingLibrary,
+//         teachingLessons,
+//         activeTeachingLessonId,
+//         activeTeachingSubtopicId,
+//         showGrid,
+//         backgroundColor,
+//         backgroundImage,
+//         gridColor,
+//         snapToGrid,
+//         color,
+//         width,
+//         tool,
+//         formulaCategory,
+//         savedAt: new Date().toISOString(),
+//       };
+
+//       try {
+//         const response = await fetch(
+//           `/api/whiteboards/${databaseWhiteboardId}`,
+//           {
+//             method: "PUT",
+//             headers: { "Content-Type": "application/json" },
+//             body: JSON.stringify({
+//               name: currentPage?.name ?? "Untitled Whiteboard",
+//               data: boardData,
+//             }),
+//           },
+//         );
+
+//         const result = await response.json().catch(() => null);
+
+//         if (!response.ok) {
+//           throw new Error(result?.error || "Failed to save whiteboard");
+//         }
+
+//         saveLocalBoardCache(boardData);
+
+//         if (showFeedback) {
+//           setSaveStatus("saved");
+//           setIsSaved(true);
+//           window.setTimeout(() => {
+//             setIsSaved(false);
+//             setSaveStatus("idle");
+//           }, 2500);
+//         }
+//       } catch (error) {
+//         console.error("Failed to save whiteboard:", error);
+//         if (showFeedback) {
+//           setSaveStatus("error");
+//           setIsSaved(false);
+//         }
+//       }
+//     },
+//     [
+//       databaseWhiteboardId,
+//       whiteboardReady,
+//       mode,
+//       appointmentId,
+//       bookingId,
+//       storageKey,
+//       saveLocalBoardCache,
+//       pages,
+//       currentPageIndex,
+//       teachingLibrary,
+//       teachingLessons,
+//       activeTeachingLessonId,
+//       activeTeachingSubtopicId,
+//       showGrid,
+//       backgroundColor,
+//       backgroundImage,
+//       gridColor,
+//       snapToGrid,
+//       color,
+//       width,
+//       tool,
+//       formulaCategory,
+//       currentPage,
+//     ],
+//   );
+
+//   const restoreBoard = useCallback(async () => {
+//     if (!databaseWhiteboardId) return;
+
+//     try {
+//       const response = await fetch(`/api/whiteboards/${databaseWhiteboardId}`, {
+//         method: "GET",
+//         cache: "no-store",
+//       });
+
+//       const result = await response.json().catch(() => null);
+
+//       if (!response.ok) {
+//         throw new Error(result?.error || "Failed to retrieve whiteboard");
+//       }
+
+//       const boardData = result?.whiteboard?.data;
+//       if (boardData) {
+//         applyBoardData(boardData);
+//         saveLocalBoardCache(boardData);
+//       }
+//     } catch (error) {
+//       console.error("Failed to restore whiteboard from database:", error);
+
+//       // Local cache is only a fallback when the database cannot be reached.
+//       try {
+//         const stored = localStorage.getItem(storageKey);
+//         if (stored) {
+//           const parsed: unknown = JSON.parse(stored);
+//           applyBoardData(parsed);
+//         }
+//       } catch (localError) {
+//         console.error("Failed to restore local whiteboard cache:", localError);
+//       }
+//     }
+//   }, [databaseWhiteboardId, storageKey, applyBoardData, saveLocalBoardCache]);
+
+//   // Resolve the route context into the actual Prisma Whiteboard ID.
+//   useEffect(() => {
+//     if (mode === "appointment" && !appointmentId) return;
+
+//     let cancelled = false;
+
+//     const initializeWhiteboard = async () => {
+//       hasLoadedBoardRef.current = false;
+//       realtimeReadyReportedRef.current = false;
+//       setWhiteboardReady(false);
+
+//       const id = await resolveWhiteboard();
+//       if (!id || cancelled) return;
+
+//       try {
+//         const response = await fetch(`/api/whiteboards/${id}`, {
+//           method: "GET",
+//           cache: "no-store",
+//         });
+//         const result = await response.json().catch(() => null);
+
+//         if (!response.ok) {
+//           throw new Error(result?.error || "Failed to load whiteboard");
+//         }
+
+//         if (!cancelled) {
+//           const boardData = result?.whiteboard?.data;
+
+//           if (boardData) {
+//             applyBoardData(boardData);
+//             saveLocalBoardCache(boardData);
+//           }
+
+//           hasLoadedBoardRef.current = true;
+//           setWhiteboardReady(true);
+//         }
+//       } catch (error) {
+//         console.error("Failed to initialize whiteboard:", error);
+
+//         if (!cancelled) {
+//           try {
+//             const stored = localStorage.getItem(storageKey);
+//             if (stored) {
+//               const parsed: unknown = JSON.parse(stored);
+//               applyBoardData(parsed);
+//             }
+//           } catch (localError) {
+//             console.error(
+//               "Failed to restore local whiteboard cache:",
+//               localError,
+//             );
+//           }
+
+//           hasLoadedBoardRef.current = true;
+//           setWhiteboardReady(true);
+//         }
+//       }
+//     };
+
+//     initializeWhiteboard();
+
+//     return () => {
+//       cancelled = true;
+//     };
+//   }, [
+//     mode,
+//     appointmentId,
+//     bookingId,
+//     resolveWhiteboard,
+//     applyBoardData,
+//     storageKey,
+//     saveLocalBoardCache,
+//   ]);
+
+//   const buildRealtimeData = useCallback(
+//     (revision = realtimeRevisionRef.current): WhiteboardRealtimeData => ({
+//       version: 1,
+//       whiteboardId: databaseWhiteboardId ?? undefined,
+//       mode,
+//       appointmentId,
+//       bookingId,
+//       pages,
+//       currentPageIndex,
+//       teachingLibrary,
+//       teachingLessons,
+//       activeTeachingLessonId,
+//       activeTeachingSubtopicId,
+//       showGrid,
+//       backgroundColor,
+//       backgroundImage,
+//       gridColor,
+//       snapToGrid,
+//       color,
+//       width,
+//       tool,
+//       formulaCategory,
+//       savedAt: new Date().toISOString(),
+//       realtimeOriginId: realtimeOriginIdRef.current,
+//       realtimeRevision: revision,
+//     }),
+//     [
+//       databaseWhiteboardId,
+//       mode,
+//       appointmentId,
+//       bookingId,
+//       pages,
+//       currentPageIndex,
+//       teachingLibrary,
+//       teachingLessons,
+//       activeTeachingLessonId,
+//       activeTeachingSubtopicId,
+//       showGrid,
+//       backgroundColor,
+//       backgroundImage,
+//       gridColor,
+//       snapToGrid,
+//       color,
+//       width,
+//       tool,
+//       formulaCategory,
+//     ],
+//   );
+
+//   const getRealtimeSignature = useCallback((data: WhiteboardRealtimeData) => {
+//     return JSON.stringify({
+//       whiteboardId: data.whiteboardId,
+//       mode: data.mode,
+//       appointmentId: data.appointmentId,
+//       bookingId: data.bookingId,
+//       pages: data.pages,
+//       currentPageIndex: data.currentPageIndex,
+//       teachingLibrary: data.teachingLibrary,
+//       teachingLessons: data.teachingLessons,
+//       activeTeachingLessonId: data.activeTeachingLessonId,
+//       showGrid: data.showGrid,
+//       backgroundColor: data.backgroundColor,
+//       backgroundImage: data.backgroundImage,
+//       gridColor: data.gridColor,
+//       snapToGrid: data.snapToGrid,
+//       color: data.color,
+//       width: data.width,
+//       tool: data.tool,
+//       formulaCategory: data.formulaCategory,
+//     });
+//   }, []);
+
+//   useEffect(() => {
+//     if (!remoteData || !whiteboardReady || !hasLoadedBoardRef.current) return;
+
+//     if (remoteData.realtimeOriginId === realtimeOriginIdRef.current) return;
+
+//     const remoteOrigin = remoteData.realtimeOriginId;
+//     const remoteRevision = remoteData.realtimeRevision;
+
+//     if (remoteOrigin && typeof remoteRevision === "number") {
+//       const lastRevision =
+//         lastRemoteRevisionByOriginRef.current.get(remoteOrigin);
+//       if (typeof lastRevision === "number" && remoteRevision <= lastRevision) {
+//         return;
+//       }
+//       lastRemoteRevisionByOriginRef.current.set(remoteOrigin, remoteRevision);
+//     }
+
+//     const signature = getRealtimeSignature(remoteData);
+//     if (signature === lastAppliedRemoteSignatureRef.current) return;
+
+//     lastAppliedRemoteSignatureRef.current = signature;
+//     applyBoardData(remoteData);
+//   }, [remoteData, whiteboardReady, applyBoardData, getRealtimeSignature]);
+
+//   useEffect(() => {
+//     if (!databaseWhiteboardId || !whiteboardReady || !hasLoadedBoardRef.current)
+//       return;
+
+//     const realtimeData = buildRealtimeData(realtimeRevisionRef.current);
+//     const signature = getRealtimeSignature(realtimeData);
+
+//     if (signature === lastAppliedRemoteSignatureRef.current) {
+//       lastAppliedRemoteSignatureRef.current = null;
+//       return;
+//     }
+
+//     realtimeRevisionRef.current += 1;
+//     onRealtimeChange?.(buildRealtimeData(realtimeRevisionRef.current));
+//   }, [
+//     databaseWhiteboardId,
+//     whiteboardReady,
+//     pages,
+//     currentPageIndex,
+//     showGrid,
+//     backgroundColor,
+//     backgroundImage,
+//     gridColor,
+//     snapToGrid,
+//     color,
+//     width,
+//     tool,
+//     formulaCategory,
+//     buildRealtimeData,
+//     getRealtimeSignature,
+//     onRealtimeChange,
+//     teachingLibrary,
+//     teachingLessons,
+//     activeTeachingLessonId,
+//   ]);
+
+//   useEffect(() => {
+//     if (
+//       !databaseWhiteboardId ||
+//       !whiteboardReady ||
+//       !hasLoadedBoardRef.current ||
+//       realtimeReadyReportedRef.current
+//     ) {
+//       return;
+//     }
+
+//     realtimeReadyReportedRef.current = true;
+//     onReady?.(buildRealtimeData());
+//   }, [databaseWhiteboardId, whiteboardReady, buildRealtimeData, onReady]);
+
+//   useEffect(() => {
+//     if (!databaseWhiteboardId || !whiteboardReady || !hasLoadedBoardRef.current)
+//       return;
+
+//     const timeout = window.setTimeout(() => {
+//       saveBoard(false);
+//     }, 1200);
+
+//     return () => window.clearTimeout(timeout);
+//   }, [
+//     databaseWhiteboardId,
+//     whiteboardReady,
+//     pages,
+//     teachingLibrary,
+//     currentPageIndex,
+//     showGrid,
+//     backgroundColor,
+//     backgroundImage,
+//     gridColor,
+//     snapToGrid,
+//     color,
+//     width,
+//     tool,
+//     formulaCategory,
+//     saveBoard,
+//   ]);
+
+//   const exportPNG = () => {
+//     const canvas = canvasRef.current;
+//     if (!canvas) return;
+//     const link = document.createElement("a");
+//     link.download = `${currentPage?.name || "math-workspace"}.png`;
+//     link.href = canvas.toDataURL("image/png");
+//     link.click();
+//   };
+
+//   const toggleFullscreen = async () => {
+//     try {
+//       if (!document.fullscreenElement && rootRef.current) {
+//         // Ask the browser to hide its navigation UI where supported.
+//         // This must be called from a user gesture (the fullscreen button).
+//         await rootRef.current.requestFullscreen({ navigationUI: "hide" });
+//       } else if (document.fullscreenElement) {
+//         await document.exitFullscreen();
+//       }
+//     } catch (e) {
+//       console.error("Unable to enter whiteboard fullscreen mode:", e);
+//     }
+//   };
+
+//   const toggleTeacherControls = () => {
+//     setShowGraphSettings(false);
+//     setShowCalculator(false);
+//     setShowToolsPanel(false);
+//     setShowPagesPanel(false);
+//     setShowColorPopup(false);
+//     setColorPopupTarget(null);
+//     setShowShapeToolsPopup(false);
+//     setShowFormulaMenu(false);
+//     setShowUploadMenu(false);
+//   };
+
+//   const clampTeacherControlPosition = useCallback(
+//     (left: number, top: number) => {
+//       if (typeof window === "undefined") {
+//         return { left, top };
+//       }
+
+//       const size = 52;
+//       const margin = 12;
+
+//       return {
+//         left: Math.min(
+//           Math.max(margin, left),
+//           Math.max(leftInset + margin, window.innerWidth - size - margin),
+//         ),
+//         top: Math.min(
+//           Math.max(margin, top),
+//           Math.max(margin, window.innerHeight - size - margin),
+//         ),
+//       };
+//     },
+//     [leftInset],
+//   );
+
+//   // Put the launcher in the bottom-right corner on first mount.
+//   useEffect(() => {
+//     if (teacherControlInitializedRef.current || typeof window === "undefined") {
+//       return;
+//     }
+
+//     teacherControlInitializedRef.current = true;
+
+//     const size = 52;
+//     const margin = 20;
+
+//     setTeacherControlPosition({
+//       left: Math.max(leftInset + margin, window.innerWidth - size - margin),
+//       top: Math.max(margin, window.innerHeight - size - margin),
+//     });
+//   }, []);
+
+//   // Keep a dragged launcher inside the visible board when the viewport changes.
+//   useEffect(() => {
+//     const handleResize = () => {
+//       setTeacherControlPosition((current) =>
+//         clampTeacherControlPosition(current.left, current.top),
+//       );
+//     };
+
+//     window.addEventListener("resize", handleResize);
+//     return () => window.removeEventListener("resize", handleResize);
+//   }, [clampTeacherControlPosition]);
+
+//   const handleTeacherControlPointerDown = (
+//     event: React.PointerEvent<HTMLButtonElement>,
+//   ) => {
+//     if (event.button !== 0) return;
+
+//     event.preventDefault();
+//     event.stopPropagation();
+
+//     const rect = event.currentTarget.getBoundingClientRect();
+
+//     teacherControlDraggingRef.current = true;
+//     setTeacherControlDragging(true);
+//     teacherControlDidDragRef.current = false;
+//     teacherControlDragOffsetRef.current = {
+//       x: event.clientX - rect.left,
+//       y: event.clientY - rect.top,
+//     };
+
+//     event.currentTarget.setPointerCapture(event.pointerId);
+//   };
+
+//   const handleTeacherControlPointerMove = (
+//     event: React.PointerEvent<HTMLButtonElement>,
+//   ) => {
+//     if (!teacherControlDraggingRef.current) return;
+
+//     event.preventDefault();
+//     event.stopPropagation();
+
+//     const offset = teacherControlDragOffsetRef.current;
+//     const next = clampTeacherControlPosition(
+//       event.clientX - offset.x,
+//       event.clientY - offset.y,
+//     );
+
+//     if (
+//       Math.abs(next.left - teacherControlPosition.left) > 2 ||
+//       Math.abs(next.top - teacherControlPosition.top) > 2
+//     ) {
+//       teacherControlDidDragRef.current = true;
+//     }
+
+//     setTeacherControlPosition(next);
+//   };
+
+//   const handleTeacherControlPointerUp = (
+//     event: React.PointerEvent<HTMLButtonElement>,
+//   ) => {
+//     if (!teacherControlDraggingRef.current) return;
+
+//     event.preventDefault();
+//     event.stopPropagation();
+
+//     teacherControlDraggingRef.current = false;
+//     setTeacherControlDragging(false);
+
+//     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+//       event.currentTarget.releasePointerCapture(event.pointerId);
+//     }
+//   };
+
+//   const handleTeacherControlClick = (
+//     event: React.MouseEvent<HTMLButtonElement>,
+//   ) => {
+//     event.preventDefault();
+//     event.stopPropagation();
+
+//     // A drag should reposition the launcher without also opening/closing it.
+//     if (teacherControlDidDragRef.current) {
+//       teacherControlDidDragRef.current = false;
+//       return;
+//     }
+
+//     toggleTeacherControls();
+//   };
+
+//   const appendCalculator = useCallback((value: string) => {
+//     setCalculatorValue((current) => `${current}${value}`);
+//   }, []);
+
+//   const factorial = useCallback((n: number) => {
+//     if (!Number.isFinite(n) || n < 0 || Math.floor(n) !== n || n > 170)
+//       throw new Error("Invalid factorial");
+//     let result = 1;
+//     for (let i = 2; i <= n; i++) result *= i;
+//     return result;
+//   }, []);
+
+//   const runCalculator = useCallback(
+//     (expression = calculatorValue) => {
+//       if (!expression.trim()) return;
+//       try {
+//         let norm = expression
+//           .replace(/π/g, "Math.PI")
+//           .replace(/e/g, "Math.E")
+//           .replace(/×/g, "*")
+//           .replace(/÷/g, "/")
+//           .replace(/−/g, "-")
+//           .replace(/√/g, "sqrt")
+//           .replace(/\^/g, "**")
+//           .replace(/(\d+(?:\.\d+)?)%/g, "($1/100)");
+
+//         // Scientific functions. Angle mode applies to trigonometry.
+//         const angle = calculatorAngleMode === "DEG" ? "Math.PI/180" : "1";
+//         norm = norm
+//           .replace(/asin\(/g, `Math.asin(`)
+//           .replace(/acos\(/g, `Math.acos(`)
+//           .replace(/atan\(/g, `Math.atan(`)
+//           .replace(/sin\(/g, `Math.sin(`)
+//           .replace(/cos\(/g, `Math.cos(`)
+//           .replace(/tan\(/g, `Math.tan(`)
+//           .replace(/sqrt\(/g, `Math.sqrt(`)
+//           .replace(/ln\(/g, `Math.log(`)
+//           .replace(/log\(/g, `Math.log10(`)
+//           .replace(/abs\(/g, `Math.abs(`)
+//           .replace(/floor\(/g, `Math.floor(`)
+//           .replace(/ceil\(/g, `Math.ceil(`)
+//           .replace(/round\(/g, `Math.round(`);
+
+//         // Apply DEG/RAD conversion to trig arguments and inverse-trig results.
+//         if (calculatorAngleMode === "DEG") {
+//           norm = norm.replace(/Math\.(sin|cos|tan)\(/g, `Math.$1((`);
+//           norm = norm.replace(
+//             /Math\.(sin|cos|tan)\(\(([^()]*)\)/g,
+//             `Math.$1(($2)*${angle})`,
+//           );
+//           norm = norm.replace(
+//             /Math\.(asin|acos|atan)\(([^()]*)\)/g,
+//             `(Math.$1($2)/${angle})`,
+//           );
+//         }
+
+//         if (
+//           !/^[0-9A-Za-z_+\-*/().,%\s*]+$/.test(norm) ||
+//           /(constructor|prototype|window|document|globalThis|Function|eval)/i.test(
+//             norm,
+//           )
+//         ) {
+//           throw new Error("Invalid expression");
+//         }
+
+//         // Factorials are evaluated before the final expression.
+//         while (/([0-9.]+)!/.test(norm))
+//           norm = norm.replace(/([0-9.]+)!/g, (_, n) => `factorial(${n})`);
+
+//         const res = Function(
+//           "factorial",
+//           `"use strict"; return (${norm})`,
+//         )(factorial);
+//         const formatted =
+//           typeof res === "number" && Number.isFinite(res)
+//             ? String(Number(res.toPrecision(12)))
+//             : "Error";
+//         setCalculatorResult(formatted);
+//         setCalculatorHistory((history) =>
+//           [{ expression, result: formatted }, ...history].slice(0, 12),
+//         );
+//       } catch {
+//         setCalculatorResult("Error");
+//       }
+//     },
+//     [calculatorAngleMode, calculatorValue, factorial],
+//   );
+
+//   const clearCalculator = useCallback(() => {
+//     setCalculatorValue("");
+//     setCalculatorResult("");
+//   }, []);
+
+//   const handleCalculatorPointerDown = useCallback(
+//     (event: React.PointerEvent<HTMLDivElement>) => {
+//       const target = event.target as HTMLElement;
+//       if (target.closest("button, input, select, textarea")) return;
+//       const rect = event.currentTarget.getBoundingClientRect();
+//       calculatorDraggingRef.current = true;
+//       calculatorDragOffsetRef.current = {
+//         x: event.clientX - rect.left,
+//         y: event.clientY - rect.top,
+//       };
+//       event.currentTarget.setPointerCapture(event.pointerId);
+//     },
+//     [],
+//   );
+
+//   const handleCalculatorPointerMove = useCallback(
+//     (event: React.PointerEvent<HTMLDivElement>) => {
+//       if (!calculatorDraggingRef.current) return;
+//       const parent = event.currentTarget.parentElement?.getBoundingClientRect();
+//       if (!parent) return;
+//       const width = event.currentTarget.offsetWidth;
+//       const height = event.currentTarget.offsetHeight;
+//       const x = Math.max(
+//         8,
+//         Math.min(
+//           event.clientX - parent.left - calculatorDragOffsetRef.current.x,
+//           parent.width - width - 8,
+//         ),
+//       );
+//       const y = Math.max(
+//         8,
+//         Math.min(
+//           event.clientY - parent.top - calculatorDragOffsetRef.current.y,
+//           parent.height - height - 8,
+//         ),
+//       );
+//       setCalculatorPosition({ x, y });
+//     },
+//     [],
+//   );
+
+//   const handleCalculatorPointerUp = useCallback(
+//     (event: React.PointerEvent<HTMLDivElement>) => {
+//       calculatorDraggingRef.current = false;
+//       try {
+//         event.currentTarget.releasePointerCapture(event.pointerId);
+//       } catch {}
+//     },
+//     [],
+//   );
+
+//   const insertFormula = useCallback((val: string) => {
+//     setTool("equation");
+//     setSelectedEquation(val);
+//   }, []);
+
+//   const formulaSets = {
+//     algebra: [
+//       ["Quadratic formula", "x = (-b ± √(b² - 4ac)) / 2a"],
+//       ["Slope formula", "m = (y₂ - y₁) / (x₂ - x₁)"],
+//       ["Distance formula", "d = √((x₂ - x₁)² + (y₂ - y₁)²)"],
+//       ["Midpoint formula", "M = ((x₁ + x₂)/2, (y₁ + y₂)/2)"],
+//       ["Exponential growth", "A = P(1 + r)^t"],
+//       ["Logarithm power rule", "log(a^b) = b · log(a)"],
+//     ],
+//     geometry: [
+//       ["Circle area", "A = πr²"],
+//       ["Circumference", "C = 2πr"],
+//       ["Triangle area", "A = ½bh"],
+//       ["Pythagorean theorem", "a² + b² = c²"],
+//       ["Sphere volume", "V = 4/3 πr³"],
+//       ["Cylinder volume", "V = πr²h"],
+//     ],
+//     calculus: [
+//       ["Derivative definition", "f'(x) = lim(h→0) [f(x+h) - f(x)] / h"],
+//       ["Power rule", "d/dx [x^n] = n · x^(n-1)"],
+//       ["Product rule", "(fg)' = f'g + fg'"],
+//       ["Integration by parts", "∫ u dv = uv - ∫ v du"],
+//       ["Fundamental theorem", "∫_a^b f(x)dx = F(b) - F(a)"],
+//     ],
+//     trigonometry: [
+//       ["Sine definition", "sin(θ) = Opposite / Hypotenuse"],
+//       ["Cosine definition", "cos(θ) = Adjacent / Hypotenuse"],
+//       ["Tangent definition", "tan(θ) = Sin(θ) / Cos(θ)"],
+//       ["Pythagorean identity", "sin²(θ) + cos²(θ) = 1"],
+//       ["Law of sines", "a / sin(A) = b / sin(B) = c / sin(C)"],
+//       ["Law of cosines", "c² = a² + b² - 2ab cos(C)"],
+//     ],
+//     statistics: [
+//       ["Arithmetic mean", "μ = Σx / N"],
+//       ["Sample variance", "s² = Σ(x - x̄)² / (n - 1)"],
+//       ["Standard deviation", "σ = √(Σ(x - μ)² / N)"],
+//       ["Binomial probability", "P(X = k) = C(n,k) p^k (1-p)^(n-k)"],
+//       ["Z-score", "z = (x - μ) / σ"],
+//     ],
+//     physics: [
+//       ["Newton's second law", "F = ma"],
+//       ["Kinematic equation", "d = v₀t + ½at²"],
+//       ["Work energy theorem", "W = ΔKE = Fd cos(θ)"],
+//       ["Universal gravitation", "F = G (m₁m₂)/r²"],
+//       ["Ohm's Law", "V = IR"],
+//     ],
+//   };
+
+//   const toolButton = (
+//     name: Tool,
+//     label: string,
+//     icon: React.ReactNode,
+//     shortcut?: string,
+//   ) => {
+//     const active = tool === name;
+
+//     return (
+//       <button
+//         key={name}
+//         ref={name === "pen" ? penButtonRef : undefined}
+//         type="button"
+//         onClick={() => {
+//           setTool(name);
+//           setShowShapeToolsPopup(false);
+//           setShowEraserPopup(false);
+
+//           if (name === "pen") {
+//             if (showPenPopup) {
+//               setShowPenPopup(false);
+//             } else {
+//               positionPenPopup();
+//               setShowPenPopup(true);
+//             }
+//           } else {
+//             setShowPenPopup(false);
+//           }
+//         }}
+//         title={shortcut ? `${label} (${shortcut})` : label}
+//         aria-label={label}
+//         className={`group relative flex size-8 shrink-0 items-center justify-center rounded-lg transition-all ${
+//           active
+//             ? "bg-violet-600 text-white shadow-sm shadow-violet-600/25"
+//             : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+//         }`}
+//       >
+//         {icon}
+
+//         {shortcut && (
+//           <span className="pointer-events-none absolute -right-1.5 -top-1 hidden rounded bg-slate-900 px-1 py-0.5 text-[7px] font-bold text-white shadow-sm 2xl:block">
+//             {shortcut}
+//           </span>
+//         )}
+
+//       </button>
+//     );
+//   };
+
+//   const openToolbarTextEditor = useCallback(
+//     (type: "text" | "equation") => {
+//       const canvas = canvasRef.current;
+//       if (!canvas) return;
+
+//       const rect = canvas.getBoundingClientRect();
+//       if (type === "equation") {
+//         setTool("equation");
+//         openLatexEditor(selectedEquation);
+//         setSelectedEquation("");
+//         return;
+//       }
+
+//       setTool("text");
+//       textPlacementArmedRef.current = true;
+//       openTextEditor(
+//         {
+//           x: rect.width / 2,
+//           y: Math.max(120, rect.height / 2 - 120),
+//         },
+//         "text",
+//         "",
+//       );
+//     },
+//     [openLatexEditor, openTextEditor, selectedEquation],
+//   );
+
+//   useEffect(() => {
+//     const handleKeyDown = (event: KeyboardEvent) => {
+//       if (tool !== "select" || !selectedElementIds.length) return;
+//       const target = event.target as HTMLElement | null;
+//       if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA") return;
+
+//       if (
+//         (event.metaKey || event.ctrlKey) &&
+//         event.key.toLowerCase() === "d" &&
+//         selectedElementIds.length === 1
+//       ) {
+//         event.preventDefault();
+//         duplicateSelectedElement();
+//         return;
+//       }
+
+//       if (event.key === "Delete" || event.key === "Backspace") {
+//         event.preventDefault();
+//         pushHistory();
+//         updateCurrentPage((page) => ({
+//           ...page,
+//           elements: page.elements.filter(
+//             (el: WhiteboardElement) => !selectedElementIds.includes(el.id),
+//           ),
+//         }));
+//         setSelectedElementId(null);
+//         setSelectedElementIds([]);
+//       }
+//     };
+
+//     window.addEventListener("keydown", handleKeyDown);
+//     return () => window.removeEventListener("keydown", handleKeyDown);
+//   }, [
+//     duplicateSelectedElement,
+//     elements,
+//     pushHistory,
+//     selectedElementId,
+//     selectedElementIds,
+//     tool,
+//     updateCurrentPage,
+//   ]);
+
+//   // Render lightweight previews for the Pages sidebar. The previews are kept
+//   // separate from the main canvas so opening the page manager never changes
+//   // the whiteboard drawing surface itself.
+//   useEffect(() => {
+//     if (!showPagesPanel) return;
+
+//     const thumbnailWidth = 254;
+//     const thumbnailHeight = 142;
+//     const boardWidth = 1200;
+//     const boardHeight = 800;
+//     const dpr = window.devicePixelRatio || 1;
+
+//     pages.forEach((page) => {
+//       const canvas = pageThumbnailRefs.current[page.id];
+//       if (!canvas) return;
+
+//       canvas.width = Math.round(thumbnailWidth * dpr);
+//       canvas.height = Math.round(thumbnailHeight * dpr);
+//       canvas.style.width = `${thumbnailWidth}px`;
+//       canvas.style.height = `${thumbnailHeight}px`;
+
+//       const ctx = canvas.getContext("2d");
+//       if (!ctx) return;
+
+//       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+//       ctx.clearRect(0, 0, thumbnailWidth, thumbnailHeight);
+//       ctx.fillStyle = "#ffffff";
+//       ctx.fillRect(0, 0, thumbnailWidth, thumbnailHeight);
+
+//       if (showGrid) {
+//         ctx.save();
+//         ctx.fillStyle = gridColor;
+//         ctx.globalAlpha = 0.35;
+//         const scale = Math.min(
+//           thumbnailWidth / boardWidth,
+//           thumbnailHeight / boardHeight,
+//         );
+//         const scaledGrid = Math.max(4, gridSize * scale);
+//         for (let x = 0; x <= thumbnailWidth; x += scaledGrid) {
+//           for (let y = 0; y <= thumbnailHeight; y += scaledGrid) {
+//             ctx.beginPath();
+//             ctx.arc(x, y, 0.7, 0, Math.PI * 2);
+//             ctx.fill();
+//           }
+//         }
+//         ctx.restore();
+//       }
+
+//       const scale = Math.min(
+//         thumbnailWidth / boardWidth,
+//         thumbnailHeight / boardHeight,
+//       );
+//       const offsetX = (thumbnailWidth - boardWidth * scale) / 2;
+//       const offsetY = (thumbnailHeight - boardHeight * scale) / 2;
+
+//       ctx.save();
+//       ctx.translate(offsetX, offsetY);
+//       ctx.scale(scale, scale);
+
+//       for (const element of page.elements) {
+//         if (element.type === "stroke") {
+//           drawStroke(ctx, element);
+//         } else if (element.type === "image") {
+//           const image = imageCacheRef.current.get(element.src);
+//           if (image) {
+//             ctx.drawImage(
+//               image,
+//               element.x,
+//               element.y,
+//               element.width,
+//               element.height,
+//             );
+//           } else {
+//             ctx.save();
+//             ctx.fillStyle = "#e2e8f0";
+//             ctx.fillRect(element.x, element.y, element.width, element.height);
+//             ctx.strokeStyle = "#cbd5e1";
+//             ctx.lineWidth = 2;
+//             ctx.strokeRect(element.x, element.y, element.width, element.height);
+//             ctx.restore();
+//           }
+//         } else if (
+//           [
+//             "arrow",
+//             "line",
+//             "ellipse",
+//             "rectangle",
+//             "circle",
+//             "triangle",
+//             "cube",
+//             "cylinder",
+//             "diamond",
+//             "pentagon",
+//             "hexagon",
+//             "heptagon",
+//             "octagon",
+//             "parallelogram",
+//             "sphere",
+//             "axes",
+//           ].includes(element.type)
+//         ) {
+//           drawShape(ctx, element as ShapeElement);
+//         } else if (element.type === "text" || element.type === "equation") {
+//           drawText(ctx, element as TextElement);
+//         }
+//       }
+
+//       ctx.restore();
+//     });
+//   }, [
+//     drawShape,
+//     drawStroke,
+//     drawText,
+//     gridColor,
+//     gridSize,
+//     pages,
+//     showGrid,
+//     showPagesPanel,
+//   ]);
+
+//   const selectedElement = getSelectedElement();
+//   const selectedTextElement =
+//     selectedElement?.type === "text" ? selectedElement : null;
+//   const selectedEquationElement =
+//     selectedElement?.type === "equation" ? selectedElement : null;
+//   const selectedGraphElement =
+//     selectedElement?.type === "image" && selectedElement.name === "Desmos Graph"
+//       ? selectedElement
+//       : null;
+//   const selectedMediaElement =
+//     selectedElement?.type === "image" && selectedElement.name !== "Desmos Graph"
+//       ? selectedElement
+//       : null;
+//   const selectedMediaBounds = selectedMediaElement
+//     ? {
+//         left: selectedMediaElement.x,
+//         top: selectedMediaElement.y,
+//         right: selectedMediaElement.x + selectedMediaElement.width,
+//         bottom: selectedMediaElement.y + selectedMediaElement.height,
+//       }
+//     : null;
+//   const selectedGraphBounds = selectedGraphElement
+//     ? {
+//         left: selectedGraphElement.x,
+//         top: selectedGraphElement.y,
+//         right: selectedGraphElement.x + selectedGraphElement.width,
+//         bottom: selectedGraphElement.y + selectedGraphElement.height,
+//       }
+//     : null;
+
+//   // Equation bounds are derived directly from the selected element. This keeps
+//   // render pure: getElementBounds has a context-free equation-metrics fallback,
+//   // so we do not need to read contextRef.current or set state from an effect.
+//   const selectedEquationBounds = selectedEquationElement
+//     ? getElementBounds(selectedEquationElement)
+//     : null;
+
+//   return (
+//     <main
+//       ref={rootRef}
+//       className="pointer-events-auto fixed left-0 right-0 bottom-0 z-[700] flex flex-col overflow-hidden bg-[#eef2f7] text-slate-900 antialiased"
+//       style={{
+//         // In fullscreen, ignore the normal app/meeting insets and occupy
+//         // the entire display. Outside fullscreen, preserve the existing layout.
+//         left: isFullscreen ? 0 : `${Math.max(0, leftInset)}px`,
+//         top: isFullscreen ? 0 : `${Math.max(0, topInset)}px`,
+//         right: isFullscreen ? 0 : undefined,
+//         bottom: 0,
+//         width: isFullscreen ? "100vw" : undefined,
+//         height: isFullscreen ? "100dvh" : undefined,
+//       }}
+//     >
+//       <button
+//         type="button"
+//         onClick={toggleFullscreen}
+//         aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+//         title={isFullscreen ? "Exit fullscreen (Esc)" : "Enter fullscreen"}
+//         className="fixed right-4 top-4 z-[1200] flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white/95 text-slate-700 shadow-lg backdrop-blur transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+//       >
+//         {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+//       </button>
+
+//       {showTeacherControls && cropEditor.open && (
+//         <div
+//           className="fixed inset-0 z-[1050] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-[2px]"
+//           role="dialog"
+//           aria-modal="true"
+//           aria-labelledby="crop-image-title"
+//           onPointerDown={(event) => {
+//             if (event.target === event.currentTarget) {
+//               setCropEditor((previous) => ({
+//                 ...previous,
+//                 open: false,
+//                 elementId: null,
+//               }));
+//             }
+//           }}
+//         >
+//           <div
+//             className="w-[min(720px,calc(100vw-32px))] rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
+//             onPointerDown={(event) => event.stopPropagation()}
+//           >
+//             <div className="mb-4 flex items-center justify-between">
+//               <h2
+//                 id="crop-image-title"
+//                 className="text-base font-bold text-slate-900"
+//               >
+//                 Crop image
+//               </h2>
+//               <button
+//                 type="button"
+//                 onClick={() =>
+//                   setCropEditor((previous) => ({
+//                     ...previous,
+//                     open: false,
+//                     elementId: null,
+//                   }))
+//                 }
+//                 className="flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+//                 aria-label="Close crop editor"
+//               >
+//                 <X className="size-4" />
+//               </button>
+//             </div>
+
+//             <div className="mb-5 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-3">
+//               {cropEditor.elementId &&
+//                 (() => {
+//                   const target = elements.find(
+//                     (element): element is ImageElement =>
+//                       element.id === cropEditor.elementId &&
+//                       element.type === "image",
+//                   );
+//                   return target ? (
+//                     <img
+//                       src={target.src}
+//                       alt={target.name ?? "Image to crop"}
+//                       className="mx-auto max-h-[420px] max-w-full object-contain"
+//                     />
+//                   ) : null;
+//                 })()}
+//             </div>
+
+//             <div className="grid grid-cols-2 gap-4 text-xs font-semibold text-slate-700">
+//               {[
+//                 ["Left", "left"],
+//                 ["Top", "top"],
+//                 ["Right", "right"],
+//                 ["Bottom", "bottom"],
+//               ].map(([label, key]) => (
+//                 <label key={key} className="flex flex-col gap-2">
+//                   <span>
+//                     {label}:{" "}
+//                     {cropEditor[key as "left" | "top" | "right" | "bottom"]}%
+//                   </span>
+//                   <input
+//                     type="range"
+//                     min={0}
+//                     max={100}
+//                     value={
+//                       cropEditor[key as "left" | "top" | "right" | "bottom"]
+//                     }
+//                     onChange={(event) =>
+//                       setCropEditor((previous) => ({
+//                         ...previous,
+//                         [key]: Number(event.target.value),
+//                       }))
+//                     }
+//                   />
+//                 </label>
+//               ))}
+//             </div>
+
+//             <div className="mt-6 flex justify-end gap-2">
+//               <button
+//                 type="button"
+//                 onClick={() =>
+//                   setCropEditor((previous) => ({
+//                     ...previous,
+//                     open: false,
+//                     elementId: null,
+//                   }))
+//                 }
+//                 className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+//               >
+//                 Cancel
+//               </button>
+//               <button
+//                 type="button"
+//                 onClick={cropSelectedImage}
+//                 className="rounded-xl bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+//               >
+//                 Apply crop
+//               </button>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+//       {showTeacherControls && showGraphEditor && (
+//         <div
+//           className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/55 p-2 backdrop-blur-[2px]"
+//           role="dialog"
+//           aria-modal="true"
+//           aria-labelledby="create-graph-title"
+//           onPointerDown={(event) => {
+//             if (event.target === event.currentTarget) {
+//               setShowGraphEditor(false);
+//               graphEditingElementIdRef.current = null;
+//             }
+//           }}
+//         >
+//           <div
+//             className="flex h-[96vh] max-h-[1100px] w-[98vw] max-w-[1800px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/25"
+//             onPointerDown={(event) => event.stopPropagation()}
+//           >
+//             <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 px-4 sm:px-5">
+//               <div className="flex min-w-0 items-center gap-3">
+//                 <h2 id="create-graph-title" className="truncate text-base font-bold tracking-tight text-slate-800 sm:text-lg">
+//                   Graph & Geometry Studio
+//                 </h2>
+//                 <span className="hidden rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-500 sm:inline-flex">
+//                   Expanded workspace
+//                 </span>
+//               </div>
+//               <button
+//                 type="button"
+//                 onClick={() => {
+//                   setShowGraphEditor(false);
+//                   graphEditingElementIdRef.current = null;
+//                 }}
+//                 title="Close"
+//                 aria-label="Close graph editor"
+//                 className="flex size-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+//               >
+//                 <X className="size-5" />
+//               </button>
+//             </div>
+
+//             <div className="relative flex min-h-0 flex-1 flex-col p-2 sm:p-3">
+//               <div className="relative z-20 mb-2 flex shrink-0 items-center justify-between gap-3">
+//                 <button
+//                   type="button"
+//                   onClick={() => setShowGraphStudioPresets((visible) => !visible)}
+//                   aria-expanded={showGraphStudioPresets}
+//                   aria-controls="graph-studio-presets"
+//                   className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+//                   title={showGraphStudioPresets ? "Close presets" : "Open graph and geometry presets"}
+//                 >
+//                   <PanelLeftOpen className="size-4" />
+//                   Presets
+//                   <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">{graphStudioTab === "graphs" ? "Graphing" : "Geometry"}</span>
+//                 </button>
+//                 <span className="hidden text-[11px] text-slate-400 sm:block">
+//                   Select Presets for quick starts · the graphing workspace stays full size
+//                 </span>
+//               </div>
+
+//               {showGraphStudioPresets && (
+//                 <div
+//                   id="graph-studio-presets"
+//                   className="absolute left-2 top-12 z-30 max-h-[min(76vh,720px)] w-[min(560px,calc(100%-16px))] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-900/20 sm:left-3 sm:top-14 sm:p-4"
+//                 >
+//                   <div className="mb-3 flex items-center justify-between gap-3">
+//                     <div>
+//                       <h3 className="text-sm font-bold text-slate-800">Quick-start presets</h3>
+//                       <p className="mt-0.5 text-[11px] text-slate-500">Choose a starter, then continue working on the graph.</p>
+//                     </div>
+//                     <button
+//                       type="button"
+//                       onClick={() => setShowGraphStudioPresets(false)}
+//                       aria-label="Close presets popup"
+//                       title="Close presets"
+//                       className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+//                     >
+//                       <X className="size-4" />
+//                     </button>
+//                   </div>
+//                   <div className="mb-3 flex items-center rounded-lg bg-slate-100 p-1">
+//                     <button
+//                       type="button"
+//                       onClick={() => setGraphStudioTab("graphs")}
+//                       className={`flex-1 rounded-md px-3 py-2 text-xs font-bold transition ${graphStudioTab === "graphs" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+//                     >
+//                       Graphing
+//                     </button>
+//                     <button
+//                       type="button"
+//                       onClick={() => setGraphStudioTab("geometry")}
+//                       className={`flex-1 rounded-md px-3 py-2 text-xs font-bold transition ${graphStudioTab === "geometry" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+//                     >
+//                       Geometry
+//                     </button>
+//                   </div>
+//                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+//                     {GRAPH_STUDIO_PRESETS[graphStudioTab].map((preset) => (
+//                       <button
+//                         key={preset.id}
+//                         type="button"
+//                         onClick={() => {
+//                           applyGraphStudioPreset(preset);
+//                           setShowGraphStudioPresets(false);
+//                         }}
+//                         className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left transition hover:border-emerald-300 hover:bg-emerald-50"
+//                       >
+//                         <span className="block text-xs font-bold text-slate-800">{preset.label}</span>
+//                         <span className="mt-0.5 block text-[10px] text-slate-500">{preset.description}</span>
+//                       </button>
+//                     ))}
+//                   </div>
+
+//                   {graphStudioTab === "geometry" && (
+//                     <>
+//                     <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/60 p-3">
+//                       <div className="mb-2">
+//                         <h4 className="text-xs font-bold text-slate-800">Connect plotted points</h4>
+//                         <p className="mt-0.5 text-[10px] leading-relaxed text-slate-500">Create point labels in Desmos first (such as A=(0,0), B=(4,0), C=(2,3)), then enter their names below.</p>
+//                       </div>
+//                       <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500" htmlFor="graph-connection-points">Point names, in order</label>
+//                       <input
+//                         id="graph-connection-points"
+//                         value={graphConnectionPoints}
+//                         onChange={(event) => {
+//                           setGraphConnectionPoints(event.target.value);
+//                           setGraphConnectionError(null);
+//                         }}
+//                         placeholder="A, B, C"
+//                         className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+//                       />
+//                       <div className="mt-2 flex flex-wrap items-center gap-2">
+//                         <button
+//                           type="button"
+//                           onClick={() => setGraphConnectionMode("polygon")}
+//                           aria-pressed={graphConnectionMode === "polygon"}
+//                           className={`rounded-lg px-3 py-2 text-[11px] font-bold transition ${graphConnectionMode === "polygon" ? "bg-indigo-600 text-white" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+//                         >
+//                           Closed shape
+//                         </button>
+//                         <button
+//                           type="button"
+//                           onClick={() => setGraphConnectionMode("segments")}
+//                           aria-pressed={graphConnectionMode === "segments"}
+//                           className={`rounded-lg px-3 py-2 text-[11px] font-bold transition ${graphConnectionMode === "segments" ? "bg-indigo-600 text-white" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+//                         >
+//                           Join with lines
+//                         </button>
+//                         <button
+//                           type="button"
+//                           onClick={connectGraphPoints}
+//                           className="ml-auto rounded-lg bg-emerald-600 px-3.5 py-2 text-[11px] font-bold text-white transition hover:bg-emerald-700"
+//                         >
+//                           Connect points
+//                         </button>
+//                       </div>
+//                       {graphConnectionError && (
+//                         <p role="alert" className="mt-2 text-[10px] font-semibold text-red-600">{graphConnectionError}</p>
+//                       )}
+//                       <p className="mt-2 text-[10px] text-slate-500">Closed shape joins the last point back to the first. Join with lines connects each adjacent pair only.</p>
+//                     </div>
+
+//                     <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
+//                       <div className="mb-2">
+//                         <h4 className="text-xs font-bold text-slate-800">Interactive construction tools</h4>
+//                         <p className="mt-0.5 text-[10px] leading-relaxed text-slate-500">Build constructions from points already plotted in Desmos. The results update when draggable source points move.</p>
+//                       </div>
+//                       <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-slate-500" htmlFor="graph-construction-type">Construction</label>
+//                       <select
+//                         id="graph-construction-type"
+//                         value={graphConstructionType}
+//                         onChange={(event) => {
+//                           setGraphConstructionType(event.target.value as typeof graphConstructionType);
+//                           setGraphConstructionError(null);
+//                         }}
+//                         className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+//                       >
+//                         <option value="line">Line through two points</option>
+//                         <option value="parallel">Parallel line through a point</option>
+//                         <option value="perpendicular">Perpendicular line through a point</option>
+//                         <option value="perp-bisector">Perpendicular bisector</option>
+//                         <option value="angle-bisector">Angle bisector</option>
+//                         <option value="midpoint">Midpoint of a segment</option>
+//                         <option value="distance">Distance between two points</option>
+//                         <option value="reflect-y">Reflect triangle across y-axis</option>
+//                         <option value="rotate-90">Rotate triangle 90° anticlockwise</option>
+//                         <option value="translate">Translate triangle</option>
+//                       </select>
+//                       <div className="mt-2 grid grid-cols-2 gap-2">
+//                         {([
+//                           ["a", "Point A / vertex"],
+//                           ["b", "Point B"],
+//                           ...(["angle-bisector", "reflect-y", "rotate-90", "translate"].includes(graphConstructionType) ? [["c", "Point C"]] : []),
+//                           ...(["parallel", "perpendicular"].includes(graphConstructionType) ? [["p", "Through point P"]] : []),
+//                         ] as Array<["a" | "b" | "c" | "p", string]>).map(([key, label]) => (
+//                           <label key={key} className="block text-[10px] font-semibold text-slate-600">
+//                             {label}
+//                             <input
+//                               value={graphConstructionPoints[key]}
+//                               maxLength={1}
+//                               list="graph-plotted-point-labels"
+//                               onChange={(event) => {
+//                                 setGraphConstructionPoints((current) => ({ ...current, [key]: event.target.value.toUpperCase() }));
+//                                 setGraphConstructionError(null);
+//                               }}
+//                               className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold uppercase text-slate-800 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+//                             />
+//                           </label>
+//                         ))}
+//                       </div>
+//                       <datalist id="graph-plotted-point-labels">
+//                         {graphAvailablePointLabels.map((label) => <option key={label} value={label} />)}
+//                       </datalist>
+//                       <button
+//                         type="button"
+//                         onClick={refreshGraphPointSuggestions}
+//                         className="mt-2 rounded-md border border-emerald-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-emerald-700 transition hover:bg-emerald-50"
+//                       >
+//                         Refresh plotted point suggestions{graphAvailablePointLabels.length ? ` (${graphAvailablePointLabels.length})` : ""}
+//                       </button>
+//                       {graphConstructionType === "translate" && (
+//                         <div className="mt-2 grid grid-cols-2 gap-2">
+//                           <label className="block text-[10px] font-semibold text-slate-600">Horizontal shift (h)
+//                             <input type="number" step="any" value={graphConstructionVector.x} onChange={(event) => setGraphConstructionVector((current) => ({ ...current, x: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-800 outline-none focus:border-emerald-400" />
+//                           </label>
+//                           <label className="block text-[10px] font-semibold text-slate-600">Vertical shift (k)
+//                             <input type="number" step="any" value={graphConstructionVector.y} onChange={(event) => setGraphConstructionVector((current) => ({ ...current, y: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-800 outline-none focus:border-emerald-400" />
+//                           </label>
+//                         </div>
+//                       )}
+//                       <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
+//                         {graphConstructionType === "angle-bisector" ? "A is the vertex of ∠BAC; B and C lie on its arms." : graphConstructionType === "parallel" || graphConstructionType === "perpendicular" ? "A and B define the reference line; P is the point the new line passes through." : ["reflect-y", "rotate-90", "translate"].includes(graphConstructionType) ? "A, B and C are the vertices of the original triangle. The transformed triangle is added alongside it." : "Enter the existing point labels exactly as they appear in the Desmos expression list."}
+//                       </p>
+//                       <button
+//                         type="button"
+//                         onClick={applyGraphConstruction}
+//                         className="mt-3 w-full rounded-lg bg-emerald-600 px-3.5 py-2.5 text-[11px] font-bold text-white transition hover:bg-emerald-700"
+//                       >
+//                         Create construction
+//                       </button>
+//                       {graphConstructionError && <p role="alert" className="mt-2 text-[10px] font-semibold text-red-600">{graphConstructionError}</p>}
+//                     </div>
+//                     </>
+//                   )}
+//                 </div>
+//               )}
+
+//               {graphLoadError ? (
+//                 <div className="flex min-h-0 flex-1 items-center justify-center rounded-lg border border-red-200 bg-red-50 px-6 text-center text-sm font-semibold text-red-700">
+//                   {graphLoadError}
+//                 </div>
+//               ) : (
+//                 <div
+//                   ref={graphContainerRef}
+//                   className="min-h-[300px] flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white"
+//                 />
+//               )}
+//             </div>
+
+//             <div className="flex h-14 shrink-0 items-center justify-end gap-3 border-t border-slate-200 px-4 sm:px-6">
+//               <button
+//                 type="button"
+//                 onClick={() => {
+//                   setShowGraphEditor(false);
+//                   graphEditingElementIdRef.current = null;
+//                 }}
+//                 className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+//               >
+//                 Close
+//               </button>
+//               <button
+//                 type="button"
+//                 onClick={insertGraphFromDesmos}
+//                 className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+//               >
+//                 Insert graph on whiteboard
+//               </button>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+//       {showTeacherControls && showGraphSettings && (
+//         <div
+//           className="absolute z-[290] w-80 max-w-[calc(100vw-24px)] rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl"
+//           style={{
+//             left: getPopupPosition("graph", {
+//               x: Math.max(leftInset + 12, window.innerWidth - 420),
+//               y: Math.max(80, window.innerHeight / 2 - 220),
+//             }).x,
+//             top: getPopupPosition("graph", {
+//               x: 0,
+//               y: Math.max(80, window.innerHeight / 2 - 220),
+//             }).y,
+//           }}
+//           onPointerMove={movePopupDrag}
+//           onPointerUp={endPopupDrag}
+//         >
+//           <div
+//             className="mb-3 flex cursor-move items-center justify-between select-none"
+//             onPointerDown={(event) => startPopupDrag("graph", event)}
+//           >
+//             <h3 className="text-sm font-bold text-slate-900">
+//               Background & Grid Settings
+//             </h3>
+//             <button
+//               onClick={() => setShowGraphSettings(false)}
+//               className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"
+//             >
+//               <X className="size-4" />
+//             </button>
+//           </div>
+//           <div className="space-y-3">
+//             <label className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">
+//               Enable Grid Lines
+//               <input
+//                 type="checkbox"
+//                 checked={showGrid}
+//                 onChange={(e) => setShowGrid(e.target.checked)}
+//                 className="size-4 accent-blue-600"
+//               />
+//             </label>
+
+//             <div>
+//               <label className="block text-[11px] font-bold text-slate-600 mb-1">
+//                 Background Color
+//               </label>
+//               <select
+//                 value={backgroundColor}
+//                 onChange={(e) => {
+//                   setBackgroundColor(e.target.value);
+//                   setBackgroundImage(null);
+//                 }}
+//                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold"
+//               >
+//                 {BACKGROUND_OPTIONS.map((opt) => (
+//                   <option key={opt.value} value={opt.value}>
+//                     {opt.label}
+//                   </option>
+//                 ))}
+//               </select>
+//               <div className="mt-2 grid grid-cols-6 gap-1.5">
+//                 {BACKGROUND_OPTIONS.map((opt) => (
+//                   <button
+//                     key={opt.value}
+//                     onClick={() => {
+//                       setBackgroundColor(opt.value);
+//                       setBackgroundImage(null);
+//                     }}
+//                     className={`h-6 w-full rounded-md border ${backgroundColor === opt.value && !backgroundImage ? "border-blue-600 ring-2 ring-blue-500/20" : "border-slate-200"}`}
+//                     style={{ backgroundColor: opt.value }}
+//                     title={opt.label}
+//                   />
+//                 ))}
+//               </div>
+//             </div>
+
+//             <div>
+//               <label className="block text-[11px] font-bold text-slate-600 mb-1">
+//                 Background Image
+//               </label>
+//               <select
+//                 value={backgroundImage ?? ""}
+//                 onChange={(e) => {
+//                   setBackgroundImage(e.target.value || null);
+//                 }}
+//                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold"
+//               >
+//                 <option value="">No Image — Use Background Color</option>
+//                 {BACKGROUND_IMAGE_OPTIONS.map((opt) => (
+//                   <option key={opt.value} value={opt.value}>
+//                     {opt.label}
+//                   </option>
+//                 ))}
+//               </select>
+
+//               <div className="mt-2 grid grid-cols-2 gap-2">
+//                 {BACKGROUND_IMAGE_OPTIONS.map((opt) => (
+//                   <button
+//                     key={opt.value}
+//                     type="button"
+//                     onClick={() => setBackgroundImage(opt.value)}
+//                     className={`group relative h-16 overflow-hidden rounded-lg border transition ${
+//                       backgroundImage === opt.value
+//                         ? "border-blue-600 ring-2 ring-blue-500/20"
+//                         : "border-slate-200 hover:border-slate-400"
+//                     }`}
+//                     title={opt.label}
+//                     aria-label={`Use ${opt.label} background`}
+//                   >
+//                     {/* eslint-disable-next-line @next/next/no-img-element */}
+//                     <img
+//                       src={opt.value}
+//                       alt={opt.label}
+//                       className="h-full w-full object-cover"
+//                     />
+//                     <span className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-[9px] font-bold text-white">
+//                       {opt.label}
+//                     </span>
+//                   </button>
+//                 ))}
+//               </div>
+//             </div>
+
+//             <div>
+//               <label className="block text-[11px] font-bold text-slate-600 mb-1">
+//                 Grid Line Color
+//               </label>
+//               <select
+//                 value={gridColor}
+//                 onChange={(e) => setGridColor(e.target.value)}
+//                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold"
+//               >
+//                 {GRID_COLOR_OPTIONS.map((opt) => (
+//                   <option key={opt.value} value={opt.value}>
+//                     {opt.label}
+//                   </option>
+//                 ))}
+//               </select>
+//               <div className="mt-2 grid grid-cols-4 gap-1.5">
+//                 {GRID_COLOR_OPTIONS.map((opt) => (
+//                   <button
+//                     key={opt.value}
+//                     onClick={() => setGridColor(opt.value)}
+//                     className={`h-6 w-full rounded-md border ${gridColor === opt.value ? "border-blue-600 ring-2 ring-blue-500/20" : "border-slate-200"}`}
+//                     style={{ backgroundColor: opt.value }}
+//                     title={opt.label}
+//                   />
+//                 ))}
+//               </div>
+//             </div>
+
+//             <label className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">
+//               Snap to Grid
+//               <input
+//                 type="checkbox"
+//                 checked={snapToGrid}
+//                 onChange={(e) => setSnapToGrid(e.target.checked)}
+//                 className="size-4 accent-blue-600"
+//               />
+//             </label>
+//           </div>
+//         </div>
+//       )}
+
+//       {showTeacherControls && showCalculator && (
+//         <div className="absolute inset-0 z-[500] pointer-events-none">
+//           <div
+//             className="pointer-events-auto absolute w-[min(430px,calc(100vw-24px))] overflow-hidden rounded-3xl border border-slate-200/80 bg-white/98 shadow-2xl shadow-slate-950/25 backdrop-blur-2xl"
+//             style={{
+//               left: calculatorPosition.x || undefined,
+//               top: calculatorPosition.y || undefined,
+//               right: calculatorPosition.x ? undefined : "360px",
+//               bottom: calculatorPosition.y ? undefined : "96px",
+//             }}
+//             onPointerDown={handleCalculatorPointerDown}
+//             onPointerMove={handleCalculatorPointerMove}
+//             onPointerUp={handleCalculatorPointerUp}
+//           >
+//             <div className="flex cursor-move items-center justify-between border-b border-slate-200 bg-slate-50/90 px-4 py-3 select-none">
+//               <div>
+//                 <h3 className="text-sm font-bold text-slate-900">
+//                   Scientific Calculator
+//                 </h3>
+//                 <p className="text-[10px] text-slate-500">
+//                   Drag the header to move • {calculatorAngleMode} mode
+//                 </p>
+//               </div>
+//               <div className="flex items-center gap-1">
+//                 <button
+//                   type="button"
+//                   onClick={() =>
+//                     setCalculatorAngleMode((m) => (m === "DEG" ? "RAD" : "DEG"))
+//                   }
+//                   className="rounded-lg bg-slate-200 px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-slate-300"
+//                 >
+//                   {calculatorAngleMode}
+//                 </button>
+//                 <button
+//                   type="button"
+//                   onClick={() => setShowCalculator(false)}
+//                   className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+//                 >
+//                   <X className="size-4" />
+//                 </button>
+//               </div>
+//             </div>
+
+//             <div className="p-3">
+//               <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-950 px-3 py-3 text-right">
+//                 <input
+//                   value={calculatorValue}
+//                   onChange={(e) => setCalculatorValue(e.target.value)}
+//                   onKeyDown={(e) => {
+//                     if (e.key === "Enter") runCalculator();
+//                     if (e.key === "Escape") clearCalculator();
+//                   }}
+//                   placeholder="0"
+//                   className="w-full bg-transparent text-right font-mono text-lg text-white outline-none placeholder:text-slate-500"
+//                 />
+//                 <div className="min-h-7 pt-1 font-mono text-2xl font-bold text-blue-300">
+//                   {calculatorResult || "0"}
+//                 </div>
+//               </div>
+
+//               <div className="mb-2 grid grid-cols-4 gap-1.5">
+//                 {[
+//                   {
+//                     label: "MC",
+//                     action: () => setCalculatorMemory(0),
+//                   },
+//                   {
+//                     label: "MR",
+//                     action: () =>
+//                       setCalculatorValue(
+//                         (value) => `${value}${calculatorMemory}`,
+//                       ),
+//                   },
+//                   {
+//                     label: "M+",
+//                     action: () =>
+//                       setCalculatorMemory(
+//                         (memory) => memory + (Number(calculatorResult) || 0),
+//                       ),
+//                   },
+//                   {
+//                     label: "M−",
+//                     action: () =>
+//                       setCalculatorMemory(
+//                         (memory) => memory - (Number(calculatorResult) || 0),
+//                       ),
+//                   },
+//                 ].map((button) => (
+//                   <button
+//                     key={button.label}
+//                     type="button"
+//                     onClick={button.action}
+//                     className="rounded-xl bg-slate-100 px-2 py-2 text-[11px] font-bold text-slate-600 hover:bg-slate-200"
+//                   >
+//                     {button.label}
+//                   </button>
+//                 ))}
+//               </div>
+
+//               <div className="mb-2 grid grid-cols-4 gap-1.5">
+//                 {[
+//                   ["sin", "sin("],
+//                   ["cos", "cos("],
+//                   ["tan", "tan("],
+//                   ["√", "√("],
+//                   ["sin⁻¹", "asin("],
+//                   ["cos⁻¹", "acos("],
+//                   ["tan⁻¹", "atan("],
+//                   ["x²", "^2"],
+//                   ["ln", "ln("],
+//                   ["log", "log("],
+//                   ["π", "π"],
+//                   ["e", "e"],
+//                 ].map(([label, value]) => (
+//                   <button
+//                     key={label}
+//                     type="button"
+//                     onClick={() => appendCalculator(value)}
+//                     className="rounded-xl bg-blue-50 px-2 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100"
+//                   >
+//                     {label}
+//                   </button>
+//                 ))}
+//               </div>
+
+//               <div className="grid grid-cols-4 gap-1.5">
+//                 {[
+//                   ["7", "7"],
+//                   ["8", "8"],
+//                   ["9", "9"],
+//                   ["÷", "/"],
+//                   ["4", "4"],
+//                   ["5", "5"],
+//                   ["6", "6"],
+//                   ["×", "*"],
+//                   ["1", "1"],
+//                   ["2", "2"],
+//                   ["3", "3"],
+//                   ["−", "-"],
+//                   ["0", "0"],
+//                   [".", "."],
+//                   ["(", "("],
+//                   ["+", "+"],
+//                   ["%", "%"],
+//                   ["xʸ", "^"],
+//                   ["!", "!"],
+//                   ["⌫", "BACK"],
+//                 ].map(([label, value]) => (
+//                   <button
+//                     key={label}
+//                     type="button"
+//                     onClick={() =>
+//                       value === "BACK"
+//                         ? setCalculatorValue((v) => v.slice(0, -1))
+//                         : appendCalculator(value)
+//                     }
+//                     className="rounded-xl bg-slate-100 px-2 py-2.5 text-sm font-bold text-slate-800 hover:bg-slate-200"
+//                   >
+//                     {label}
+//                   </button>
+//                 ))}
+//                 <button
+//                   type="button"
+//                   onClick={clearCalculator}
+//                   className="rounded-xl bg-rose-50 px-2 py-2.5 text-sm font-bold text-rose-600 hover:bg-rose-100"
+//                 >
+//                   AC
+//                 </button>
+//                 <button
+//                   type="button"
+//                   onClick={() => runCalculator()}
+//                   className="col-span-2 rounded-xl bg-blue-600 px-2 py-2.5 text-sm font-bold text-white hover:bg-blue-700"
+//                 >
+//                   =
+//                 </button>
+//               </div>
+
+//               {calculatorHistory.length > 0 && (
+//                 <details className="mt-3 rounded-xl border border-slate-200 bg-slate-50">
+//                   <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-slate-600">
+//                     History ({calculatorHistory.length})
+//                   </summary>
+//                   <div className="max-h-32 overflow-auto border-t border-slate-200">
+//                     {calculatorHistory.map((item, index) => (
+//                       <button
+//                         key={`${item.expression}-${index}`}
+//                         type="button"
+//                         onClick={() => setCalculatorValue(item.expression)}
+//                         className="block w-full border-b border-slate-100 px-3 py-2 text-left hover:bg-white"
+//                       >
+//                         <div className="truncate font-mono text-[10px] text-slate-500">
+//                           {item.expression}
+//                         </div>
+//                         <div className="font-mono text-xs font-bold text-slate-800">
+//                           = {item.result}
+//                         </div>
+//                       </button>
+//                     ))}
+//                   </div>
+//                 </details>
+//               )}
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+//       {latexEditor.open && (
+//         <div
+//           className="absolute inset-0 z-[700] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-[2px]"
+//           role="dialog"
+//           aria-modal="true"
+//           aria-labelledby="latex-editor-title"
+//           onPointerDown={(event) => {
+//             if (event.target === event.currentTarget) {
+//               setLatexEditor((previous) => ({
+//                 ...previous,
+//                 open: false,
+//                 text: "",
+//                 editingElementId: null,
+//               }));
+//               setSelectedEquation("");
+//               setActiveTextPanel(null);
+//               setShowTextFormattingColors(false);
+//               textPlacementArmedRef.current = false;
+//               setTool("select");
+//             }
+//           }}
+//         >
+//           <div
+//             data-latex-editor
+//             className="max-h-[calc(100dvh-24px)] w-[min(900px,calc(100vw-32px))] overflow-y-auto overscroll-contain rounded-[14px] border border-slate-200 bg-white shadow-2xl"
+//             onPointerDown={(event) => event.stopPropagation()}
+//           >
+//             <div className="flex items-center justify-between px-6 py-5">
+//               <div>
+//                 <h2
+//                   id="latex-editor-title"
+//                   className="text-xl font-extrabold tracking-[-0.02em] text-slate-900"
+//                 >
+//                   Mathematics equation editor
+//                 </h2>
+//                 <p className="mt-1 text-xs text-slate-500">
+//                   Build fractions, roots, matrices, cases, aligned equations and symbols.
+//                 </p>
+//               </div>
+//               <button
+//                 type="button"
+//                 onClick={() => {
+//                   setLatexEditor((previous) => ({
+//                     ...previous,
+//                     open: false,
+//                     text: "",
+//                     editingElementId: null,
+//                   }));
+//                   setSelectedEquation("");
+//                   setActiveTextPanel(null);
+//                   setShowTextFormattingColors(false);
+//                   textPlacementArmedRef.current = false;
+//                   setTool("select");
+//                 }}
+//                 className="flex size-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+//                 aria-label="Close LaTeX formula editor"
+//               >
+//                 <X className="size-5" />
+//               </button>
+//             </div>
+
+//             <div className="px-5 pb-5">
+//               <div className="grid grid-cols-2 gap-3">
+//                 <textarea
+//                   ref={latexInputRef}
+//                   value={latexEditor.text}
+//                   onChange={(event) =>
+//                     setLatexEditor((previous) => ({
+//                       ...previous,
+//                       text: event.target.value,
+//                     }))
+//                   }
+//                   onKeyDown={(event) => {
+//                     if (
+//                       (event.metaKey || event.ctrlKey) &&
+//                       event.key === "Enter"
+//                     ) {
+//                       event.preventDefault();
+//                       addLatexElement();
+//                     }
+//                   }}
+//                   placeholder="Type LaTeX code here, e.g. \delta"
+//                   className="h-[150px] resize-none rounded-[12px] border border-slate-200 bg-[#e8edf5] px-5 py-4 font-mono text-lg leading-6 text-slate-700 outline-none placeholder:text-slate-400 focus:border-slate-300"
+//                 />
+//                 <div className="h-[150px] rounded-[12px] border border-slate-300 bg-white p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+//                   <div className="text-sm text-slate-400">Preview</div>
+//                   <div className="flex h-[105px] items-center justify-center overflow-hidden text-center text-4xl text-slate-950">
+//                     {latexEditor.text.trim()
+//                       ? renderLatexPreview(latexEditor.text, latexEditor.color)
+//                       : null}
+//                   </div>
+//                 </div>
+//               </div>
+
+//               <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
+//                 <span>Get familiar</span>
+//                 <button
+//                   type="button"
+//                   onClick={() => setLatexTab("All")}
+//                   className="font-semibold text-emerald-600 underline underline-offset-2"
+//                 >
+//                   with the commands.
+//                 </button>
+//                 <span className="ml-2">Check popular</span>
+//                 <button
+//                   type="button"
+//                   onClick={() => {
+//                     setLatexEditor((previous) => ({
+//                       ...previous,
+//                       text: "\\frac{1}{3}",
+//                     }));
+//                     setLatexTab("All");
+//                     requestAnimationFrame(() => latexInputRef.current?.focus());
+//                   }}
+//                   className="font-semibold text-emerald-600 underline underline-offset-2"
+//                 >
+//                   equation examples
+//                 </button>
+//               </div>
+
+//               <div className="mt-4 flex items-center gap-3">
+//                 {LATEX_EDITOR_COLORS.map((c) => (
+//                   <button
+//                     key={c}
+//                     type="button"
+//                     onClick={() =>
+//                       setLatexEditor((previous) => ({ ...previous, color: c }))
+//                     }
+//                     className={`flex size-8 items-center justify-center rounded-full ${latexEditor.color === c ? "ring-2 ring-slate-500 ring-offset-2" : ""}`}
+//                     aria-label={`Formula color ${c}`}
+//                   >
+//                     <span
+//                       className="size-7 rounded-full border border-slate-200"
+//                       style={{ backgroundColor: c }}
+//                     />
+//                   </button>
+//                 ))}
+//               </div>
+
+//               <div className="mt-4">
+//                 <div className="mb-2 flex items-center justify-between gap-2">
+//                   <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+//                     Quick structures
+//                   </span>
+//                   <span className="text-[11px] text-slate-400">
+//                     Select a structure to insert it at the cursor
+//                   </span>
+//                 </div>
+//                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+//                   {LATEX_QUICK_STRUCTURES.map((item) => (
+//                     <button
+//                       key={item.label}
+//                       type="button"
+//                       onClick={() => insertLatexModalAtCursor(item.value)}
+//                       className="min-h-[58px] rounded-lg border border-slate-200 bg-white px-2 py-2 text-left transition hover:border-emerald-300 hover:bg-emerald-50"
+//                       title={item.hint}
+//                     >
+//                       <span className="block text-xs font-bold text-slate-700">
+//                         {item.label}
+//                       </span>
+//                       <span className="mt-1 block truncate font-mono text-[10px] text-slate-400">
+//                         {item.hint}
+//                       </span>
+//                     </button>
+//                   ))}
+//                 </div>
+//               </div>
+
+//               <div className="mt-4 flex items-center gap-2">
+//                 {(["All", "Math", "Arrow", "Letter"] as const).map((tab) => (
+//                   <button
+//                     key={tab}
+//                     type="button"
+//                     onClick={() => setLatexTab(tab)}
+//                     className={`rounded-[12px] border px-4 py-2 text-sm font-semibold transition ${latexTab === tab ? "border-transparent bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+//                   >
+//                     {tab}
+//                   </button>
+//                 ))}
+//               </div>
+
+//               <div className="mt-3 grid max-h-[270px] grid-cols-10 gap-2 overflow-y-auto pr-1">
+//                 {LATEX_SYMBOLS.filter(([label]) => {
+//                   if (latexTab === "Letter")
+//                     return LATEX_LETTER_LABELS.has(label);
+//                   if (latexTab === "Arrow")
+//                     return LATEX_ARROW_LABELS.has(label);
+//                   if (latexTab === "Math") {
+//                     return (
+//                       !LATEX_LETTER_LABELS.has(label) &&
+//                       !LATEX_ARROW_LABELS.has(label)
+//                     );
+//                   }
+//                   return true;
+//                 }).map(([label, value]) => (
+//                   <button
+//                     key={`${label}-${value}`}
+//                     type="button"
+//                     onClick={() => insertLatexModalAtCursor(value)}
+//                     className="flex h-9 items-center justify-center rounded-[6px] border border-slate-200 bg-white text-base text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+//                     title={`Insert ${value.trim()}`}
+//                   >
+//                     {label}
+//                   </button>
+//                 ))}
+//               </div>
+
+//               <div className="mt-4 flex items-center justify-end gap-3 pt-2">
+//                 <button
+//                   type="button"
+//                   onClick={() => {
+//                     setLatexEditor((previous) => ({
+//                       ...previous,
+//                       open: false,
+//                       text: "",
+//                       editingElementId: null,
+//                     }));
+//                     setSelectedEquation("");
+//                     setActiveTextPanel(null);
+//                     setShowTextFormattingColors(false);
+//                     textPlacementArmedRef.current = false;
+//                     setTool("select");
+//                   }}
+//                   className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+//                 >
+//                   Cancel
+//                 </button>
+//                 <button
+//                   type="button"
+//                   onClick={addLatexElement}
+//                   disabled={!latexEditor.text.trim()}
+//                   className="rounded-[12px] bg-emerald-600 px-7 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+//                 >
+//                   Insert
+//                 </button>
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+//       {textEditor.open && textEditor.type === "text" && (
+//         <textarea
+//           ref={textInputRef}
+//           value={textEditor.text}
+//           onChange={(event) =>
+//             setTextEditor((previous) => ({
+//               ...previous,
+//               text: event.target.value,
+//             }))
+//           }
+//           onKeyDown={handleTextEditorKeyDown}
+//           onBlur={addTextElement}
+//           onPointerDown={(event) => event.stopPropagation()}
+//           autoFocus
+//           rows={1}
+//           spellCheck
+//           aria-label="Text on whiteboard"
+//           placeholder=""
+//           data-text-editor-ui
+//           className="absolute z-[360] min-h-[28px] min-w-[24px] resize-none overflow-hidden border border-dashed border-blue-500 bg-white/5 p-0 text-left outline-none ring-0 placeholder:text-transparent"
+//           style={{
+//             left: textEditor.x + panOffset.x,
+//             top: textEditor.y + panOffset.y,
+//             width: Math.max(
+//               40,
+//               Math.min(
+//                 2000,
+//                 32 + textEditor.text.length * textEditor.fontSize * 0.55,
+//               ),
+//             ),
+//             minHeight: Math.max(28, textEditor.fontSize + 8),
+//             fontSize: textEditor.fontSize,
+//             lineHeight: 1.2,
+//             color: textEditor.color,
+//             fontWeight: textEditor.bold ? 700 : 400,
+//             fontStyle: textEditor.italic ? "italic" : "normal",
+//             textDecoration: textEditor.underline ? "underline" : "none",
+//           }}
+//         />
+//       )}
+
+//       <input
+//         ref={imageInputRef}
+//         type="file"
+//         accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+//         className="hidden"
+//         onChange={importImage}
+//       />
+//       <input
+//         ref={pdfInputRef}
+//         type="file"
+//         accept="application/pdf,.pdf"
+//         className="hidden"
+//         onChange={importPdf}
+//       />
+
+//       {/* Full-screen drawing workspace */}
+//       <div className="pointer-events-auto absolute inset-0 bg-[#eef2f7]">
+//         <section
+//           ref={containerRef}
+//           className="pointer-events-auto absolute inset-0 overflow-hidden bg-[#eef2f7]"
+//         >
+//           <div
+//             className="relative h-full w-full overflow-hidden"
+//             style={{ backgroundColor }}
+//           >
+//             <canvas
+//               ref={canvasRef}
+//               className="pointer-events-auto absolute inset-0 h-full w-full touch-none select-none"
+//               draggable={false}
+//               onPointerDown={handlePointerDown}
+//               onPointerMove={handlePointerMove}
+//               onPointerUp={handlePointerUp}
+//               onPointerCancel={handlePointerUp}
+//               onDragOver={(event) => {
+//                 const types = event.dataTransfer.types;
+//                 if (
+//                   types.includes("application/x-justdy-teaching-card") ||
+//                   types.includes("application/x-justdy-teaching-lesson")
+//                 ) {
+//                   event.preventDefault();
+//                   event.dataTransfer.dropEffect = "copy";
+//                 }
+//               }}
+//               onDrop={(event) => {
+//                 const lessonPayload = event.dataTransfer.getData("application/x-justdy-teaching-lesson");
+//                 const materialPayload = event.dataTransfer.getData("application/x-justdy-teaching-card");
+//                 if (!lessonPayload && !materialPayload) return;
+//                 event.preventDefault();
+//                 try {
+//                   const point = getPoint(event.nativeEvent);
+//                   if (lessonPayload) {
+//                     const lesson = JSON.parse(lessonPayload) as TeachingLesson;
+//                     insertTeachingLessonTitle(lesson, point);
+//                   } else {
+//                     const item = JSON.parse(materialPayload) as TeachingLibraryItem;
+//                     insertTeachingLibraryItem(item, point);
+//                   }
+//                   setTeachingPanelVisible(false);
+//                 } catch {
+//                   // Ignore malformed drag payloads rather than interrupting drawing.
+//                 }
+//               }}
+//               onDoubleClick={handleCanvasDoubleClick}
+//               onContextMenu={handleCanvasContextMenu}
+//               style={{
+//                 cursor:
+//                   tool === "hand"
+//                     ? "grab"
+//                     : tool === "select"
+//                       ? "default"
+//                       : "crosshair",
+//               }}
+//             />
+
+//             {showMobileFrame && (
+//               <div
+//                 ref={mobileFrameRef}
+//                 aria-hidden="true"
+//                 className={`pointer-events-none absolute left-1/2 top-1/2 z-[30] -translate-x-1/2 -translate-y-1/2 border-[3px] border-blue-500 shadow-[0_0_0_9999px_rgba(15,23,42,0.58),0_0_28px_rgba(37,99,235,0.22)] ${
+//                   frameAspectRatio === "9 / 16" ? "rounded-[2rem]" : "rounded-2xl"
+//                 }`}
+//                 style={{
+//                   width:
+//                     frameAspectRatio === "9 / 16"
+//                       ? "min(420px, calc(100% - 24px), 46.125vh)"
+//                       : "min(900px, calc(100% - 48px), 155.55vh)",
+//                   aspectRatio: frameAspectRatio,
+//                   boxSizing: "border-box",
+//                 }}
+//               >
+//                 <span className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-blue-600 px-3 py-1 text-[11px] font-semibold tracking-wide text-white shadow-lg">
+//                   {frameAspectRatio === "9 / 16" ? "VERTICAL VIDEO · 9:16" : "STANDARD YOUTUBE · 16:9"}
+//                 </span>
+//               </div>
+//             )}
+//           </div>
+//         </section>
+
+//         {/* Floating classroom toolbar */}
+//         {showToolbar && (
+//           <header
+//             aria-label="Whiteboard tools"
+//             className="pointer-events-auto absolute left-3 top-1/2 z-[450] flex w-[54px] -translate-y-1/2 flex-col items-center gap-1 overflow-visible rounded-2xl border border-white/90 bg-white/95 px-1.5 py-2 shadow-[0_18px_50px_rgba(15,23,42,0.16)] backdrop-blur-2xl "
+//           >
+//             <div className="flex w-full min-w-0 shrink-0 flex-col items-center gap-0.5 border-b border-slate-200 pb-2">
+//               <button
+//                 type="button"
+//                 onClick={() => onClose?.()}
+//                 title="Close whiteboard"
+//                 aria-label="Close whiteboard and return to the tutoring session"
+//                 className="flex size-8 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
+//               >
+//                 <Home className="size-4" />
+//               </button>
+
+//               <button
+//                 type="button"
+//                 title="Whiteboard help"
+//                 aria-label="Whiteboard help"
+//                 onClick={() =>
+//                   window.alert(
+//                     "Whiteboard shortcuts: V select, P pen, E eraser, L line, R rectangle, C circle, T text, Q equation. Use the toolbar to add pages and tools.",
+//                   )
+//                 }
+//                 className="flex size-8 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+//               >
+//                 <CircleHelp className="size-4" />
+//               </button>
+
+//               <button
+//                 type="button"
+//                 onClick={() => {
+//                   const isActivePortrait = showMobileFrame && frameAspectRatio === "9 / 16";
+//                   setFrameAspectRatio("9 / 16");
+//                   setShowMobileFrame(!isActivePortrait);
+//                   setSelectedElementId(null);
+//                   setSelectedElementIds([]);
+//                   setShowPagesPanel(false);
+//                 }}
+//                 title={showMobileFrame && frameAspectRatio === "9 / 16" ? "Hide vertical mobile frame" : "Use vertical mobile video frame (9:16)"}
+//                 aria-label="Use vertical mobile video frame, 9 by 16"
+//                 aria-pressed={showMobileFrame && frameAspectRatio === "9 / 16"}
+//                 className={`flex size-8 items-center justify-center rounded-xl transition ${
+//                   showMobileFrame && frameAspectRatio === "9 / 16"
+//                     ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200"
+//                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+//                 }`}
+//               >
+//                 <Smartphone className="size-4" />
+//               </button>
+
+//               <button
+//                 type="button"
+//                 onClick={() => {
+//                   const isActiveLandscape = showMobileFrame && frameAspectRatio === "16 / 9";
+//                   setFrameAspectRatio("16 / 9");
+//                   setShowMobileFrame(!isActiveLandscape);
+//                   setSelectedElementId(null);
+//                   setSelectedElementIds([]);
+//                   setShowPagesPanel(false);
+//                 }}
+//                 title={showMobileFrame && frameAspectRatio === "16 / 9" ? "Hide standard YouTube frame" : "Use standard YouTube video frame (16:9)"}
+//                 aria-label="Use standard YouTube video frame, 16 by 9"
+//                 aria-pressed={showMobileFrame && frameAspectRatio === "16 / 9"}
+//                 className={`flex size-8 items-center justify-center rounded-xl transition ${
+//                   showMobileFrame && frameAspectRatio === "16 / 9"
+//                     ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200"
+//                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+//                 }`}
+//               >
+//                 <Monitor className="size-4" />
+//               </button>
+
+//               <button
+//                 type="button"
+//                 onClick={goToPreviousPage}
+//                 disabled={currentPageIndex === 0}
+//                 title="Previous page"
+//                 aria-label="Previous page"
+//                 className="flex size-8 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-30"
+//               >
+//                 <ChevronLeft className="size-4" />
+//               </button>
+
+//               <button
+//                 type="button"
+//                 onClick={() => setShowPagesPanel((value) => !value)}
+//                 title={`Pages (${currentPageIndex + 1} of ${pages.length})`}
+//                 aria-label={`Open pages, current page ${currentPageIndex + 1} of ${pages.length}`}
+//                 aria-expanded={showPagesPanel}
+//                 className={`relative flex size-8 shrink-0 items-center justify-center rounded-xl transition ${
+//                   showPagesPanel
+//                     ? "bg-blue-50 text-blue-700"
+//                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+//                 }`}
+//               >
+//                 <Layers3 className="size-4" />
+//                 <span className="absolute -right-0.5 -top-0.5 min-w-3.5 rounded-full bg-slate-700 px-0.5 text-center text-[8px] font-bold leading-3 text-white">
+//                   {currentPageIndex + 1}
+//                 </span>
+//               </button>
+
+//               <button
+//                 type="button"
+//                 onClick={() => {
+//                   if (currentPageIndex < pages.length - 1) {
+//                     setCurrentPageIndex((index) => index + 1);
+//                     setSelectedElementId(null);
+//                     setSelectedElementIds([]);
+//                     return;
+//                   }
+
+//                   addPage();
+//                 }}
+//                 title={
+//                   currentPageIndex < pages.length - 1
+//                     ? "Next page"
+//                     : "Add another whiteboard"
+//                 }
+//                 aria-label={
+//                   currentPageIndex < pages.length - 1
+//                     ? "Next page"
+//                     : "Add another whiteboard page"
+//                 }
+//                 className="flex size-8 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
+//               >
+//                 {currentPageIndex < pages.length - 1 ? (
+//                   <ChevronRight className="size-4" />
+//                 ) : (
+//                   <Plus className="size-4" />
+//                 )}
+//               </button>
+//             </div>
+
+//             <div className="flex w-full min-w-0 flex-col items-center justify-center gap-0.5 overflow-visible px-0 py-1">
+//               {toolButton(
+//                 "select",
+//                 "Select / move",
+//                 <MousePointer2 className="size-4" />,
+//                 "V",
+//               )}
+
+//               <button
+//                 type="button"
+//                 onClick={() => setTool("hand")}
+//                 title="Hand / pan (H)"
+//                 aria-label="Hand / pan"
+//                 className={`group relative flex size-8 shrink-0 items-center justify-center rounded-xl transition-all ${
+//                   tool === "hand"
+//                     ? "bg-slate-100 text-slate-950"
+//                     : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+//                 }`}
+//               >
+//                 <Hand className="size-4" />
+//               </button>
+
+//               {toolButton(
+//                 "pen",
+//                 "Pen / marker",
+//                 <PenLine className="size-4" />,
+//                 "P",
+//               )}
+
+//               <button
+//                 ref={shapeToolsButtonRef}
+//                 type="button"
+//                 onClick={(event) => {
+//                   event.stopPropagation();
+//                   setShowUploadMenu(false);
+//                   setShowFormulaMenu(false);
+//                   setShowShapeToolsPopup((value) => !value);
+//                 }}
+//                 title="Shapes"
+//                 aria-label="Shapes"
+//                 aria-expanded={showShapeToolsPopup}
+//                 className={`flex size-8 shrink-0 items-center justify-center rounded-xl transition ${
+//                   showShapeToolsPopup
+//                     ? "bg-slate-100 text-slate-950"
+//                     : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+//                 }`}
+//               >
+//                 <Shapes className="size-4" />
+//               </button>
+
+//               <button
+//                 type="button"
+//                 onClick={() => {
+//                   setShowShapeToolsPopup(false);
+//                   setShowFormulaMenu(false);
+//                   setShowUploadMenu(false);
+//                   setTool("text");
+//                   textPlacementArmedRef.current = true;
+//                   setActiveTextPanel(null);
+//                 }}
+//                 title="Text"
+//                 aria-label="Add text"
+//                 className={`flex size-8 shrink-0 items-center justify-center rounded-xl transition ${
+//                   tool === "text"
+//                     ? "bg-slate-100 text-slate-950"
+//                     : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+//                 }`}
+//               >
+//                 <Type className="size-4" />
+//               </button>
+
+//               <button
+//                 type="button"
+//                 onClick={() => {
+//                   setShowShapeToolsPopup(false);
+//                   setShowFormulaMenu(false);
+//                   setShowUploadMenu(false);
+//                   setTeachingLibraryOpen(true);
+//                 }}
+//                 title="Teaching materials library"
+//                 aria-label="Open teaching materials library"
+//                 className="flex size-8 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-blue-50 hover:text-blue-700"
+//               >
+//                 <BookOpen className="size-4" />
+//               </button>
+
+//               <button
+//                 ref={formulaToolsButtonRef}
+//                 type="button"
+//                 onClick={() => {
+//                   setShowShapeToolsPopup(false);
+//                   setShowUploadMenu(false);
+
+//                   const button = formulaToolsButtonRef.current;
+//                   if (button) {
+//                     const rect = button.getBoundingClientRect();
+//                     const popupWidth = 176;
+//                     const popupHeight = 112;
+//                     const gap = 10;
+//                     let left = rect.right + gap;
+//                     if (left + popupWidth > window.innerWidth - 12) {
+//                       left = Math.max(12, rect.left - popupWidth - gap);
+//                     }
+//                     let top = rect.top;
+//                     if (top + popupHeight > window.innerHeight - 12) {
+//                       top = Math.max(12, window.innerHeight - popupHeight - 12);
+//                     }
+//                     setFormulaMenuPosition({ top, left });
+//                   }
+
+//                   setShowFormulaMenu((value) => !value);
+//                 }}
+//                 title="Formula"
+//                 aria-label="Formula"
+//                 aria-expanded={showFormulaMenu}
+//                 className={`flex size-8 shrink-0 items-center justify-center rounded-xl transition ${
+//                   showFormulaMenu || tool === "equation"
+//                     ? "bg-slate-100 text-slate-950"
+//                     : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+//                 }`}
+//               >
+//                 <Sigma className="size-4" />
+//               </button>
+
+//               <div className="relative shrink-0">
+//                 <button
+//                   ref={eraserButtonRef}
+//                   type="button"
+//                   onClick={() => {
+//                     setShowShapeToolsPopup(false);
+//                     setShowFormulaMenu(false);
+//                     setShowUploadMenu(false);
+//                     setShowPenPopup(false);
+//                     setTool("eraser");
+
+//                     const button = eraserButtonRef.current;
+//                     if (button) {
+//                       const rect = button.getBoundingClientRect();
+//                       const popupWidth = 252;
+//                       const popupHeight = 156;
+//                       const gap = 8;
+//                       let left = rect.right + gap;
+//                       let top = rect.top;
+//                       if (left + popupWidth > window.innerWidth - 12) {
+//                         left = Math.max(12, rect.left - popupWidth - gap);
+//                       }
+//                       left = Math.max(12, Math.min(left, window.innerWidth - popupWidth - 12));
+
+//                       if (top + popupHeight > window.innerHeight - 12) {
+//                         top = Math.max(12, rect.top - popupHeight - gap);
+//                       }
+
+//                       setEraserPopupPosition({ top, left });
+//                     }
+
+//                     setShowEraserPopup((value) => !value);
+//                   }}
+//                   title="Eraser (E)"
+//                   aria-label="Eraser"
+//                   aria-expanded={showEraserPopup}
+//                   className={`group relative flex size-8 shrink-0 items-center justify-center rounded-xl transition-all ${
+//                     tool === "eraser" || showEraserPopup
+//                       ? "bg-blue-600 text-white shadow-sm shadow-blue-600/25"
+//                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+//                   }`}
+//                 >
+//                   <Eraser className="size-4" />
+//                   <span className="pointer-events-none absolute -right-1.5 -top-1 hidden rounded bg-slate-900 px-1 py-0.5 text-[7px] font-bold text-white shadow-sm 2xl:block">
+//                     E
+//                   </span>
+//                 </button>
+
+//                 {showEraserPopup && (
+//                   <div
+//                     ref={eraserPopupRef}
+//                     className="fixed z-[1200] w-[252px] rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-2xl shadow-slate-900/15"
+//                     style={{
+//                       top: eraserPopupPosition.top,
+//                       left: eraserPopupPosition.left,
+//                     }}
+//                     onPointerDown={(event) => event.stopPropagation()}
+//                     role="dialog"
+//                     aria-label="Eraser settings"
+//                   >
+//                     <div className="flex items-center justify-center gap-4">
+//                       {[
+//                         { value: 8, visual: 2 },
+//                         { value: 16, visual: 3 },
+//                         { value: 24, visual: 5 },
+//                         { value: 32, visual: 7 },
+//                         { value: 40, visual: 9 },
+//                       ].map((option) => (
+//                         <button
+//                           key={option.value}
+//                           type="button"
+//                           onClick={() => {
+//                             setEraserWidth(option.value);
+//                             setTool("eraser");
+//                           }}
+//                           title={`Eraser size ${option.value}px`}
+//                           aria-label={`Eraser size ${option.value}px`}
+//                           className={`flex h-10 w-9 items-center justify-center rounded-full transition ${
+//                             eraserWidth === option.value
+//                               ? "bg-slate-100 ring-1 ring-slate-300"
+//                               : "hover:bg-slate-50"
+//                           }`}
+//                         >
+//                           <span
+//                             className="block w-6 rounded-full bg-slate-700"
+//                             style={{ height: `${option.visual}px` }}
+//                           />
+//                         </button>
+//                       ))}
+//                     </div>
+
+//                     <button
+//                       type="button"
+//                       onClick={() => {
+//                         pushHistory();
+//                         updateCurrentPage((page) => ({
+//                           ...page,
+//                           elements: page.elements.filter(
+//                             (element) => element.type !== "stroke",
+//                           ),
+//                         }));
+//                         setSelectedElementId((currentId) => {
+//                           const selected = currentPage?.elements.find(
+//                             (element) => element.id === currentId,
+//                           );
+//                           return selected?.type === "stroke" ? null : currentId;
+//                         });
+//                         setSelectedElementIds((currentIds) =>
+//                           currentIds.filter((id) => {
+//                             const selected = currentPage?.elements.find(
+//                               (element) => element.id === id,
+//                             );
+//                             return selected?.type !== "stroke";
+//                           }),
+//                         );
+//                         setShowEraserPopup(false);
+//                       }}
+//                       className="mx-auto mt-3 flex items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-emerald-50"
+//                     >
+//                       <Trash2 className="size-4" />
+//                       Erase all
+//                     </button>
+//                   </div>
+//                 )}
+//               </div>
+
+//               <div className="relative">
+//                 <button
+//                   ref={uploadButtonRef}
+//                   type="button"
+//                   onClick={() => {
+//                     setShowShapeToolsPopup(false);
+//                     setShowFormulaMenu(false);
+//                     setShowEraserPopup(false);
+
+//                     const button = uploadButtonRef.current;
+//                     if (button) {
+//                       const rect = button.getBoundingClientRect();
+//                       const popupWidth = 176;
+//                       const popupHeight = 94;
+//                       const gap = 8;
+//                       let left = rect.right + gap;
+//                       let top = rect.top;
+
+//                       if (left + popupWidth > window.innerWidth - 12) {
+//                         left = Math.max(12, rect.left - popupWidth - gap);
+//                       }
+//                       left = Math.max(12, Math.min(left, window.innerWidth - popupWidth - 12));
+//                       if (top + popupHeight > window.innerHeight - 12) {
+//                         top = Math.max(12, window.innerHeight - popupHeight - 12);
+//                       }
+
+//                       setUploadMenuPosition({ top, left });
+//                     }
+
+//                     setShowUploadMenu((value) => !value);
+//                   }}
+//                   title="Upload files"
+//                   aria-label="Upload files"
+//                   aria-expanded={showUploadMenu}
+//                   className={`flex size-8 shrink-0 items-center justify-center rounded-xl transition ${
+//                     showUploadMenu
+//                       ? "bg-slate-100 text-slate-950"
+//                       : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+//                   }`}
+//                 >
+//                   <Upload className="size-4" />
+//                 </button>
+
+//                 {showUploadMenu && (
+//                   <div
+//                     className="fixed z-[1200] w-44 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl shadow-slate-900/15"
+//                     style={{
+//                       top: uploadMenuPosition.top,
+//                       left: uploadMenuPosition.left,
+//                     }}
+//                     onPointerDown={(event) => event.stopPropagation()}
+//                     role="menu"
+//                     aria-label="Upload files"
+//                   >
+//                     <button
+//                       type="button"
+//                       onClick={() => {
+//                         setShowUploadMenu(false);
+//                         imageInputRef.current?.click();
+//                       }}
+//                       className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
+//                     >
+//                       <ImageIcon className="size-4 text-slate-500" />
+//                       Image
+//                     </button>
+//                     <button
+//                       type="button"
+//                       onClick={() => {
+//                         setShowUploadMenu(false);
+//                         pdfInputRef.current?.click();
+//                       }}
+//                       className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
+//                     >
+//                       <Upload className="size-4 text-slate-500" />
+//                       PDF
+//                     </button>
+//                   </div>
+//                 )}
+//               </div>
+
+//               <div aria-hidden="true" className="my-1 h-px w-full shrink-0 bg-slate-200" />
+
+//               <button
+//                 type="button"
+//                 onClick={undo}
+//                 title="Undo"
+//                 aria-label="Undo"
+//                 className="flex size-8 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+//               >
+//                 <Undo2 className="size-4" />
+//               </button>
+//               <button
+//                 type="button"
+//                 onClick={redo}
+//                 title="Redo"
+//                 aria-label="Redo"
+//                 className="flex size-8 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+//               >
+//                 <Redo2 className="size-4" />
+//               </button>
+//             </div>
+
+//             <div className="flex w-full min-w-0 shrink-0 flex-col items-center gap-0.5 border-t border-slate-200 pt-2">
+//               <div className="hidden">
+//                 {currentPage?.name ?? "Untitled board"}
+//               </div>
+//               <button
+//                 type="button"
+//                 onClick={() => setShowGraphSettings((value) => !value)}
+//                 title="Settings"
+//                 aria-label="Whiteboard settings"
+//                 className={`flex size-8 items-center justify-center rounded-xl transition ${
+//                   showGraphSettings
+//                     ? "bg-slate-100 text-slate-950"
+//                     : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+//                 }`}
+//               >
+//                 <Settings2 className="size-4" />
+//               </button>
+
+//               <button
+//                 type="button"
+//                 onClick={() => {
+//                   setShowToolbar(false);
+//                   setShowShapeToolsPopup(false);
+//                   setShowFormulaMenu(false);
+//                   setShowUploadMenu(false);
+//                   setShowEraserPopup(false);
+//                   setShowPenPopup(false);
+//                   setShowColorPopup(false);
+//                   setShowToolsPanel(false);
+//                 }}
+//                 title="Hide tools"
+//                 aria-label="Hide whiteboard tools"
+//                 className="flex size-8 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+//               >
+//                 <EyeOff className="size-4" />
+//               </button>
+//             </div>
+//           </header>
+//         )}
+
+//         {!showToolbar && showTeacherControls && (
+//           <button
+//             type="button"
+//             onClick={() => setShowToolbar(true)}
+//             title="Show tools"
+//             aria-label="Show whiteboard tools"
+//             className="pointer-events-auto absolute left-3 top-1/2 z-[470] flex size-9 -translate-y-1/2 items-center justify-center rounded-xl border border-white/90 bg-white/95 text-slate-600 shadow-[0_10px_28px_rgba(15,23,42,0.16)] backdrop-blur-xl transition hover:bg-white hover:text-slate-950"
+//           >
+//             <Eye className="size-4" />
+//           </button>
+//         )}
+
+//         {showFormulaMenu && (
+//           <div
+//             data-formula-menu
+//             className="fixed z-[1200] w-44 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl"
+//             style={{
+//               top: formulaMenuPosition.top,
+//               left: formulaMenuPosition.left,
+//             }}
+//             onPointerDown={(event) => event.stopPropagation()}
+//           >
+//             <button
+//               type="button"
+//               onClick={() => {
+//                 setShowFormulaMenu(false);
+//                 setTool("equation");
+//                 openLatexEditor("");
+//               }}
+//               className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
+//             >
+//               <Sigma className="size-4 text-slate-500" />
+//               LaTeX
+//             </button>
+//             <button
+//               type="button"
+//               onClick={() => {
+//                 setShowFormulaMenu(false);
+//                 setShowGraphSettings(false);
+//                 setGraphLoadError(null);
+//                 setGraphStudioTab("graphs");
+//                 setShowGraphStudioPresets(true);
+//                 setShowGraphEditor(true);
+//               }}
+//               className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
+//             >
+//               <FunctionSquare className="size-4 text-slate-500" />
+//               Graph Editor
+//             </button>
+//           </div>
+//         )}
+
+//         {/* Shapes & math tools popup */}
+//         {showShapeToolsPopup && (
+//           <div
+//             className="fixed z-[960] max-h-[calc(100vh-32px)] w-[min(390px,calc(100vw-96px))] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl"
+//             style={{
+//               left: Math.max(72, leftInset + 66),
+//               top: 16,
+//             }}
+//             onPointerDown={(event) => event.stopPropagation()}
+//             role="dialog"
+//             aria-label="Shapes and math tools"
+//           >
+//             <div className="mb-2 flex items-center justify-between">
+//               <div>
+//                 <div className="text-xs font-extrabold text-slate-900">
+//                   Shapes & Math Tools
+//                 </div>
+//                 <div className="text-[9px] text-slate-500">
+//                   Select a tool to use on the board
+//                 </div>
+//               </div>
+//               <button
+//                 type="button"
+//                 onClick={() => setShowShapeToolsPopup(false)}
+//                 className="flex size-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+//                 aria-label="Close shapes and math tools"
+//               >
+//                 <X className="size-3.5" />
+//               </button>
+//             </div>
+
+//             <div className="grid grid-cols-5 gap-1.5">
+//               {(
+//                 [
+//                   ["arrow", "Arrow"],
+//                   ["line", "Line"],
+//                   ["ellipse", "Ellipse"],
+//                   ["circle", "Circle"],
+//                   ["rectangle", "Rectangle"],
+//                   ["triangle", "Triangle"],
+//                   ["cube", "Cube"],
+//                   ["cylinder", "Cylinder"],
+//                   ["diamond", "Diamond"],
+//                   ["pentagon", "Pentagon"],
+//                   ["hexagon", "Hexagon"],
+//                   ["heptagon", "Heptagon"],
+//                   ["octagon", "Octagon"],
+//                   ["parallelogram", "Parallelogram"],
+//                   ["sphere", "Sphere"],
+//                 ] as const
+//               ).map(([value, label]) => (
+//                 <button
+//                   key={value}
+//                   type="button"
+//                   onClick={() => {
+//                     setTool(value);
+//                     setShowShapeToolsPopup(false);
+//                   }}
+//                   title={label}
+//                   aria-label={label}
+//                   className={`flex h-10 items-center justify-center rounded-xl transition ${tool === value ? "bg-slate-100 text-slate-950" : "text-slate-600 hover:bg-slate-50"}`}
+//                 >
+//                   <ShapeToolIcon shape={value} />
+//                 </button>
+//               ))}
+//             </div>
+//             <div className="mt-2 grid grid-cols-5 gap-1.5 border-t border-slate-100 pt-2">
+//               <button
+//                 type="button"
+//                 onClick={() => {
+//                   setTool("eraser");
+//                   setShowShapeToolsPopup(false);
+//                   setShowEraserPopup(true);
+//                 }}
+//                 title="Eraser"
+//                 aria-label="Eraser"
+//                 className="flex h-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-50"
+//               >
+//                 <Eraser className="size-4" />
+//               </button>
+//               {toolButton("ruler", "Ruler", <Ruler className="size-4" />, "U")}
+//               {toolButton(
+//                 "axes",
+//                 "Coordinate Axes",
+//                 <Crosshair className="size-4" />,
+//                 "A",
+//               )}
+//               {toolButton(
+//                 "equation",
+//                 "Equation",
+//                 <Sigma className="size-4" />,
+//                 "Q",
+//               )}
+//               {toolButton("text", "Text", <Type className="size-4" />, "T")}
+//             </div>
+//           </div>
+//         )}
+
+//         {/* Full page thumbnail sidebar */}
+//         {showTeacherControls && showPagesPanel && (
+//           <aside
+//             className="absolute bottom-4 right-4 top-24 z-[560] w-[300px] overflow-hidden rounded-2xl border border-white/80 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.14)]"
+//             aria-label="Whiteboard pages"
+//             onPointerDown={(event) => event.stopPropagation()}
+//           >
+//             <div className="flex h-14 items-center justify-between border-b border-slate-200 bg-white/95 px-3">
+//               <div className="flex items-center gap-3">
+//                 <button
+//                   type="button"
+//                   onClick={addPage}
+//                   title="Add page"
+//                   aria-label="Add page"
+//                   className="flex size-10 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm shadow-violet-600/25 transition hover:bg-violet-700"
+//                 >
+//                   <Plus className="size-5" />
+//                 </button>
+//                 <div className="text-sm font-bold text-slate-700">
+//                   Pages({pages.length})
+//                 </div>
+//               </div>
+//               <div className="flex items-center gap-1">
+//                 <button
+//                   type="button"
+//                   onClick={() => {
+//                     if (pages.length <= 1) return;
+//                     requestPageDelete(currentPageIndex);
+//                   }}
+//                   disabled={pages.length <= 1}
+//                   title={
+//                     pages.length <= 1
+//                       ? "At least one page is required"
+//                       : `Delete ${currentPage?.name ?? "current page"}`
+//                   }
+//                   aria-label={
+//                     pages.length <= 1
+//                       ? "Cannot delete the last page"
+//                       : "Delete current page"
+//                   }
+//                   className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-30"
+//                 >
+//                   <Trash2 className="size-4" />
+//                 </button>
+//                 <button
+//                   type="button"
+//                   onClick={() => setShowPagesPanel(false)}
+//                   title="Close pages"
+//                   aria-label="Close pages"
+//                   className="flex size-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+//                 >
+//                   <X className="size-5" />
+//                 </button>
+//               </div>
+//             </div>
+
+//             <div className="h-[calc(100%-56px)] overflow-y-auto bg-slate-50/90 px-3 py-4">
+//               <div className="flex flex-col gap-3">
+//                 {pages.map((page, index) => {
+//                   const isActive = currentPageIndex === index;
+//                   return (
+//                     <div
+//                       key={page.id}
+//                       className="group flex items-center gap-2"
+//                     >
+//                       <div className="flex w-4 shrink-0 items-center justify-center text-slate-500">
+//                         <span className="text-lg leading-none">=</span>
+//                       </div>
+//                       <button
+//                         type="button"
+//                         onClick={() => {
+//                           setCurrentPageIndex(index);
+//                           setSelectedElementId(null);
+//                           setSelectedElementIds([]);
+//                         }}
+//                         title={`Open ${page.name}`}
+//                         className={`relative block h-[143px] w-[254px] shrink-0 overflow-hidden rounded-[4px] border bg-white shadow-sm transition ${
+//                           isActive
+//                             ? "border-violet-500 ring-2 ring-violet-500/15"
+//                             : "border-slate-200 hover:border-slate-300"
+//                         }`}
+//                       >
+//                         <canvas
+//                           ref={(node) => {
+//                             pageThumbnailRefs.current[page.id] = node;
+//                           }}
+//                           className="block h-[142px] w-[254px]"
+//                           aria-label={`${page.name} thumbnail`}
+//                         />
+//                         <span className="absolute left-1.5 top-1.5 flex min-w-6 items-center justify-center rounded-md bg-slate-200/90 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
+//                           {index + 1}
+//                         </span>
+//                         {pages.length > 1 && (
+//                           <span
+//                             role="button"
+//                             tabIndex={0}
+//                             onClick={(event) => {
+//                               event.preventDefault();
+//                               event.stopPropagation();
+//                               requestPageDelete(index);
+//                             }}
+//                             onKeyDown={(event) => {
+//                               if (event.key !== "Enter" && event.key !== " ")
+//                                 return;
+//                               event.preventDefault();
+//                               event.stopPropagation();
+//                               requestPageDelete(index);
+//                             }}
+//                             title={`Delete ${page.name}`}
+//                             aria-label={`Delete ${page.name}`}
+//                             className="absolute right-1.5 top-1.5 flex size-7 cursor-pointer items-center justify-center rounded-lg bg-white/95 text-slate-400 opacity-0 shadow-sm ring-1 ring-slate-200 transition hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100 focus:opacity-100"
+//                           >
+//                             <Trash2 className="size-3.5" />
+//                           </span>
+//                         )}
+//                       </button>
+//                     </div>
+//                   );
+//                 })}
+//               </div>
+//             </div>
+//           </aside>
+//         )}
+
+//         {showTeacherControls && pagePendingDelete && (
+//           <div
+//             className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-[3px]"
+//             role="presentation"
+//             onMouseDown={(event) => {
+//               if (event.target === event.currentTarget) setPagePendingDelete(null);
+//             }}
+//             onKeyDown={(event) => {
+//               if (event.key === "Escape") setPagePendingDelete(null);
+//             }}
+//           >
+//             <section
+//               role="alertdialog"
+//               aria-modal="true"
+//               aria-labelledby="delete-page-title"
+//               aria-describedby="delete-page-description"
+//               className="w-full max-w-[420px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_28px_90px_rgba(15,23,42,0.28)]"
+//               onMouseDown={(event) => event.stopPropagation()}
+//               onPointerDown={(event) => event.stopPropagation()}
+//             >
+//               <div className="flex items-start gap-4 px-6 pb-5 pt-6">
+//                 <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 ring-1 ring-rose-100">
+//                   <Trash2 className="size-5" />
+//                 </div>
+//                 <div className="min-w-0 flex-1">
+//                   <h2 id="delete-page-title" className="text-base font-bold text-slate-900">
+//                     Delete this page?
+//                   </h2>
+//                   <p id="delete-page-description" className="mt-1.5 text-sm leading-6 text-slate-600">
+//                     Are you sure you want to delete <span className="font-semibold text-slate-800">{pagePendingDelete.name}</span>? The page and its contents will be removed from this board. You can restore it using Undo.
+//                   </p>
+//                 </div>
+//                 <button
+//                   type="button"
+//                   onClick={() => setPagePendingDelete(null)}
+//                   aria-label="Close confirmation"
+//                   className="-mr-2 -mt-2 flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+//                 >
+//                   <X className="size-4" />
+//                 </button>
+//               </div>
+//               <div className="flex items-center justify-end gap-2 border-t border-slate-100 bg-slate-50/80 px-6 py-4">
+//                 <button
+//                   type="button"
+//                   onClick={() => setPagePendingDelete(null)}
+//                   className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300"
+//                 >
+//                   Cancel
+//                 </button>
+//                 <button
+//                   type="button"
+//                   autoFocus
+//                   onClick={confirmPageDelete}
+//                   className="rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-400 focus:ring-offset-2"
+//                 >
+//                   Delete page
+//                 </button>
+//               </div>
+//             </section>
+//           </div>
+//         )}
+
+//         {/* Floating pen palette — teacher only */}
+//         {showTeacherControls && showPenPopup && (
+//           <div
+//             ref={penPopupRef}
+//             className="absolute z-[320] w-[344px] rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xl shadow-slate-900/15"
+//             style={{
+//               top: penPopupPosition.top,
+//               left: penPopupPosition.left,
+//             }}
+//             onPointerDown={(event) => event.stopPropagation()}
+//           >
+//             <div className="flex items-center justify-center gap-4">
+//               <button
+//                 type="button"
+//                 onClick={() => setPenStyle("pen")}
+//                 aria-label="Pen"
+//                 title="Pen"
+//                 className={`flex size-10 items-center justify-center rounded-xl transition ${
+//                   penStyle === "pen"
+//                     ? "bg-slate-100 text-slate-800"
+//                     : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+//                 }`}
+//               >
+//                 <PenLine className="size-5" style={{ strokeWidth: 2 }} />
+//               </button>
+
+//               <button
+//                 type="button"
+//                 onClick={() => setPenStyle("marker")}
+//                 aria-label="Marker"
+//                 title="Marker"
+//                 className={`flex size-10 items-center justify-center rounded-xl transition ${
+//                   penStyle === "marker"
+//                     ? "bg-slate-100 text-slate-800"
+//                     : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+//                 }`}
+//               >
+//                 <PenLine className="size-5" style={{ strokeWidth: 4 }} />
+//               </button>
+//             </div>
+
+//             <div className="my-4 h-px bg-slate-200" />
+
+//             <div className="flex items-center justify-center gap-4">
+//               {PEN_POPUP_COLORS.map((penColor) => (
+//                 <button
+//                   key={penColor}
+//                   type="button"
+//                   onClick={() => setColor(penColor)}
+//                   title={`Pen color ${penColor}`}
+//                   aria-label={`Pen color ${penColor}`}
+//                   className={`flex size-9 items-center justify-center rounded-full transition ${
+//                     color === penColor
+//                       ? "ring-2 ring-slate-400 ring-offset-2"
+//                       : ""
+//                   }`}
+//                 >
+//                   <span
+//                     className="size-7 rounded-full border border-slate-200"
+//                     style={{ backgroundColor: penColor }}
+//                   />
+//                 </button>
+//               ))}
+//             </div>
+
+//             <div className="mt-5 flex items-center justify-center gap-5">
+//               {PEN_SIZE_OPTIONS.map((option) => (
+//                 <button
+//                   key={option.value}
+//                   type="button"
+//                   onClick={() => setWidth(option.value)}
+//                   title={`Pen size ${option.value}px`}
+//                   aria-label={`Pen size ${option.value}px`}
+//                   className={`flex size-9 items-center justify-center rounded-full transition ${
+//                     width === option.value
+//                       ? "bg-slate-100 ring-1 ring-slate-300"
+//                       : "hover:bg-slate-50"
+//                   }`}
+//                 >
+//                   <span
+//                     className="block rounded-full bg-slate-700"
+//                     style={{
+//                       width: `${Math.min(option.width + 8, 22)}px`,
+//                       height: `${option.width}px`,
+//                     }}
+//                   />
+//                 </button>
+//               ))}
+//             </div>
+//           </div>
+//         )}
+
+//         {showTeacherControls &&
+//           tool === "select" &&
+//           selectedMediaElement &&
+//           selectedMediaBounds && (
+//             <div
+//               data-media-selection-toolbar
+//               className="absolute z-[430] flex items-center gap-1 rounded-xl border border-slate-200 bg-white/98 p-1.5 shadow-xl shadow-slate-900/15 backdrop-blur-xl"
+//               style={{
+//                 left: Math.max(
+//                   12,
+//                   Math.min(selectedMediaBounds.left, window.innerWidth - 190),
+//                 ),
+//                 top: Math.max(60, selectedMediaBounds.top - 58),
+//               }}
+//               onPointerDown={(event) => {
+//                 event.preventDefault();
+//                 event.stopPropagation();
+//               }}
+//             >
+//               <button
+//                 type="button"
+//                 onClick={duplicateSelectedElement}
+//                 className="flex size-9 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100"
+//                 title="Copy"
+//                 aria-label="Copy"
+//               >
+//                 <Copy className="size-4" />
+//               </button>
+//               <button
+//                 type="button"
+//                 onClick={() =>
+//                   setCropEditor({
+//                     open: true,
+//                     elementId: selectedMediaElement.id,
+//                     left: 5,
+//                     top: 5,
+//                     right: 95,
+//                     bottom: 95,
+//                   })
+//                 }
+//                 className="flex size-9 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100"
+//                 title="Crop"
+//                 aria-label="Crop"
+//               >
+//                 <Crop className="size-4" />
+//               </button>
+//               <button
+//                 type="button"
+//                 onClick={() => {
+//                   pushHistory();
+//                   updateCurrentPage((page) => ({
+//                     ...page,
+//                     elements: page.elements.filter(
+//                       (element) => element.id !== selectedMediaElement.id,
+//                     ),
+//                   }));
+//                   setSelectedElementId(null);
+//                   setSelectedElementIds([]);
+//                 }}
+//                 className="flex size-9 items-center justify-center rounded-lg text-slate-700 hover:bg-red-50 hover:text-red-600"
+//                 title="Delete"
+//                 aria-label="Delete"
+//               >
+//                 <Trash2 className="size-4" />
+//               </button>
+//             </div>
+//           )}
+
+//         {showTeacherControls &&
+//           tool === "select" &&
+//           selectedGraphElement &&
+//           selectedGraphBounds && (
+//             <div
+//               data-graph-selection-toolbar
+//               className="absolute z-[430] flex items-center gap-1 rounded-xl border border-slate-200 bg-white/98 p-1.5 shadow-xl shadow-slate-900/15 backdrop-blur-xl"
+//               style={{
+//                 left: Math.max(
+//                   12,
+//                   Math.min(selectedGraphBounds.left, window.innerWidth - 130),
+//                 ),
+//                 top: Math.max(60, selectedGraphBounds.top - 58),
+//               }}
+//               onPointerDown={(event) => {
+//                 event.preventDefault();
+//                 event.stopPropagation();
+//               }}
+//             >
+//               <button
+//                 type="button"
+//                 onClick={() => {
+//                   graphEditingElementIdRef.current = selectedGraphElement.id;
+//                   setGraphLoadError(null);
+//                   setShowGraphEditor(true);
+//                 }}
+//                 className="flex size-9 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100"
+//                 title="Edit graph"
+//                 aria-label="Edit graph"
+//               >
+//                 <PenLine className="size-4" />
+//               </button>
+//               <button
+//                 type="button"
+//                 onClick={() => {
+//                   pushHistory();
+//                   updateCurrentPage((page) => ({
+//                     ...page,
+//                     elements: page.elements.filter(
+//                       (element) => element.id !== selectedGraphElement.id,
+//                     ),
+//                   }));
+//                   setSelectedElementId(null);
+//                   setSelectedElementIds([]);
+//                 }}
+//                 className="flex size-9 items-center justify-center rounded-lg text-slate-700 hover:bg-red-50 hover:text-red-600"
+//                 title="Delete graph"
+//                 aria-label="Delete graph"
+//               >
+//                 <Trash2 className="size-4" />
+//               </button>
+//             </div>
+//           )}
+
+//         {showTeacherControls &&
+//           tool === "select" &&
+//           selectedEquationElement &&
+//           selectedEquationBounds &&
+//           !latexEditor.open && (
+//             <div
+//               data-equation-selection-toolbar
+//               className="absolute z-[430] flex items-center gap-1 rounded-xl border border-slate-200 bg-white/98 p-1.5 shadow-xl shadow-slate-900/15 backdrop-blur-xl"
+//               style={{
+//                 left: Math.max(
+//                   leftInset + 12,
+//                   Math.min(
+//                     selectedEquationBounds.left,
+//                     window.innerWidth - 190,
+//                   ),
+//                 ),
+//                 top: Math.max(60, selectedEquationBounds.top - 58),
+//               }}
+//               onPointerDown={(event) => {
+//                 event.preventDefault();
+//                 event.stopPropagation();
+//               }}
+//             >
+//               <button
+//                 type="button"
+//                 onClick={() =>
+//                   openLatexEditor(
+//                     selectedEquationElement.text,
+//                     selectedEquationElement.id,
+//                     selectedEquationElement.color,
+//                   )
+//                 }
+//                 className="flex size-9 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100"
+//                 title="Edit formula"
+//                 aria-label="Edit formula"
+//               >
+//                 <PenLine className="size-4" />
+//               </button>
+//               <button
+//                 type="button"
+//                 onClick={() => duplicateSelectedElement()}
+//                 className="flex size-9 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-100"
+//                 title="Copy formula"
+//                 aria-label="Copy formula"
+//               >
+//                 <Copy className="size-4" />
+//               </button>
+//               <button
+//                 type="button"
+//                 onClick={() => {
+//                   pushHistory();
+//                   updateCurrentPage((page) => ({
+//                     ...page,
+//                     elements: page.elements.filter(
+//                       (element) => element.id !== selectedEquationElement.id,
+//                     ),
+//                   }));
+//                   setSelectedElementId(null);
+//                   setSelectedElementIds([]);
+//                 }}
+//                 className="flex size-9 items-center justify-center rounded-lg text-slate-700 hover:bg-red-50 hover:text-red-600"
+//                 title="Delete formula"
+//                 aria-label="Delete formula"
+//               >
+//                 <Trash2 className="size-4" />
+//               </button>
+//             </div>
+//           )}
+
+//         {showTeacherControls &&
+//           !textObjectDragging &&
+//           textEditor.open &&
+//           textEditor.type === "text" && (
+//             <div
+//               data-text-editor-ui
+//               className="absolute z-[340] w-[250px] rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/15"
+//               style={{
+//                 left: Math.max(
+//                   12,
+//                   (textEditor.open && textEditor.type === "text"
+//                     ? textEditor.x
+//                     : (selectedTextElement?.x ?? 12)) - 18,
+//                 ),
+//                 top: Math.max(
+//                   12,
+//                   (textEditor.open && textEditor.type === "text"
+//                     ? textEditor.y
+//                     : (selectedTextElement?.y ?? 12)) - 58,
+//                 ),
+//               }}
+//               onPointerDown={(event) => {
+//                 event.preventDefault();
+//                 event.stopPropagation();
+//               }}
+//             >
+//               {showTextFormattingColors && (
+//                 <div className="absolute bottom-full left-0 mb-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/15">
+//                   {PEN_POPUP_COLORS.map((textColor) => (
+//                     <button
+//                       key={textColor}
+//                       type="button"
+//                       onClick={() => {
+//                         if (textEditor.open && textEditor.type === "text") {
+//                           setTextEditor((previous) => ({
+//                             ...previous,
+//                             color: textColor,
+//                           }));
+//                           if (textEditor.editingElementId) {
+//                             updateCurrentPage((page) => ({
+//                               ...page,
+//                               elements: page.elements.map((element) =>
+//                                 element.id === textEditor.editingElementId &&
+//                                 element.type === "text"
+//                                   ? { ...element, color: textColor }
+//                                   : element,
+//                               ),
+//                             }));
+//                           }
+//                         } else {
+//                           applySelectedElementColor(textColor);
+//                         }
+//                       }}
+//                       className={`flex size-8 items-center justify-center rounded-full ${
+//                         (textEditor.open && textEditor.type === "text"
+//                           ? textEditor.color
+//                           : selectedTextElement?.color) === textColor
+//                           ? "ring-2 ring-slate-400 ring-offset-1"
+//                           : ""
+//                       }`}
+//                       title={`Text color ${textColor}`}
+//                       aria-label={`Text color ${textColor}`}
+//                     >
+//                       <span
+//                         className="size-6 rounded-full border border-slate-200"
+//                         style={{ backgroundColor: textColor }}
+//                       />
+//                     </button>
+//                   ))}
+//                 </div>
+//               )}
+
+//               <div className="flex items-center justify-center gap-2">
+//                 <button
+//                   type="button"
+//                   onClick={() => {
+//                     if (textEditor.open && textEditor.type === "text") {
+//                       const nextFontSize = Math.max(8, textEditor.fontSize - 2);
+//                       setTextEditor((previous) => ({
+//                         ...previous,
+//                         fontSize: nextFontSize,
+//                       }));
+//                       if (textEditor.editingElementId) {
+//                         updateCurrentPage((page) => ({
+//                           ...page,
+//                           elements: page.elements.map((element) =>
+//                             element.id === textEditor.editingElementId &&
+//                             element.type === "text"
+//                               ? { ...element, fontSize: nextFontSize }
+//                               : element,
+//                           ),
+//                         }));
+//                       }
+//                     } else if (selectedElement) {
+//                       updateCurrentPage((page) => ({
+//                         ...page,
+//                         elements: page.elements.map((element) =>
+//                           element.id === selectedElement.id &&
+//                           element.type === "text"
+//                             ? {
+//                                 ...element,
+//                                 fontSize: Math.max(8, element.fontSize - 2),
+//                               }
+//                             : element,
+//                         ),
+//                       }));
+//                     }
+//                   }}
+//                   className="flex size-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
+//                   title="Decrease font size"
+//                   aria-label="Decrease font size"
+//                 >
+//                   <ChevronDown className="size-4" />
+//                 </button>
+//                 <span className="min-w-8 text-center text-xs font-bold text-slate-700">
+//                   {textEditor.open && textEditor.type === "text"
+//                     ? textEditor.fontSize
+//                     : selectedTextElement?.fontSize}
+//                 </span>
+//                 <button
+//                   type="button"
+//                   onClick={() => {
+//                     if (textEditor.open && textEditor.type === "text") {
+//                       const nextFontSize = Math.min(
+//                         96,
+//                         textEditor.fontSize + 2,
+//                       );
+//                       setTextEditor((previous) => ({
+//                         ...previous,
+//                         fontSize: nextFontSize,
+//                       }));
+//                       if (textEditor.editingElementId) {
+//                         updateCurrentPage((page) => ({
+//                           ...page,
+//                           elements: page.elements.map((element) =>
+//                             element.id === textEditor.editingElementId &&
+//                             element.type === "text"
+//                               ? { ...element, fontSize: nextFontSize }
+//                               : element,
+//                           ),
+//                         }));
+//                       }
+//                     } else if (selectedElement) {
+//                       updateCurrentPage((page) => ({
+//                         ...page,
+//                         elements: page.elements.map((element) =>
+//                           element.id === selectedElement.id &&
+//                           element.type === "text"
+//                             ? {
+//                                 ...element,
+//                                 fontSize: Math.min(96, element.fontSize + 2),
+//                               }
+//                             : element,
+//                         ),
+//                       }));
+//                     }
+//                   }}
+//                   className="flex size-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
+//                   title="Increase font size"
+//                   aria-label="Increase font size"
+//                 >
+//                   <ChevronUp className="size-4" />
+//                 </button>
+//                 <div className="mx-1 h-6 w-px bg-slate-200" />
+//                 <button
+//                   type="button"
+//                   onClick={() => {
+//                     setTool("text");
+
+//                     if (textEditor.open && textEditor.type === "text") {
+//                       setShowTextFormattingColors((previous) => !previous);
+//                       requestAnimationFrame(() => {
+//                         textInputRef.current?.focus();
+//                         const length = textEditor.text.length;
+//                         textInputRef.current?.setSelectionRange(length, length);
+//                       });
+//                     } else if (selectedTextElement) {
+//                       openTextEditor(
+//                         { x: selectedTextElement.x, y: selectedTextElement.y },
+//                         "text",
+//                         selectedTextElement.text,
+//                         selectedTextElement.id,
+//                         selectedTextElement.fontSize,
+//                         selectedTextElement.color,
+//                         selectedTextElement.bold,
+//                         selectedTextElement.italic,
+//                         selectedTextElement.underline,
+//                       );
+//                       setShowTextFormattingColors(true);
+//                     }
+//                   }}
+//                   className="flex size-8 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
+//                   title="Edit text"
+//                   aria-label="Edit text"
+//                 >
+//                   <span className="text-sm font-bold underline decoration-2 decoration-emerald-500 underline-offset-2">
+//                     A
+//                   </span>
+//                 </button>
+//                 <button
+//                   type="button"
+//                   onClick={() => {
+//                     const idToDelete =
+//                       textEditor.open && textEditor.type === "text"
+//                         ? textEditor.editingElementId
+//                         : selectedElement?.id;
+//                     if (!idToDelete) return;
+//                     pushHistory();
+//                     updateCurrentPage((page) => ({
+//                       ...page,
+//                       elements: page.elements.filter(
+//                         (element) => element.id !== idToDelete,
+//                       ),
+//                     }));
+//                     setSelectedElementId(null);
+//                     setSelectedElementIds([]);
+//                     if (textEditor.open && textEditor.type === "text") {
+//                       setTextEditor((previous) => ({
+//                         ...previous,
+//                         open: false,
+//                         text: "",
+//                         editingElementId: null,
+//                       }));
+//                       setTool("select");
+//                     }
+//                   }}
+//                   className="flex size-8 items-center justify-center rounded-lg text-slate-600 hover:bg-red-50 hover:text-red-600"
+//                   title="Delete text"
+//                   aria-label="Delete text"
+//                 >
+//                   <Trash2 className="size-4" />
+//                 </button>
+//               </div>
+//             </div>
+//           )}
+
+//         {/* Floating color palette — teacher only */}
+//         {showTeacherControls && showColorPopup && (
+//           <div
+//             className="absolute z-[310] w-55 max-w-[calc(100vw-24px)] rounded-2xl border border-slate-200/90 bg-white/98 p-3 shadow-2xl shadow-slate-900/15 backdrop-blur-xl"
+//             style={{
+//               top: getPopupPosition("color", {
+//                 x: colorPopupPosition.left,
+//                 y: colorPopupPosition.top,
+//               }).y,
+//               left: getPopupPosition("color", {
+//                 x: colorPopupPosition.left,
+//                 y: colorPopupPosition.top,
+//               }).x,
+//             }}
+//             onPointerMove={movePopupDrag}
+//             onPointerUp={endPopupDrag}
+//             onPointerDown={(event) => event.stopPropagation()}
+//           >
+//             <div
+//               className="mb-3 flex cursor-move touch-none items-center justify-between select-none"
+//               onPointerDown={(event) => startPopupDrag("color", event)}
+//             >
+//               <div>
+//                 <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+//                   {colorPopupTarget === "object" ? "Object Color" : "Pen Color"}
+//                 </p>
+//                 <p className="mt-0.5 text-[9px] text-slate-400">
+//                   Choose a color
+//                 </p>
+//               </div>
+
+//               <button
+//                 type="button"
+//                 onClick={() => {
+//                   setShowColorPopup(false);
+//                   setColorPopupTarget(null);
+//                 }}
+//                 aria-label="Close color palette"
+//                 className="flex size-6 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+//               >
+//                 <X className="size-3.5" />
+//               </button>
+//             </div>
+
+//             <div className="grid grid-cols-6 gap-2">
+//               {COLORS.map((c) => {
+//                 const activeColor =
+//                   colorPopupTarget === "object"
+//                     ? selectedElement && "color" in selectedElement
+//                       ? selectedElement.color
+//                       : undefined
+//                     : color;
+
+//                 return (
+//                   <button
+//                     key={c}
+//                     type="button"
+//                     onClick={() => {
+//                       if (colorPopupTarget === "object") {
+//                         applySelectedElementColor(c);
+//                       } else {
+//                         setColor(c);
+//                         setShowColorPopup(false);
+//                         setColorPopupTarget(null);
+//                       }
+//                     }}
+//                     title={c}
+//                     aria-label={`Choose color ${c}`}
+//                     className={`flex size-7 items-center justify-center rounded-lg transition ${
+//                       activeColor === c
+//                         ? "bg-blue-50 ring-2 ring-blue-500 ring-offset-1"
+//                         : "hover:bg-slate-100"
+//                     }`}
+//                   >
+//                     <span
+//                       className="size-5 rounded-full border border-slate-200 shadow-sm"
+//                       style={{ backgroundColor: c }}
+//                     />
+//                   </button>
+//                 );
+//               })}
+//             </div>
+
+//             {colorPopupTarget === "object" && selectedElement && (
+//               <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
+//                 <span className="text-[9px] font-semibold text-slate-400">
+//                   Selected object
+//                 </span>
+//                 <span
+//                   className="size-4 rounded-full border border-slate-200 shadow-sm"
+//                   style={{
+//                     backgroundColor:
+//                       "color" in selectedElement
+//                         ? selectedElement.color
+//                         : "#94a3b8",
+//                   }}
+//                 />
+//               </div>
+//             )}
+//           </div>
+//         )}
+
+//         {/* Floating Math Toolkit — teacher only */}
+//         {showTeacherControls && showToolsPanel && (
+//           <aside
+//             className="absolute z-[290] flex max-h-[calc(100vh-32px)] w-72 max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl"
+//             style={{
+//               left: getPopupPosition("toolkit", {
+//                 x: Math.max(leftInset + 12, window.innerWidth - 420),
+//                 y: Math.max(80, window.innerHeight / 2 - 260),
+//               }).x,
+//               top: getPopupPosition("toolkit", {
+//                 x: 0,
+//                 y: Math.max(80, window.innerHeight / 2 - 260),
+//               }).y,
+//             }}
+//             onPointerMove={movePopupDrag}
+//             onPointerUp={endPopupDrag}
+//           >
+//             <div
+//               className="flex shrink-0 cursor-move touch-none items-center justify-between border-b border-slate-100 px-3 py-2.5 select-none"
+//               onPointerDown={(event) => startPopupDrag("toolkit", event)}
+//             >
+//               <div className="flex items-center gap-2">
+//                 <div className="flex size-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+//                   <Layers3 className="size-3.5" />
+//                 </div>
+//                 <div>
+//                   <h2 className="text-[11px] font-extrabold text-slate-900">
+//                     Math Toolkit
+//                   </h2>
+//                   <p className="text-[8px] text-slate-400">
+//                     STEM tools & formulas
+//                   </p>
+//                 </div>
+//               </div>
+//               <button
+//                 type="button"
+//                 onClick={() => setShowToolsPanel(false)}
+//                 title="Close toolkit"
+//                 aria-label="Close toolkit"
+//                 className="flex size-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+//               >
+//                 <X className="size-3.5" />
+//               </button>
+//             </div>
+
+//             <div className="flex-1 space-y-3 overflow-y-auto p-3">
+//               <div className="grid grid-cols-2 gap-1.5">
+//                 <button
+//                   type="button"
+//                   onClick={() => setTool("axes")}
+//                   className="flex items-center gap-2 rounded-lg border border-slate-200 px-2.5 py-2 text-left transition hover:border-blue-300 hover:bg-blue-50/50"
+//                 >
+//                   <Crosshair className="size-3.5 text-blue-600" />
+//                   <span className="text-[10px] font-semibold text-slate-700">
+//                     Grid Axes
+//                   </span>
+//                 </button>
+//                 <button
+//                   type="button"
+//                   onClick={() => setTool("ruler")}
+//                   className="flex items-center gap-2 rounded-lg border border-slate-200 px-2.5 py-2 text-left transition hover:border-blue-300 hover:bg-blue-50/50"
+//                 >
+//                   <Ruler className="size-3.5 text-blue-600" />
+//                   <span className="text-[10px] font-semibold text-slate-700">
+//                     Ruler
+//                   </span>
+//                 </button>
+//               </div>
+
+//               <div>
+//                 <div className="mb-2 flex items-center justify-between">
+//                   <span className="text-[10px] font-bold text-slate-900">
+//                     Formula Library
+//                   </span>
+//                   <BookOpen className="size-3.5 text-slate-400" />
+//                 </div>
+//                 <div className="grid grid-cols-3 gap-1 rounded-lg bg-slate-100 p-1">
+//                   {(
+//                     [
+//                       "algebra",
+//                       "geometry",
+//                       "calculus",
+//                       "trigonometry",
+//                       "statistics",
+//                       "physics",
+//                     ] as const
+//                   ).map((cat) => (
+//                     <button
+//                       key={cat}
+//                       type="button"
+//                       onClick={() => setFormulaCategory(cat)}
+//                       className={`rounded-md px-1 py-1.5 text-[9px] font-bold capitalize transition ${formulaCategory === cat ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-900"}`}
+//                     >
+//                       {cat}
+//                     </button>
+//                   ))}
+//                 </div>
+//               </div>
+
+//               <div className="space-y-1.5">
+//                 {formulaSets[formulaCategory].map(([label, val]) => (
+//                   <button
+//                     key={label}
+//                     type="button"
+//                     onClick={() => insertFormula(val)}
+//                     className="w-full rounded-lg border border-slate-200 p-2 text-left transition hover:border-blue-300 hover:bg-blue-50/50"
+//                   >
+//                     <div className="text-[10px] font-bold text-slate-800">
+//                       {label}
+//                     </div>
+//                     <div className="mt-0.5 truncate font-mono text-[9px] text-blue-600">
+//                       {val}
+//                     </div>
+//                   </button>
+//                 ))}
+//               </div>
+//             </div>
+//           </aside>
+//         )}
+//       </div>
+
+//       {/* Lesson Teaching Panel */}
+//       {teachingPresentationOpen && (
+//         <>
+//           <aside
+//             className={`fixed inset-y-0 right-0 z-880 flex w-70 max-w-[min(280px,100vw)] flex-col border-l border-slate-200 bg-white shadow-2xl transition-transform duration-200 ease-out ${teachingPresentationOpen && teachingPanelVisible ? "translate-x-0 pointer-events-auto" : "translate-x-full pointer-events-none"}`}
+//             aria-label="Lesson teaching panel"
+//             aria-hidden={!teachingPresentationOpen || !teachingPanelVisible}
+//             onPointerLeave={(event) => {
+//               // Keep the panel open while a native drag is in progress.
+//               if (event.buttons !== 0) return;
+//               setTeachingPanelVisible(false);
+//             }}
+//           >
+//             <div className="shrink-0 border-b border-slate-100 bg-slate-50 px-3 py-3">
+//               <div className="mb-3 flex items-center justify-between gap-2">
+//                 <div className="flex min-w-0 items-center gap-2">
+//                   <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+//                     <Play className="size-4" />
+//                   </span>
+//                   <div className="min-w-0">
+//                     <h2 className="truncate text-sm font-bold text-slate-900">Teaching Mode</h2>
+//                   </div>
+//                 </div>
+//                 <div className="flex shrink-0 items-center gap-1">
+                  
+//                   <button
+//                     type="button"
+//                     onClick={() => setTeachingPanelVisible(false)}
+//                     aria-label="Hide teaching panel"
+//                     className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200"
+//                   >
+//                     <X className="size-4" />
+//                   </button>
+//                 </div>
+//               </div>
+
+//               <label htmlFor="teaching-panel-lesson-select" className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-slate-500">
+//                 Select lesson
+//               </label>
+//               <select
+//                 id="teaching-panel-lesson-select"
+//                 value={activeTeachingLessonId}
+//                 onChange={(event) => {
+//                   const nextLesson = teachingLessons.find((lesson) => lesson.id === event.target.value);
+//                   setActiveTeachingLessonId(event.target.value);
+//                   setActiveTeachingSubtopicId(nextLesson?.subtopics?.[0]?.id ?? DEFAULT_TEACHING_SUBTOPIC_ID);
+//                   setTeachingPresentationIndex(0);
+//                   setTeachingRevealedStepCount(0);
+//                 }}
+//                 className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+//               >
+//                 {teachingLessons.map((lesson) => (
+//                   <option key={lesson.id} value={lesson.id}>{lesson.name}</option>
+//                 ))}
+//               </select>
+//               <div className="mt-3">
+//                 <div className="mb-1.5 flex items-center justify-between gap-2">
+//                   <label htmlFor="teaching-panel-subtopic-select" className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Subtopics</label>
+//                 </div>
+//                 <select
+//                   id="teaching-panel-subtopic-select"
+//                   value={activeTeachingSubtopic?.id ?? ""}
+//                   onChange={(event) => { setActiveTeachingSubtopicId(event.target.value); setTeachingPresentationIndex(0); setTeachingRevealedStepCount(0); }}
+//                   className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+//                 >
+//                   {activeTeachingSubtopics.map((subtopic) => <option key={subtopic.id} value={subtopic.id}>{subtopic.name}</option>)}
+//                 </select>
+//                 {isCreatingTeachingSubtopic && (
+//                   <div className="mt-2 flex gap-1.5">
+//                     <input value={newTeachingSubtopicName} onChange={(event) => setNewTeachingSubtopicName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") createTeachingSubtopic(); if (event.key === "Escape") setIsCreatingTeachingSubtopic(false); }} placeholder="e.g. What are integers?" aria-label="New subtopic name" className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2.5 py-2 text-xs outline-none focus:border-blue-400" />
+//                     <button type="button" onClick={createTeachingSubtopic} disabled={!newTeachingSubtopicName.trim()} className="rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-bold text-white disabled:opacity-40">Add</button>
+//                   </div>
+//                 )}
+//               </div>
+//             </div>
+
+//             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-slate-50/50 p-3">
+//               <article
+//                 draggable
+//                 onDragStart={(event) => {
+//                   const lesson = teachingLessons.find((entry) => entry.id === activeTeachingLessonId);
+//                   if (!lesson) {
+//                     event.preventDefault();
+//                     return;
+//                   }
+//                   event.dataTransfer.effectAllowed = "copy";
+//                   event.dataTransfer.setData("application/x-justdy-teaching-lesson", JSON.stringify(lesson));
+//                   event.dataTransfer.setData("text/plain", lesson.name);
+//                 }}
+//                 className="cursor-grab rounded-lg border border-blue-200 bg-white p-3 shadow-sm transition hover:border-blue-400 hover:shadow-md active:cursor-grabbing"
+//                 title="Drag this lesson title onto the whiteboard"
+//               >
+//                 <div className="mb-2 flex items-center justify-between gap-2">
+//                   <span className="rounded-lg bg-blue-50 px-2 py-1 text-[9px] font-extrabold uppercase tracking-wide text-blue-700">
+//                     Main topic
+//                   </span>
+//                   <span className="text-[9px] font-semibold text-slate-400">Heading</span>
+//                 </div>
+//                 <h3 className="text-base font-extrabold leading-snug text-slate-900">
+//                   {teachingLessons.find((entry) => entry.id === activeTeachingLessonId)?.name ?? "Selected lesson"}
+//                 </h3>
+//               </article>
+
+//               {activeTeachingSubtopic && (
+//                 <article
+//                   draggable
+//                   onDragStart={(event) => {
+//                     const lesson = teachingLessons.find((entry) => entry.id === activeTeachingLessonId);
+//                     if (!lesson) { event.preventDefault(); return; }
+//                     const subtopicTitle = { ...lesson, name: activeTeachingSubtopic.name };
+//                     event.dataTransfer.effectAllowed = "copy";
+//                     event.dataTransfer.setData("application/x-justdy-teaching-lesson", JSON.stringify(subtopicTitle));
+//                     event.dataTransfer.setData("text/plain", activeTeachingSubtopic.name);
+//                   }}
+//                   className="cursor-grab rounded-lg border border-violet-200 bg-violet-50 p-3 shadow-sm active:cursor-grabbing"
+//                   title="Drag this subtopic heading onto the whiteboard"
+//                 >
+//                   <div className="mb-2 flex items-center justify-between gap-2">
+//                   <span className="rounded-md bg-blue-50 px-2 py-1 text-[9px] font-extrabold uppercase tracking-wide text-blue-700">
+//                     Current subtopic
+//                   </span>
+//                   <span className="text-[9px] font-semibold text-slate-400">Sub Heading</span>
+//                 </div>
+//                   <h3 className="text-sm font-extrabold leading-snug text-slate-900">{activeTeachingSubtopic.name}</h3>
+                  
+//                 </article>
+//               )}
+
+//               {activeLessonTeachingMaterials.length > 0 ? (
+//                 activeLessonTeachingMaterials.map((item, index) => {
+//                   const templateStyle = TEACHING_TEMPLATES[item.template];
+//                   const isSelected = index === teachingPresentationIndex;
+//                   return (
+//                     <article
+//                       key={item.id}
+//                       draggable
+//                       onDragStart={(event) => {
+//                         event.dataTransfer.effectAllowed = "copy";
+//                         event.dataTransfer.setData("application/x-justdy-teaching-card", JSON.stringify(item));
+//                         event.dataTransfer.setData("text/plain", item.heading);
+//                         setTeachingPresentationIndex(index);
+//                         setTeachingRevealedStepCount(0);
+//                       }}
+//                       onClick={() => {
+//                         setTeachingPresentationIndex(index);
+//                         setTeachingRevealedStepCount(0);
+//                       }}
+//                       className={`cursor-grab rounded-lg border bg-white p-3 shadow-sm transition active:cursor-grabbing ${isSelected ? "border-blue-300 ring-1 ring-blue-100" : "border-slate-200 hover:border-blue-200 hover:shadow-md"}`}
+//                       style={{ borderTopWidth: 3, borderTopColor: templateStyle.accent }}
+//                       title="Drag this material onto the whiteboard"
+//                     >
+//                       <div className="mb-2 flex items-center justify-between gap-2">
+//                         <span
+//                           className="rounded-md px-2 py-1 text-[9px] font-extrabold tracking-wide"
+//                           style={{ color: templateStyle.accent, backgroundColor: templateStyle.tint }}
+//                         >
+//                           {templateStyle.label}
+//                         </span>
+//                         <span className="truncate text-[9px] font-semibold text-slate-400">
+//                           {TEACHING_SECTIONS[item.section ?? getDefaultTeachingSection(item.template)]}
+//                         </span>
+//                       </div>
+//                       <h3 className="text-sm font-bold leading-snug text-slate-900">{item.heading}</h3>
+//                       <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-slate-700">
+//                         {item.body}
+//                       </p>
+//                       {item.template === "worked-example" && (item.steps?.length ?? 0) > 0 && (
+//                         <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/70 px-2.5 py-2">
+//                           <div className="flex items-center justify-between gap-2">
+//                             <span className="text-[9px] font-extrabold uppercase tracking-wide text-emerald-800">Worked solution</span>
+//                             <span className="text-[9px] font-semibold text-emerald-700">{item.steps?.length} steps</span>
+//                           </div>
+//                           {isSelected && (
+//                             <>
+//                               <div className="mt-2 space-y-1.5">
+//                                 {(item.steps ?? []).slice(0, teachingRevealedStepCount).map((step, stepIndex) => (
+//                                   <div key={`${item.id}-step-${stepIndex}`} className="flex gap-2 rounded-md bg-white/80 px-2 py-1.5">
+//                                     <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[8px] font-bold text-white">{stepIndex + 1}</span>
+//                                     <p className="whitespace-pre-wrap text-[10px] leading-4 text-slate-700">{step}</p>
+//                                   </div>
+//                                 ))}
+//                               </div>
+//                               <button
+//                                 type="button"
+//                                 onClick={(event) => {
+//                                   event.stopPropagation();
+//                                   const stepIndex = teachingRevealedStepCount;
+//                                   const nextStep = (item.steps ?? [])[stepIndex];
+//                                   if (!nextStep) return;
+//                                   insertTeachingLibraryItem({
+//                                     ...item,
+//                                     heading: `${item.heading} — Step ${stepIndex + 1}`,
+//                                     body: `Step ${stepIndex + 1}\n${nextStep}`,
+//                                   });
+//                                   setTeachingRevealedStepCount(stepIndex + 1);
+//                                 }}
+//                                 disabled={teachingRevealedStepCount >= (item.steps?.length ?? 0)}
+//                                 className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-2 py-2 text-[9px] font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+//                               >
+//                                 <Eye className="size-3" />
+//                                 {teachingRevealedStepCount >= (item.steps?.length ?? 0) ? "All steps revealed" : `Reveal step ${teachingRevealedStepCount + 1} on board`}
+//                               </button>
+//                             </>
+//                           )}
+//                           {!isSelected && (
+//                             <p className="mt-1 text-[9px] text-emerald-700">Select this card to reveal its solution steps.</p>
+//                           )}
+//                         </div>
+//                       )}
+                     
+//                     </article>
+//                   );
+//                 })
+//               ) : (
+//                 <div className="flex min-h-full flex-col items-center justify-center px-3 py-10 text-center">
+//                   <BookOpen className="mb-3 size-9 text-slate-300" />
+//                   <h3 className="text-sm font-bold text-slate-800">No materials in this lesson yet</h3>
+//                   <p className="mt-1 text-xs leading-5 text-slate-500">
+//                     Choose another lesson or open the Library to prepare definitions, rules and examples.
+//                   </p>
+//                   <button
+//                     type="button"
+//                     onClick={() => setTeachingLibraryOpen(true)}
+//                     className="mt-4 rounded-lg bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700"
+//                   >
+//                     Open materials library
+//                   </button>
+//                 </div>
+//               )}
+//             </div>
+
+//             {activeLessonTeachingMaterials.length > 0 && (
+//               <div className="shrink-0 border-t border-slate-100 bg-white px-3 py-2.5">
+//                 <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-blue-300 bg-blue-50 px-2.5 py-2.5 text-center text-[9px] font-semibold text-blue-700">
+//                   <span aria-hidden="true" className="text-sm">↗</span>
+//                   Drag any card above onto the whiteboard
+//                 </div>
+//               </div>
+//             )}
+//           </aside>
+
+//           {!teachingPanelVisible && (
+//             <button
+//               type="button"
+//               onPointerEnter={(event) => {
+//                 if (event.clientX >= window.innerWidth - 1) setTeachingPanelVisible(true);
+//               }}
+//               onPointerMove={(event) => {
+//                 if (event.clientX >= window.innerWidth - 1) setTeachingPanelVisible(true);
+//               }}
+//               onClick={() => setTeachingPanelVisible(true)}
+//               className="fixed right-0 top-1/2 z-[881] flex h-24 w-[2px] -translate-y-1/2 items-center justify-center rounded-l-md border border-r-0 border-slate-200 bg-white/95 text-slate-500 shadow-xl transition-colors hover:text-blue-600"
+//               aria-label="Show teaching panel"
+//               title="Move to the far-right edge to show the teaching panel"
+//             >
+//               <PanelRight className="size-3" />
+//             </button>
+//           )}
+//         </>
+//       )}
+
+//             {/* Teaching Materials Library */}
+//       {teachingLibraryOpen && (
+//         <div
+//           className="absolute inset-0 z-[890] flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-[3px]"
+//           role="dialog"
+//           aria-modal="true"
+//           aria-labelledby="teaching-library-title"
+//           onPointerDown={(event) => {
+//             if (event.target === event.currentTarget) setTeachingLibraryOpen(false);
+//           }}
+//         >
+//           <div
+//             className="flex max-h-[calc(100dvh-24px)] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl"
+//             onPointerDown={(event) => event.stopPropagation()}
+//           >
+//             <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-4">
+//               <div>
+//                 <h2 id="teaching-library-title" className="text-base font-bold text-slate-900">
+//                   Teaching Materials Library
+//                 </h2>
+//                 <p className="mt-1 text-xs text-slate-500">
+//                   Choose a topic and subtopic, then manage its teaching materials in a table.
+//                 </p>
+//               </div>
+//               <div className="flex shrink-0 items-center gap-2">
+//                 <button
+//                   type="button"
+//                   onClick={() => { setOpenTeachingActionMenu(null); setTeachingLibraryOpen(false); }}
+//                   aria-label="Close teaching materials library"
+//                   className="flex size-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200"
+//                 >
+//                   <X className="size-4" />
+//                 </button>
+//               </div>
+//             </div>
+
+//             <div className="border-b border-slate-100 bg-slate-50/70 px-4 py-3">
+//               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+//                 {/* Topic selector — displayed first, to the left of Subtopic */}
+//                 <div className="min-w-0">
+//                   <label htmlFor="teaching-lesson-select" className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-slate-500">
+//                     Topic
+//                   </label>
+//                   <div className="flex min-w-0 items-center gap-1.5">
+//                     <select
+//                       id="teaching-lesson-select"
+//                       value={activeTeachingLessonId}
+//                       onChange={(event) => {
+//                         const nextLesson = teachingLessons.find((lesson) => lesson.id === event.target.value);
+//                         setActiveTeachingLessonId(event.target.value);
+//                         setActiveTeachingSubtopicId(nextLesson?.subtopics?.[0]?.id ?? DEFAULT_TEACHING_SUBTOPIC_ID);
+//                         setTeachingPresentationIndex(0);
+//                         setShowAllLessonMaterials(false);
+//                       }}
+//                       className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-blue-400"
+//                     >
+//                       {teachingLessons.map((lesson) => (
+//                         <option key={lesson.id} value={lesson.id}>{lesson.name}</option>
+//                       ))}
+//                     </select>
+//                     <button
+//                       type="button"
+//                       onClick={() => setIsCreatingTeachingLesson((value) => !value)}
+//                       className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-white text-blue-700 hover:bg-blue-50"
+//                       aria-label="Create new topic"
+//                       title="Create new topic"
+//                     >
+//                       <Plus className="size-4" />
+//                     </button>
+//                     <button
+//                       type="button"
+//                       onClick={() => {
+//                         const topic = teachingLessons.find((lesson) => lesson.id === activeTeachingLessonId);
+//                         if (topic) setPendingTeachingDelete({ type: "topic", id: topic.id, name: topic.name });
+//                       }}
+//                       disabled={!activeTeachingLesson || teachingLessons.length === 0}
+//                       className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+//                       aria-label="Delete selected topic and all its subtopics and materials"
+//                       title="Delete topic"
+//                     >
+//                       <Trash2 className="size-4" />
+//                     </button>
+//                   </div>
+//                 </div>
+//                 {/* Subtopic selector — displayed second, to the right of Topic */}
+//                 <div className="min-w-0">
+//                   <label htmlFor="teaching-library-subtopic-select" className="mb-1.5 block text-[10px] font-bold uppercase tracking-wide text-slate-500">
+//                     Subtopic
+//                   </label>
+//                   <div className="flex min-w-0 items-center gap-1.5">
+//                     <select
+//                       id="teaching-library-subtopic-select"
+//                       aria-label="Select subtopic"
+//                       value={activeTeachingSubtopic?.id ?? ""}
+//                       onChange={(event) => setActiveTeachingSubtopicId(event.target.value)}
+//                       className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-violet-400"
+//                     >
+//                       {activeTeachingSubtopics.map((subtopic) => <option key={subtopic.id} value={subtopic.id}>{subtopic.name}</option>)}
+//                     </select>
+//                     <button
+//                       type="button"
+//                       onClick={() => setIsCreatingTeachingSubtopic((value) => !value)}
+//                       className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-violet-200 bg-white text-violet-700 hover:bg-violet-50"
+//                       aria-label="Create new subtopic"
+//                       title="Create new subtopic"
+//                     >
+//                       <Plus className="size-4" />
+//                     </button>
+//                     <button
+//                       type="button"
+//                       onClick={() => {
+//                         if (activeTeachingSubtopic) setPendingTeachingDelete({ type: "subtopic", id: activeTeachingSubtopic.id, name: activeTeachingSubtopic.name });
+//                       }}
+//                       disabled={!activeTeachingSubtopic || activeTeachingSubtopics.length === 0}
+//                       className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+//                       aria-label="Delete selected subtopic and its materials"
+//                       title="Delete subtopic"
+//                     >
+//                       <Trash2 className="size-4" />
+//                     </button>
+
+//                      <div className="mt-0 flex justify-end">
+//                       <button
+//                         type="button"
+//                         onClick={() => setShowAllLessonMaterials((value) => !value)}
+//                         className={`rounded-lg border px-3 py-2 text-[10px] font-bold transition ${
+//                           showAllLessonMaterials
+//                             ? "border-violet-300 bg-violet-50 text-violet-700"
+//                             : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
+//                         }`}
+//                       >
+//                         {showAllLessonMaterials ? "Showing all" : "Browse all"}
+//                       </button>
+//                     </div>
+//                   </div>
+//                 </div>
+//               </div>
+//             </div>
+
+//             {isCreatingTeachingLesson && (
+//               <div className="flex gap-2 border-b border-slate-100 px-4 py-3">
+//                 <input
+//                   autoFocus
+//                   value={newTeachingLessonName}
+//                   onChange={(event) => setNewTeachingLessonName(event.target.value)}
+//                   onKeyDown={(event) => {
+//                     if (event.key === "Enter") createTeachingLesson();
+//                     if (event.key === "Escape") setIsCreatingTeachingLesson(false);
+//                   }}
+//                   placeholder="e.g. Grade 8 — Fractions"
+//                   aria-label="New lesson name"
+//                   className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400"
+//                 />
+//                 <button
+//                   type="button"
+//                   onClick={createTeachingLesson}
+//                   disabled={!newTeachingLessonName.trim()}
+//                   className="rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-bold text-white disabled:opacity-40"
+//                 >
+//                   Create
+//                 </button>
+//               </div>
+//             )}
+
+//             {isCreatingTeachingSubtopic && (
+//               <div className="flex gap-2 border-b border-slate-100 px-4 py-3">
+//                 <input
+//                   autoFocus
+//                   value={newTeachingSubtopicName}
+//                   onChange={(event) => setNewTeachingSubtopicName(event.target.value)}
+//                   onKeyDown={(event) => {
+//                     if (event.key === "Enter") createTeachingSubtopic();
+//                     if (event.key === "Escape") setIsCreatingTeachingSubtopic(false);
+//                   }}
+//                   placeholder="e.g. Types of integers"
+//                   aria-label="New subtopic name"
+//                   className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-violet-400"
+//                 />
+//                 <button
+//                   type="button"
+//                   onClick={createTeachingSubtopic}
+//                   disabled={!newTeachingSubtopicName.trim()}
+//                   className="rounded-lg bg-violet-600 px-3 py-2 text-[10px] font-bold text-white disabled:opacity-40"
+//                 >
+//                   Add subtopic
+//                 </button>
+//               </div>
+//             )}
+
+//             <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row">
+//               <input
+//                 value={teachingLibrarySearch}
+//                 onChange={(event) => setTeachingLibrarySearch(event.target.value)}
+//                 placeholder="Search saved definitions, rules, examples..."
+//                 className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+//                 aria-label="Search teaching materials"
+//               />
+//               <button
+//                 type="button"
+//                 onClick={() => openTeachingEditor("definition")}
+//                 className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-blue-700"
+//               >
+//                 <Plus className="size-4" />
+//                 Create material
+//               </button>
+//             </div>
+
+//             <div className="flex flex-wrap gap-2 px-4 pt-3">
+//               <button
+//                 type="button"
+//                 onClick={() => setTeachingLibraryFilter("all")}
+//                 className={`rounded-lg px-3 py-1.5 text-[11px] font-bold ${
+//                   teachingLibraryFilter === "all"
+//                     ? "bg-slate-900 text-white"
+//                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+//                 }`}
+//               >
+//                 All ({teachingLibrary.filter((item) =>
+//                   showAllLessonMaterials ||
+//                   (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === activeTeachingLessonId
+//                 ).length})
+//               </button>
+//               {(Object.keys(TEACHING_TEMPLATES) as TeachingTemplate[]).map((template) => {
+//                 const count = teachingLibrary.filter(
+//                   (item) =>
+//                     item.template === template &&
+//                     (showAllLessonMaterials ||
+//                       (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === activeTeachingLessonId),
+//                 ).length;
+//                 return (
+//                   <button
+//                     key={template}
+//                     type="button"
+//                     onClick={() => setTeachingLibraryFilter(template)}
+//                     className={`rounded-lg px-3 py-1.5 text-[11px] font-bold ${
+//                       teachingLibraryFilter === template
+//                         ? "bg-blue-600 text-white"
+//                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+//                     }`}
+//                   >
+//                     {TEACHING_TEMPLATES[template].label} ({count})
+//                   </button>
+//                 );
+//               })}
+//             </div>
+
+//             <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
+//               <label htmlFor="teaching-section-filter" className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+//                 Section
+//               </label>
+//               <select
+//                 id="teaching-section-filter"
+//                 value={teachingSectionFilter}
+//                 onChange={(event) => setTeachingSectionFilter(event.target.value as "all" | TeachingSection)}
+//                 className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-slate-700"
+//               >
+//                 <option value="all">All sections</option>
+//                 {(Object.keys(TEACHING_SECTIONS) as TeachingSection[]).map((section) => (
+//                   <option key={section} value={section}>{TEACHING_SECTIONS[section]}</option>
+//                 ))}
+//               </select>
+//               <p className="ml-auto text-[10px] text-slate-400">
+//                 New materials are saved under {teachingLessons.find((lesson) => lesson.id === activeTeachingLessonId)?.name ?? "the selected lesson"} → {activeTeachingSubtopic?.name ?? "General"}.
+//               </p>
+//             </div>
+
+//             <div className="min-h-0 flex-1 overflow-y-auto p-4">
+//               {(() => {
+//                 const query = teachingLibrarySearch.trim().toLowerCase();
+//                 const filteredItems = teachingLibrary
+//                   .filter((item) => {
+//                     const itemLessonId = item.lessonId ?? DEFAULT_TEACHING_LESSON_ID;
+//                     const itemSection = item.section ?? getDefaultTeachingSection(item.template);
+//                     const matchesLesson = showAllLessonMaterials || itemLessonId === activeTeachingLessonId;
+//                     const matchesSubtopic = showAllLessonMaterials || itemLessonId !== activeTeachingLessonId || !activeTeachingSubtopicId || (item.subtopicId ?? DEFAULT_TEACHING_SUBTOPIC_ID) === activeTeachingSubtopicId;
+//                     const matchesSection = teachingSectionFilter === "all" || itemSection === teachingSectionFilter;
+//                     const matchesTemplate =
+//                       teachingLibraryFilter === "all" ||
+//                       item.template === teachingLibraryFilter;
+//                     const matchesSearch =
+//                       !query ||
+//                       item.heading.toLowerCase().includes(query) ||
+//                       item.body.toLowerCase().includes(query);
+//                     return matchesLesson && matchesSubtopic && matchesSection && matchesTemplate && matchesSearch;
+//                   })
+//                   .sort((a, b) => {
+//                     const sectionA = Object.keys(TEACHING_SECTIONS).indexOf(a.section ?? getDefaultTeachingSection(a.template));
+//                     const sectionB = Object.keys(TEACHING_SECTIONS).indexOf(b.section ?? getDefaultTeachingSection(b.template));
+//                     return sectionA - sectionB || (a.order ?? 0) - (b.order ?? 0);
+//                   });
+
+//                 if (filteredItems.length === 0) {
+//                   return (
+//                     <div className="flex min-h-48 flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 text-center">
+//                       <BookOpen className="mb-3 size-8 text-slate-300" />
+//                       <p className="text-sm font-bold text-slate-700">
+//                         {teachingLibrary.length === 0 ? "Your library is empty" : "No matching materials in this view"}
+//                       </p>
+//                       <p className="mt-1 max-w-sm text-xs leading-5 text-slate-500">
+//                         Create definitions, rules, algorithms, worked examples and questions here. They stay off the board until you insert them.
+//                       </p>
+//                       <button
+//                         type="button"
+//                         onClick={() => openTeachingEditor("definition")}
+//                         className="mt-4 rounded-lg bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700"
+//                       >
+//                         Create your first material
+//                       </button>
+//                     </div>
+//                   );
+//                 }
+
+//                 return (
+//                   <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+//                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3">
+//                       <div className="min-w-0">
+//                         <p className="text-xs font-bold text-slate-800">
+//                           {showAllLessonMaterials ? "All topics" : teachingLessons.find((lesson) => lesson.id === activeTeachingLessonId)?.name ?? "Topic"}
+//                           {!showAllLessonMaterials && <span className="font-normal text-slate-400"> / {activeTeachingSubtopic?.name ?? "Subtopic"}</span>}
+//                         </p>
+//                         <p className="mt-1 text-[11px] text-slate-500">{filteredItems.length} {filteredItems.length === 1 ? "material" : "materials"} · Select a row action to manage or present it</p>
+//                       </div>
+//                     </div>
+//                     <div className="overflow-x-auto">
+//                       <table className="w-full min-w-200 table-fixed text-left">
+//                         <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+//                           <tr className="border-b border-slate-200">
+//                             <th className="w-10 px-3 py-3">#</th>
+//                             <th className="w-28 px-3 py-3">Type</th>
+//                             <th className="w-[23%] px-3 py-3">Material title</th>
+//                             <th className="px-3 py-3">Content preview</th>
+//                             <th className="w-52 px-3 py-3 text-right">Actions</th>
+//                           </tr>
+//                         </thead>
+//                         <tbody className="divide-y divide-slate-100">
+//                           {filteredItems.map((item, index) => {
+//                             const style = TEACHING_TEMPLATES[item.template];
+//                             const runAction = (action: string) => {
+//                               setOpenTeachingActionMenu(null);
+//                                         switch (action) {
+//                                           case "insert":
+//                                             insertTeachingLibraryItem(item);
+//                                             break;
+//                                           case "edit":
+//                                             openTeachingEditor(item.template, undefined, item);
+//                                             break;
+//                                           case "move-up":
+//                                             moveTeachingLibraryItem(item.id, -1);
+//                                             break;
+//                                           case "move-down":
+//                                             moveTeachingLibraryItem(item.id, 1);
+//                                             break;
+//                                           case "copy": {
+//                                             const now = new Date().toISOString();
+//                                             setTeachingLibrary((previous) => [{
+//                                               ...item,
+//                                               id: createId(),
+//                                               lessonId: activeTeachingLessonId,
+//                                               subtopicId: activeTeachingSubtopicId,
+//                                               order: previous.filter((entry) =>
+//                                                 (entry.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === activeTeachingLessonId &&
+//                                                 (entry.subtopicId ?? DEFAULT_TEACHING_SUBTOPIC_ID) === activeTeachingSubtopicId &&
+//                                                 (entry.section ?? getDefaultTeachingSection(entry.template)) ===
+//                                                   (item.section ?? getDefaultTeachingSection(item.template))
+//                                               ).length,
+//                                               heading: `${item.heading} (copy)`,
+//                                               createdAt: now,
+//                                               updatedAt: now,
+//                                             }, ...previous]);
+//                                             break;
+//                                           }
+//                                           case "to-topic":
+//                                             copyTeachingMaterialToActiveLesson(item);
+//                                             break;
+//                                           case "delete":
+//                                             deleteTeachingLibraryItem(item.id);
+//                                             break;
+//                                           default:
+//                                             break;
+//                                         }
+//                             };
+//                             return (
+//                               <tr key={item.id} className="group relative z-0 align-top transition-colors hover:bg-blue-50/40 [&:has(details[open])]:z-50">
+//                                 <td className="px-3 py-3 text-xs font-semibold tabular-nums text-slate-400">{index + 1}</td>
+//                                 <td className="px-3 py-3">
+//                                   <span className="inline-flex rounded-md px-2 py-1 text-[10px] font-bold" style={{ color: style.accent, backgroundColor: style.tint }}>{style.label}</span>
+                                 
+//                                 </td>
+//                                 <td className="wrap-break-word px-3 py-3">
+//                                   <p className="text-xs font-bold leading-5 text-slate-800">{item.heading}</p>
+//                                   {showAllLessonMaterials && <p className="mt-1 text-[10px] text-violet-600">{teachingLessons.find((lesson) => lesson.id === (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID))?.name ?? "General lesson"} / {teachingLessons.find((lesson) => lesson.id === (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID))?.subtopics?.find((subtopic) => subtopic.id === item.subtopicId)?.name ?? "General"}</p>}
+//                                 </td>
+//                                 <td className="px-3 py-3"><p className="line-clamp-1 whitespace-pre-wrap wrap-break-word text-xs leading-5 text-slate-600" title={item.body}>{item.body}</p></td>
+//                                 <td className="px-3 py-3">
+//                                   <div className="flex justify-end">
+//                                     <button
+//                                       type="button"
+//                                       aria-label={`Actions for ${item.heading}`}
+//                                       title="Actions"
+//                                       aria-expanded={openTeachingActionMenu?.itemId === item.id}
+//                                       onClick={(event) => {
+//                                         const rect = event.currentTarget.getBoundingClientRect();
+//                                         const hasToTopic = showAllLessonMaterials && (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) !== activeTeachingLessonId;
+//                                         const menuHeight = hasToTopic ? 240 : 208;
+//                                         const top = rect.top >= menuHeight + 12
+//                                           ? rect.top - menuHeight - 6
+//                                           : Math.min(rect.bottom + 6, window.innerHeight - menuHeight - 8);
+//                                         setOpenTeachingActionMenu((current) => current?.itemId === item.id ? null : {
+//                                           itemId: item.id,
+//                                           top: Math.max(8, top),
+//                                           right: Math.max(8, window.innerWidth - rect.right),
+//                                         });
+//                                       }}
+//                                       className={`flex size-8 cursor-pointer items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 ${openTeachingActionMenu?.itemId === item.id ? "bg-blue-50 text-blue-700" : ""}`}
+//                                     >
+//                                       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+//                                     </button>
+//                                     {openTeachingActionMenu?.itemId === item.id && createPortal(
+//                                       <div
+//                                         role="menu"
+//                                         aria-label={`Actions for ${item.heading}`}
+//                                         style={{ position: "fixed", top: openTeachingActionMenu.top, right: openTeachingActionMenu.right, zIndex: 2147483000 }}
+//                                         className="w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-2xl"
+//                                       >
+//                                         <button type="button" role="menuitem" onClick={() => runAction("insert")} className="block w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50">Insert</button>
+//                                         <button type="button" role="menuitem" onClick={() => runAction("edit")} className="block w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50">Edit</button>
+//                                         <button type="button" role="menuitem" onClick={() => runAction("move-up")} className="block w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50">↑ Move earlier</button>
+//                                         <button type="button" role="menuitem" onClick={() => runAction("move-down")} className="block w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50">↓ Move later</button>
+//                                         <button type="button" role="menuitem" onClick={() => runAction("copy")} className="block w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50">Copy</button>
+//                                         {showAllLessonMaterials && (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) !== activeTeachingLessonId && (
+//                                           <button type="button" role="menuitem" onClick={() => runAction("to-topic")} className="block w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50">To topic</button>
+//                                         )}
+//                                         <button type="button" role="menuitem" onClick={() => runAction("delete")} className="block w-full px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50">Delete</button>
+//                                       </div>,
+//                                       document.body
+//                                     )}
+//                                   </div>
+//                                 </td>
+//                               </tr>
+//                             );
+//                           })}
+//                         </tbody>
+//                       </table>
+//                     </div>
+//                   </div>
+//                 );
+//               })()}
+//             </div>
+
+//             <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-5 py-3">
+//               <p className="text-[10px] text-slate-500">
+//                 {teachingLibrary.filter((item) =>
+//                   showAllLessonMaterials ||
+//                   (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === activeTeachingLessonId
+//                 ).length} saved {teachingLibrary.filter((item) =>
+//                   showAllLessonMaterials ||
+//                   (item.lessonId ?? DEFAULT_TEACHING_LESSON_ID) === activeTeachingLessonId
+//                 ).length === 1 ? "material" : "materials"}
+//               </p>
+//               <button
+//                 type="button"
+//                 onClick={() => setTeachingLibraryOpen(false)}
+//                 className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100"
+//               >
+//                 Done
+//               </button>
+//             </div>
+//           </div>
+//           {pendingTeachingDelete && (
+//             <div className="absolute inset-0 z-[2] flex items-center justify-center bg-slate-950/35 p-4" role="alertdialog" aria-modal="true" aria-labelledby="delete-teaching-group-title">
+//               <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+//                 <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-red-50 text-red-600"><Trash2 className="size-5" /></div>
+//                 <h3 id="delete-teaching-group-title" className="text-sm font-bold text-slate-900">Delete {pendingTeachingDelete.type}?</h3>
+//                 <p className="mt-2 text-xs leading-5 text-slate-600">
+//                   Delete <strong>{pendingTeachingDelete.name}</strong>{pendingTeachingDelete.type === "topic" ? " and all of its subtopics and saved teaching materials" : " and all teaching materials saved under it"}? This action cannot be undone.
+//                 </p>
+//                 <div className="mt-5 flex justify-end gap-2">
+//                   <button type="button" onClick={() => setPendingTeachingDelete(null)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
+//                   <button type="button" onClick={confirmDeleteTeachingGroup} className="rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white hover:bg-red-700">Delete permanently</button>
+//                 </div>
+//               </div>
+//             </div>
+//           )}
+//         </div>
+//       )}
+
+//       {/* Teaching Elements editor */}
+//       {teachingEditor.open && (
+//         <div
+//           className="absolute inset-0 z-[900] flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-[3px]"
+//           role="dialog"
+//           aria-modal="true"
+//           aria-labelledby="teaching-elements-title"
+//           onPointerDown={(event) => {
+//             if (event.target === event.currentTarget) {
+//               if (teachingEditor.returnToLibrary) setTeachingLibraryOpen(true);
+//                 setTeachingEditor((previous) => ({ ...previous, open: false }));
+//             }
+//           }}
+//         >
+//           <div
+//             className="flex max-h-[calc(100dvh-24px)] w-full max-w-xl flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl"
+//             onPointerDown={(event) => event.stopPropagation()}
+//           >
+//             <div className="flex shrink-0 items-start justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">
+//               <div>
+//                 <h2 id="teaching-elements-title" className="text-base font-bold text-slate-900">
+//                   Teaching Elements
+//                 </h2>
+//                 <p className="mt-1 text-xs text-slate-500">
+//                   Prepare and save this material. It will not appear on the board until you insert it.
+//                 </p>
+//               </div>
+//               <button
+//                 type="button"
+//                 onClick={() => {
+//                   if (teachingEditor.returnToLibrary) setTeachingLibraryOpen(true);
+//                 setTeachingEditor((previous) => ({ ...previous, open: false }));
+//                 }}
+//                 aria-label="Close teaching elements editor"
+//                 className="flex size-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200"
+//               >
+//                 <X className="size-4" />
+//               </button>
+//             </div>
+
+//             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4">
+//               <div>
+//                 <label className="mb-1.5 block text-xs font-bold text-slate-700">
+//                   Choose a template
+//                 </label>
+//                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+//                   {(Object.keys(TEACHING_TEMPLATES) as TeachingTemplate[]).map((template) => {
+//                     const style = TEACHING_TEMPLATES[template];
+//                     const active = teachingEditor.template === template;
+//                     return (
+//                       <button
+//                         key={template}
+//                         type="button"
+//                         onClick={() =>
+//                           setTeachingEditor((previous) => ({
+//                             ...previous,
+//                             template,
+//                             heading:
+//                               previous.heading === TEACHING_TEMPLATES[previous.template].heading
+//                                 ? style.heading
+//                                 : previous.heading,
+//                           }))
+//                         }
+//                         className={`rounded-lg border px-3 py-2 text-left text-xs font-bold transition ${
+//                           active
+//                             ? "border-blue-500 bg-blue-50 text-blue-800 ring-2 ring-blue-500/10"
+//                             : "border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+//                         }`}
+//                       >
+//                         <span
+//                           className="mb-1.5 block h-1.5 w-8 rounded-full"
+//                           style={{ backgroundColor: style.accent }}
+//                         />
+//                         {style.label}
+//                       </button>
+//                     );
+//                   })}
+//                 </div>
+//               </div>
+
+//               <div>
+//                 <label htmlFor="teaching-element-subtopic" className="mb-1.5 block text-xs font-bold text-slate-700">
+//                   Subtopic
+//                 </label>
+//                 <select
+//                   id="teaching-element-subtopic"
+//                   value={teachingEditor.subtopicId}
+//                   onChange={(event) => setTeachingEditor((previous) => ({ ...previous, subtopicId: event.target.value }))}
+//                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+//                 >
+//                   {activeTeachingSubtopics.map((subtopic) => <option key={subtopic.id} value={subtopic.id}>{subtopic.name}</option>)}
+//                 </select>
+//                 {activeTeachingSubtopics.length === 0 && <p className="mt-1 text-[10px] text-amber-600">Create a subtopic in the Teaching Mode panel first.</p>}
+//               </div>
+
+//               <div>
+//                 <label htmlFor="teaching-element-heading" className="mb-1.5 block text-xs font-bold text-slate-700">
+//                   Heading
+//                 </label>
+//                 <input
+//                   id="teaching-element-heading"
+//                   value={teachingEditor.heading}
+//                   onChange={(event) =>
+//                     setTeachingEditor((previous) => ({
+//                       ...previous,
+//                       heading: event.target.value,
+//                     }))
+//                   }
+//                   maxLength={80}
+//                   placeholder="Enter a heading"
+//                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+//                 />
+//               </div>
+
+//               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+//                 <div className="mb-2 flex items-center justify-between">
+//                   <label htmlFor="teaching-element-font-size" className="text-xs font-bold text-slate-700">
+//                     Board content font size
+//                   </label>
+//                   <span className="rounded-md bg-white px-2 py-1 text-xs font-bold tabular-nums text-slate-700">
+//                     {teachingEditor.fontSize}px
+//                   </span>
+//                 </div>
+//                 <input
+//                   id="teaching-element-font-size"
+//                   type="range"
+//                   min={14}
+//                   max={32}
+//                   step={1}
+//                   value={teachingEditor.fontSize}
+//                   onChange={(event) =>
+//                     setTeachingEditor((previous) => ({
+//                       ...previous,
+//                       fontSize: Number(event.target.value),
+//                     }))
+//                   }
+//                   className="w-full accent-blue-600"
+//                 />
+//                 <p className="mt-1 text-[10px] text-slate-500">
+//                   Larger text makes teaching cards easier to read when displayed on the board.
+//                 </p>
+//               </div>
+
+//               <div>
+//                 <div className="mb-1.5 flex items-center justify-between gap-2">
+//                   <label htmlFor="teaching-element-body" className="block text-xs font-bold text-slate-700">
+//                     {teachingEditor.template === "worked-example" ? "Problem / question" : "Teaching content"}
+//                   </label>
+//                   <button
+//                     type="button"
+//                     onClick={() => {
+//                       const textarea = document.getElementById("teaching-element-body") as HTMLTextAreaElement | null;
+//                       const current = teachingEditor.body;
+//                       const start = textarea?.selectionStart ?? current.length;
+//                       const end = textarea?.selectionEnd ?? start;
+//                       const selectedText = current.slice(start, end);
+//                       const source = selectedText || "";
+//                       const bulletText = source
+//                         ? source.split(/\\r?\\n/).map((line) => line.trim() ? `• ${line.replace(/^(?:•|\*|-)\s+/, "")}` : "").join("\\n")
+//                         : "• ";
+//                       const nextBody = current.slice(0, start) + bulletText + current.slice(end);
+//                       setTeachingEditor((previous) => ({ ...previous, body: nextBody }));
+//                       requestAnimationFrame(() => {
+//                         const nextTextarea = document.getElementById("teaching-element-body") as HTMLTextAreaElement | null;
+//                         if (!nextTextarea) return;
+//                         nextTextarea.focus();
+//                         const cursor = start + bulletText.length;
+//                         nextTextarea.setSelectionRange(cursor, cursor);
+//                       });
+//                     }}
+//                     className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50"
+//                     title="Insert bullets for the selected lines or at the cursor"
+//                   >
+//                     <List className="size-3.5" />
+//                     Bulleted list
+//                   </button>
+//                 </div>
+//                 <textarea
+//                   id="teaching-element-body"
+//                   value={teachingEditor.body}
+//                   onChange={(event) =>
+//                     setTeachingEditor((previous) => ({
+//                       ...previous,
+//                       body: event.target.value,
+//                     }))
+//                   }
+//                   rows={3}
+//                   maxLength={1200}
+//                   placeholder={TEACHING_TEMPLATES[teachingEditor.template].placeholder}
+//                   className="w-full resize-y rounded-xl border border-slate-200 px-3 py-2 text-sm leading-5 text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+//                 />
+//                 <p className="mt-1 text-right text-[10px] text-slate-400">
+//                   {teachingEditor.body.length}/1200 characters
+//                 </p>
+//               </div>
+
+//               {teachingEditor.template === "worked-example" && (
+//                 <div>
+//                   <label htmlFor="teaching-example-steps" className="mb-1.5 block text-xs font-bold text-slate-700">
+//                     Solution steps
+//                   </label>
+//                   <textarea
+//                     id="teaching-example-steps"
+//                     value={teachingEditor.stepsText}
+//                     onChange={(event) =>
+//                       setTeachingEditor((previous) => ({
+//                         ...previous,
+//                         stepsText: event.target.value,
+//                       }))
+//                     }
+//                     rows={4}
+//                     maxLength={6000}
+//                     placeholder={"Enter one solution step per line.\nExample: Subtract 3 from both sides.\nDivide both sides by 2."}
+//                     className="w-full resize-y rounded-xl border border-slate-200 px-3 py-2 text-sm leading-5 text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+//                   />
+//                   <p className="mt-1 text-[10px] leading-4 text-slate-400">
+//                     Each non-empty line becomes a separate step that you can reveal during the lesson.
+//                   </p>
+//                 </div>
+//               )}
+
+//               <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+//                 <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+//                   Preview
+//                 </p>
+//                 <div
+//                   className="rounded-xl border border-slate-200 bg-white p-2.5"
+//                   style={{ borderLeft: `4px solid ${TEACHING_TEMPLATES[teachingEditor.template].accent}` }}
+//                 >
+//                   <span
+//                     className="inline-block rounded-md px-2 py-1 text-[9px] font-bold tracking-wide"
+//                     style={{
+//                       color: TEACHING_TEMPLATES[teachingEditor.template].accent,
+//                       backgroundColor: TEACHING_TEMPLATES[teachingEditor.template].tint,
+//                     }}
+//                   >
+//                     {TEACHING_TEMPLATES[teachingEditor.template].eyebrow}
+//                   </span>
+//                   <p className="mt-1.5 text-sm font-bold text-slate-900">
+//                     {teachingEditor.heading || "Your heading"}
+//                   </p>
+//                   <p className="mt-1 whitespace-pre-wrap text-slate-600" style={{ fontSize: Math.max(11, teachingEditor.fontSize - 5), lineHeight: 1.4 }}>
+//                     {teachingEditor.body || "Your teaching content will appear here."}
+//                   </p>
+//                 </div>
+//               </div>
+//             </div>
+
+//             <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-100 bg-slate-50/95 px-4 py-2.5">
+//               <button
+//                 type="button"
+//                 onClick={() => {
+//                   if (teachingEditor.returnToLibrary) setTeachingLibraryOpen(true);
+//                 setTeachingEditor((previous) => ({ ...previous, open: false }));
+//                 }}
+//                 className="rounded-xl px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-200"
+//               >
+//                 Cancel
+//               </button>
+//               <button
+//                 type="button"
+//                 onClick={saveTeachingElement}
+//                 disabled={!teachingEditor.heading.trim() && !teachingEditor.body.trim()}
+//                 className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+//               >
+//                 {teachingEditor.editingElementId
+//                   ? "Save changes"
+//                   : teachingEditor.editingLibraryItemId
+//                     ? "Update saved material"
+//                     : "Save to Library"}
+//               </button>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+
+//       {/* Professional page rename dialog */}
+//       {renamePageState.open && (
+//         <div
+//           className="absolute inset-0 z-200 flex items-center justify-center bg-slate-950/35 px-4 backdrop-blur-[3px]"
+//           role="dialog"
+//           aria-modal="true"
+//           aria-labelledby="rename-page-title"
+//           onPointerDown={(event) => {
+//             if (event.target === event.currentTarget) closeRenamePage();
+//           }}
+//         >
+//           <div
+//             className="absolute w-[min(420px,calc(100vw-24px))] max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20"
+//             style={{
+//               left: getPopupPosition("rename", {
+//                 x: Math.max(12, (leftInset + window.innerWidth) / 2 - 210),
+//                 y: Math.max(70, window.innerHeight / 2 - 180),
+//               }).x,
+//               top: getPopupPosition("rename", {
+//                 x: 0,
+//                 y: Math.max(70, window.innerHeight / 2 - 180),
+//               }).y,
+//             }}
+//             onPointerDown={(event) => event.stopPropagation()}
+//             onPointerMove={movePopupDrag}
+//             onPointerUp={endPopupDrag}
+//           >
+//             <div
+//               className="flex cursor-move touch-none items-start justify-between border-b border-slate-100 bg-slate-50/90 px-5 py-4 select-none"
+//               onPointerDown={(event) => startPopupDrag("rename", event)}
+//             >
+//               <div className="flex items-center gap-3">
+//                 <div className="flex size-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
+//                   <PenLine className="size-4" />
+//                 </div>
+//                 <div>
+//                   <h2
+//                     id="rename-page-title"
+//                     className="text-sm font-extrabold text-slate-900"
+//                   >
+//                     Rename page
+//                   </h2>
+//                   <p className="mt-0.5 text-[11px] text-slate-500">
+//                     Give this page a clear, memorable name.
+//                   </p>
+//                 </div>
+//               </div>
+//               <button
+//                 type="button"
+//                 onClick={closeRenamePage}
+//                 className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
+//                 aria-label="Close rename dialog"
+//               >
+//                 <X className="size-4" />
+//               </button>
+//             </div>
+
+//             <div className="p-5">
+//               <label
+//                 htmlFor="page-name-input"
+//                 className="mb-2 block text-[11px] font-bold uppercase tracking-wide text-slate-500"
+//               >
+//                 Page name
+//               </label>
+//               <input
+//                 id="page-name-input"
+//                 autoFocus
+//                 value={renamePageState.name}
+//                 onChange={(event) =>
+//                   setRenamePageState((previous) => ({
+//                     ...previous,
+//                     name: event.target.value,
+//                   }))
+//                 }
+//                 onKeyDown={(event) => {
+//                   if (event.key === "Enter") {
+//                     event.preventDefault();
+//                     saveRenamedPage();
+//                   }
+//                   if (event.key === "Escape") {
+//                     event.preventDefault();
+//                     closeRenamePage();
+//                   }
+//                 }}
+//                 maxLength={80}
+//                 placeholder="e.g. Fractions & Percents"
+//                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-semibold text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+//               />
+//               <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400">
+//                 <span>Press Enter to save • Esc to cancel</span>
+//                 <span>{renamePageState.name.length}/80</span>
+//               </div>
+//             </div>
+
+//             <div className="flex items-center justify-end gap-2 border-t border-slate-100 bg-slate-50/70 px-5 py-3">
+//               <button
+//                 type="button"
+//                 onClick={closeRenamePage}
+//                 className="rounded-xl px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-200"
+//               >
+//                 Cancel
+//               </button>
+//               <button
+//                 type="button"
+//                 onClick={saveRenamedPage}
+//                 disabled={!renamePageState.name.trim()}
+//                 className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+//               >
+//                 Save name
+//               </button>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+//     </main>
+//   );
+// }
+
+
 "use client";
 
 import {
@@ -10,32 +9303,23 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import {
-  Circle,
   CircleHelp,
   Copy,
   Hand,
   Home,
   MousePointer2,
-  Download,
   Eraser,
-  FolderOpen,
   Maximize2,
   Minimize2,
-  Minus,
   PenLine,
   Redo2,
-  Save,
   Sigma,
-  Square,
-  Triangle,
   Type,
   Undo2,
-  Calculator,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
   ChevronUp,
-  Grid2X2,
   Layers3,
   List,
   Plus,
@@ -43,7 +9327,6 @@ import {
   BookOpen,
   X,
   PanelRight,
-  PanelLeftClose,
   PanelLeftOpen,
   Shapes,
   Crosshair,
@@ -56,6 +9339,8 @@ import {
   Eye,
   EyeOff,
   Play,
+  Smartphone,
+  Monitor,
 } from "lucide-react";
 import MyLogo from "@/app/_components/public/Logo";
 import type {
@@ -522,6 +9807,7 @@ export default function Whiteboard({
   const rootRef = useRef<HTMLElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const mobileFrameRef = useRef<HTMLDivElement | null>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
   const hasLoadedBoardRef = useRef(false);
   const realtimeReadyReportedRef = useRef(false);
@@ -568,6 +9854,9 @@ export default function Whiteboard({
   const [fontSize] = useState(24);
 
   const [showGrid, setShowGrid] = useState(true);
+  // Optional video-safe working areas: vertical 9:16 or standard 16:9.
+  const [showMobileFrame, setShowMobileFrame] = useState(false);
+  const [frameAspectRatio, setFrameAspectRatio] = useState<"9 / 16" | "16 / 9">("9 / 16");
   const [gridSize] = useState(32);
   const [backgroundColor, setBackgroundColor] = useState("#ffffff");
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
@@ -1222,13 +10511,26 @@ export default function Whiteboard({
       const rect = canvas.getBoundingClientRect();
       let x = event.clientX - rect.left - panOffset.x;
       let y = event.clientY - rect.top - panOffset.y;
+
+      // In vertical-video mode, keep every new point inside the visible
+      // 9:16 frame, even when a pointer is dragged beyond its border.
+      if (showMobileFrame && mobileFrameRef.current) {
+        const frameRect = mobileFrameRef.current.getBoundingClientRect();
+        const frameLeft = frameRect.left - rect.left - panOffset.x;
+        const frameTop = frameRect.top - rect.top - panOffset.y;
+        const frameRight = frameLeft + frameRect.width;
+        const frameBottom = frameTop + frameRect.height;
+        x = Math.max(frameLeft, Math.min(x, frameRight));
+        y = Math.max(frameTop, Math.min(y, frameBottom));
+      }
+
       if (snapToGrid) {
         x = Math.round(x / gridSize) * gridSize;
         y = Math.round(y / gridSize) * gridSize;
       }
       return { x, y };
     },
-    [gridSize, panOffset.x, panOffset.y, snapToGrid],
+    [gridSize, panOffset.x, panOffset.y, snapToGrid, showMobileFrame],
   );
 
   const drawGrid = useCallback(
@@ -2020,8 +11322,20 @@ export default function Whiteboard({
 
     drawGrid(ctx, rect.width, rect.height);
 
-    // Hand/pan mode moves the board content without moving the toolbar or grid.
+    // Clip board content to the selected video-safe area.
+    // The frame itself is a separate visual overlay, so it never enters exports.
     ctx.save();
+    if (showMobileFrame && mobileFrameRef.current) {
+      const frameRect = mobileFrameRef.current.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      const clipLeft = frameRect.left - canvasRect.left - panOffset.x;
+      const clipTop = frameRect.top - canvasRect.top - panOffset.y;
+      ctx.beginPath();
+      ctx.rect(clipLeft, clipTop, frameRect.width, frameRect.height);
+      ctx.clip();
+    }
+
+    // Hand/pan mode moves the board content without moving the toolbar or grid.
     ctx.translate(panOffset.x, panOffset.y);
 
     // During move/resize, draw the live transformed element instead of waiting
@@ -2162,6 +11476,8 @@ export default function Whiteboard({
     panOffset.y,
     resizeCanvas,
     selectedElementId,
+    showMobileFrame,
+    frameAspectRatio,
   ]);
 
   // backgroundImageVersion is intentionally a render trigger. The image is
@@ -3587,6 +12903,18 @@ export default function Whiteboard({
 
   const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
     event.preventDefault();
+
+    // The portrait guide is also an interaction boundary: do not start a new
+    // stroke, shape, selection, or text placement outside the 9:16 area.
+    if (showMobileFrame && mobileFrameRef.current) {
+      const frameRect = mobileFrameRef.current.getBoundingClientRect();
+      const insideFrame =
+        event.clientX >= frameRect.left &&
+        event.clientX <= frameRect.right &&
+        event.clientY >= frameRect.top &&
+        event.clientY <= frameRect.bottom;
+      if (!insideFrame) return;
+    }
 
     // Clicking the whiteboard outside the live text editor commits the text
     // and exits editing mode before the board handles the new pointer action.
@@ -6483,6 +15811,28 @@ export default function Whiteboard({
                       : "crosshair",
               }}
             />
+
+            {showMobileFrame && (
+              <div
+                ref={mobileFrameRef}
+                aria-hidden="true"
+                className={`pointer-events-none absolute left-1/2 top-1/2 z-[30] -translate-x-1/2 -translate-y-1/2 border-[3px] border-blue-500 shadow-[0_0_0_9999px_rgba(15,23,42,0.58),0_0_28px_rgba(37,99,235,0.22)] ${
+                  frameAspectRatio === "9 / 16" ? "rounded-[2rem]" : "rounded-2xl"
+                }`}
+                style={{
+                  width:
+                    frameAspectRatio === "9 / 16"
+                      ? "min(calc(100% - 140px), 47.8dvh)"
+                      : "min(calc(100% - 140px), 151.1dvh)",
+                  aspectRatio: frameAspectRatio,
+                  boxSizing: "border-box",
+                }}
+              >
+                <span className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-blue-600 px-3 py-1 text-[11px] font-semibold tracking-wide text-white shadow-lg">
+                  {frameAspectRatio === "9 / 16" ? "VERTICAL VIDEO · 9:16" : "STANDARD YOUTUBE · 16:9"}
+                </span>
+              </div>
+            )}
           </div>
         </section>
 
@@ -6515,6 +15865,50 @@ export default function Whiteboard({
                 className="flex size-8 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
               >
                 <CircleHelp className="size-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const isActivePortrait = showMobileFrame && frameAspectRatio === "9 / 16";
+                  setFrameAspectRatio("9 / 16");
+                  setShowMobileFrame(!isActivePortrait);
+                  setSelectedElementId(null);
+                  setSelectedElementIds([]);
+                  setShowPagesPanel(false);
+                }}
+                title={showMobileFrame && frameAspectRatio === "9 / 16" ? "Hide vertical mobile frame" : "Use vertical mobile video frame (9:16)"}
+                aria-label="Use vertical mobile video frame, 9 by 16"
+                aria-pressed={showMobileFrame && frameAspectRatio === "9 / 16"}
+                className={`flex size-8 items-center justify-center rounded-xl transition ${
+                  showMobileFrame && frameAspectRatio === "9 / 16"
+                    ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                }`}
+              >
+                <Smartphone className="size-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const isActiveLandscape = showMobileFrame && frameAspectRatio === "16 / 9";
+                  setFrameAspectRatio("16 / 9");
+                  setShowMobileFrame(!isActiveLandscape);
+                  setSelectedElementId(null);
+                  setSelectedElementIds([]);
+                  setShowPagesPanel(false);
+                }}
+                title={showMobileFrame && frameAspectRatio === "16 / 9" ? "Hide standard YouTube frame" : "Use standard YouTube video frame (16:9)"}
+                aria-label="Use standard YouTube video frame, 16 by 9"
+                aria-pressed={showMobileFrame && frameAspectRatio === "16 / 9"}
+                className={`flex size-8 items-center justify-center rounded-xl transition ${
+                  showMobileFrame && frameAspectRatio === "16 / 9"
+                    ? "bg-blue-100 text-blue-700 ring-1 ring-blue-200"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                }`}
+              >
+                <Monitor className="size-4" />
               </button>
 
               <button
