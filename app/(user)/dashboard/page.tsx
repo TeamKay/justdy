@@ -14,7 +14,7 @@ export default async function DashboardPage() {
 
   return (
    <main className="min-h-screen bg-[#FAFCF7]">
-     <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+    <div className="mx-auto w-full max-w-7xl space-y-8 px-4 pb-8 pt-16 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         {/* Shared dashboard welcome */}
         <header className="mb-8">
           <h1 className="text-3xl font-semibold tracking-tight">

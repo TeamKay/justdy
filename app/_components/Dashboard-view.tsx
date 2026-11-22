@@ -228,7 +228,7 @@ function SectionHeader({
   linkText?: string;
 }) {
   return (
-    <div className="mb-5 flex items-end justify-between gap-4">
+    <div className="mb-4 flex items-center justify-between gap-3 sm:mb-5 sm:items-end sm:gap-4">
       <div>
         {eyebrow ? (
           <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-400">
@@ -248,7 +248,7 @@ function SectionHeader({
       {href && linkText ? (
         <Link
           href={href}
-          className="hidden shrink-0 items-center gap-1.5 text-sm font-semibold text-emerald-700 transition hover:text-emerald-900 sm:flex dark:text-emerald-400 dark:hover:text-emerald-300"
+          className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-emerald-700 transition hover:text-emerald-900 sm:gap-1.5 sm:text-sm dark:text-emerald-400 dark:hover:text-emerald-300"
         >
           {linkText}
           <ArrowRight className="h-4 w-4" />
@@ -272,7 +272,7 @@ function EmptyState({
   action?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 px-6 py-12 text-center">
+    <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 px-4 py-8 text-center sm:px-6 sm:py-12">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-950/60">
         <Icon className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
       </div>
@@ -343,28 +343,28 @@ function TeacherAdminDashboard({
   const firstName = account.name.split(" ")[0] || "there";
 
   return (
-    <div className="space-y-8 bg-white">
+   <div className="min-w-0 space-y-6 sm:space-y-8">
       {/* Hero */}
-      <section className="relative overflow-hidden px-0 py-4 text-emerald-950 sm:px-0 lg:px-0 lg:py-0">
+      <section className="relative overflow-hidden px-0 py-2 text-emerald-950 sm:py-4 lg:px-0 lg:py-0">
         <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-emerald-400/10 blur-2xl" />
         <div className="absolute -bottom-28 right-32 h-56 w-56 rounded-full bg-white/5 blur-3xl" />
 
-        <div className="relative flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
+        <div className="relative flex flex-col gap-4 sm:gap-7 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
-            <h1 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl lg:text-[2.0rem]">
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:mt-5 sm:text-4xl lg:text-[2.0rem]">
               Welcome back, {firstName}.
             </h1>
 
-            <p className="mt-0 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:mt-0 sm:text-base">
               Everything you need to manage your learners, sessions,
               availability, and teaching activity.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:gap-3">
             <Link
               href="/admin/bookings"
-              className="inline-flex h-11 items-center gap-2 rounded-lg border border-white/15 bg-emerald-950 px-4 text-sm font-semibold text-white transition hover:bg-emerald-900"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-white/15 bg-emerald-950 px-4 text-sm font-semibold text-white transition hover:bg-emerald-900 sm:w-auto"
             >
               <CalendarDays className="h-4 w-4" />
               View bookings
@@ -374,7 +374,7 @@ function TeacherAdminDashboard({
       </section>
 
       {/* KPI strip */}
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4">
         {[
           {
             value: adminStats?.newTutoringRequests ?? 0,
@@ -400,18 +400,18 @@ function TeacherAdminDashboard({
           const Icon = item.icon;
 
           return (
-            <DashboardCard key={item.detail} className="p-4">
-              <div className="flex items-start justify-between gap-4">
+            <DashboardCard key={item.detail} className="p-3 sm:p-4">
+              <div className="flex items-start justify-between gap-2 sm:gap-4">
                 <div>
-                  <p className="mt-2 text-2xl font-semibold tracking-tight">
+                  <p className="mt-1 text-xl font-semibold tracking-tight sm:mt-2 sm:text-2xl">
                     {item.value}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 text-[11px] leading-4 text-muted-foreground sm:text-xs">
                     {item.detail}
                   </p>
                 </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50">
-                  <Icon className="h-4.5 w-4.5 text-emerald-700 dark:text-emerald-400" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 sm:h-10 sm:w-10 dark:bg-emerald-950/50">
+                  <Icon className="h-4 w-4 text-emerald-700 sm:h-4.5 sm:w-4.5 dark:text-emerald-400" />
                 </div>
               </div>
             </DashboardCard>
@@ -421,8 +421,8 @@ function TeacherAdminDashboard({
 
       {/* Main workspace */}
       <section className="grid gap-6">
-        <DashboardCard className="p-5 sm:p-6">
-          <div className="min-h-75">
+        <DashboardCard className="min-w-0 p-4 sm:p-6">
+          <div className="min-h-[220px] sm:min-h-75">
             <ClientGrowthChart points={clientGrowth} />
           </div>
         </DashboardCard>
@@ -453,32 +453,32 @@ function LearnerDashboard({
 
 
   return (
-    <div className="space-y-8 bg-white">
+   <div className="min-w-0 space-y-6 sm:space-y-8">
       {/* Learner hero */}
-      <section className="relative overflow-hidden rounded-lg border border-border/70 bg-card p-6 shadow-sm sm:p-8 lg:p-10">
+      <section className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4 shadow-sm sm:rounded-lg sm:p-8 lg:p-10">
         <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-emerald-100/70 blur-3xl dark:bg-emerald-950/30" />
 
-        <div className="relative flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative flex flex-col gap-5 sm:gap-7 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl">
             <p className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
               <Sparkles className="h-3.5 w-3.5" />
               Your learning workspace
             </p>
 
-            <h1 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl lg:text-[2.7rem]">
+            <h1 className="mt-3 text-2xl font-semibold tracking-tight sm:mt-5 sm:text-4xl lg:text-[2.7rem]">
               Welcome back, {firstName}.
             </h1>
 
-            <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
+            <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground sm:mt-3 sm:text-base">
               Continue building your skills with personalized tutoring and guided learning.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:gap-3">
             {account.canBookTutoring ? (
               <Link
                 href="/tutoring"
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-900 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-950"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-900 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-950 sm:w-auto"
               >
                 <Search className="h-4 w-4" />
                 Find a tutor
@@ -487,7 +487,7 @@ function LearnerDashboard({
 
             <Link
               href="/dashboard/create"
-              className="inline-flex h-11 items-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-semibold transition hover:bg-muted"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-semibold transition hover:bg-muted sm:w-auto"
             >
               <Sparkles className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
               Create with AI
@@ -498,17 +498,17 @@ function LearnerDashboard({
 
       {/* Learner overview */}
       <section className="grid gap-3 sm:grid-cols-1">
-        <DashboardCard className="p-5">
+        <DashboardCard className="p-3.5 sm:p-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-muted-foreground">
                 Sessions completed
               </p>
 
-              <p className="mt-2 text-2xl font-semibold">{completedCount}</p>
+              <p className="mt-1.5 text-2xl font-semibold sm:mt-2">{completedCount}</p>
             </div>
 
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 sm:h-10 sm:w-10 dark:bg-emerald-950/50">
               <CheckCircle2 className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
             </div>
           </div>
@@ -525,11 +525,11 @@ function LearnerDashboard({
         />
 
         {nextLesson ? (
-          <div className="relative overflow-hidden rounded-3xl bg-[#063B2B] p-6 text-white shadow-lg sm:p-8">
+          <div className="relative overflow-hidden rounded-2xl bg-[#063B2B] p-4 text-white shadow-lg sm:rounded-3xl sm:p-8">
             <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-emerald-400/10 blur-3xl" />
 
-            <div className="relative flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center gap-4">
+            <div className="relative flex flex-col gap-5 sm:gap-7 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                 <PersonAvatar person={nextLesson.educator} size={56} />
 
                 <div>
@@ -548,8 +548,8 @@ function LearnerDashboard({
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center lg:w-auto">
+                <div className="min-w-0 rounded-xl border border-white/10 bg-white/5 px-3 py-3 sm:rounded-2xl sm:px-4">
                   <p className="text-xs text-emerald-100/70">
                     {formatDate(nextLesson.startTime)}
                   </p>
@@ -576,7 +576,7 @@ function LearnerDashboard({
                   return (
                     <Link
                       href={href}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50"
+                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-50 sm:w-auto"
                     >
                       {joinable ? (
                         <>
@@ -608,8 +608,8 @@ function LearnerDashboard({
 
 
       {/* Activity + history */}
-      <section className="grid gap-6 lg:grid-cols-2">
-        <DashboardCard className="p-5 sm:p-6">
+      <section className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-2">
+        <DashboardCard className="min-w-0 p-4 sm:p-6">
           <SectionHeader
             eyebrow="Learning"
             title="Recent activity"
@@ -622,7 +622,7 @@ function LearnerDashboard({
               {activities.slice(0, 5).map((activity) => (
                 <div
                   key={activity.id}
-                  className="flex items-center gap-3 rounded-xl border border-border/60 bg-background p-3.5 transition hover:bg-muted/40"
+                  className="flex min-w-0 items-center gap-2.5 rounded-xl border border-border/60 bg-background p-3 transition hover:bg-muted/40 sm:gap-3 sm:p-3.5"
                 >
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/50">
                     <BookOpen className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
@@ -657,7 +657,7 @@ function LearnerDashboard({
           )}
         </DashboardCard>
 
-        <DashboardCard className="p-5 sm:p-6">
+        <DashboardCard className="min-w-0 p-4 sm:p-6">
           <SectionHeader eyebrow="History" title="Recent sessions" />
 
           {completedSessions.length ? (
@@ -665,7 +665,7 @@ function LearnerDashboard({
               {completedSessions.slice(0, 5).map((session) => (
                 <div
                   key={session.id}
-                  className="flex items-center gap-3 rounded-xl border border-border/60 bg-background p-3.5"
+                  className="flex min-w-0 items-center gap-2.5 rounded-xl border border-border/60 bg-background p-3 sm:gap-3 sm:p-3.5"
                 >
                   <PersonAvatar person={session.educator} size={40} />
 
@@ -701,12 +701,12 @@ function LearnerDashboard({
           title="What would you like to do?"
         />
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-3">
           <Link
             href="/dashboard/live-help"
-            className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
+            className="group rounded-2xl border border-border/70 bg-card p-4 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md sm:p-5"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 sm:h-10 sm:w-10 dark:bg-emerald-950/50">
               <MessageCircle className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
             </div>
 
@@ -724,9 +724,9 @@ function LearnerDashboard({
 
           <Link
             href="/dashboard/create"
-            className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
+            className="group rounded-2xl border border-border/70 bg-card p-4 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md sm:p-5"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 sm:h-10 sm:w-10 dark:bg-emerald-950/50">
               <Sparkles className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
             </div>
 
@@ -744,9 +744,9 @@ function LearnerDashboard({
 
           <Link
             href="/tutoring"
-            className="group rounded-2xl border border-border/70 bg-card p-5 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
+            className="group rounded-2xl border border-border/70 bg-card p-4 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md sm:p-5"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/50">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 sm:h-10 sm:w-10 dark:bg-emerald-950/50">
               <Search className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
             </div>
 
@@ -784,7 +784,7 @@ export default function DashboardView({
 }: DashboardViewProps) {
   if (account.isTeacherAdmin) {
     return (
-      <main className="mx-auto w-full max-w-7xl mt-5 px-4 py-6 sm:px-6 lg:px-12 lg:py-8 bg-white">
+     <main className="mx-auto mt-0 min-h-screen w-full max-w-7xl min-w-0 bg-[#eef0f5] px-3 pb-6 pt-16 sm:px-6 sm:py-6 lg:px-12 lg:py-8">
         <TeacherAdminDashboard
           account={account}
           upcoming={teacherUpcoming}
@@ -799,7 +799,7 @@ export default function DashboardView({
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl mt-5 px-4 py-6 sm:px-6 lg:px-12 lg:py-8 bg-white">
+   <main className="mx-auto mt-0 min-h-screen w-full max-w-7xl min-w-0 bg-[#eef0f5] px-3 pb-6 pt-16 sm:px-6 sm:py-6 lg:px-12 lg:py-8">
       <LearnerDashboard
         account={account}
         upcoming={learnerUpcoming}

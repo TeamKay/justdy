@@ -24,9 +24,8 @@ import {
   TrendingUp,
   PiggyBank,
   PencilRuler,
-  Mail,
+   X,
   MessagesSquare,
-  MessageSquareText,
 } from "lucide-react";
 
 import {
@@ -40,6 +39,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
+  useSidebar,
 } from "../ui/sidebar";
 
 import {
@@ -241,7 +241,7 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
-
+const { isMobile, setOpenMobile } = useSidebar();
   const { data: session } = authClient.useSession();
   const user = session?.user;
 
@@ -258,6 +258,12 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
   const isAdmin = normalizedRole === "ADMIN";
   const isLearner = normalizedRole === "LEARNER";
   const isTutor = normalizedRole === "TUTOR";
+
+  const mobileRoleLabel = isAdmin
+  ? "Admin"
+  : isTutor
+    ? "Tutor"
+    : "Learner";
 
   const visibleUserNavigation = React.useMemo<NavigationGroup[]>(
     () =>
@@ -339,7 +345,7 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
     groups.map((group) => (
       <SidebarGroup key={group.title} className="p-0">
         <SidebarGroupContent>
-          <SidebarMenu className="space-y-0.5">
+        <SidebarMenu className="gap-1.5 md:gap-0.5">
             {group.items.map((item) => {
               const active = isActive(item.url);
 
@@ -349,17 +355,24 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
                     asChild
                     tooltip={item.title}
                     data-active={active ? "true" : "false"}
-                    className={`h-10 rounded-lg px-3 text-[15px] font-medium transition-colors ${
+                   className={`h-12 px-3.5 text-[15px] font-medium transition-colors md:h-11 md:px-3 ${
                       active
                         ? "!bg-[#173B2F] !text-white shadow-sm hover:!bg-[#245640] hover:!text-white"
-                        : "!bg-transparent !text-[#101813] hover:!bg-[#fafaf9] hover:!text-[#173B2F]"
-                    }`}
+                        : isMobile
+                       ? "border border-[#E8C49C]/50 !bg-white/75 !text-[#173B2F] hover:!border-[#D6B27F] hover:!bg-[#F4AB52]/15 hover:!text-[#173B2F]"
+                          : "!bg-transparent !text-[#101813] hover:!bg-[#fafaf9] hover:!text-[#173B2F]"
+                    } ${isMobile ? "rounded-xl" : "rounded-lg"}`}
                   >
                     <Link
-                      href={item.url}
-                      aria-current={active ? "page" : undefined}
-                      className="flex h-full w-full items-center gap-3"
-                    >
+                        href={item.url}
+                        aria-current={active ? "page" : undefined}
+                        onClick={() => {
+                          if (isMobile) {
+                            setOpenMobile(false);
+                          }
+                        }}
+                        className="flex h-full w-full items-center gap-3"
+                      >
                       <NavIcon icon={item.icon} active={active} />
                       <span>{item.title}</span>
                     </Link>
@@ -377,7 +390,7 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
       await clearCommunityPresence();
       await authClient.signOut();
 
-      router.push("/login");
+      router.replace("/auth");
       router.refresh();
     } catch (error) {
       console.error("Failed to sign out:", error);
@@ -407,55 +420,100 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
         }}
       />
 
-      {/* Sidebar Header */}
-      <SidebarHeader className="relative z-10 shrink-0 border-b border-[#E8C49C]/60 bg-transparent px-3.5 py-3">
-        <div className="flex h-8 min-w-0 items-center justify-between gap-2 overflow-hidden">
-          <div>
-            <Link
-              href="/"
-              className="group inline-flex flex-row items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-[#173B2F]/90 transition hover:bg-[#173B2F]/6 hover:text-[#0B2D22]"
-            >
-              <Image
-                src={LogoImg}
-                alt="Justdy logo"
-                width={34}
-                height={34}
-                priority
-                className="h-8 w-8 shrink-0 object-contain transition-transform duration-200 group-hover:scale-105"
-              />
+     
+{/* Sidebar Header */}
+<SidebarHeader className="relative z-10 shrink-0 border-b border-[#E8C49C]/60 bg-transparent p-0 md:px-3.5 md:py-3">
 
-              <span className="text-[20px] font-bold tracking-[-0.04em] text-[#173B2F] transition-colors duration-200">
-                Justdy
-              </span>
-            </Link>
-          </div>
+  {isMobile ? (
+    /* Mobile profile header */
+    <div className="relative flex min-h-[116px] items-center gap-3 bg-[#3D416F] px-5 py-5 text-white">
 
-          <SidebarTrigger
-            className="size-8 shrink-0 rounded-lg text-[#52645A] transition-colors hover:bg-[#F4AB52]/15 hover:text-[#173B2F] focus-visible:ring-2 focus-visible:ring-[#B97832]/40"
-            aria-label="Close sidebar"
-            title="Close sidebar"
-          />
-        </div>
-      </SidebarHeader>
+      <Avatar className="size-12 shrink-0 border-2 border-white/30">
+        <AvatarImage
+          src={userImage || undefined}
+          alt={userName}
+          className="object-cover"
+        />
+        <AvatarFallback className="bg-white text-sm font-bold text-[#173B2F]">
+          {userInitials}
+        </AvatarFallback>
+      </Avatar>
+
+      <div className="min-w-0 flex-1 pr-8">
+        <p className="text-xs text-white/75">
+          Welcome back,
+        </p>
+
+        <p className="truncate text-base font-semibold text-[#F5A34A]">
+          {userName}
+        </p>
+
+        <p className="mt-0.5 text-[11px] font-medium text-white/70">
+          {mobileRoleLabel}
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setOpenMobile(false)}
+        aria-label="Close navigation menu"
+        className="absolute right-4 top-4 flex size-9 items-center justify-center rounded-lg text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F4AB52]"
+      >
+        <X className="size-5" />
+      </button>
+
+    </div>
+  ) : (
+    /* Desktop header - preserve existing design */
+    <div className="flex h-8 min-w-0 items-center justify-between gap-2 overflow-hidden">
+
+      <Link
+        href="/"
+        className="group inline-flex flex-row items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-[#173B2F]/90 transition hover:bg-[#173B2F]/6 hover:text-[#0B2D22]"
+      >
+        <Image
+          src={LogoImg}
+          alt="Justdy logo"
+          width={34}
+          height={34}
+          priority
+          className="h-8 w-8 shrink-0 object-contain transition-transform duration-200 group-hover:scale-105"
+        />
+
+        <span className="text-[20px] font-bold tracking-[-0.04em] text-[#173B2F]">
+          Justdy
+        </span>
+      </Link>
+
+      <SidebarTrigger
+        className="size-8 shrink-0 rounded-lg text-[#52645A] transition-colors hover:bg-[#F4AB52]/15 hover:text-[#173B2F] focus-visible:ring-2 focus-visible:ring-[#B97832]/40"
+        aria-label="Close sidebar"
+        title="Close sidebar"
+      />
+
+    </div>
+  )}
+
+</SidebarHeader>
+
 
       {/* Sidebar Navigation */}
-      <SidebarContent className="relative z-10 min-h-0 flex-1 bg-transparent px-2.5 py-4">
+     <SidebarContent className="relative z-10 min-h-0 flex-1 overscroll-contain bg-white px-3 py-4 md:bg-transparent md:px-2.5 md:py-4">
         {renderNavigation(visibleNavigation)}
       </SidebarContent>
 
       {/* Sidebar Footer */}
-      <SidebarFooter className="relative z-10 shrink-0 border-t border-[#E8C49C]/60 bg-white/25 p-2.5 backdrop-blur-sm">
+    <SidebarFooter className="relative z-10 shrink-0 border-t border-[#E8C49C]/60 bg-white/70 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm md:bg-white/25 md:p-2.5">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               id="account-menu-trigger"
               type="button"
-              className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left outline-none transition hover:bg-[#F4AB52]/15 focus-visible:ring-2 focus-visible:ring-[#B97832]/40"
-              aria-label="Open account menu"
+              className="flex min-h-12 w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left outline-none transition hover:bg-[#F4AB52]/15 focus-visible:ring-2 focus-visible:ring-[#B97832]/40 md:min-h-0 md:rounded-lg md:px-2"
             >
               <Avatar className="size-8 shrink-0 border border-[#B97832]/25">
                 <AvatarImage
-                  src={userImage}
+                  src={userImage || undefined}
                   alt={userName}
                   className="object-cover"
                 />
@@ -488,7 +546,7 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
             <div className="flex items-center gap-3 px-2.5 py-2.5">
               <Avatar className="size-9 border border-border">
                 <AvatarImage
-                  src={userImage}
+                  src={userImage || undefined}
                   alt={userName}
                   className="object-cover"
                 />

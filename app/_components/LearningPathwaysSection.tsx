@@ -62,37 +62,36 @@ export default function LearningPathwaysSection() {
       <div className="pointer-events-none absolute -bottom-24 -left-24 h-80 w-80 rounded-full bg-[#76529A]/[0.05] blur-3xl" />
 
       <div className="relative mx-auto grid max-w-6xl items-start gap-14 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
+
         {/* Introduction */}
-        <div className="lg:sticky lg:top-24">
-        
-          <div className="mx-auto mb-0 max-w-5xl text-center">
-            <div className="flex flex-row items-center justify-center gap-3">
-              
-              <h2 className="font-chalkduster text-left mt-4 text-3xl font-bold leading-tight tracking-tight text-[#302044] sm:text-4xl lg:text-5xl">
-                More than one way to learn.{" "}
-                <span className="relative inline-block bg-linear-to-r from-[#55984A] via-[#70A94D] to-[#E89A42] bg-clip-text text-transparent">
-                  One goal: helping you succeed.
-                </span>
-              </h2>
-            </div>
-              <p className="text-left mx-auto mt-2 max-w-5xl text-base leading-8 text-[#718078] sm:text-lg">
-                Every learner is different. That is why Justdy brings together
-                personalized tutoring, interactive practice, videos, and learning
-                resources to help students develop strong mathematical foundations
-                and prepare for high school and beyond.
-              </p>
-            </div>
-        
-        
+        <div className="flex flex-col items-center text-center lg:sticky lg:top-24 lg:items-start lg:text-left">
+
+          <div className="mx-auto mb-0 max-w-5xl text-center lg:mx-0 lg:text-left">
+            <h2 className="font-chalkduster mt-4 text-center text-3xl font-bold leading-tight tracking-tight text-[#302044] sm:text-4xl lg:text-left lg:text-5xl">
+              More than one way to learn.{" "}
+              <span className="relative inline-block bg-linear-to-r from-[#55984A] via-[#70A94D] to-[#E89A42] bg-clip-text text-transparent">
+                One goal: helping you succeed.
+              </span>
+            </h2>
+
+            <p className="mx-auto mt-2 max-w-5xl text-center text-base leading-8 text-[#718078] sm:text-lg lg:mx-0 lg:text-left">
+              Every learner is different. That is why Justdy brings together
+              personalized tutoring, interactive practice, videos, and learning
+              resources to help students develop strong mathematical foundations
+              and prepare for high school and beyond.
+            </p>
+          </div>
+
+          {/* CTA */}
           <Link
             href="/tutoring"
-            className="mt-8 inline-flex items-center gap-3 rounded-lg bg-[#8c9112] px-6 py-3.5 text-sm font-bold text-white shadow-md shadow-[#147D72]/15 transition hover:-translate-y-0.5 hover:bg-[#787a2c] hover:shadow-lg"
+            className="mt-8 inline-flex items-center justify-center gap-3 rounded-lg bg-[#8c9112] px-6 py-3.5 text-center text-sm font-bold text-white shadow-md shadow-[#147D72]/15 transition hover:-translate-y-0.5 hover:bg-[#787a2c] hover:shadow-lg"
           >
             Schedule Free Pre-assessment
             <ChevronRight className="h-4 w-4" />
           </Link>
 
-          <p className="mt-5 text-sm text-[#51465D]/65">
+          <p className="mt-5 text-center text-sm text-[#51465D]/65 lg:text-left">
             Start with the support you need. Grow at your own pace.
           </p>
         </div>
@@ -106,9 +105,10 @@ export default function LearningPathwaysSection() {
               <Link
                 key={item.number}
                 href={item.href}
-                className="group relative flex min-h-[260px] flex-col overflow-hidden rounded-lg border border-[#302044]/[0.07] bg-white p-6 shadow-[0_5px_25px_rgba(48,32,68,0.035)] transition duration-300 hover:-translate-y-1 hover:border-[#147D72]/30 hover:shadow-[0_16px_40px_rgba(48,32,68,0.09)] sm:p-7"
+                className="group relative flex min-h-[260px] flex-col items-center overflow-hidden rounded-lg border border-[#302044]/[0.07] bg-white p-6 text-center shadow-[0_5px_25px_rgba(48,32,68,0.035)] transition duration-300 hover:-translate-y-1 hover:border-[#147D72]/30 hover:shadow-[0_16px_40px_rgba(48,32,68,0.09)] sm:items-start sm:p-7 sm:text-left"
               >
-                <div className="flex items-start justify-between">
+                {/* Icon and number */}
+                <div className="flex w-full items-start justify-between">
                   <span
                     className={`flex h-12 w-12 items-center justify-center rounded-xl ${item.color} text-white shadow-sm transition duration-300 group-hover:scale-110`}
                   >
@@ -120,6 +120,7 @@ export default function LearningPathwaysSection() {
                   </span>
                 </div>
 
+                {/* Card content */}
                 <div className="mt-7 flex-1">
                   <h3 className="text-xl font-bold tracking-tight text-[#302044] transition group-hover:text-[#147D72]">
                     {item.title}
@@ -130,12 +131,13 @@ export default function LearningPathwaysSection() {
                   </p>
                 </div>
 
-                <div className="mt-6 flex items-center justify-between border-t border-[#302044]/[0.07] pt-4">
+                {/* Card footer */}
+                <div className="mt-6 flex w-full items-center justify-between border-t border-[#302044]/[0.07] pt-4">
                   <span className="text-xs font-semibold text-[#147D72]">
                     {item.detail}
                   </span>
 
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f0f7f1] text-[#147D72] transition duration-300 group-hover:translate-x-1 group-hover:bg-[#147D72] group-hover:text-white">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f0f7f1] text-[#147D72] transition duration-300 group-hover:translate-x-1 group-hover:bg-[#147D72] group-hover:text-white">
                     <ArrowRight className="h-4 w-4" />
                   </span>
                 </div>

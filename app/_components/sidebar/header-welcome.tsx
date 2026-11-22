@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -42,95 +43,104 @@ export function SiteHeader({
   const user = session?.user;
 
   const userName = initialUserName || user?.name || "Justdy User";
-
   const userImage = initialUserImage || user?.image || "";
-
   const userEmail = user?.email || "";
 
   const userHandle =
     `@${userName.replace(/\s+/g, "").toLowerCase()}` || "@user";
 
   const userInitials = userName
-    ? userName
-        .trim()
-        .split(" ")
-        .filter(Boolean)
-        .map((n) => n[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase()
-    : "JU";
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "JU";
 
   const handleLogout = async () => {
-    router.push("/");
+    await authClient.signOut();
+    router.replace("/auth");
+    router.refresh();
   };
 
   return (
     <header
       className="
-        sticky
-        top-0
-        z-30
-        flex
-        h-16
-        w-full
-        items-center
-        justify-between
-        border-b
-        border-slate-200
+        sticky top-0 z-40
+        flex h-16 w-full shrink-0
+        items-center justify-between
+        border-b border-slate-200
         bg-white/95
-        px-4
+        px-3
         text-slate-900
         shadow-[0_1px_3px_rgba(0,0,0,0.03)]
         backdrop-blur
-        transition-all
+        transition-colors
 
-        sm:px-6
-        lg:px-8
+        sm:px-6 lg:px-8
+
+        max-md:border-[#3D416F]
+        max-md:bg-[#3D416F]
+        max-md:text-white
+        max-md:shadow-none
       "
     >
-      {/* ============================================================
-          LEFT
-      ============================================================ */}
+      {/* LEFT */}
 
       <div className="flex min-w-0 items-center gap-3">
+
         <SidebarTrigger
+          aria-label="Open navigation menu"
+          title="Open navigation menu"
           className="
-            size-9
-            shrink-0
-            rounded-lg
-            border
-            border-slate-200
+            size-10 shrink-0
+            rounded-xl
+            border border-slate-200
             bg-white
-            text-slate-500
+            text-[#3D416F]
             shadow-sm
             transition-all
             hover:bg-slate-50
-            hover:text-slate-900
+            hover:text-[#292D55]
             hover:shadow
+
+            max-md:border-white/20
+            max-md:bg-white
+            max-md:text-[#3D416F]
+            max-md:hover:bg-slate-100
           "
         />
 
-        <div className="hidden h-5 w-px bg-slate-200 sm:block" />
+        <div className="hidden h-6 w-px bg-slate-200 max-md:bg-white/20 sm:block" />
 
-        <div className="flex min-w-0 items-center">
-          <span className="truncate text-sm font-semibold text-slate-800">
-            Justdy AI
+        <Link
+          href="/dashboard"
+          className="
+            flex min-w-0 items-center
+            text-sm font-semibold
+            text-slate-800
+            transition-colors
+            hover:text-[#3D416F]
+
+            max-md:text-white
+            max-md:hover:text-white/80
+          "
+        >
+          <span className="truncate">
+            Justdy
           </span>
-        </div>
+        </Link>
       </div>
 
-      {/* ============================================================
-          CENTER
-      ============================================================ */}
+      {/* CENTER */}
 
       <div className="hidden flex-1 md:block" />
 
-      {/* ============================================================
-          RIGHT
-      ============================================================ */}
+      {/* RIGHT */}
 
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+
         {/* Notifications */}
 
         <button
@@ -138,11 +148,8 @@ export function SiteHeader({
           title="Notifications"
           aria-label="Notifications"
           className="
-            relative
-            flex
-            size-9
-            items-center
-            justify-center
+            relative flex size-9
+            items-center justify-center
             rounded-lg
             text-slate-500
             transition-colors
@@ -151,34 +158,18 @@ export function SiteHeader({
             focus:outline-none
             focus-visible:ring-2
             focus-visible:ring-[#857938]
-            focus-visible:ring-offset-2
+
+            max-md:text-white
+            max-md:hover:bg-white/10
+            max-md:hover:text-white
           "
         >
           <Bell className="size-5" />
-
-          {/* Notification indicator */}
-
-          {/*
-          <span
-            className="
-              absolute
-              right-1.5
-              top-1.5
-              size-2
-              rounded-full
-              bg-red-600
-              ring-2
-              ring-white
-            "
-          />
-          */}
         </button>
 
-        {/* Divider */}
+        <div className="mx-1 hidden h-6 w-px bg-slate-200 sm:block max-md:bg-white/20" />
 
-        <div className="mx-1 hidden h-6 w-px bg-slate-200 sm:block" />
-
-        {/* User */}
+        {/* USER MENU */}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -186,24 +177,22 @@ export function SiteHeader({
               type="button"
               aria-label="Open user menu"
               className="
-                ml-1
-                rounded-full
-                outline-none
+                ml-1 rounded-full outline-none
                 focus-visible:ring-2
                 focus-visible:ring-[#857938]
                 focus-visible:ring-offset-2
+                max-md:focus-visible:ring-offset-[#3D416F]
               "
             >
               <Avatar
                 className="
-                  size-9
-                  cursor-pointer
-                  border
-                  border-slate-200
+                  size-9 cursor-pointer
+                  border border-slate-200
                   shadow-sm
                   transition-all
                   hover:border-slate-300
                   hover:shadow
+                  max-md:border-white/30
                 "
               >
                 <AvatarImage
@@ -216,8 +205,7 @@ export function SiteHeader({
                   suppressHydrationWarning
                   className="
                     bg-slate-100
-                    text-xs
-                    font-semibold
+                    text-xs font-semibold
                     text-slate-700
                   "
                 >
@@ -231,19 +219,14 @@ export function SiteHeader({
             align="end"
             sideOffset={10}
             className="
-              w-80
-              overflow-hidden
+              w-80 overflow-hidden
               rounded-2xl
-              border
-              border-slate-200
-              bg-white
-              p-1
+              border border-slate-200
+              bg-white p-1
               text-slate-900
               shadow-2xl
             "
           >
-            {/* USER INFORMATION */}
-
             <DropdownMenuLabel className="p-4 font-normal">
               <div className="flex items-center gap-4">
                 <Avatar className="size-12 border border-slate-200">
@@ -273,72 +256,37 @@ export function SiteHeader({
             <DropdownMenuSeparator className="bg-slate-200" />
 
             <DropdownMenuGroup className="p-1">
-              {/* My Courses */}
-
               <DropdownMenuItem
                 asChild
-                className="
-                  cursor-pointer
-                  rounded-xl
-                  p-2.5
-                  text-slate-700
-                  transition-colors
-                  focus:bg-slate-50
-                  focus:text-slate-900
-                "
+                className="cursor-pointer rounded-xl p-2.5 text-slate-700 focus:bg-slate-50"
               >
                 <Link
                   href="/courses"
                   className="flex w-full items-center gap-4"
                 >
                   <BookOpen className="size-5 text-slate-500" />
-
-                  <span className="flex-1 text-sm font-medium">My Courses</span>
+                  <span className="flex-1 text-sm font-medium">
+                    My Courses
+                  </span>
                 </Link>
               </DropdownMenuItem>
 
-              {/* Appearance */}
-
-              <DropdownMenuItem
-                className="
-                  cursor-pointer
-                  rounded-xl
-                  p-2.5
-                  text-slate-700
-                  transition-colors
-                  focus:bg-slate-50
-                  focus:text-slate-900
-                "
-              >
+              <DropdownMenuItem className="cursor-pointer rounded-xl p-2.5 text-slate-700 focus:bg-slate-50">
                 <div className="flex w-full items-center gap-4">
                   <Moon className="size-5 text-slate-500" />
-
-                  <span className="flex-1 text-sm font-medium">Appearance</span>
-
+                  <span className="flex-1 text-sm font-medium">
+                    Appearance
+                  </span>
                   <ChevronRight className="size-4 text-slate-400" />
                 </div>
               </DropdownMenuItem>
 
-              {/* Language */}
-
-              <DropdownMenuItem
-                className="
-                  cursor-pointer
-                  rounded-xl
-                  p-2.5
-                  text-slate-700
-                  transition-colors
-                  focus:bg-slate-50
-                  focus:text-slate-900
-                "
-              >
+              <DropdownMenuItem className="cursor-pointer rounded-xl p-2.5 text-slate-700 focus:bg-slate-50">
                 <div className="flex w-full items-center gap-4">
                   <Languages className="size-5 text-slate-500" />
-
                   <span className="flex-1 text-sm font-medium">
                     Display Language
                   </span>
-
                   <ChevronRight className="size-4 text-slate-400" />
                 </div>
               </DropdownMenuItem>
@@ -346,23 +294,17 @@ export function SiteHeader({
 
             <DropdownMenuSeparator className="bg-slate-200" />
 
-            {/* SIGN OUT */}
-
             <DropdownMenuGroup className="p-1">
               <DropdownMenuItem
-                onClick={handleLogout}
+                onClick={() => void handleLogout()}
                 className="
-      flex
-      cursor-pointer
-      items-center
-      gap-4
-      rounded-xl
-      p-2.5
-      text-slate-700
-      transition-colors
-      focus:bg-red-50
-      focus:text-red-600
-    "
+                  flex cursor-pointer
+                  items-center gap-4
+                  rounded-xl p-2.5
+                  text-slate-700
+                  focus:bg-red-50
+                  focus:text-red-600
+                "
               >
                 <LogOut className="size-5 text-slate-500" />
 

@@ -1,7 +1,12 @@
+
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { SidebarInset, SidebarProvider } from "@/app/_components/ui/sidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+} from "@/app/_components/ui/sidebar";
+
 import { AppSidebar } from "../_components/sidebar/dashboard-sidebar";
 import { DashboardHeader } from "../_components/sidebar/dashboard-header";
 
@@ -17,16 +22,19 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <SidebarProvider defaultOpen={true} className="min-h-screen bg-slate-50">
+    <SidebarProvider
+      defaultOpen={true}
+      className="min-h-svh w-full bg-[#eef0f5]"
+    >
       <Suspense fallback={null}>
         <AppSidebar />
       </Suspense>
 
-      <SidebarInset className="min-h-screen bg-slate-50">
+      <SidebarInset className="min-h-svh min-w-0 bg-[#eef0f5]">
         <DashboardHeader />
 
-        <main className="flex-1 bg-slate-200">
-          <div className="mx-auto w-full max-w-[1600px] px-0 py-0 sm:px-0 sm:py-0 lg:px-0 lg:py-0">
+        <main className="min-h-0 flex-1 bg-[#eef0f5]">
+          <div className="mx-auto min-h-full w-full max-w-[1600px] px-0 py-0">
             {children}
           </div>
         </main>

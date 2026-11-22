@@ -109,11 +109,11 @@ export default function ClientGrowthChart({
   };
 
   return (
-    <div className="w-full">
-      <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <div className="mt-0 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            <h1>Client Growth Chart</h1>
+    <div className="w-full min-w-0">
+      <div className="mb-5 flex min-w-0 flex-col gap-4 xl:mb-6 xl:flex-row xl:items-end xl:justify-between">
+        <div className="min-w-0">
+          <div className="mt-0 flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:gap-3">
+            <h1 className="font-medium">Client Growth Chart</h1>
             {change !== null ? (
               <span
                 className={
@@ -129,79 +129,80 @@ export default function ClientGrowthChart({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-          {ranges.map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => {
-                setRange(item);
-                setFromDate("");
-                setToDateValue("");
-              }}
-              className={`h-9 rounded-lg px-3.5 text-xs font-semibold transition ${
-                range === item && !hasCustomRange
-                  ? "bg-foreground text-background"
-                  : "border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              {item === "ALL" ? "All" : item}
-            </button>
-          ))}
+        <div className="flex min-w-0 flex-col gap-3 xl:items-end">
+          <div className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:items-center">
+            {ranges.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => {
+                  setRange(item);
+                  setFromDate("");
+                  setToDateValue("");
+                }}
+                className={`h-9 min-w-0 rounded-lg px-2.5 text-xs font-semibold transition sm:px-3.5 ${
+                  range === item && !hasCustomRange
+                    ? "bg-foreground text-background"
+                    : "border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                {item === "ALL" ? "All" : item}
+              </button>
+            ))}
+          </div>
 
-          <div
-            className="hidden h-6 w-px bg-border sm:block"
-            aria-hidden="true"
-          />
+          <div className="grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end sm:gap-2">
+            <label className="relative block min-w-0">
+              <span className="mb-1 block text-[11px] font-medium text-muted-foreground sm:sr-only">
+                From date
+              </span>
+              <CalendarDays className="pointer-events-none absolute left-2.5 top-[2.15rem] h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground sm:top-1/2" />
+              <input
+                type="date"
+                value={fromDate}
+                max={toDateValue || undefined}
+                onChange={(event) => {
+                  setFromDate(event.target.value);
+                  setRange("ALL");
+                }}
+                className="h-9 w-full min-w-0 rounded-lg border border-border bg-background pl-8 pr-1 text-[11px] font-medium outline-none transition focus:ring-2 focus:ring-ring sm:w-auto sm:pl-9 sm:pr-2 sm:text-xs"
+                aria-label="Filter from date"
+              />
+            </label>
 
-          <label className="relative">
-            <span className="sr-only">From date</span>
-            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="date"
-              value={fromDate}
-              max={toDateValue || undefined}
-              onChange={(event) => {
-                setFromDate(event.target.value);
-                setRange("ALL");
-              }}
-              className="h-9 rounded-lg border border-border bg-background pl-9 pr-2 text-xs font-medium outline-none transition focus:ring-2 focus:ring-ring"
-              aria-label="Filter from date"
-            />
-          </label>
+            <label className="relative block min-w-0">
+              <span className="mb-1 block text-[11px] font-medium text-muted-foreground sm:sr-only">
+                To date
+              </span>
+              <CalendarDays className="pointer-events-none absolute left-2.5 top-[2.15rem] h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground sm:top-1/2" />
+              <input
+                type="date"
+                value={toDateValue}
+                min={fromDate || undefined}
+                onChange={(event) => {
+                  setToDateValue(event.target.value);
+                  setRange("ALL");
+                }}
+                className="h-9 w-full min-w-0 rounded-lg border border-border bg-background pl-8 pr-1 text-[11px] font-medium outline-none transition focus:ring-2 focus:ring-ring sm:w-auto sm:pl-9 sm:pr-2 sm:text-xs"
+                aria-label="Filter to date"
+              />
+            </label>
 
-          <span className="text-xs text-muted-foreground">to</span>
-
-          <label className="relative">
-            <span className="sr-only">To date</span>
-            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="date"
-              value={toDateValue}
-              min={fromDate || undefined}
-              onChange={(event) => {
-                setToDateValue(event.target.value);
-                setRange("ALL");
-              }}
-              className="h-9 rounded-lg border border-border bg-background pl-9 pr-2 text-xs font-medium outline-none transition focus:ring-2 focus:ring-ring"
-              aria-label="Filter to date"
-            />
-          </label>
-
-          {hasCustomRange ? (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Reset
-            </button>
-          ) : null}
+            {hasCustomRange ? (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="col-span-2 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground sm:col-span-1 sm:justify-start"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Reset
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      <div className="w-full overflow-hidden rounded-xl">
+      <div className="w-full min-w-0 overflow-hidden rounded-xl">
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="h-80 w-full sm:h-90"

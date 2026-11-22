@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 
 import {
@@ -90,8 +91,8 @@ export default function TeacherDashboard({
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.75fr)_minmax(300px,0.7fr)]">
         <section className="rounded-xl border border-border/70 bg-card p-5 sm:p-6">
           <div className="mb-6 overflow-hidden rounded-2xl border border-border/70 bg-background shadow-sm">
-            <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
-              <div className="px-5 py-4 sm:px-6">
+            <div className="grid grid-cols-2 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
+              <div className="min-w-0 px-3 py-4 sm:px-6">
                 <p className="text-xs font-medium text-muted-foreground">
                   New clients this month
                 </p>
@@ -101,7 +102,7 @@ export default function TeacherDashboard({
                 </p>
               </div>
 
-              <div className="px-5 py-4 sm:px-6">
+              <div className="min-w-0 px-3 py-4 sm:px-6">
                 <p className="text-xs font-medium text-muted-foreground">
                   Total registered users
                 </p>
@@ -111,7 +112,7 @@ export default function TeacherDashboard({
                 </p>
               </div>
 
-              <div className="px-5 py-4 sm:px-6">
+              <div className="min-w-0 px-3 py-4 sm:px-6">
                 <p className="text-xs font-medium text-muted-foreground">
                   Scheduled tutoring
                 </p>
@@ -121,7 +122,7 @@ export default function TeacherDashboard({
                 </p>
               </div>
 
-              <div className="px-5 py-4 sm:px-6">
+              <div className="min-w-0 px-3 py-4 sm:px-6">
                 <p className="text-xs font-medium text-muted-foreground">
                   Completed sessions
                 </p>
@@ -145,7 +146,7 @@ export default function TeacherDashboard({
           <ClientGrowthChart points={clientGrowth} />
         </section>
 
-        <section className="rounded-xl border border-border/70 bg-card p-6">
+        <section className="min-w-0 rounded-xl border border-border/70 bg-card p-4 sm:p-6">
           <SectionHeader
             eyebrow="Schedule"
             title="Upcoming lessons"
@@ -155,11 +156,11 @@ export default function TeacherDashboard({
           />
 
           {upcoming.length ? (
-            <div className="mt-5 space-y-3">
+            <div className="mt-4 space-y-3 sm:mt-5">
               {upcoming.map((lesson, index) => (
                 <div
                   key={lesson.id}
-                  className={`rounded-xl border p-4 transition-colors ${
+                  className={`min-w-0 rounded-xl border p-3 transition-colors sm:p-4 ${
                     index === 0
                       ? "border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/60 dark:bg-emerald-950/30"
                       : "border-border/70 bg-background hover:bg-muted/40"
@@ -167,7 +168,7 @@ export default function TeacherDashboard({
                 >
                   <div className="flex items-start gap-3">
                     <div
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold sm:h-10 sm:w-10 ${
                         index === 0
                           ? "bg-emerald-900 text-white dark:bg-emerald-500 dark:text-emerald-950"
                           : "bg-muted text-muted-foreground"
@@ -214,7 +215,7 @@ export default function TeacherDashboard({
 
                       <Link
                         href={`/tutoring/sessions/${lesson.id}`}
-                        className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+                        className="mt-3 inline-flex min-h-10 items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
                       >
                         Open lesson
                         <ArrowRight className="h-3.5 w-3.5" />

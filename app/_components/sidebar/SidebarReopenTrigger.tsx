@@ -1,18 +1,22 @@
+
 "use client";
 
 import { SidebarTrigger, useSidebar } from "@/app/_components/ui/sidebar";
 
 export function SidebarReopenTrigger() {
-  const { open } = useSidebar();
+  const { open, openMobile, isMobile } = useSidebar();
 
-  // When the sidebar is open, do not show the floating
-  // reopen button. The sidebar's own close control is used.
-  if (open) {
+  // Check the correct sidebar state depending on the device.
+  const sidebarIsOpen = isMobile ? openMobile : open;
+
+  // Hide the floating trigger only when the
+  // sidebar is actually visible.
+  if (sidebarIsOpen) {
     return null;
   }
 
   return (
-    <div className="pointer-events-none fixed left-3 top-3 z-60">
+    <div className="pointer-events-none fixed left-3 top-3 z-[60]">
       <SidebarTrigger
         className="
           pointer-events-auto

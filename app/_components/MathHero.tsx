@@ -110,22 +110,22 @@ export default function MathHero() {
               </div>
 
               {/* Trust points */}
-              <div className="mt-10 flex flex-wrap justify-center gap-x-6 gap-y-3 border-t border-[#E4EBE4] pt-7 lg:justify-start">
-                <div className="flex items-center gap-2 text-sm text-[#53675D]">
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-[#147D72]" />
-                  Personalized learning
-                </div>
+             <div className="mt-10 flex flex-nowrap items-center justify-center gap-x-3 border-t border-[#E4EBE4] pt-7 lg:justify-start lg:gap-x-6">
+  <div className="flex shrink-0 items-center gap-1.5 text-xs text-[#53675D] sm:gap-2 sm:text-sm">
+    <CheckCircle2 className="h-4 w-4 shrink-0 text-[#147D72]" />
+    Personalized learning
+  </div>
 
-                <div className="flex items-center gap-2 text-sm text-[#53675D]">
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-[#147D72]" />
-                  Expert support
-                </div>
+  <div className="flex shrink-0 items-center gap-1.5 text-xs text-[#53675D] sm:gap-2 sm:text-sm">
+    <CheckCircle2 className="h-4 w-4 shrink-0 text-[#147D72]" />
+    Expert support
+  </div>
 
-                <div className="flex items-center gap-2 text-sm text-[#53675D]">
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-[#147D72]" />
-                  Learn at your pace
-                </div>
-              </div>
+  <div className="flex shrink-0 items-center gap-1.5 text-xs text-[#53675D] sm:gap-2 sm:text-sm">
+    <CheckCircle2 className="h-4 w-4 shrink-0 text-[#147D72]" />
+    Learn at your pace
+  </div>
+</div>
             </div>
 
             {/* RIGHT: Welcome video and visual elements */}

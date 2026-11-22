@@ -74,17 +74,17 @@ function MetricCard({
   const selected = tones[tone];
 
   return (
-    <article className="group relative overflow-hidden rounded-[1.6rem] border border-[#E8EEE5] bg-white p-5 shadow-[0_5px_22px_rgba(35,70,40,0.035)] transition duration-300 hover:-translate-y-1 hover:border-[#C9DFC5] hover:shadow-[0_16px_35px_rgba(35,70,40,0.09)] sm:p-6">
+    <article className="group relative min-w-0 overflow-hidden rounded-2xl border border-[#E8EEE5] bg-white p-4 shadow-[0_5px_22px_rgba(35,70,40,0.035)] transition duration-300 hover:-translate-y-1 hover:border-[#C9DFC5] hover:shadow-[0_16px_35px_rgba(35,70,40,0.09)] sm:rounded-[1.6rem] sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-[#718273]">{label}</p>
-          <p className="mt-3 text-4xl font-black tracking-[-0.05em] text-[#20442C]">
+         <p className="mt-2 text-3xl font-black tracking-[-0.05em] text-[#20442C] sm:mt-3 sm:text-4xl">
             {value}
           </p>
         </div>
 
         <div
-          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${selected.surface} ${selected.icon}`}
+         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12 sm:rounded-2xl ${selected.surface} ${selected.icon}`}
         >
           <Icon className="h-5 w-5" />
         </div>
@@ -191,7 +191,7 @@ function NextLessonCard({
 }) {
   if (!lesson) {
     return (
-      <section className="relative overflow-hidden rounded-[1.8rem] border border-dashed border-[#C9DEC7] bg-[#F0F8ED] p-6 sm:p-8">
+     <section className="relative overflow-hidden rounded-2xl border border-dashed border-[#C9DEC7] bg-[#F0F8ED] p-5 sm:rounded-[1.8rem] sm:p-8">
         <div className="absolute -right-12 -top-16 h-48 w-48 rounded-full bg-[#DDEFD8]/70" />
 
         <div className="relative">
@@ -203,11 +203,11 @@ function NextLessonCard({
             Your learning calendar
           </p>
 
-          <h2 className="mt-2 text-2xl font-black tracking-tight text-[#214A30]">
+          <h2 className="mt-2 text-xl font-black tracking-tight text-[#214A30] sm:text-2xl">
             Your next lesson is waiting.
           </h2>
 
-          <p className="mt-2 max-w-lg text-sm leading-7 text-[#718473]">
+         <p className="mt-2 max-w-lg text-sm leading-6 text-[#718473] sm:leading-7">
             No upcoming lessons yet. Find a tutor and schedule a session to
             keep your learning journey moving.
           </p>
@@ -371,7 +371,7 @@ function LearningProgress({
           </Link>
         </div>
       ) : (
-        <div className="mt-7 grid gap-7 lg:grid-cols-2">
+       <div className="mt-6 grid gap-5 sm:mt-7 sm:gap-7 lg:grid-cols-2">
           <div className="space-y-6">
             <ProgressBar
               label="Activity completion"
@@ -392,7 +392,7 @@ function LearningProgress({
             </div>
           </div>
 
-          <div className="flex flex-col justify-center rounded-xl bg-muted/40 p-5">
+         <div className="flex flex-col justify-center rounded-xl bg-muted/40 p-4 sm:p-5">
             <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
               <TrendingUp className="h-4 w-4" />
               Average activity score
@@ -447,7 +447,7 @@ function RecentLearning({
     .slice(0, 3);
 
   return (
-    <section className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm sm:p-6">
+   <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm sm:p-6">
       <SectionHeading
         title="Recent learning"
         description="Pick up where you left off and review your latest work."
@@ -474,7 +474,7 @@ function RecentLearning({
             return (
               <div
                 key={`activity-${activity.id}`}
-                className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between"
+                className="flex min-w-0 flex-col gap-2.5 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="flex min-w-0 items-start gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
@@ -516,7 +516,7 @@ function RecentLearning({
           {recentSessions.map((session) => (
             <div
               key={`session-${session.id}`}
-              className="flex flex-col gap-3 py-4 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+              className="flex min-w-0 flex-col gap-2.5 py-4 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="flex min-w-0 items-center gap-3">
                 <PersonAvatar person={session.educator} size={40} />
@@ -583,7 +583,7 @@ export default function LearnerDashboard({
   return (
    <div className="mx-auto w-full max-w-7xl space-y-7 pb-8">
      {showWelcome ? (
-  <section className="relative isolate overflow-hidden rounded-[2rem] bg-[#F0F7E9] px-6 py-8 sm:px-9 sm:py-10 lg:px-11">
+  <section className="relative isolate overflow-hidden rounded-lg bg-[#F0F7E9] px-6 py-8 sm:px-9 sm:py-10 lg:px-11">
     <div
       aria-hidden="true"
       className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
@@ -638,7 +638,7 @@ export default function LearnerDashboard({
   </section>
 ) : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+     <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <MetricCard
           label="Upcoming lessons"
           value={upcoming.length}
@@ -686,7 +686,7 @@ export default function LearnerDashboard({
         completedSessions={completedSessions}
       />
 
-     <section className="rounded-[1.7rem] border border-[#E1EBDD] bg-[#F2F7ED] p-6 sm:flex sm:items-center sm:justify-between sm:gap-5 sm:p-8">
+    <section className="rounded-2xl border border-[#E7EEE4] bg-white p-4 shadow-[0_5px_22px_rgba(35,70,40,0.035)] sm:rounded-[1.7rem] sm:p-8">
         <div className="flex items-start gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm dark:bg-card dark:text-blue-400">
             <BookOpen className="h-5 w-5" />
@@ -703,7 +703,7 @@ export default function LearnerDashboard({
         </div>
         <Link
           href="/dashboard/progress"
-          className="mt-4 inline-flex shrink-0 items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted sm:mt-0"
+          className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted sm:mt-0 sm:w-auto"
         >
           Explore my progress
           <ArrowRight className="h-4 w-4" />
