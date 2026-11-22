@@ -17,7 +17,7 @@ import {
   isLearningSubjectAvailable,
 } from "@/lib/learning/learning-catalog";
 import Grade8LinearEquationsExperience from "@/app/_components/learning/grade-8/Grade8LinearEquationsExperience";
-import MarketingNavbar from "@/app/_components/public/MarketingNavbar";
+import MarketingNavbar from "@/app/_components/MarketingNavbar";
 
 interface TopicPageProps {
   params: Promise<{

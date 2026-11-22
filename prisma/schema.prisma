@@ -97,6 +97,8 @@ model User {
 
   marketingContact          MarketingContact?
   marketingCampaignsCreated MarketingCampaign[]
+  communicationsReceived    CommunicationMessage[] @relation("CommunicationRecipient")
+  communicationsSent        CommunicationMessage[] @relation("CommunicationSender")
 
   @@index([status, lastSeenAt])
   @@map("user")
@@ -884,6 +886,15 @@ enum SessionCreditGrantStatus {
   REVOKED
 }
 
+enum CommunicationPurpose {
+  ACCOUNT_SUPPORT
+  TUTORING_INQUIRY
+  BOOKING
+  PAYMENT
+  SERVICE_UPDATE
+  OTHER_SERVICE
+}
+
 model SessionCreditGrant {
   id                String                    @id @default(cuid())
   userId            String
@@ -1637,6 +1648,39 @@ model InvestmentImportBatch {
   @@map("investment_import_batch")
 }
 
+model CommunicationMessage {
+  id          String @id @default(cuid())
+  recipientId String
+  senderId    String
+
+  channel String               @default("EMAIL")
+  purpose CommunicationPurpose
+  status  CommunicationStatus  @default(PENDING)
+
+  recipientEmail String
+  recipientName  String?
+  subject        String
+  htmlContent    String  @db.Text
+  textContent    String? @db.Text
+
+  serviceReason String? @db.Text
+
+  resendMessageId String? @unique
+  errorMessage    String? @db.Text
+
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  recipient User @relation("CommunicationRecipient", fields: [recipientId], references: [id], onDelete: Restrict)
+  sender    User @relation("CommunicationSender", fields: [senderId], references: [id], onDelete: Restrict)
+
+  @@index([recipientId, createdAt])
+  @@index([senderId, createdAt])
+  @@index([status, createdAt])
+  @@map("communication_message")
+}
+
 enum SocialAgeBand {
   UNKNOWN
   UNDER_13
@@ -1888,23 +1932,23 @@ model MarketingConsentEvent {
 }
 
 model MarketingCampaign {
-  id          String                  @id @default(cuid())
-  kind        MarketingCampaignKind
-   individualRecipientEmail String?
-  status      MarketingCampaignStatus @default(DRAFT)
-  name        String
-  subject     String
-  htmlContent String                  @db.Text
-  textContent String?                 @db.Text
-  fromName    String?
-  replyTo     String?
-  createdById String
-  scheduledAt DateTime?
-  startedAt   DateTime?
-  completedAt DateTime?
-  sentAt      DateTime?
-  createdAt   DateTime                @default(now())
-  updatedAt   DateTime                @updatedAt
+  id                       String                  @id @default(cuid())
+  kind                     MarketingCampaignKind
+  individualRecipientEmail String?
+  status                   MarketingCampaignStatus @default(DRAFT)
+  name                     String
+  subject                  String
+  htmlContent              String                  @db.Text
+  textContent              String?                 @db.Text
+  fromName                 String?
+  replyTo                  String?
+  createdById              String
+  scheduledAt              DateTime?
+  startedAt                DateTime?
+  completedAt              DateTime?
+  sentAt                   DateTime?
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
 
   createdBy  User                         @relation(fields: [createdById], references: [id], onDelete: Restrict)
   recipients MarketingCampaignRecipient[]
@@ -2127,4 +2171,11 @@ enum MarketingCampaignBatchStatus {
   COMPLETED
   FAILED
   CANCELLED
+}
+
+enum CommunicationStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
 }

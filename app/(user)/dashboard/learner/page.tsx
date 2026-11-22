@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
-import LearnerDashboard from "@/app/_components/dashboard/LearnerDashboard";
+import LearnerDashboard from "@/app/_components/LearnerDashboard";
 import { getDashboardData } from "@/app/(user)/dashboard/dashboard-data";
 import DashboardLoading from "@/app/(user)/dashboard/dashboard-loading";
 

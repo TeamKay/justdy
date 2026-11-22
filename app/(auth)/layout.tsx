@@ -36,22 +36,3 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   );
 }
 
-// import { X } from "lucide-react";
-// import Link from "next/link";
-// import { ReactNode } from "react";
-
-// export default function AuthLayout({ children }: { children: ReactNode }) {
-//   return (
-//     <div className="relative flex min-h-svh flex-col items-center justify-center">
-//       {/* Minimal close button - icon only */}
-//       <Link
-//         href="/"
-//         className="absolute top-4 right-4 z-50 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
-//       >
-//         <X className="size-7" />
-//       </Link>
-
-//       <div className="flex w-full flex-col gap-6">{children}</div>
-//     </div>
-//   );
-// }

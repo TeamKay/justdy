@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import LearnersView from "@/app/_components/dashboard/LearnersView";
+import LearnersView from "@/app/_components/LearnersView";
 
 export const dynamic = "force-dynamic";
 

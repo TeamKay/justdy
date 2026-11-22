@@ -9342,7 +9342,7 @@ import {
   Smartphone,
   Monitor,
 } from "lucide-react";
-import MyLogo from "@/app/_components/public/Logo";
+import MyLogo from "@/app/_components/Logo";
 import type {
   Tool,
   Point,

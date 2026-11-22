@@ -27,7 +27,7 @@ import { authClient } from "@/lib/auth-client";
 import dynamic from "next/dynamic";
 import type { WhiteboardRealtimeData } from "@/app/_components/Whiteboard";
 
-const VideoCall = dynamic(() => import("@/app/_components/videos/VideoCall"), {
+const VideoCall = dynamic(() => import("@/app/_components/VideoCall"), {
   ssr: false,
   loading: () => (
     <div className="flex h-full min-h-[420px] items-center justify-center bg-background text-foreground">

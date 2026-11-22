@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { CAPABILITIES, hasCapability } from "@/lib/auth/capabilities";
-import DashboardView from "@/app/_components/dashboard/Dashboard-view";
+import DashboardView from "@/app/_components/Dashboard-view";
 
 export const dynamic = "force-dynamic";
 

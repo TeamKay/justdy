@@ -1,4 +1,4 @@
-import VideoList from "@/app/_components/videos/VideoList";
+import VideoList from "@/app/_components/VideoList";
 import { getYoutubeVideos } from "@/lib/youtube";
 
 export const metadata = {

@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
-import AdminWhiteboardStudio from "@/app/_components/admin/AdminWhiteboardStudio";
+import AdminWhiteboardStudio from "@/app/_components/AdminWhiteboardStudio";
 
 export const metadata = {
   title: "Whiteboard Studio | Justdy",

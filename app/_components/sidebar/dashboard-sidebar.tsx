@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -5,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import LogoImg from "@/public/images/logo.png";
 import Image from "next/image";
+
 import {
   ChevronDown,
   BarChart3,
@@ -21,10 +23,10 @@ import {
   UserRound,
   TrendingUp,
   PiggyBank,
-  Megaphone,
   PencilRuler,
-  Trophy,
   Mail,
+  MessagesSquare,
+  MessageSquareText,
 } from "lucide-react";
 
 import {
@@ -94,13 +96,11 @@ const adminNavigation: NavigationGroup = {
       icon: PencilRuler,
     },
 
-  {
-    title: "Email Marketing",
-    url: "/admin/marketing",
-    icon: Mail,
-  },
-
-   
+    {
+      title: "Communication Center",
+      url: "/admin/communications",
+      icon: MessagesSquare,
+    },
     {
       title: "Educators",
       url: "/admin/educators",
@@ -171,7 +171,6 @@ const userNavigation: NavigationGroup[] = [
       },
     ],
   },
-
   {
     title: "Teaching",
     access: "teaching",
@@ -201,7 +200,6 @@ const userNavigation: NavigationGroup[] = [
         url: "/educator/sessions",
         icon: Video,
       },
-
       {
         title: "Earnings",
         url: "/earnings",
@@ -209,9 +207,6 @@ const userNavigation: NavigationGroup[] = [
       },
     ],
   },
-
-    
-
   {
     title: "Account",
     items: [
@@ -224,56 +219,6 @@ const userNavigation: NavigationGroup[] = [
   },
 ];
 
-interface Conversation {
-  id: string;
-  title: string;
-  model: string | null;
-  status: "ACTIVE";
-  createdAt: string;
-  updatedAt: string;
-  messageCount: number;
-}
-
-function formatRelativeTime(value: string) {
-  const timestamp = new Date(value).getTime();
-
-  if (!Number.isFinite(timestamp)) {
-    return "";
-  }
-
-  const diff = Math.max(0, Date.now() - timestamp);
-  const minutes = Math.floor(diff / 60000);
-
-  if (minutes < 1) {
-    return "now";
-  }
-
-  if (minutes < 60) {
-    return `${minutes}m`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-
-  if (hours < 24) {
-    return `${hours}h`;
-  }
-
-  const days = Math.floor(hours / 24);
-
-  if (days < 7) {
-    return `${days}d`;
-  }
-
-  return new Date(timestamp).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function getConversationTitle(title: string) {
-  return title.trim() || "New conversation";
-}
-
 function NavIcon({
   icon: Icon,
   active,
@@ -283,287 +228,11 @@ function NavIcon({
 }) {
   return (
     <Icon
-      className={`size-[17px] shrink-0 ${
+      className={`size-4.25 shrink-0 ${
         active ? "text-white" : "text-[#52645A]"
       }`}
     />
   );
-}
-
-function ChatHistorySection({ projectId }: { projectId: string | null }) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const activeConversationId = searchParams.get("conversationId");
-
-  const [conversations, setConversations] = React.useState<Conversation[]>([]);
-
-  const [search, setSearch] = React.useState("");
-  const [loading, setLoading] = React.useState(true);
-
-  const [actionConversationId, setActionConversationId] = React.useState<
-    string | null
-  >(null);
-
-  const [deleteConversation, setDeleteConversation] =
-    React.useState<Conversation | null>(null);
-
-  const [pinnedIds, setPinnedIds] = React.useState<Set<string>>(
-    () => new Set(),
-  );
-
-  const [pinsLoaded, setPinsLoaded] = React.useState(false);
-
-  const deleteCancelRef = React.useRef<HTMLButtonElement>(null);
-
-  const loadConversations = React.useCallback(async () => {
-    setLoading(true);
-
-    try {
-      const params = new URLSearchParams();
-
-      if (projectId) {
-        params.set("projectId", projectId);
-      }
-
-      const response = await fetch(
-        `/api/ai/chat${params.toString() ? `?${params.toString()}` : ""}`,
-        {
-          cache: "no-store",
-        },
-      );
-
-      const data = (await response.json()) as {
-        conversations?: Conversation[];
-      };
-
-      if (response.ok) {
-        setConversations(data.conversations ?? []);
-      }
-    } catch (error) {
-      console.error("Failed to load chat history:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId]);
-
-  React.useEffect(() => {
-    const timer = window.setTimeout(() => {
-      try {
-        const stored = window.localStorage.getItem("justdy:pinned-chats");
-
-        if (!stored) {
-          return;
-        }
-
-        const parsed = JSON.parse(stored);
-
-        if (!Array.isArray(parsed)) {
-          return;
-        }
-
-        setPinnedIds(
-          new Set(
-            parsed.filter(
-              (value): value is string => typeof value === "string",
-            ),
-          ),
-        );
-
-        setPinsLoaded(true);
-      } catch (error) {
-        console.error("Failed to load pinned chats:", error);
-      } finally {
-        setPinsLoaded(true);
-      }
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  React.useEffect(() => {
-    if (!pinsLoaded) {
-      return;
-    }
-
-    try {
-      window.localStorage.setItem(
-        "justdy:pinned-chats",
-        JSON.stringify(Array.from(pinnedIds)),
-      );
-    } catch (error) {
-      console.error("Failed to save pinned chats:", error);
-    }
-  }, [pinnedIds, pinsLoaded]);
-
-  React.useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void loadConversations();
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [loadConversations]);
-
-  React.useEffect(() => {
-    if (!deleteConversation) {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-
-    document.body.style.overflow = "hidden";
-
-    const focusTimer = window.setTimeout(() => {
-      deleteCancelRef.current?.focus();
-    }, 0);
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !actionConversationId) {
-        setDeleteConversation(null);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.clearTimeout(focusTimer);
-      window.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [deleteConversation, actionConversationId]);
-
-  React.useEffect(() => {
-    const refresh = () => void loadConversations();
-
-    window.addEventListener("justdy:chat-updated", refresh);
-
-    return () => window.removeEventListener("justdy:chat-updated", refresh);
-  }, [loadConversations]);
-
-  const filteredConversations = React.useMemo(() => {
-    const query = search.trim().toLowerCase();
-
-    if (!query) {
-      return conversations;
-    }
-
-    return conversations.filter((conversation) =>
-      getConversationTitle(conversation.title).toLowerCase().includes(query),
-    );
-  }, [conversations, search]);
-
-  const orderedConversations = React.useMemo(() => {
-    return [...filteredConversations].sort((a, b) => {
-      const aPinned = pinnedIds.has(a.id);
-      const bPinned = pinnedIds.has(b.id);
-
-      if (aPinned !== bPinned) {
-        return aPinned ? -1 : 1;
-      }
-
-      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    });
-  }, [filteredConversations, pinnedIds]);
-
-  const chatHref = projectId
-    ? `/chat?projectId=${encodeURIComponent(projectId)}`
-    : "/chat";
-
-  const conversationHref = (conversationId: string) => {
-    const params = new URLSearchParams();
-
-    params.set("conversationId", conversationId);
-
-    if (projectId) {
-      params.set("projectId", projectId);
-    }
-
-    return `/chat?${params.toString()}`;
-  };
-
-  function requestDeleteConversation(conversation: Conversation) {
-    if (actionConversationId) {
-      return;
-    }
-
-    setDeleteConversation(conversation);
-  }
-
-  async function performConversationAction(
-    conversation: Conversation,
-  ): Promise<boolean> {
-    if (actionConversationId) {
-      return false;
-    }
-
-    setActionConversationId(conversation.id);
-
-    try {
-      const params = new URLSearchParams({
-        conversationId: conversation.id,
-        action: "delete",
-      });
-
-      if (projectId) {
-        params.set("projectId", projectId);
-      }
-
-      const response = await fetch(`/api/ai/chat?${params.toString()}`, {
-        method: "DELETE",
-      });
-
-      const data = (await response.json()) as {
-        error?: string;
-      };
-
-      if (!response.ok) {
-        throw new Error(data.error ?? "Unable to delete conversation.");
-      }
-
-      setConversations((current) =>
-        current.filter((item) => item.id !== conversation.id),
-      );
-
-      setPinnedIds((current) => {
-        if (!current.has(conversation.id)) {
-          return current;
-        }
-
-        const next = new Set(current);
-        next.delete(conversation.id);
-
-        return next;
-      });
-
-      if (activeConversationId === conversation.id) {
-        router.push(chatHref);
-      }
-
-      window.dispatchEvent(new Event("justdy:chat-updated"));
-
-      return true;
-    } catch (error) {
-      console.error("Failed to delete conversation:", error);
-      return false;
-    } finally {
-      setActionConversationId(null);
-    }
-  }
-
-  /*
-   * Chat history is intentionally kept available for the existing
-   * dashboard/chat implementation. It does not affect sidebar styling.
-   */
-
-  void pathname;
-  void search;
-  void loading;
-  void orderedConversations;
-  void conversationHref;
-  void requestDeleteConversation;
-  void performConversationAction;
-  void deleteCancelRef;
 }
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar>;
@@ -572,11 +241,10 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
+
   const { data: session } = authClient.useSession();
   const user = session?.user;
-  const projectId = searchParams.get("projectId");
-  const conversationId = searchParams.get("conversationId");
-  const isChat = pathname === "/chat" || pathname === "/dashboard";
+
   const userName = user?.name || "Justdy User";
   const userImage = user?.image || "";
   const userEmail = user?.email || "";
@@ -588,7 +256,6 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
     .toUpperCase();
 
   const isAdmin = normalizedRole === "ADMIN";
-
   const isLearner = normalizedRole === "LEARNER";
   const isTutor = normalizedRole === "TUTOR";
 
@@ -603,18 +270,17 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
           return isTutor;
         }
 
-        // Account and other general groups are available to signed-in users.
         return true;
       }),
     [isLearner, isTutor],
   );
 
   const visibleNavigation: NavigationGroup[] = isAdmin
-  ? [
-      adminNavigation,
-      ...userNavigation.filter((group) => group.title === "Creator"),
-    ]
-  : visibleUserNavigation;
+    ? [
+        adminNavigation,
+        ...userNavigation.filter((group) => group.title === "Creator"),
+      ]
+    : visibleUserNavigation;
 
   const userInitials =
     userName
@@ -629,12 +295,10 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
   const isActive = (url: string) => {
     const [targetPath, targetQuery] = url.split("?", 2);
 
-    // Dashboard should only be active on the exact dashboard route.
     if (targetPath === "/dashboard") {
       return pathname === "/dashboard";
     }
 
-    // Admin Dashboard should only be active on the exact admin route.
     if (targetPath === "/admin") {
       return pathname === "/admin";
     }
@@ -708,66 +372,62 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
       </SidebarGroup>
     ));
 
-async function handleSignOut() {
-  try {
-    await clearCommunityPresence();
-    await authClient.signOut();
+  async function handleSignOut() {
+    try {
+      await clearCommunityPresence();
+      await authClient.signOut();
 
-    router.push("/login");
-    router.refresh();
-  } catch (error) {
-    console.error("Failed to sign out:", error);
+      router.push("/login");
+      router.refresh();
+    } catch (error) {
+      console.error("Failed to sign out:", error);
+    }
   }
-}
 
   return (
     <Sidebar
-  collapsible="offcanvas"
-  className="
-    isolate h-dvh max-h-dvh overflow-hidden
-    border-r border-[#E8C49C]/80
-    bg-[#FFF8EF] text-[#173B2F]
-    [--sidebar-width:264px]
-    shadow-[8px_0_32px_-24px_rgba(23,59,47,0.18)]
-  "
-  {...props}
->
-     {/* Refined sidebar background */}
-<div
-  className="pointer-events-none absolute inset-0 z-0"
-  aria-hidden="true"
-  style={{
-    background:
-      "linear-gradient(180deg, #FFF8EF 0%, #FFF3E5 55%, #FCEBD8 100%)",
-  }}
-/>
-
-<div
-  className="pointer-events-none absolute -right-20 top-32 z-0 size-64 rounded-full bg-[#E8B77F]/10 blur-3xl"
-  aria-hidden="true"
-/>
+      collapsible="offcanvas"
+      className="
+        isolate relative h-dvh max-h-dvh overflow-hidden
+        border-r border-[#E8C49C]/80
+        bg-[#dce1d9] text-[#173B2F]
+        [--sidebar-width:264px]
+        shadow-[8px_0_32px_-24px_rgba(23,59,47,0.18)]
+      "
+      {...props}
+    >
+      {/* MathHero matching dotted grid background */}
+      <div
+        className="pointer-events-none absolute inset-0 z-0 opacity-70"
+        aria-hidden="true"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, rgba(244,171,82,0.72) 1.15px, transparent 1.3px)",
+          backgroundSize: "25px 25px",
+        }}
+      />
 
       {/* Sidebar Header */}
-     <SidebarHeader className="relative z-10 shrink-0 border-b border-[#E8C49C]/60 bg-white/35 px-3.5 py-3 backdrop-blur-sm">
+      <SidebarHeader className="relative z-10 shrink-0 border-b border-[#E8C49C]/60 bg-transparent px-3.5 py-3">
         <div className="flex h-8 min-w-0 items-center justify-between gap-2 overflow-hidden">
           <div>
-             <Link
-             href="/"
-             className="group inline-flex flex-row items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-[#173B2F]/90 transition hover:bg-[#173B2F]/6 hover:text-[#0B2D22]"
-           >
-             <Image
-               src={LogoImg}
-               alt="Justdy logo"
-               width={34}
-               height={34}
-               priority
-               className="h-6 w-6 shrink-0 object-contain transition-transform duration-200 group-hover:scale-105"
-             />
+            <Link
+              href="/"
+              className="group inline-flex flex-row items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-[#173B2F]/90 transition hover:bg-[#173B2F]/6 hover:text-[#0B2D22]"
+            >
+              <Image
+                src={LogoImg}
+                alt="Justdy logo"
+                width={34}
+                height={34}
+                priority
+                className="h-8 w-8 shrink-0 object-contain transition-transform duration-200 group-hover:scale-105"
+              />
 
-             <span className="text-[20px] font-bold tracking-[-0.04em] text-[#173B2F] transition-colors duration-200">
-               Justdy
-             </span>
-           </Link>
+              <span className="text-[20px] font-bold tracking-[-0.04em] text-[#173B2F] transition-colors duration-200">
+                Justdy
+              </span>
+            </Link>
           </div>
 
           <SidebarTrigger
@@ -779,12 +439,12 @@ async function handleSignOut() {
       </SidebarHeader>
 
       {/* Sidebar Navigation */}
-     <SidebarContent className="relative z-10 min-h-0 flex-1 bg-transparent px-2.5 py-4">
+      <SidebarContent className="relative z-10 min-h-0 flex-1 bg-transparent px-2.5 py-4">
         {renderNavigation(visibleNavigation)}
       </SidebarContent>
 
       {/* Sidebar Footer */}
-     <SidebarFooter className="relative z-10 shrink-0 border-t border-[#E8C49C]/60 bg-white/40 p-2.5 backdrop-blur-sm">
+      <SidebarFooter className="relative z-10 shrink-0 border-t border-[#E8C49C]/60 bg-white/25 p-2.5 backdrop-blur-sm">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button

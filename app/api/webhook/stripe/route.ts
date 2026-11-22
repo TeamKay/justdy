@@ -1153,7 +1153,7 @@ export async function POST(req: Request) {
         } = emailPayload;
 
         const TutoringBookingConfirmedEmail = (
-          await import("@/app/_components/emails/TutoringBookingConfirmedEmail")
+          await import("@/app/_components/TutoringBookingConfirmedEmail")
         ).default;
 
         const customerResult = await resend.emails.send({
@@ -1176,7 +1176,7 @@ export async function POST(req: Request) {
 
         if (educatorEmail) {
           const TutoringSessionScheduledEmail = (
-            await import("@/app/_components/emails/TutoringSessionScheduledEmail")
+            await import("@/app/_components/TutoringSessionScheduledEmail")
           ).default;
 
           const tutorResult = await resend.emails.send({

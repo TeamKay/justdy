@@ -205,7 +205,7 @@ export async function GET(request: Request) {
 
     try {
       const ReminderEmail = (
-        await import("@/app/_components/emails/TutoringSessionReminderEmail")
+        await import("@/app/_components/TutoringSessionReminderEmail")
       ).default;
       const people = [booking.student, booking.educator].filter((person) =>
         person.email?.trim(),

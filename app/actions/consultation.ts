@@ -7,8 +7,8 @@ import {
 import prisma from "@/lib/prisma";
 import { CAPABILITIES, ensureCapabilities } from "@/lib/auth/capabilities";
 import { Resend } from "resend";
-import FreeConsultationEmail from "../_components/emails/ConsultationEmail";
 import { captureMarketingContactSafely } from "@/lib/marketing/contact-service";
+import FreeConsultationEmail from "../_components/ConsultationEmail";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 

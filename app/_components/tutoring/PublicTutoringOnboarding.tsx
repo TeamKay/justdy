@@ -5,8 +5,8 @@ import { useEffect, useState, type ReactNode, Suspense } from "react";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 
 import TutoringOnboarding from "@/app/_components/tutoring/TutoringOnboarding";
-import { SigninPage } from "@/app/_components/auth/Signin";
-import { SignupPage } from "@/app/_components/auth/Signup";
+import { SigninPage } from "@/app/_components/Signin";
+import { SignupPage } from "@/app/_components/Signup";
 
 type PublicView = "intro" | "tutoring" | "signin" | "signup";
 

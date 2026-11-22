@@ -7,53 +7,43 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import LogoImg from "@/public/images/logo.png";
 
-import { SigninPage } from "@/app/_components/auth/Signin";
-import { SignupPage } from "@/app/_components/auth/Signup";
+import { SigninPage } from "@/app/_components/Signin";
+import { SignupPage } from "@/app/_components/Signup";
 
 type AuthMode = "signin" | "signup";
 
-const dottedBackground = {
-  backgroundColor: "#FAD6AC",
-  backgroundImage:
-    "radial-gradient(circle, rgba(190,132,70,0.30) 1.1px, transparent 1.2px)",
-  backgroundSize: "18px 18px",
-  backgroundPosition: "0 0",
-};
+
 
 function AuthContent() {
   const searchParams = useSearchParams();
 
   const initialMode =
     searchParams.get("mode") === "signup" ? "signup" : "signin";
-
   const [mode, setMode] = useState<AuthMode>(initialMode);
 
   return (
-    <main className="min-h-screen text-[#173B2F]">
+    <main className="min-h-screen">
       <div className="grid min-h-screen lg:grid-cols-2 ">
-        {/* =========================================================
-            LEFT — BRAND PANEL
-        ========================================================== */}
-
-        <section
-          className="relative hidden overflow-hidden lg:flex"
-          style={dottedBackground}
-        >
-          {/* Soft peach decorative glow */}
-          <div className="absolute -left-40 -top-40 h-[600px] w-[600px] rounded-full bg-[#FAD6AC]/35 blur-[120px]" />
-
-          <div className="absolute -right-40 top-[20%] h-[550px] w-[550px] rounded-full bg-[#F8D2A6]/30 blur-[130px]" />
-
-          <div className="absolute bottom-[-250px] left-[15%] h-[500px] w-[500px] rounded-full bg-[#E8C49A]/25 blur-[120px]" />
+        <section className="relative isolate overflow-hidden bg-[#dce1d9]">
+            <div
+              className="pointer-events-none absolute inset-0 -z-10 opacity-70"
+              aria-hidden="true"
+              style={{
+                backgroundImage:
+                  "radial-gradient(circle, rgba(244,171,82,0.72) 1.15px, transparent 1.3px)",
+                backgroundSize: "25px 25px",
+              }}
+            />
+      
 
           {/* Content */}
           <div className="relative z-10 flex min-h-screen w-full flex-col justify-between p-10 xl:p-14">
             {/* Logo */}
             <Link
               href="/"
-              className="inline-flex w-fit items-center gap-3 transition-opacity hover:opacity-80"
+              className="inline-flex w-fit items-center gap-0 transition-opacity hover:opacity-80"
             >
-              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg bg-white/80 ring-1 ring-[#173B2F]/10">
+              <div className="flex h-12 w-12 items-center justify-center overflow-hidden">
                 <Image
                   src={LogoImg}
                   alt="Justdy"
@@ -74,18 +64,32 @@ function AuthContent() {
                 Live Math Tutoring
               </div>
 
-              <h1 className="max-w-2xl text-5xl font-semibold leading-[0.95] tracking-[-0.055em] text-[#173B2F] xl:text-6xl">
-                Build confidence
-                <br />
-                <span className="text-[#B97832]">
-                  through expert guidance.
+               <h1 className="max-w-2xl font-chalkduster text-[2.75rem] font-bold leading-[1.12] tracking-tight text-[#153F38] sm:text-6xl lg:text-[3.5rem]">
+               Build confidence
+                <span className="relative mt-1 block text-[#E6A52C]">
+                 through expert guidance.
+                  <svg
+                    className="absolute -bottom-3 left-1/2 w-52 -translate-x-1/2 sm:w-104 lg:left-0 lg:translate-x-0"
+                    viewBox="0 0 260 17"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M3 12C64 2 176 2 256 10"
+                      stroke="#E6A52C"
+                      strokeWidth="5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
                 </span>
               </h1>
+
+
 
               <p className="mt-6 max-w-lg text-base leading-7 text-[#52645A] xl:text-[15px]">
                 Get live, personalized help from a tutor and work through
                 difficult math problems in a supportive learning environment.
-              </p>
+              </p> 
 
               {/* Small visual */}
               <div className="mt-10 flex items-center gap-3">
@@ -161,7 +165,7 @@ export default function AuthPage() {
       fallback={
         <main
           className="flex min-h-screen items-center justify-center text-[#173B2F]"
-          style={dottedBackground}
+        
         >
           <div className="text-sm text-[#52645A]">Loading...</div>
         </main>

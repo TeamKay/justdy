@@ -21,7 +21,7 @@ import {
   formatDate,
   type LearningActivity,
   type CompletedSession,
-} from "@/app/_components/dashboard/DashboardShared";
+} from "@/app/_components/DashboardShared";
 
 function dateKey(date: Date | string) {
   const value = new Date(date);

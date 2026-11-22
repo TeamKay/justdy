@@ -16,7 +16,7 @@ import {
   getLearningUnits,
   isLearningSubjectAvailable,
 } from "@/lib/learning/learning-catalog";
-import MarketingNavbar from "@/app/_components/public/MarketingNavbar";
+import MarketingNavbar from "@/app/_components/MarketingNavbar";
 
 interface MathematicsPageProps {
   params: Promise<{ grade: string }>;

@@ -13,8 +13,8 @@ import {
 import { Instrument_Serif, Inter } from "next/font/google";
 
 import prisma from "@/lib/prisma";
-import MarketingNavbar from "@/app/_components/public/MarketingNavbar";
-import MarketingFooter from "@/app/_components/public/MarketingFooter";
+import MarketingNavbar from "@/app/_components/MarketingNavbar";
+import MarketingFooter from "@/app/_components/MarketingFooter";
 
 const inter = Inter({
   subsets: ["latin"],

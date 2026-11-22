@@ -3,7 +3,7 @@ import Image from "next/image";
 import { CheckCircle2, Mail, ArrowLeft, ShieldCheck } from "lucide-react";
 
 import LogoImg from "@/public/images/logo.png";
-import ResendVerification from "@/app/_components/auth/ResendVerification";
+import ResendVerification from "@/app/_components/ResendVerification";
 
 interface VerifyRequestPageProps {
   searchParams: Promise<{

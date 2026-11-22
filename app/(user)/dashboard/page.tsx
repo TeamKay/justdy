@@ -1,6 +1,6 @@
 import { getDashboardData } from "@/app/(user)/dashboard/dashboard-data";
-import LearnerDashboard from "@/app/_components/dashboard/LearnerDashboard";
-import TeacherDashboard from "@/app/_components/dashboard/TeacherDashboard";
+import LearnerDashboard from "@/app/_components/LearnerDashboard";
+import TeacherDashboard from "@/app/_components/TeacherDashboard";
 
 export default async function DashboardPage() {
   const data = await getDashboardData();

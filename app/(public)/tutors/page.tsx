@@ -188,7 +188,7 @@ export default function TutorsPage() {
   }, [tutors, search, subject, grade]);
 
   return (
-    <main className="min-h-screen bg-[#FBF9F2] text-[#173B2F] items-center">
+    <main className="min-h-screen bg-[#ffffff] text-[#173B2F] items-center">
       <section className="relative overflow-hidden border-b border-[#eadfce]">
         <div
           aria-hidden="true"
@@ -202,12 +202,12 @@ export default function TutorsPage() {
           }}
         />
         <div className="relative mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:px-10 lg:py-15">
-          <Link
+         <Link
             href="/"
-            className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-lg border border-[#e8c99f] bg-white/85 px-4 py-2 text-sm font-semibold text-[#173B2F] shadow-sm transition hover:bg-white hover:text-[#9A642F] focus:outline-none focus:ring-2 focus:ring-[#B97832] focus:ring-offset-2 sm:left-8 lg:left-10"
+            aria-label="Close and return home"
+            className="absolute right-5 top-5 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#e8c99f] bg-white/90 text-[#173B2F] shadow-sm transition hover:border-[#B97832] hover:bg-white hover:text-[#9A642F] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#B97832] focus:ring-offset-2 sm:right-8 lg:right-10"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Back to home
+            <X className="h-5 w-5" />
           </Link>
 
           <div className="mx-auto max-w-3xl pt-2 text-center">
@@ -326,7 +326,7 @@ export default function TutorsPage() {
                      <button
                         type="button"
                         onClick={() => setSelectedTutor(tutor)}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#173B2F] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#24523F] focus:outline-none focus:ring-2 focus:ring-[#B97832] focus:ring-offset-2"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#8c9112] px-5 py-3 text-sm font-semibold text-white transition hover:hover:bg-[#787a2c] focus:outline-none focus:ring-2 focus:ring-[#B97832] focus:ring-offset-2"
                       >
                         View tutor profile
                         <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />

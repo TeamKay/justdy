@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -383,9 +384,10 @@ export default function TutoringOnboarding({
        <button
           type="button"
           onClick={() => window.location.assign("/")}
-          className="absolute left-4 top-5 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white/90 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-emerald-200 hover:text-emerald-800 sm:left-8 sm:top-8"
+          aria-label="Close and return home"
+          className="absolute right-4 top-5 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-600 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800 sm:right-8 sm:top-8"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to Home
+          <X className="h-5 w-5" />
         </button>
        
         <div className="mx-auto w-full max-w-3xl lg:px-4 pt-15">
@@ -899,7 +901,7 @@ export default function TutoringOnboarding({
                     <button
                       type="button"
                       onClick={goNext}
-                      className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#312c65] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-[#423d75] hover:shadow-md"
+                      className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#8c9112] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-[#787a2c] hover:shadow-md"
                     >
                       Continue <ArrowRight className="h-4 w-4" />
                     </button>
@@ -908,7 +910,7 @@ export default function TutoringOnboarding({
                       type="button"
                       onClick={() => void submitIntake()}
                       disabled={submitting}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#312c65] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-bg-[#423d75] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#8c9112] px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-[#787a2c] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {submitting ? (
                         <>

@@ -358,7 +358,7 @@ export const auth = betterAuth({
           const { render } = await import("@react-email/render");
 
           const PurchaseConfirmationEmail = (
-            await import("@/app/_components/emails/PurchaseConfirmationEmail")
+            await import("@/app/_components/PurchaseConfirmationEmail")
           ).default;
 
           const appUrl = (
@@ -421,7 +421,7 @@ export const auth = betterAuth({
         const { render } = await import("@react-email/render");
 
         const ForgotPasswordEmail = (
-          await import("@/app/_components/emails/ForgotPasswordEmail")
+          await import("@/app/_components/ForgotPasswordEmail")
         ).default;
 
         const emailHtml = await render(
@@ -486,7 +486,7 @@ export const auth = betterAuth({
         // signup flow.
         // ====================================================
 
-        const VerifyEmail = (await import("@/app/_components/emails/VerifyEmail"))
+        const VerifyEmail = (await import("@/app/_components/VerifyEmail"))
           .default;
 
         const result = await resend.emails.send({

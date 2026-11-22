@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
-import TutorApplicationsView from "@/app/_components/admin/TutorApplicationsView";
+import TutorApplicationsView from "@/app/_components/TutorApplicationsView";
 
 export const dynamic = "force-dynamic";
 

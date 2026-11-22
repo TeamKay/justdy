@@ -1,15 +1,14 @@
 import { getYoutubeVideos, type Video as YouTubeVideo } from "@/lib/youtube";
 import { Inter, Instrument_Serif } from "next/font/google";
-import MarketingNavbar from "@/app/_components/public/MarketingNavbar";
-import MarketingFooter from "@/app/_components/public/MarketingFooter";
-import StatsSection from "./_components/public/StatsSection";
-import TutoringSection from "./_components/public/TutoringSection";
-import LatestVideosSection from "./_components/public/LatestVideosSection";
-import MathHero from "./_components/public/MathHero";
-import TestimonialsSection from "./_components/public/TestimonialsSection";
-import LearningPathwaysSection from "./_components/public/LearningPathwaysSection";
-import CallToActionSection from "./_components/public/CallToActionSection";
-import Announcements from "./_components/public/Announcements";
+import MarketingNavbar from "@/app/_components/MarketingNavbar";
+import MarketingFooter from "@/app/_components/MarketingFooter";
+import TutoringSection from "./_components/TutoringSection";
+import LatestVideosSection from "./_components/LatestVideosSection";
+import MathHero from "./_components/MathHero";
+import TestimonialsSection from "./_components/TestimonialsSection";
+import LearningPathwaysSection from "./_components/LearningPathwaysSection";
+import CallToActionSection from "./_components/CallToActionSection";
+import Announcements from "./_components/Announcements";
 
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -44,7 +43,6 @@ export default async function LandingPage() {
         <MarketingNavbar />
         <Announcements/>
         <MathHero/>
-        <StatsSection />
         <TutoringSection />
         <LatestVideosSection videos={latestVideos} />
         <LearningPathwaysSection />
