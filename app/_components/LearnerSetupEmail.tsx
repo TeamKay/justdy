@@ -1,6 +1,11 @@
 import { Button, Heading, Link, Text } from "@react-email/components";
 import JustdyEmailLayout from "./JustdyEmailLayout";
 
+const c = {
+  navy: "#0f172a",
+  border: "#e2e8f0",
+  muted: "#64748b",
+};
 
 interface Props {
   username: string;
