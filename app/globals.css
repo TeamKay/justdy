@@ -831,8 +831,10 @@
 }
 
 .font-chalkduster {
-  font-family: "Marker Felt", "Comic Sans MS", cursive;
+  font-family: var(--font-marker-felt), cursive;
 }
 
-
+.font-chalkduster-wide {
+  font-family: var(--font-marker-felt-wide), cursive;
+}
 
