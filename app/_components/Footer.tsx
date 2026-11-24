@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 import { Github, MessageCircle, Youtube } from "lucide-react";
 import LogoImg from "@/public/images/logo.png";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 const footerGroups = [
   {
@@ -49,6 +50,7 @@ export default function MarketingFooter() {
   const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
   const [newsletterMessage, setNewsletterMessage] = useState("");
   const [newsletterError, setNewsletterError] = useState(false);
+  const router = useRouter();
 
   async function handleNewsletterSubmit(
     event: FormEvent<HTMLFormElement>
@@ -105,7 +107,7 @@ export default function MarketingFooter() {
   };
 
   return (
-    <footer className="w-full overflow-hidden bg-white">
+    <footer className="w-full overflow-hidden bg-[#ffffff]">
       <div className="mx-auto max-w-6xl px-5 sm:px-10 lg:px-8">
 
         {/* Brand and social links */}
@@ -125,7 +127,7 @@ export default function MarketingFooter() {
               className="h-8 w-8 shrink-0 object-contain transition-transform duration-200 group-hover:scale-105"
             />
 
-            <span className="text-xl font-semibold tracking-tight text-[#3f3830] sm:text-2xl">
+            <span className="text-xl font-chalkduster font-semibold tracking-tight text-[#3f3830] sm:text-2xl">
               Justdy
             </span>
           </Link>
@@ -293,15 +295,15 @@ export default function MarketingFooter() {
           © {new Date().getFullYear()} Justdy. All rights reserved.
         </p>
 
-        <div className="flex shrink-0 items-center gap-4 sm:gap-7">
-          <button
-            type="button"
-            onClick={openSignin}
-            className="text-xs font-medium text-neutral-500 transition-colors hover:text-sky-500 sm:text-sm"
-          >
-            Sign in
-          </button>
-        </div>
+       <div className="flex shrink-0 items-center gap-4 sm:gap-7">
+        <button
+          type="button"
+         onClick={() => router.push("/auth")}
+          className="text-xs font-medium text-neutral-500 transition-colors hover:text-sky-500 sm:text-sm"
+        >
+          Sign in
+        </button>
+      </div>
       </div>
       </div>
     </footer>

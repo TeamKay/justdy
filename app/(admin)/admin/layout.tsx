@@ -1,12 +1,9 @@
 import type { ReactNode } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-
 import { SidebarInset, SidebarProvider } from "@/app/_components/ui/sidebar";
-
 import { AppSidebar } from "@/app/_components/sidebar/dashboard-sidebar";
 import { SidebarReopenTrigger } from "@/app/_components/sidebar/SidebarReopenTrigger";
 
@@ -92,7 +89,7 @@ export default async function AdminLayout({ children }: LayoutProps) {
         className="
           relative flex h-dvh min-h-0 min-w-0
           flex-1 flex-col overflow-hidden
-          bg-[#F8FAF7]
+          bg-[#376421]
           shadow-none
         "
       >

@@ -123,7 +123,7 @@ export default function Grade8GuidedPractice() {
         </p>
 
         <h2 className="mt-3 text-2xl font-bold text-gray-900">
-          Let's strengthen your understanding
+          Let&apos;s strengthen your understanding
         </h2>
 
         <p className="mt-3 leading-7 text-gray-600">

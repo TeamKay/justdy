@@ -91,7 +91,7 @@ export default function MarketingNavbar() {
             : "inset-x-0"
         }`}
         style={{
-          backgroundColor: "#FFFFFF",
+          backgroundColor: "#ffffff",
          
           backgroundSize: "18px 18px",
           backgroundPosition: "0 0",
@@ -113,8 +113,8 @@ export default function MarketingNavbar() {
                className="h-8 w-8 shrink-0 object-contain transition-transform duration-200 group-hover:scale-105"
              />
 
-             <span className="text-[20px] font-bold tracking-[-0.04em] text-[#302044] transition-colors duration-200">
-               Justdy
+             <span className="text-[20px] font-chalkduster font-bold tracking-[-0.01em] text-[#302044] transition-colors duration-200">
+                Justdy
              </span>
            </Link>
 

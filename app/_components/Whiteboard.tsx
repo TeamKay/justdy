@@ -13605,9 +13605,17 @@ export default function Whiteboard({
         setShowGrid(boardData.showGrid);
       if (typeof boardData.backgroundColor === "string")
         setBackgroundColor(boardData.backgroundColor);
-      if (typeof boardData.backgroundImage === "string")
-        setBackgroundImage(boardData.backgroundImage);
-      else if (boardData.backgroundImage === null) setBackgroundImage(null);
+     if (typeof boardData.backgroundImage === "string") {
+  const savedBackground = boardData.backgroundImage;
+
+  setBackgroundImage(
+    savedBackground === "/images/chalkboard.png"
+      ? "/images/justdy-chalkboard-background.webp"
+      : savedBackground,
+  );
+} else if (boardData.backgroundImage === null) {
+  setBackgroundImage(null);
+}
       if (typeof boardData.gridColor === "string")
         setGridColor(boardData.gridColor);
     }

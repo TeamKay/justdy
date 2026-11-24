@@ -56,7 +56,7 @@ const learningOptions = [
 
 export default function LearningPathwaysSection() {
   return (
-    <section className="relative overflow-hidden bg-[#f0f7f1] px-5 py-20 sm:px-8 lg:py-28">
+    <section className="relative overflow-hidden bg-[#f2f4f7] px-5 py-20 sm:px-8 lg:py-28">
       {/* Background decoration */}
       <div className="pointer-events-none absolute -right-24 top-0 h-80 w-80 rounded-full bg-[#147D72]/[0.06] blur-3xl" />
       <div className="pointer-events-none absolute -bottom-24 -left-24 h-80 w-80 rounded-full bg-[#76529A]/[0.05] blur-3xl" />

@@ -32,7 +32,7 @@ export const PEN_SIZE_OPTIONS = [
   { value: 10, width: 11 },
 ];
 
-export const DEFAULT_BACKGROUND_IMAGE = "/images/chalkboard.png";
+export const DEFAULT_BACKGROUND_IMAGE = "/images/justdy-chalkboard-background.webp";
 
 export const BACKGROUND_IMAGE_OPTIONS = [
   { label: "Chalkboard", value: DEFAULT_BACKGROUND_IMAGE },

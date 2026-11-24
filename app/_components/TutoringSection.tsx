@@ -15,7 +15,7 @@ export default function TutoringSection() {
   return (
     <section
       id="online-tutoring"
-      className="bg-white px-5 py-16 sm:px-8 sm:py-20"
+      className="bg-[#f2f4f7] px-5 py-16 sm:px-8 sm:py-20"
     >
       <div className="mx-auto max-w-6xl">
 

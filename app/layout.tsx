@@ -5,7 +5,7 @@ import { Toaster } from "sonner";
 import { ThemeProvider } from "@/app/_components/ThemeProvider";
 
 export const metadata: Metadata = {
-  title: "Interactive online Math tutoring with confidence | Justdy",
+  title: "Learn Math online with confidence | Justdy",
   description: "Math made with fun; let's figure it out together",
 };
 

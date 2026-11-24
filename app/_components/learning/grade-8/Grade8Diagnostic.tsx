@@ -227,7 +227,7 @@ export default function Grade8Diagnostic({
             Grade 8 Mathematics
           </p>
           <h2 className="mt-1 text-xl font-bold text-gray-900">
-            Let's check your foundations
+            Let&apos;s check your foundations
           </h2>
         </div>
 

@@ -17,7 +17,7 @@ export default function LatestVideosSection({
   if (!videos.length) return null;
 
   return (
-    <section className="bg-white px-5 py-20 sm:px-8">
+    <section className="bg-[#ffffff] px-5 py-20 sm:px-8">
       <div className="mx-auto max-w-6xl lg:px-0">
         <div className="mx-auto mb-0 max-w-5xl text-center">
         <div className="flex flex-row items-center justify-center gap-3">
